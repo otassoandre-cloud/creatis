@@ -100,7 +100,10 @@
   <meta name="google-site-verification" content="KI3TQKbEzXyIm7-KqaM_ZZre44B3F2cLR_5zraNAePc" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" as="image" href="images/showcase/parachute.webp">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/landing.css">
   <script defer src="/_vercel/insights/script.js"></script>
@@ -187,16 +190,16 @@
       <div class="hero-visuel">
         <div class="hero-mockup">
           <div class="mockup-carte c1">
-            <img src="images/showcase/parachute.png" alt="Miniature YouTube IA — Parachute">
+            <img src="images/showcase/parachute.webp" alt="Miniature YouTube IA — Parachute" fetchpriority="high">
           </div>
           <div class="mockup-carte c2">
-            <img src="images/showcase/argent-youtube.jpg" alt="Miniature YouTube IA — Argent">
+            <img src="images/showcase/argent-youtube.webp" alt="Miniature YouTube IA — Argent" fetchpriority="high">
           </div>
           <div class="mockup-carte c3">
-            <img src="images/showcase/avion-monaco.png" alt="Miniature YouTube IA — Avion Monaco">
+            <img src="images/showcase/avion-monaco.webp" alt="Miniature YouTube IA — Avion Monaco" fetchpriority="high">
           </div>
           <div class="mockup-carte c4">
-            <img src="images/showcase/voyage.jpg" alt="Miniature YouTube IA — Voyage">
+            <img src="images/showcase/voyage.webp" alt="Miniature YouTube IA — Voyage" fetchpriority="high">
           </div>
         </div>
       </div>
@@ -455,21 +458,21 @@
           <div class="smi-label">Miniatures générées pour @FlemonoSekai <span class="smi-badge">Manga · Tuto dessin</span></div>
           <div class="showcase-mini-grid showcase-mini-grid-pro" style="margin-bottom:10px;">
             <div class="showcase-mini-item">
-              <img src="images/showcase/mini-yeux-16x9.png" alt="Miniature Yeux Réaliste 16:9">
+              <img src="images/showcase/mini-yeux-16x9.webp" alt="Miniature Yeux Réaliste 16:9" loading="lazy">
               <div class="showcase-mini-caption">Yeux réaliste · 16:9</div>
             </div>
             <div class="showcase-mini-item">
-              <img src="images/showcase/mini-mains-16x9.png" alt="Miniature Mains Manga 16:9">
+              <img src="images/showcase/mini-mains-16x9.webp" alt="Miniature Mains Manga 16:9" loading="lazy">
               <div class="showcase-mini-caption">Mains manga · 16:9</div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
             <div class="showcase-mini-item" style="aspect-ratio:9/16;">
-              <img src="images/showcase/mini-yeux-9x16.png" alt="Miniature Short Yeux Réaliste 9:16">
+              <img src="images/showcase/mini-yeux-9x16.webp" alt="Miniature Short Yeux Réaliste 9:16" loading="lazy">
               <div class="showcase-mini-caption">Yeux réaliste · Short 9:16</div>
             </div>
             <div class="showcase-mini-item" style="aspect-ratio:9/16;">
-              <img src="images/showcase/mini-mains-9x16.png" alt="Miniature Short Mains 9:16">
+              <img src="images/showcase/mini-mains-9x16.webp" alt="Miniature Short Mains 9:16" loading="lazy">
               <div class="showcase-mini-caption">Mains manga · Short 9:16</div>
             </div>
           </div>
@@ -480,24 +483,24 @@
           <div class="smi-label">Créatis s'adapte à toutes les niches <span class="smi-badge">Plan Pro</span></div>
           <div class="showcase-mini-grid showcase-mini-grid-pro">
             <div class="showcase-mini-item">
-              <img src="images/showcase/argent-youtube.jpg" alt="Miniature finance">
+              <img src="images/showcase/argent-youtube.webp" alt="Miniature finance" loading="lazy">
               <div class="showcase-mini-caption">Finance · cinématique</div>
             </div>
             <div class="showcase-mini-item">
-              <img src="images/showcase/argent-choc.jpg" alt="Miniature réaction">
+              <img src="images/showcase/argent-choc.webp" alt="Miniature réaction" loading="lazy">
               <div class="showcase-mini-caption">Réaction · clickbait</div>
             </div>
             <div class="showcase-mini-item">
-              <img src="images/showcase/voiture.jpg" alt="Miniature voiture">
+              <img src="images/showcase/voiture.webp" alt="Miniature voiture" loading="lazy">
               <div class="showcase-mini-caption">Lifestyle · luxe</div>
             </div>
             <div class="showcase-mini-item">
-              <img src="images/showcase/voyage.jpg" alt="Miniature voyage">
+              <img src="images/showcase/voyage.webp" alt="Miniature voyage" loading="lazy">
               <div class="showcase-mini-caption">Voyage · soleil</div>
             </div>
           </div>
           <div class="showcase-mini-item showcase-mini-featured" style="margin-top:12px;border-radius:12px;overflow:hidden;aspect-ratio:16/6;position:relative;">
-            <img src="images/showcase/avion-monaco.png" alt="Avion Monaco Créatis" style="width:100%;height:100%;object-fit:cover;">
+            <img src="images/showcase/avion-monaco.webp" alt="Avion Monaco Créatis" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
             <div class="showcase-mini-caption">Avion de chasse · Monaco · généré en 45s</div>
           </div>
         </div>
@@ -1394,7 +1397,7 @@ Flemo</div>
           <span class="demo-result-time" id="demo-rt-mini"></span>
         </div>
         <div id="demo-mini-body" style="padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;">
-          <img id="demo-mini-img" src="images/showcase/mini-yeux-16x9.png"
+          <img id="demo-mini-img" src="images/showcase/mini-yeux-16x9.webp"
             style="width:100%;border-radius:8px;border:1px solid #1e2e1e;opacity:0;transition:opacity .9s;">
           <div style="font-size:11px;color:#555;text-align:center;">1280×720px · éditeur de texte intégré</div>
           <button style="padding:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:default;opacity:0;transition:opacity .5s;" id="demo-dl-btn">⬇️ Télécharger 1280×720</button>
