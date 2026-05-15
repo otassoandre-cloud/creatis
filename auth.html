@@ -523,7 +523,8 @@
       // Vérifier si déjà connecté → rediriger directement
       await Auth.init();
       if (Auth.estAuthentifie()) {
-        window.location.href = 'app.html';
+        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+        window.location.href = returnUrl || 'app.html';
       }
     });
 
@@ -653,7 +654,8 @@
           return;
         }
       }
-      window.location.href = modeConnexion ? 'app.html' : 'cancel.html';
+      const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+      window.location.href = returnUrl || (modeConnexion ? 'app.html' : 'cancel.html');
     }
 
     function afficherErreur(msg) {
