@@ -147,17 +147,16 @@
 
   <div class="toast" id="toast">✅ Lien copié !</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/config.js"></script>
   <script>
-    const SUPABASE_URL = CONFIG.SUPABASE_URL;
-    const SUPABASE_KEY = CONFIG.SUPABASE_ANON_KEY;
-
     async function init() {
-      // Vérifier session Supabase
+      // Vérifier session avec la même storageKey que auth.js
       let session = null;
       try {
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, storageKey: 'creatis_sb_session' }
+        });
         const { data } = await client.auth.getSession();
         session = data?.session;
       } catch {}
