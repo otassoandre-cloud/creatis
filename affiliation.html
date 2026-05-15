@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programme Affiliation — Créatis</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { min-height:100vh; background:var(--bg); padding:24px; font-family:'Inter',sans-serif; }
+    .page { max-width:720px; margin:0 auto; }
+
+    .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:40px; }
+    .logo { font-size:22px; font-weight:800; color:var(--texte); text-decoration:none; }
+    .logo span { color:var(--vert); }
+    .btn-app { background:var(--vert); color:#000; padding:8px 18px; border-radius:8px; font-weight:700; font-size:13px; text-decoration:none; }
+
+    h1 { font-size:28px; font-weight:800; margin-bottom:8px; }
+    .subtitle { color:var(--texte-doux); font-size:15px; margin-bottom:40px; }
+
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+    .stat-card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:24px; text-align:center; }
+    .stat-val { font-size:32px; font-weight:800; color:var(--vert); }
+    .stat-label { font-size:13px; color:var(--texte-muted); margin-top:4px; }
+
+    .card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:28px; margin-bottom:20px; }
+    .card-title { font-size:14px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:16px; }
+
+    .link-box { display:flex; gap:10px; align-items:center; }
+    .link-input { flex:1; background:var(--bg); border:1px solid var(--bordure); border-radius:8px; padding:12px 16px; font-size:14px; color:var(--texte); font-family:'Inter',sans-serif; cursor:text; }
+    .btn-copy { background:var(--vert); color:#000; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; transition:opacity .15s; }
+    .btn-copy:hover { opacity:.85; }
+
+    .commission-info { display:flex; gap:12px; margin-top:16px; }
+    .comm-item { flex:1; background:var(--bg); border:1px solid var(--bordure); border-radius:10px; padding:14px; text-align:center; }
+    .comm-pct { font-size:22px; font-weight:800; color:var(--vert); }
+    .comm-label { font-size:12px; color:var(--texte-muted); margin-top:2px; }
+
+    .how-list { list-style:none; padding:0; margin:0; }
+    .how-list li { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--bordure); font-size:14px; color:var(--texte-doux); }
+    .how-list li:last-child { border-bottom:none; }
+    .how-list li strong { color:var(--texte); }
+    .step-num { width:24px; height:24px; border-radius:50%; background:rgba(16,185,129,.12); color:var(--vert); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+    .payout-info { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.2); border-radius:10px; padding:16px 20px; font-size:13px; color:var(--texte-doux); margin-top:16px; }
+    .payout-info strong { color:var(--vert); }
+
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--vert); color:#000; padding:10px 22px; border-radius:10px; font-size:13px; font-weight:700; display:none; z-index:99; }
+
+    .auth-wall { text-align:center; padding:80px 20px; }
+    .auth-wall h2 { font-size:22px; margin-bottom:12px; }
+    .auth-wall p { color:var(--texte-doux); margin-bottom:24px; }
+
+    @media(max-width:600px) {
+      .stats-grid { grid-template-columns:1fr; }
+      .commission-info { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <a href="index.html" class="logo">Créatis<span>.</span></a>
+      <a href="app.html" class="btn-app">Ouvrir l'app →</a>
+    </div>
+
+    <!-- Auth wall -->
+    <div id="auth-wall" class="auth-wall" style="display:none">
+      <h2>Connexion requise</h2>
+      <p>Connecte-toi pour accéder à ton espace affiliation.</p>
+      <a href="auth.html" class="btn-copy" style="display:inline-block;text-decoration:none">Se connecter →</a>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" style="display:none">
+      <h1>Programme Affiliation</h1>
+      <p class="subtitle">Partage Créatis et gagne <strong>30% de commission récurrente</strong> sur chaque abonné Pro que tu amènes.</p>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-inscrits">—</div>
+          <div class="stat-label">Inscrits via ton lien</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-abonnes">—</div>
+          <div class="stat-label">Abonnés Pro actifs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-revenus">—</div>
+          <div class="stat-label">Revenus / mois estimés</div>
+        </div>
+      </div>
+
+      <!-- Lien d'affiliation -->
+      <div class="card">
+        <div class="card-title">Ton lien d'affiliation</div>
+        <div class="link-box">
+          <input type="text" class="link-input" id="ref-link" readonly>
+          <button class="btn-copy" onclick="copierLien()">Copier</button>
+        </div>
+        <div class="commission-info">
+          <div class="comm-item">
+            <div class="comm-pct">30%</div>
+            <div class="comm-label">Commission récurrente</div>
+          </div>
+          <div class="comm-item">
+            <div class="comm-pct">5,70€</div>
+            <div class="comm-label">Par abonné Pro / mois</div>
+          </div>
+          <div class="comm-item">
+            <div class="comm-pct">14,70€</div>
+            <div class="comm-label">Par abonné Studio / mois</div>
+          </div>
+        </div>
+        <div class="payout-info">
+          💸 <strong>Paiement mensuel</strong> par virement ou PayPal dès 20€ de commission accumulée. Écris à <a href="mailto:contact@creatis.app" style="color:var(--vert)">contact@creatis.app</a> pour demander ton virement.
+        </div>
+      </div>
+
+      <!-- Comment ça marche -->
+      <div class="card">
+        <div class="card-title">Comment ça marche</div>
+        <ul class="how-list">
+          <li>
+            <span class="step-num">1</span>
+            <span><strong>Partage ton lien</strong> — dans tes vidéos, description YouTube, stories, tweets, newsletters…</span>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <span><strong>Quelqu'un s'inscrit</strong> via ton lien — il est automatiquement associé à toi.</span>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <span><strong>Il passe Pro</strong> — tu touches 30% de son abonnement chaque mois tant qu'il reste actif.</span>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <span><strong>Tu demandes ton virement</strong> — par email à contact@creatis.app dès 20€ accumulés.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">✅ Lien copié !</div>
+
+  <script src="js/config.js"></script>
+  <script>
+    const SUPABASE_URL = CONFIG.SUPABASE_URL;
+    const SUPABASE_KEY = CONFIG.SUPABASE_ANON_KEY;
+
+    async function init() {
+      // Vérifier session Supabase
+      let session = null;
+      try {
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data } = await client.auth.getSession();
+        session = data?.session;
+      } catch {}
+
+      if (!session?.user) {
+        document.getElementById('auth-wall').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('dashboard').style.display = 'block';
+
+      const userId = session.user.id;
+      const refCode = userId.substring(0, 12);
+      const refLink = `${window.location.origin}/?ref=${refCode}`;
+      document.getElementById('ref-link').value = refLink;
+
+      // Charger les stats
+      try {
+        const res = await fetch(`/api/parrainage?code=${refCode}`);
+        const data = await res.json();
+        const inscrits = data.inscrits || 0;
+        const abonnes = data.abonnes || 0;
+        const revenus = (abonnes * 19 * 0.30).toFixed(0);
+
+        document.getElementById('stat-inscrits').textContent = inscrits;
+        document.getElementById('stat-abonnes').textContent = abonnes;
+        document.getElementById('stat-revenus').textContent = revenus + '€';
+      } catch {
+        document.getElementById('stat-inscrits').textContent = '0';
+        document.getElementById('stat-abonnes').textContent = '0';
+        document.getElementById('stat-revenus').textContent = '0€';
+      }
+    }
+
+    function copierLien() {
+      const link = document.getElementById('ref-link').value;
+      navigator.clipboard.writeText(link).catch(() => {
+        document.getElementById('ref-link').select();
+        document.execCommand('copy');
+      });
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

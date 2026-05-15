@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prospects YouTube — Créatis</title>
+  <style>
+    :root { --bg: #0a0f0a; --bg2: #111711; --bg3: #1a221a; --border: #1e2b1e; --em: #10b981; --em2: #059669; --text: #e2e8f0; --muted: #94a3b8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+    header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.3rem; font-weight: 700; color: var(--em); }
+    .logo span { color: var(--text); }
+    .header-meta { font-size: 0.85rem; color: var(--muted); }
+    main { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 6px; }
+    .subtitle { color: var(--muted); margin-bottom: 24px; }
+    .api-banner { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; font-size: 0.9rem; }
+    .api-banner strong { color: #f59e0b; }
+    .api-input-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .api-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; font-size: 0.9rem; flex: 1; min-width: 200px; }
+    .btn-rechercher { background: var(--em); color: #fff; border: none; padding: 8px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+    .btn-rechercher:hover { background: var(--em2); }
+    .btn-demo { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+    .btn-demo:hover { color: var(--text); border-color: var(--em); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+    .stat-card .val { font-size: 1.8rem; font-weight: 800; color: var(--em); }
+    .stat-card .lbl { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filter-btn { padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--muted); transition: all 0.2s; }
+    .filter-btn.active, .filter-btn:hover { background: var(--em); color: #fff; border-color: var(--em); }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: var(--bg3); padding: 12px 16px; text-align: left; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg3); }
+    .chaine-info { display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: var(--bg3); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .chaine-nom { color: var(--em); text-decoration: none; font-weight: 600; font-size: 0.88rem; }
+    .chaine-nom:hover { text-decoration: underline; }
+    .chaine-niche { font-size: 0.76rem; color: var(--muted); }
+    .stat-line { font-size: 0.84rem; }
+    .text-muted { color: var(--muted); font-size: 0.78rem; }
+    .score-badge { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; font-weight: 800; font-size: 0.88rem; }
+    .score-high { background: rgba(16,185,129,0.2); color: var(--em); }
+    .score-med { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .score-low { background: rgba(148,163,184,0.1); color: var(--muted); }
+    .email-link { color: var(--em); font-size: 0.8rem; text-decoration: none; }
+    .email-link:hover { text-decoration: underline; }
+    .no-email { color: var(--muted); font-size: 0.8rem; }
+    .statut-sel { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; }
+    .btn-sm { padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); font-size: 0.76rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn-gen { background: rgba(16,185,129,0.12); color: var(--em); border-color: rgba(16,185,129,0.25); }
+    .btn-gen:hover { background: var(--em); color: #fff; }
+    .btn-cp { background: var(--bg3); color: var(--muted); }
+    .btn-cp:hover { color: var(--text); border-color: var(--em); }
+    .td-rank { color: var(--muted); font-size: 0.82rem; width: 36px; }
+    .actions-wrap { display: flex; gap: 5px; }
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--em); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; align-items:center; justify-content:center; padding: 20px; }
+    .modal.open { display:flex; }
+    .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-box h3 { margin-bottom: 4px; }
+    .modal-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+    .modal-email { width: 100%; min-height: 220px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 14px; border-radius: 8px; font-family: inherit; font-size: 0.88rem; line-height: 1.6; resize: vertical; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .btn-primary { background: var(--em); color: #fff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.9rem; }
+    .btn-primary:hover { background: var(--em2); }
+    .btn-secondary { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+    .btn-secondary:hover { color: var(--text); }
+    .relance-info { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 0.83rem; color: var(--muted); }
+    .relance-info strong { color: var(--em); }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    @media(max-width:640px) { td,th { padding: 8px 8px; } .actions-wrap { flex-direction: column; } header { flex-direction: column; gap: 8px; text-align: center; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">créa<span>tis</span> <span style="font-weight:400;color:var(--muted);font-size:0.85rem">— Prospects YouTube</span></div>
+  <div class="header-meta" id="header-date">Chargement...</div>
+</header>
+
+<main>
+  <h1>🎯 Liste de Prospects YouTube</h1>
+  <p class="subtitle">Chaînes FR 1k–10k abonnés dans finance, IA, entrepreneuriat, marketing, productivité</p>
+
+  <div class="api-banner">
+    <strong>⚙️ Recherche en temps réel</strong> — Entre ta clé YouTube Data API v3 pour chercher de vrais prospects, ou utilise les données de démo.
+    <div class="api-input-row">
+      <input type="password" id="yt-api-key" class="api-input" placeholder="AIzaSy... (YouTube Data API v3 key)">
+      <select id="niche-select" class="api-input" style="flex:0;min-width:180px;">
+        <option value="toutes">Toutes les niches</option>
+        <option value="finance">💰 Finance</option>
+        <option value="entrepreneuriat">🚀 Entrepreneuriat</option>
+        <option value="ia">🤖 IA</option>
+        <option value="marketing">📢 Marketing</option>
+        <option value="productivite">⚡ Productivité</option>
+      </select>
+      <button class="btn-rechercher" onclick="lancerRecherche()">🔍 Rechercher</button>
+      <button class="btn-demo" onclick="chargerDemo()">Démo (sans API)</button>
+    </div>
+  </div>
+
+  <div id="stats-section" style="display:none">
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="filters" id="filters"></div>
+  </div>
+
+  <div id="contenu-table">
+    <div class="empty-state">
+      <div style="font-size:3rem;margin-bottom:12px">🎯</div>
+      <div style="font-weight:600;margin-bottom:8px">Aucun prospect chargé</div>
+      <div>Entre ta clé API YouTube ou clique sur "Démo" pour voir des exemples</div>
+    </div>
+  </div>
+</main>
+
+<div class="modal" id="modal-email">
+  <div class="modal-box">
+    <h3>📧 Email personnalisé</h3>
+    <div class="modal-sub" id="modal-sub">Pour ...</div>
+    <textarea class="modal-email" id="modal-text" rows="10"></textarea>
+    <div class="relance-info">
+      <strong>💡 Suivi J+3 :</strong> Si pas de réponse après 3 jours, relancer avec : "Juste un petit suivi — as-tu eu l'occasion de regarder Créatis ?"
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" onclick="copierModal()">📋 Copier l'email</button>
+      <button class="btn-primary" style="background:#3b82f6" onclick="marquerContacteModal()">✅ Marquer contacté</button>
+      <button class="btn-secondary" onclick="fermerModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/recherche-prospects.js"></script>
+<script>
+let prospects = [];
+let prospectActuel = null;
+
+const TEMPLATES = {
+  finance: p => `Bonjour ${p.nom.split(' ')[0]},
+
+Je gère Créatis (creatis.app), un outil IA pour créateurs YouTube francophones.
+
+J'ai regardé ta chaîne "${p.nom}" — tes vidéos sur les finances sont exactement le type de contenu qui bénéficierait le plus de l'IA : génération automatique de titres, descriptions SEO, scripts et miniatures pro en quelques secondes.
+
+Des créateurs dans ta niche gagnent 30% de clics en plus sur leurs miniatures depuis qu'ils utilisent Créatis.
+
+Je t'offre 3 mois d'accès Pro offerts (valeur 147€) pour tester et partager ton retour.
+
+Intéressé ?
+
+Bonne journée,
+[Ton prénom]
+creatis.app — Code : BETA30`,
+
+  entrepreneuriat: p => `Bonjour ${p.nom.split(' ')[0]},
+
+Je suis le fondateur de Créatis (creatis.app) — l'assistant IA pour créateurs YouTube.
+
+Avec ${fmtNum(p.abonnes)} abonnés sur "${p.nom}", tu es dans la phase où chaque vidéo compte et où le temps est précieux.
+
+Créatis génère en 30 secondes : titre optimisé, description SEO, script complet, idées de hooks, et miniature pro. Plus de 200 créateurs FR utilisent déjà l'outil.
+
+Je t'offre 3 mois gratuits en échange d'un retour honnête.
+
+Tu as 15 min cette semaine pour un call rapide ?
+
+Bonne journée,
+[Ton prénom]
+creatis.app`,
+
+  ia: p => `Bonjour ${p.nom.split(' ')[0]},
+
+J'ai découvert "${p.nom}" en cherchant les meilleurs créateurs IA francophones — ton contenu est vraiment de qualité.
+
+Je développe Créatis (creatis.app), un outil IA qui automatise la création de contenu YouTube : titres, descriptions, scripts, miniatures FLUX.1...
+
+Vu que tu couvres l'IA, tu pourrais être utilisateur ET partager l'outil à ta communauté si tu le trouves utile.
+
+Je t'offre l'accès Pro à vie en échange d'un retour public si tu l'aimes.
+
+Intéressé ?
+
+Cordialement,
+[Ton prénom]
+creatis.app`,
+
+  default: p => `Bonjour ${p.nom.split(' ')[0]},
+
+Je gère Créatis (creatis.app), un outil IA pour créateurs YouTube francophones.
+
+Ta chaîne "${p.nom}" attire mon attention — ${fmtNum(p.abonnes)} abonnés dans une niche qui correspond parfaitement à notre outil.
+
+Créatis génère automatiquement : titres YouTube optimisés, descriptions SEO, scripts complets, idées de vidéos et miniatures professionnelles en quelques secondes.
+
+Je t'offre 3 mois d'accès Pro gratuit (valeur 147€) — juste ton retour honnête en échange.
+
+Tu es intéressé ?
+
+Bonne journée,
+[Ton prénom] — Créatis.app
+Code bêta : BETA30 (30% de réduction à vie)`
+};
+
+function fmtNum(n) { return n >= 1000 ? (n/1000).toFixed(1)+'k' : n; }
+function scoreClass(s) { return s >= 80 ? 'high' : s >= 60 ? 'med' : 'low'; }
+function esc(s) { const d=document.createElement('div');d.textContent=String(s);return d.innerHTML; }
+
+async function lancerRecherche() {
+  const apiKey = document.getElementById('yt-api-key').value.trim();
+  const niche = document.getElementById('niche-select').value;
+  if (!apiKey) { alert('Entre une clé YouTube API v3'); return; }
+
+  afficherLoading('Recherche en cours...');
+  try {
+    if (niche === 'toutes') {
+      prospects = await ProspectionYT.rechercherToutes(apiKey, 10);
+    } else {
+      prospects = await ProspectionYT.rechercherChaines(apiKey, niche, 30);
+    }
+    afficherTable(prospects);
+  } catch (err) {
+    afficherErreur(err.message);
+  }
+}
+
+function chargerDemo() {
+  const niches = Object.keys(ProspectionYT.NICHES);
+  const noms = [
+    'Finance Simple', 'Investir Malin', 'Bourse Pour Tous', "L'Argent Libre", 'Épargne Futée',
+    'Business Digitaux', 'Side Hustle FR', 'Entrepreneurs 2.0', 'Startup Mindset', 'Liberté Business',
+    'IA Pratique', 'ChatGPT Tips FR', 'Automatise Tout', 'Future Digital', 'AI Créateur',
+    'Marketing Digital Pro', 'Personal Brand FR', 'Growth Hacking FR', 'Social Media Tips',
+    'Productivité Max', 'Deep Work FR', 'Routine Champion', 'Focus Créateur', 'Créateur Libre', 'Discipline FR'
+  ];
+
+  prospects = noms.map((nom, i) => {
+    const niche = niches[i % niches.length];
+    const nicheInfo = ProspectionYT.NICHES[niche];
+    const abonnes = 1200 + Math.floor(Math.random() * 8000);
+    const nb_videos = 20 + Math.floor(Math.random() * 100);
+    const chaine = {
+      id: 'demo_' + i,
+      nom, niche,
+      niche_label: nicheInfo.label,
+      niche_emoji: nicheInfo.emoji,
+      description: 'Chaîne YouTube francophone — ' + nicheInfo.label,
+      url: 'https://youtube.com/c/' + nom.replace(/ /g, '').replace(/'/g,''),
+      abonnes,
+      vues_totales: abonnes * (5 + Math.floor(Math.random() * 20)),
+      nb_videos,
+      pays: 'FR',
+      date_creation: '2022-0' + (1 + i % 9) + '-15',
+      avatar: '',
+      email_contact: i % 3 === 0 ? nom.toLowerCase().replace(/ |'/g,'') + '@gmail.com' : null,
+      freq_semaine: 0.5 + Math.random() * 2,
+      a_sponsors: i % 5 === 0,
+      sponsor_potentiel: nicheInfo.sponsorPotentiel,
+      statut: 'nouveau', notes: '',
+      date_ajout: new Date().toISOString().substring(0,10)
+    };
+    chaine.score = ProspectionYT.calculerScore(chaine);
+    return chaine;
+  }).sort((a,b) => b.score - a.score);
+
+  afficherTable(prospects);
+}
+
+function afficherLoading(msg) {
+  document.getElementById('stats-section').style.display = 'none';
+  document.getElementById('contenu-table').innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>${msg}</div>
+    </div>`;
+}
+
+function afficherErreur(msg) {
+  document.getElementById('contenu-table').innerHTML = `
+    <div class="empty-state">
+      <div style="font-size:2rem;margin-bottom:12px">❌</div>
+      <div style="font-weight:600;color:#ef4444;margin-bottom:8px">Erreur</div>
+      <div>${esc(msg)}</div>
+    </div>`;
+}
+
+function afficherTable(data) {
+  document.getElementById('header-date').textContent = 'Généré le ' + new Date().toLocaleDateString('fr-FR') + ' · ' + data.length + ' prospects';
+
+  // Stats
+  const stats = {
+    total: data.length,
+    score80: data.filter(p => p.score >= 80).length,
+    avecEmail: data.filter(p => p.email_contact).length,
+    niches: {}
+  };
+  Object.keys(ProspectionYT.NICHES).forEach(n => { stats.niches[n] = data.filter(p => p.niche === n).length; });
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="val">${stats.total}</div><div class="lbl">Total prospects</div></div>
+    <div class="stat-card"><div class="val">${stats.score80}</div><div class="lbl">Score 80+</div></div>
+    <div class="stat-card"><div class="val">${stats.avecEmail}</div><div class="lbl">Avec email</div></div>
+    ${Object.entries(stats.niches).filter(([,c])=>c>0).map(([n,c]) => `<div class="stat-card"><div class="val">${c}</div><div class="lbl">${ProspectionYT.NICHES[n].emoji} ${ProspectionYT.NICHES[n].label.split(' ')[0]}</div></div>`).join('')}
+  `;
+
+  document.getElementById('filters').innerHTML = `
+    <button class="filter-btn active" onclick="filtrer('tous',this)">Tous (${stats.total})</button>
+    <button class="filter-btn" onclick="filtrer('score80',this)">⭐ Score 80+ (${stats.score80})</button>
+    <button class="filter-btn" onclick="filtrer('email',this)">✉ Avec email (${stats.avecEmail})</button>
+    ${Object.entries(stats.niches).filter(([,c])=>c>0).map(([n,c]) => `<button class="filter-btn" onclick="filtrer('${n}',this)">${ProspectionYT.NICHES[n].emoji} ${ProspectionYT.NICHES[n].label.split(' ')[0]} (${c})</button>`).join('')}
+    <button class="filter-btn" onclick="filtrer('nouveau',this)">🆕 Non contactés</button>
+  `;
+
+  document.getElementById('stats-section').style.display = 'block';
+
+  const rows = data.map((p, i) => `
+    <tr id="row-${p.id}">
+      <td class="td-rank">${i+1}</td>
+      <td>
+        <div class="chaine-info">
+          <div class="avatar">${p.avatar ? `<img src="${esc(p.avatar)}" style="width:34px;height:34px;border-radius:50%">` : p.niche_emoji}</div>
+          <div>
+            <a href="${esc(p.url)}" target="_blank" class="chaine-nom">${esc(p.nom)}</a>
+            <div class="chaine-niche">${p.niche_emoji} ${esc(p.niche_label)}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="stat-line"><strong>${fmtNum(p.abonnes)}</strong> abonnés</div>
+        <div class="text-muted">${fmtNum(p.vues_totales)} vues · ${p.nb_videos} vidéos</div>
+      </td>
+      <td><div class="score-badge score-${scoreClass(p.score)}">${p.score}</div></td>
+      <td>${p.email_contact ? `<a href="mailto:${esc(p.email_contact)}" class="email-link">✉ ${esc(p.email_contact)}</a>` : '<span class="no-email">—</span>'}</td>
+      <td>
+        <select class="statut-sel" onchange="changerStatut('${p.id}',this.value)">
+          <option value="nouveau" ${p.statut==='nouveau'?'selected':''}>🆕 Nouveau</option>
+          <option value="contacte" ${p.statut==='contacte'?'selected':''}>📧 Contacté</option>
+          <option value="repondu" ${p.statut==='repondu'?'selected':''}>💬 Répondu</option>
+          <option value="interessee" ${p.statut==='interessee'?'selected':''}>⭐ Intéressé</option>
+          <option value="client" ${p.statut==='client'?'selected':''}>✅ Client</option>
+          <option value="refuse" ${p.statut==='refuse'?'selected':''}>❌ Refusé</option>
+        </select>
+      </td>
+      <td>
+        <div class="actions-wrap">
+          <button class="btn-sm btn-gen" onclick="genEmail('${p.id}')">✏ Générer</button>
+          <button class="btn-sm btn-cp" id="cp-${p.id}" onclick="copierDirect('${p.id}')">📋 Copier</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  document.getElementById('contenu-table').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Chaîne</th><th>Stats</th><th>Score</th><th>Contact</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  restaurerStatuts();
+}
+
+function changerStatut(id, statut) {
+  const p = prospects.find(x => x.id === id);
+  if (p) {
+    p.statut = statut;
+    sauvegarder();
+  }
+}
+
+function genEmail(id) {
+  const p = prospects.find(x => x.id === id);
+  if (!p) return;
+  prospectActuel = p;
+  const tpl = TEMPLATES[p.niche] || TEMPLATES.default;
+  document.getElementById('modal-sub').textContent = 'Pour : ' + p.nom + ' (' + fmtNum(p.abonnes) + ' abonnés)';
+  document.getElementById('modal-text').value = tpl(p);
+  document.getElementById('modal-email').classList.add('open');
+}
+
+function copierDirect(id) {
+  const p = prospects.find(x => x.id === id);
+  if (!p) return;
+  const tpl = TEMPLATES[p.niche] || TEMPLATES.default;
+  navigator.clipboard.writeText(tpl(p)).then(() => {
+    const btn = document.getElementById('cp-' + id);
+    if (btn) { btn.textContent = '✓ Copié !'; setTimeout(() => btn.textContent = '📋 Copier', 2000); }
+    changerStatut(id, 'contacte');
+    const sel = document.querySelector(`#row-${id} .statut-sel`);
+    if (sel) sel.value = 'contacte';
+  });
+}
+
+function copierModal() {
+  navigator.clipboard.writeText(document.getElementById('modal-text').value).then(() => {
+    if (prospectActuel) {
+      changerStatut(prospectActuel.id, 'contacte');
+      const sel = document.querySelector(`#row-${prospectActuel.id} .statut-sel`);
+      if (sel) sel.value = 'contacte';
+    }
+    fermerModal();
+  });
+}
+
+function marquerContacteModal() {
+  if (prospectActuel) {
+    changerStatut(prospectActuel.id, 'contacte');
+    const sel = document.querySelector(`#row-${prospectActuel.id} .statut-sel`);
+    if (sel) sel.value = 'contacte';
+  }
+  fermerModal();
+}
+
+function fermerModal() {
+  document.getElementById('modal-email').classList.remove('open');
+  prospectActuel = null;
+}
+
+function filtrer(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#contenu-table tbody tr').forEach(row => {
+    let show = true;
+    if (type === 'score80') {
+      const s = parseInt(row.querySelector('.score-badge')?.textContent || 0);
+      show = s >= 80;
+    } else if (type === 'email') {
+      show = !!row.querySelector('.email-link');
+    } else if (type === 'nouveau') {
+      const sel = row.querySelector('.statut-sel');
+      show = sel?.value === 'nouveau';
+    } else if (type !== 'tous') {
+      const nicheCell = row.querySelector('.chaine-niche');
+      const nicheEmoji = ProspectionYT.NICHES[type]?.emoji || '';
+      show = nicheCell?.textContent.includes(nicheEmoji) || false;
+    }
+    row.style.display = show ? '' : 'none';
+  });
+}
+
+function sauvegarder() {
+  const state = {};
+  prospects.forEach(p => { state[p.id] = { statut: p.statut }; });
+  localStorage.setItem('creatis_prospects_statuts', JSON.stringify(state));
+}
+
+function restaurerStatuts() {
+  const state = JSON.parse(localStorage.getItem('creatis_prospects_statuts') || '{}');
+  Object.entries(state).forEach(([id, data]) => {
+    const p = prospects.find(x => x.id === id);
+    if (p) p.statut = data.statut;
+    const sel = document.querySelector(`#row-${id} .statut-sel`);
+    if (sel) sel.value = data.statut;
+  });
+}
+
+document.getElementById('modal-email').addEventListener('click', function(e) {
+  if (e.target === this) fermerModal();
+});
+
+document.getElementById('header-date').textContent = 'Aucun prospect — clique sur Démo';
+
+// Auto-charger la démo
+chargerDemo();
+</script>
+</body>
+</html>

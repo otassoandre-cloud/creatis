@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement annulé — Créatis</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); padding:24px; }
+    .cancel-card {
+      max-width:480px; width:100%;
+      background:var(--bg-card); border:1px solid var(--bordure); border-radius:24px; padding:48px 40px;
+      text-align:center; animation: apparaitre 0.3s ease;
+    }
+    @keyframes apparaitre { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+    .cancel-icon {
+      width:80px; height:80px; border-radius:50%;
+      background:var(--bg); border:2px solid var(--bordure);
+      display:flex; align-items:center; justify-content:center;
+      font-size:36px; margin:0 auto 24px;
+    }
+
+    h1 { font-size:26px; font-weight:800; margin-bottom:8px; }
+    .cancel-sub { color:var(--texte-doux); font-size:15px; line-height:1.6; margin-bottom:28px; }
+
+    .objections { text-align:left; margin-bottom:28px; }
+    .objection-titre { font-size:12px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+    .objection {
+      display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--bordure);
+      font-size:14px;
+    }
+    .objection:last-child { border-bottom:none; }
+    .objection-icone { font-size:18px; flex-shrink:0; }
+    .objection-texte strong { color:var(--texte); display:block; margin-bottom:2px; }
+    .objection-texte span { color:var(--texte-muted); }
+
+    .promo-incentive {
+      background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2);
+      border-radius:var(--radius); padding:16px 20px; margin-bottom:24px; text-align:left;
+    }
+    .promo-titre { font-weight:700; color:var(--vert); font-size:15px; margin-bottom:6px; }
+    .promo-code {
+      display:inline-flex; align-items:center; gap:8px;
+      background:var(--bg); border:1px dashed var(--vert); border-radius:8px;
+      padding:8px 14px; font-size:16px; font-weight:800; color:var(--vert);
+      letter-spacing:.05em; cursor:pointer; margin-top:8px;
+      transition:background .15s;
+    }
+    .promo-code:hover { background:rgba(16,185,129,0.08); }
+    .promo-sub { font-size:13px; color:var(--texte-muted); margin-top:8px; }
+
+    .cancel-actions { display:flex; flex-direction:column; gap:10px; }
+
+    .btn-primaire-block {
+      display:block; padding:14px; font-size:14px; font-weight:700;
+      background:var(--vert); color:#000; border-radius:var(--radius); text-decoration:none;
+      transition:opacity .15s;
+    }
+    .btn-primaire-block:hover { opacity:.9; }
+    .btn-ghost-block {
+      display:block; padding:12px; font-size:14px;
+      background:transparent; color:var(--texte-muted); border:1px solid var(--bordure);
+      border-radius:var(--radius); text-decoration:none; transition:border-color .15s;
+    }
+    .btn-ghost-block:hover { border-color:var(--texte-muted); color:var(--texte); }
+
+    .footer-links { font-size:12px; color:var(--texte-muted); margin-top:24px; }
+    .footer-links a { color:var(--texte-muted); margin:0 8px; text-decoration:none; }
+    .footer-links a:hover { color:var(--vert); }
+    .toast-copied {
+      position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+      background:var(--vert); color:#000; padding:10px 20px; border-radius:10px;
+      font-size:13px; font-weight:600; display:none; z-index:99;
+    }
+  </style>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+</head>
+<body>
+
+  <div class="cancel-card">
+    <div class="cancel-icon">↩️</div>
+    <h1>Pas de problème !</h1>
+    <p class="cancel-sub">
+      Tu peux continuer à utiliser le plan gratuit.<br>
+      Voici ce qui t'attend si tu changes d'avis :
+    </p>
+
+    <div class="objections">
+      <div class="objection-titre">Ce que tu débloques avec le Pro</div>
+      <div class="objection">
+        <span class="objection-icone">♾️</span>
+        <div class="objection-texte">
+          <strong>Générations illimitées</strong>
+          <span>Fini les 50 générations — génère autant que tu veux</span>
+        </div>
+      </div>
+      <div class="objection">
+        <span class="objection-icone">🤖</span>
+        <div class="objection-texte">
+          <strong>8 agents IA + Chat libre</strong>
+          <span>Sponsors, offres commerciales, recyclage de contenu…</span>
+        </div>
+      </div>
+      <div class="objection">
+        <span class="objection-icone">🖼️</span>
+        <div class="objection-texte">
+          <strong>10 miniatures IA / mois</strong>
+          <span>Générées par gpt-image-1, fond réaliste sur-mesure</span>
+        </div>
+      </div>
+      <div class="objection">
+        <span class="objection-icone">📊</span>
+        <div class="objection-texte">
+          <strong>Agents personnalisés à ta chaîne</strong>
+          <span>Chaque résultat adapté à ton audience et ta niche</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="promo-incentive">
+      <div class="promo-titre">🎁 Offre early adopter — encore disponible</div>
+      <div class="promo-code" onclick="copierCode()" title="Cliquer pour copier">
+        CREATIS20
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </div>
+      <div class="promo-sub">-20% sur tous les plans pour toujours · Code limité aux premiers inscrits</div>
+    </div>
+
+    <div class="cancel-actions">
+      <a href="index.html#tarifs" class="btn-primaire-block">
+        ✨ Voir les tarifs (19€/mois)
+      </a>
+      <a href="app.html" class="btn-ghost-block">
+        Continuer avec le plan gratuit →
+      </a>
+    </div>
+
+    <div class="footer-links">
+      <a href="cgu.html">CGU</a>
+      <a href="confidentialite.html">Confidentialité</a>
+      <a href="mailto:contact@creatis.app">Support</a>
+    </div>
+  </div>
+
+  <div class="toast-copied" id="toast-copied">✅ Code CREATIS20 copié !</div>
+
+  <script>
+    function copierCode() {
+      navigator.clipboard.writeText('CREATIS20').catch(() => {});
+      const toast = document.getElementById('toast-copied');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2500);
+    }
+  </script>
+</body>
+</html>

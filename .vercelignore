@@ -1,0 +1,31 @@
+# Dossiers non-projet (Desktop)
+FULL BUREAU
+Krita (x64)
+MMO_Data
+MSI Afterburner
+D3D12
+drawing
+MonoBleedingEdge
+topstep
+Vente Amazon Afilié
+
+# Raccourcis Windows
+*.url
+*.lnk
+
+# Outils de dev locaux
+.skills
+node_modules
+.claude
+.cursor
+
+# Données de test
+tests/miniatures
+
+# Config locale / secrets
+*.log
+.env
+serveur.js
+
+# Vercel cache
+.vercel

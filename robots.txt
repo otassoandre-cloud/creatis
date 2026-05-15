@@ -1,0 +1,9 @@
+﻿User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app.html
+Disallow: /auth.html
+Disallow: /success.html
+Disallow: /cancel.html
+
+Sitemap: https://creatis.app/sitemap.xml

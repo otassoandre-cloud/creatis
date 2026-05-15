@@ -1,0 +1,73 @@
+{
+  "version": 2,
+  "name": "creatis",
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/prospect-batch",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/tweet-daily",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/tweet-daily",
+      "schedule": "1 7 19 5 *"
+    },
+    {
+      "path": "/api/tweet-daily",
+      "schedule": "0 16 19 5 *"
+    }
+  ],
+  "functions": {
+    "api/stripe-webhook.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/prospect-batch.js": {
+      "memory": 1024,
+      "maxDuration": 300
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/app", "dest": "/app.html" },
+    { "src": "/auth", "dest": "/auth.html" },
+    { "src": "/success", "dest": "/success.html" },
+    { "src": "/cancel", "dest": "/cancel.html" },
+    { "src": "/cgu", "dest": "/cgu.html" },
+    { "src": "/mentions-legales", "dest": "/mentions-legales.html" },
+    { "src": "/confidentialite", "dest": "/confidentialite.html" },
+    { "src": "/affiliation", "dest": "/affiliation.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://creatis.app" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST, GET, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    },
+    {
+      "source": "/css/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    }
+  ]
+}

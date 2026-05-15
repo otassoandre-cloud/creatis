@@ -1,0 +1,28 @@
+name: Tweet Créatis quotidien
+
+on:
+  schedule:
+    # Tous les jours à 10h00 UTC (12h Paris)
+    - cron: '0 10 * * *'
+    # Jour Product Hunt 19 mai — 7h01 UTC
+    - cron: '1 7 19 5 *'
+    # Jour Product Hunt 19 mai — 16h00 UTC
+    - cron: '0 16 19 5 *'
+  workflow_dispatch: # Permet de déclencher manuellement depuis GitHub
+
+jobs:
+  tweet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Envoyer le tweet quotidien
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://creatis.app/api/tweet-daily")
+          cat /tmp/response.json
+          if [ "$response" != "200" ]; then
+            echo "Erreur HTTP: $response"
+            exit 1
+          fi
+          echo "Tweet envoyé avec succès"

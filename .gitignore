@@ -1,0 +1,109 @@
+# ===== CRÉATIS — .gitignore =====
+
+# Variables d'environnement locales
+.env
+.env.local
+.env.*.local
+.vercel
+
+# Clés API et secrets — NE JAMAIS COMMITER
+# js/config.js est committé SANS les vraies clés (elles sont dans Vercel)
+
+# Dépendances
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Build et cache
+.cache/
+dist/
+build/
+.next/
+out/
+
+# Système d'exploitation
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Éditeurs
+.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Tests et rapports locaux (garder les fichiers HTML mais pas les assets générés)
+tests/miniatures/*.jpg
+tests/miniatures/*.png
+tests/miniatures/*.webp
+
+# Logs
+*.log
+logs/
+
+# Divers
+*.tmp
+*.bak
+*.orig
+
+.vercel
+.env*.local
+
+# Backups locaux
+_backup/
+
+# Env Vercel (contient des vraies clés API — NE JAMAIS COMMITER)
+.env.production
+.env.development
+
+# Raccourcis et fichiers Windows
+*.lnk
+*.url
+*.zip
+Desktop.ini
+*.sh
+
+# Dossiers non-projet (jeux, logiciels tiers)
+D3D12/
+MMO_Data/
+MMO.exe
+MonoBleedingEdge/
+UnityCrashHandler64.exe
+UnityPlayer.dll
+MSI Afterburner/
+Krita (x64)/
+FULL BUREAU/
+Vente Amazon Afilié/
+topstep/
+
+# Fichiers Claude (mémoire locale, ne pas partager)
+.claude/
+
+# Vidéos et fichiers lourds
+drawing/
+*.mp4
+*.mov
+*.avi
+
+# Scripts de test locaux (contiennent des clés API)
+tests/
+
+# Config éditeur (personnel)
+.cursor/
+
+# Données et fichiers temporaires locaux
+leads-*.csv
+followed-creators.json
+reddit-post-today.txt
+preview-mini-*.png
+preview-short-*.png
+*.obj
+*.mtl
+supabase-prospects-table.sql

@@ -1,0 +1,27 @@
+{
+  "name": "creatis",
+  "version": "1.0.0",
+  "description": "SaaS YouTube IA pour créateurs francophones",
+  "main": "serveur.js",
+  "scripts": {
+    "start": "node serveur.js",
+    "setup": "node setup/setup-complet.js",
+    "setup:stripe": "node setup/create-stripe-products.js",
+    "setup:supabase": "node setup/init-supabase.js",
+    "dev": "node serveur.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "jimp": "^1.6.1",
+    "stripe": "^14.0.0"
+  },
+  "private": true,
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "gif-encoder-2": "^1.0.5",
+    "puppeteer": "^24.43.1",
+    "sharp": "^0.34.5"
+  }
+}

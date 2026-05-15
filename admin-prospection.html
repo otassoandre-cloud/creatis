@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prospection — Créatis Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: var(--bg); min-height: 100vh; }
+
+    .admin-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--bordure);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-header h1 { font-size: 16px; font-weight: 700; color: var(--texte); margin: 0; }
+    .admin-header .badge-admin { background: rgba(239,68,68,0.15); color: var(--rouge); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-left: 10px; }
+
+    .admin-body { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 28px; background: var(--bg-card); border: 1px solid var(--bordure); border-radius: var(--radius); padding: 4px; width: fit-content; }
+    .tab-btn { padding: 8px 20px; border-radius: 8px; border: none; background: none; color: var(--texte-doux); font-size: 14px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+    .tab-btn.actif { background: var(--vert); color: #000; }
+    .tab-btn:hover:not(.actif) { color: var(--texte); }
+
+    .tab-panel { display: none; }
+    .tab-panel.actif { display: block; }
+
+    /* ---- YouTube tab ---- */
+    .search-barre {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .search-barre input {
+      flex: 1;
+      min-width: 200px;
+      background: var(--bg-input);
+      border: 1.5px solid var(--bordure);
+      color: var(--texte);
+      padding: 11px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+    }
+    .search-barre input:focus { border-color: var(--vert); }
+    .search-barre select {
+      background: var(--bg-input);
+      border: 1.5px solid var(--bordure);
+      color: var(--texte);
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .stats-barre {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--texte-doux);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .stats-barre strong { color: var(--vert); }
+
+    .channels-grille {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .channel-carte {
+      background: var(--bg-card);
+      border: 1px solid var(--bordure);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: var(--transition);
+    }
+    .channel-carte:hover { border-color: var(--bordure-verte); }
+    .channel-carte.email-ok { border-left: 3px solid var(--vert); }
+    .channel-carte.email-non { border-left: 3px solid var(--bordure); opacity: 0.7; }
+
+    .channel-haut {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .channel-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--bg-input);
+      flex-shrink: 0;
+    }
+    .channel-nom { font-size: 14px; font-weight: 700; color: var(--texte); }
+    .channel-stats { font-size: 12px; color: var(--texte-muted); margin-top: 2px; }
+    .channel-email {
+      font-size: 12px;
+      color: var(--vert);
+      margin-bottom: 10px;
+      font-family: monospace;
+      word-break: break-all;
+    }
+    .channel-email.non { color: var(--texte-muted); font-style: italic; }
+    .channel-actions { display: flex; gap: 8px; }
+    .channel-actions .btn-xs { font-size: 12px; }
+
+    .envoyer-tout-wrap {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* ---- Social tab ---- */
+    .social-grille {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .social-grille { grid-template-columns: 1fr; } }
+
+    .social-carte {
+      background: var(--bg-card);
+      border: 1px solid var(--bordure);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+    .social-carte h3 { font-size: 16px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+    .social-carte .social-statut { font-size: 12px; margin-bottom: 16px; }
+    .social-carte textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1.5px solid var(--bordure);
+      color: var(--texte);
+      padding: 12px;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 14px;
+      resize: vertical;
+      min-height: 120px;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .social-carte textarea:focus { border-color: var(--vert); }
+    .char-count { font-size: 12px; color: var(--texte-muted); text-align: right; margin: 4px 0 12px; }
+
+    .templates-rapides { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .template-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--bordure);
+      color: var(--texte-doux);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: var(--transition);
+    }
+    .template-btn:hover { border-color: var(--vert); color: var(--texte); }
+
+    /* ---- DM Generator tab ---- */
+    .dm-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+    .dm-form label { font-size: 13px; color: var(--texte-doux); font-weight: 600; }
+    .dm-form input, .dm-form select {
+      background: var(--bg-input);
+      border: 1.5px solid var(--bordure);
+      color: var(--texte);
+      padding: 11px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+    }
+    .dm-form input:focus { border-color: var(--vert); }
+
+    .dm-resultats { display: flex; flex-direction: column; gap: 12px; }
+    .dm-item {
+      background: var(--bg-card);
+      border: 1px solid var(--bordure);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .dm-item .dm-nom { font-size: 13px; font-weight: 700; color: var(--texte); margin-bottom: 8px; }
+    .dm-item pre {
+      background: var(--bg-input);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--texte-doux);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0 0 10px;
+      line-height: 1.5;
+    }
+
+    .spinner { display: inline-block; }
+
+    .tag-vert { display: inline-block; background: rgba(16,185,129,0.12); color: var(--vert); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; }
+    .tag-gris { display: inline-block; background: var(--bg-input); color: var(--texte-muted); font-size: 11px; padding: 2px 7px; border-radius: 4px; }
+  </style>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+</head>
+<body>
+
+<div class="admin-header">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-weight:800;font-size:18px;color:var(--vert)">Créatis</span>
+    <span class="badge-admin">ADMIN</span>
+    <span style="color:var(--texte-doux);font-size:14px;margin-left:8px">Prospection automatisée</span>
+  </div>
+  <a href="app.html" class="btn-ghost btn-sm">← Retour à l'app</a>
+</div>
+
+<div class="admin-body">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn actif" onclick="changerTab('youtube')">🎬 YouTube</button>
+    <button class="tab-btn" onclick="changerTab('social')">📣 Social</button>
+    <button class="tab-btn" onclick="changerTab('dm')">💬 DMs</button>
+  </div>
+
+  <!-- =============== TAB YOUTUBE =============== -->
+  <div class="tab-panel actif" id="tab-youtube">
+    <div class="search-barre">
+      <input type="text" id="keyword" placeholder="Mot-clé niche (ex: finance personnelle france, fitness youtube fr...)" value="créateur youtube france">
+      <select id="maxResults">
+        <option value="20">20 chaînes</option>
+        <option value="30" selected>30 chaînes</option>
+        <option value="50">50 chaînes</option>
+      </select>
+      <select id="minAbonnes">
+        <option value="500">Min 500 abonnés</option>
+        <option value="1000" selected>Min 1 000</option>
+        <option value="5000">Min 5 000</option>
+        <option value="10000">Min 10 000</option>
+      </select>
+      <button class="btn-primaire" onclick="lancerRecherche()" id="btn-search">🔍 Chercher</button>
+    </div>
+
+    <div id="niches-rapides" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <span style="font-size:13px;color:var(--texte-muted);align-self:center">Niches :</span>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('finance personnelle youtube france')">💰 Finance</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('fitness musculation youtube france')">💪 Fitness</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('gaming youtube francophone')">🎮 Gaming</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('cuisine recette youtube france')">🍳 Cuisine</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('développement personnel youtube francais')">🧠 Dev perso</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('voyage vlog youtube france')">✈️ Voyage</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('tech informatique youtube france')">💻 Tech</button>
+      <button class="template-btn" style="padding:5px 12px" onclick="rechercherNiche('mode lifestyle youtube france')">👗 Lifestyle</button>
+    </div>
+
+    <div id="stats-barre" class="stats-barre" style="display:none">
+      <span>Trouvés : <strong id="stat-total">0</strong></span>
+      <span>Avec email : <strong id="stat-email">0</strong></span>
+      <span>Sans email : <strong id="stat-sans">0</strong></span>
+    </div>
+
+    <div id="envoyer-tout-wrap" class="envoyer-tout-wrap" style="display:none">
+      <button class="btn-primaire" onclick="envoyerTout()" id="btn-bulk">📧 Envoyer à tous les emails trouvés</button>
+      <span id="bulk-status" style="font-size:13px;color:var(--texte-doux)"></span>
+    </div>
+
+    <div id="channels-grille" class="channels-grille"></div>
+    <div id="loading-yt" style="display:none;text-align:center;padding:48px;color:var(--texte-doux)">
+      <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 12px"></div>
+      <p>Recherche des chaînes YouTube...</p>
+    </div>
+  </div>
+
+  <!-- =============== TAB SOCIAL =============== -->
+  <div class="tab-panel" id="tab-social">
+    <div class="social-grille">
+
+      <!-- Twitter/X -->
+      <div class="social-carte">
+        <h3>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Twitter / X
+        </h3>
+        <p id="twitter-statut" class="social-statut texte-muted">⚙️ Nécessite TWITTER_API_KEY dans Vercel</p>
+
+        <p style="font-size:13px;color:var(--texte-doux);margin-bottom:8px">Templates prêts :</p>
+        <div class="templates-rapides">
+          <button class="template-btn" onclick="chargerTemplate('twitter', 0)">🎬 Lancement — annonce outil</button>
+          <button class="template-btn" onclick="chargerTemplate('twitter', 1)">📊 Exemple résultat concret</button>
+          <button class="template-btn" onclick="chargerTemplate('twitter', 2)">❓ Accroche question</button>
+          <button class="template-btn" onclick="chargerTemplate('twitter', 3)">🔁 Thread en 3 tweets</button>
+        </div>
+
+        <textarea id="twitter-texte" placeholder="Compose ton tweet..." oninput="updateCount('twitter')"></textarea>
+        <div class="char-count"><span id="twitter-count">0</span>/280</div>
+        <button class="btn-primaire w-100" onclick="posterTweet()" id="btn-tweet">🐦 Publier le tweet</button>
+        <div id="twitter-result" style="margin-top:10px;font-size:13px"></div>
+      </div>
+
+      <!-- Reddit -->
+      <div class="social-carte">
+        <h3>
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>
+          Reddit
+        </h3>
+        <p id="reddit-statut" class="social-statut texte-muted">⚙️ Nécessite REDDIT_CLIENT_ID dans Vercel</p>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;color:var(--texte-doux);font-weight:600;display:block;margin-bottom:6px">Subreddit</label>
+          <select id="reddit-subreddit" style="width:100%;background:var(--bg-input);border:1.5px solid var(--bordure);color:var(--texte);padding:10px 14px;border-radius:var(--radius);font-size:14px;outline:none">
+            <option value="Entrepreneur_France">r/Entrepreneur_France</option>
+            <option value="france">r/france</option>
+            <option value="learnfrench">r/learnfrench</option>
+            <option value="youtubers">r/youtubers</option>
+            <option value="NewTubers">r/NewTubers</option>
+            <option value="web_design">r/web_design</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;color:var(--texte-doux);font-weight:600;display:block;margin-bottom:6px">Titre</label>
+          <input type="text" id="reddit-titre" placeholder="Titre du post" style="width:100%;background:var(--bg-input);border:1.5px solid var(--bordure);color:var(--texte);padding:10px 14px;border-radius:var(--radius);font-size:14px;outline:none;box-sizing:border-box">
+        </div>
+
+        <div class="templates-rapides" style="margin-bottom:12px">
+          <button class="template-btn" onclick="chargerTemplate('reddit', 0)">🚀 Post lancement</button>
+          <button class="template-btn" onclick="chargerTemplate('reddit', 1)">💡 Post valeur ajoutée</button>
+          <button class="template-btn" onclick="chargerTemplate('reddit', 2)">❓ Post question communauté</button>
+        </div>
+
+        <textarea id="reddit-texte" placeholder="Corps du post..." oninput="updateCount('reddit')"></textarea>
+        <div class="char-count"><span id="reddit-count">0</span> caractères</div>
+        <button class="btn-primaire w-100" onclick="posterReddit()" id="btn-reddit">🔴 Publier sur Reddit</button>
+        <div id="reddit-result" style="margin-top:10px;font-size:13px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============== TAB DM GENERATOR =============== -->
+  <div class="tab-panel" id="tab-dm">
+    <p style="color:var(--texte-doux);font-size:14px;margin-bottom:20px">
+      Instagram, TikTok et Facebook n'autorisent pas les DMs automatiques via API.<br>
+      Génère ici des messages <strong>hyper-personnalisés</strong> prêts à copier-coller — les envoyer te prend 10 secondes par personne.
+    </p>
+
+    <div class="dm-form">
+      <div>
+        <label>Plateforme</label>
+        <select id="dm-plateforme" style="width:100%;background:var(--bg-input);border:1.5px solid var(--bordure);color:var(--texte);padding:11px 14px;border-radius:var(--radius);font-size:14px;outline:none">
+          <option value="instagram">Instagram DM</option>
+          <option value="tiktok">TikTok DM</option>
+          <option value="facebook">Facebook Messenger</option>
+          <option value="youtube">YouTube Community / Commentaire</option>
+        </select>
+      </div>
+      <div>
+        <label>Noms des créateurs (1 par ligne)</label>
+        <textarea id="dm-noms" placeholder="FlemoNoSekai&#10;Natoo&#10;Léna Situations&#10;..." style="width:100%;background:var(--bg-input);border:1.5px solid var(--bordure);color:var(--texte);padding:12px;border-radius:var(--radius);font-size:14px;min-height:100px;outline:none;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+      <div>
+        <label>Niche / Thématique (optionnel)</label>
+        <input type="text" id="dm-niche" placeholder="ex: finance, gaming, lifestyle..." style="width:100%;background:var(--bg-input);border:1.5px solid var(--bordure);color:var(--texte);padding:11px 16px;border-radius:var(--radius);font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <button class="btn-primaire" onclick="genererDMs()" style="align-self:flex-start">✨ Générer les messages</button>
+    </div>
+
+    <div id="dm-resultats" class="dm-resultats"></div>
+  </div>
+
+</div>
+
+<div class="toast-conteneur" id="toast-conteneur"></div>
+
+<script>
+  /* ============ ÉTAT ============ */
+  let channelsTrouves = [];
+
+  const TWITTER_TEMPLATES = [
+    `Je viens de lancer Créatis — un outil pour les créateurs YouTube francophones 🎬
+
+En 30 secondes, depuis un sujet tu obtiens :
+→ 5 titres optimisés CTR
+→ Script complet avec timecodes
+→ Description SEO + 30 tags
+
+Sans prompt. Sans ChatGPT.
+
+creatis.app — 50 générations gratuites ✅`,
+
+    `Exemple réel avec Créatis :
+
+Sujet : "Comment économiser 400€/mois"
+
+Génération en 28s →
+Titre : "J'ai économisé 400€/mois sans changer de salaire"
+Script : 2 800 mots, 8 timecodes
+SEO : description + 30 tags
+
+C'est pour YouTube FR. creatis.app`,
+
+    `Combien de temps tu passes à préparer une vidéo YouTube ?
+
+Script + titre + description + tags = souvent 3-4h
+
+J'ai construit un outil qui fait ça en 30 secondes pour les créateurs FR.
+
+Ça t'intéresse ? creatis.app`,
+
+    `Thread : comment je prépare une vidéo YouTube en 30 secondes 🧵
+
+1/ Le plus long dans une vidéo c'est pas le tournage. C'est la préparation. Titre, script, SEO, tags...
+
+2/ J'ai construit Créatis pour automatiser tout ça. Tu entres un sujet → l'IA génère tout, en français, calibré pour YouTube.
+
+3/ creatis.app — 50 générations gratuites, sans carte bancaire.`
+  ];
+
+  const REDDIT_TEMPLATES = [
+    {
+      titre: "J'ai lancé un outil IA pour les créateurs YouTube francophones — retours bienvenus",
+      texte: `Salut r/Entrepreneur_France,
+
+Je viens de lancer Créatis (creatis.app), un SaaS pour les créateurs YouTube francophones.
+
+**Le problème** : préparer une vidéo (titre, script, description, tags) prend 2-4h. ChatGPT aide mais c'est générique et pas calibré pour YouTube.
+
+**Ce que fait Créatis** : tu entres un sujet, l'outil génère en 30s le workflow complet — 5 titres CTR, script avec timecodes, description SEO, 30 tags. Si tu connectes ta chaîne YouTube, c'est calibré sur tes stats.
+
+Gratuit (50 générations), Pro à 19€/mois.
+
+Je cherche des retours honnêtes sur le concept, le positionnement, le pricing. Qu'est-ce qui vous bloquerait pour essayer ?`
+    },
+    {
+      titre: "Comment préparer une vidéo YouTube en 30 secondes (outil que j'ai construit)",
+      texte: `J'ai passé 6 mois à préparer des vidéos YouTube manuellement. Titre A/B, script, description SEO, tags...
+
+À un moment j'ai décidé de coder un outil pour automatiser ça : Créatis.
+
+**Ce que ça fait** :
+- Cherche les angles viraux dans ta niche
+- Génère 5 variantes de titre optimisées CTR
+- Script complet avec timecodes
+- Description SEO + 30 tags
+- Miniature IA (plan Pro)
+
+Tout en français, tout calibré YouTube. Pas de ChatGPT générique.
+
+creatis.app — 50 générations gratuites pour tester.`
+    },
+    {
+      titre: "Créateurs YouTube francophones : combien de temps pour préparer une vidéo ?",
+      texte: `Sondage rapide pour un projet sur lequel je travaille.
+
+Combien de temps tu passes en moyenne sur la PRÉPARATION d'une vidéo (titre, script, description, tags) avant le tournage ?
+
+A) Moins d'1h
+B) 1-2h
+C) 2-4h
+D) Plus de 4h
+
+Je construis un outil pour automatiser ça (creatis.app) et j'essaie de comprendre si c'est vraiment un problème pour les créateurs FR.`
+    }
+  ];
+
+  /* ============ TABS ============ */
+  function changerTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('actif'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('actif'));
+    document.getElementById('tab-' + tab).classList.add('actif');
+    event.target.classList.add('actif');
+  }
+
+  /* ============ YOUTUBE SEARCH ============ */
+  function rechercherNiche(keyword) {
+    document.getElementById('keyword').value = keyword;
+    lancerRecherche();
+  }
+
+  async function lancerRecherche() {
+    const keyword    = document.getElementById('keyword').value.trim();
+    const maxResults = document.getElementById('maxResults').value;
+    const minAbonnes = document.getElementById('minAbonnes').value;
+    const btn = document.getElementById('btn-search');
+    const loading = document.getElementById('loading-yt');
+
+    if (!keyword) return afficherToast('Entrez un mot-clé', 'erreur');
+
+    btn.textContent = '⏳ Recherche…';
+    btn.disabled = true;
+    loading.style.display = 'block';
+    document.getElementById('channels-grille').innerHTML = '';
+    document.getElementById('stats-barre').style.display = 'none';
+    document.getElementById('envoyer-tout-wrap').style.display = 'none';
+
+    try {
+      const res = await fetch('/api/prospect-finder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'search', keyword, maxResults, minAbonnes })
+      });
+      const data = await res.json();
+
+      loading.style.display = 'none';
+      btn.textContent = '🔍 Chercher';
+      btn.disabled = false;
+
+      if (!data.ok) {
+        afficherToast('Erreur : ' + (data.error || 'Inconnue'), 'erreur');
+        return;
+      }
+
+      channelsTrouves = data.channels || [];
+      afficherChannels(channelsTrouves);
+
+    } catch (e) {
+      loading.style.display = 'none';
+      btn.textContent = '🔍 Chercher';
+      btn.disabled = false;
+      afficherToast('Erreur réseau', 'erreur');
+    }
+  }
+
+  function afficherChannels(channels) {
+    const grille   = document.getElementById('channels-grille');
+    const avecEmail = channels.filter(c => c.email);
+    const sansEmail = channels.filter(c => !c.email);
+
+    document.getElementById('stat-total').textContent  = channels.length;
+    document.getElementById('stat-email').textContent  = avecEmail.length;
+    document.getElementById('stat-sans').textContent   = sansEmail.length;
+    document.getElementById('stats-barre').style.display = 'flex';
+
+    if (avecEmail.length > 0) {
+      document.getElementById('envoyer-tout-wrap').style.display = 'flex';
+      document.getElementById('btn-bulk').textContent = `📧 Envoyer à tous (${avecEmail.length} emails trouvés)`;
+    }
+
+    grille.innerHTML = channels.map(ch => `
+      <div class="channel-carte ${ch.email ? 'email-ok' : 'email-non'}">
+        <div class="channel-haut">
+          <img class="channel-avatar" src="${ch.avatar || ''}" alt="" onerror="this.style.display='none'">
+          <div>
+            <div class="channel-nom">${echapper(ch.nom)}</div>
+            <div class="channel-stats">${ch.abonnesFormat} abonnés · ${ch.videos} vidéos</div>
+          </div>
+        </div>
+        ${ch.email
+          ? `<div class="channel-email">✉️ ${echapper(ch.email)}</div>`
+          : `<div class="channel-email non">Pas d'email public</div>`
+        }
+        <div class="channel-actions">
+          ${ch.email ? `<button class="btn-primaire btn-xs" onclick="envoyerEmail(${channels.indexOf(ch)})" id="btn-email-${channels.indexOf(ch)}">Envoyer email</button>` : ''}
+          <a href="${ch.url}" target="_blank" class="btn-ghost btn-xs">Voir chaîne ↗</a>
+          <button class="btn-ghost btn-xs" onclick="copierDM(${channels.indexOf(ch)})">Copier DM</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function envoyerEmail(idx) {
+    const ch  = channelsTrouves[idx];
+    const btn = document.getElementById('btn-email-' + idx);
+    if (!ch?.email) return;
+
+    btn.textContent = '⏳';
+    btn.disabled = true;
+
+    const res  = await fetch('/api/prospect-finder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send_outreach', channel: ch })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      btn.textContent = '✅ Envoyé';
+      btn.style.background = '#059669';
+      afficherToast('Email envoyé à ' + ch.email, 'succes');
+    } else {
+      btn.textContent = '❌ Erreur';
+      btn.disabled = false;
+      afficherToast('Erreur envoi', 'erreur');
+    }
+  }
+
+  async function envoyerTout() {
+    const avecEmail = channelsTrouves.filter(c => c.email);
+    if (!avecEmail.length) return;
+
+    const btn = document.getElementById('btn-bulk');
+    const status = document.getElementById('bulk-status');
+    btn.textContent = '⏳ Envoi en cours…';
+    btn.disabled = true;
+    status.textContent = '';
+
+    const res = await fetch('/api/prospect-finder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send_outreach_bulk', channels: channelsTrouves })
+    });
+    const data = await res.json();
+
+    btn.textContent = '✅ Envoyé';
+    status.textContent = `${data.sent} envoyés, ${data.errors} erreurs`;
+    afficherToast(`${data.sent} emails envoyés !`, 'succes');
+  }
+
+  function copierDM(idx) {
+    const ch = channelsTrouves[idx];
+    const msg = `Salut ${ch.nom} ! J'ai regardé ta chaîne (${ch.abonnesFormat} abonnés) — beau travail.\n\nJe viens de lancer Créatis, un outil pour les créateurs YouTube FR qui génère en 30s : titres, script avec timecodes, SEO, tags.\n\nTu serais partant pour tester gratuitement ? → creatis.app`;
+    navigator.clipboard.writeText(msg).then(() => afficherToast('DM copié !', 'succes'));
+  }
+
+  /* ============ SOCIAL ============ */
+  function updateCount(platform) {
+    const text = document.getElementById(platform + '-texte').value;
+    document.getElementById(platform + '-count').textContent = text.length;
+  }
+
+  function chargerTemplate(platform, idx) {
+    if (platform === 'twitter') {
+      document.getElementById('twitter-texte').value = TWITTER_TEMPLATES[idx];
+      updateCount('twitter');
+    } else if (platform === 'reddit') {
+      const tpl = REDDIT_TEMPLATES[idx];
+      document.getElementById('reddit-titre').value = tpl.titre;
+      document.getElementById('reddit-texte').value = tpl.texte;
+      updateCount('reddit');
+    }
+  }
+
+  async function posterTweet() {
+    const text = document.getElementById('twitter-texte').value.trim();
+    const btn  = document.getElementById('btn-tweet');
+    const result = document.getElementById('twitter-result');
+    if (!text) return afficherToast('Écris un tweet', 'erreur');
+
+    btn.textContent = '⏳ Publication…';
+    btn.disabled = true;
+
+    const res  = await fetch('/api/prospect-finder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'post_tweet', text })
+    });
+    const data = await res.json();
+
+    btn.textContent = '🐦 Publier le tweet';
+    btn.disabled = false;
+
+    if (data.skipped) {
+      result.innerHTML = `<span style="color:var(--jaune)">⚙️ Configure TWITTER_API_KEY dans Vercel pour activer.</span>`;
+    } else if (data.ok) {
+      result.innerHTML = `<span style="color:var(--vert)">✅ Tweet publié !</span>`;
+      afficherToast('Tweet publié !', 'succes');
+    } else {
+      result.innerHTML = `<span style="color:var(--rouge)">❌ Erreur : ${data.error || 'Inconnue'}</span>`;
+    }
+  }
+
+  async function posterReddit() {
+    const subreddit = document.getElementById('reddit-subreddit').value;
+    const title = document.getElementById('reddit-titre').value.trim();
+    const text  = document.getElementById('reddit-texte').value.trim();
+    const btn   = document.getElementById('btn-reddit');
+    const result = document.getElementById('reddit-result');
+    if (!title || !text) return afficherToast('Titre et texte requis', 'erreur');
+
+    btn.textContent = '⏳ Publication…';
+    btn.disabled = true;
+
+    const res = await fetch('/api/prospect-finder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'post_reddit', subreddit, title, text })
+    });
+    const data = await res.json();
+
+    btn.textContent = '🔴 Publier sur Reddit';
+    btn.disabled = false;
+
+    if (data.skipped) {
+      result.innerHTML = `<span style="color:var(--jaune)">⚙️ Configure REDDIT_CLIENT_ID dans Vercel pour activer.</span>`;
+    } else if (data.ok) {
+      result.innerHTML = `<span style="color:var(--vert)">✅ Post publié !</span>`;
+      afficherToast('Post Reddit publié !', 'succes');
+    } else {
+      result.innerHTML = `<span style="color:var(--rouge)">❌ ${data.error || 'Erreur'}</span>`;
+    }
+  }
+
+  /* ============ DM GENERATOR ============ */
+  function genererDMs() {
+    const plateforme = document.getElementById('dm-plateforme').value;
+    const noms = document.getElementById('dm-noms').value.split('\n').map(n => n.trim()).filter(Boolean);
+    const niche = document.getElementById('dm-niche').value.trim();
+
+    if (!noms.length) return afficherToast('Entre au moins un nom', 'erreur');
+
+    const messages = {
+      instagram: (nom) => `Salut ${nom} ! J'ai regardé quelques-unes de tes vidéos${niche ? ' sur ' + niche : ''} — super travail.\n\nJe développe un outil pour les créateurs YouTube FR qui génère en 30s le script complet, les titres et la description SEO d'une vidéo. Calibré sur ta chaîne quand tu connectes ton compte.\n\nTu serais partant pour tester gratuitement ? → creatis.app`,
+
+      tiktok: (nom) => `Salut ${nom} ! Je follow ton contenu${niche ? ' sur ' + niche : ''}, tu fais vraiment de bons trucs.\n\nJ'ai lancé un outil pour les créateurs YouTube FR — en 30s depuis un sujet il génère titres + script + SEO. Gratuit à tester → creatis.app\n\nTu veux essayer ?`,
+
+      facebook: (nom) => `Bonjour ${nom},\n\nJ'ai découvert ta chaîne YouTube et je voulais te partager un outil que je viens de lancer : Créatis.\n\nEn 30 secondes il génère le workflow complet d'une vidéo : titres optimisés, script avec timecodes, description SEO et tags. Tout en français, calibré pour YouTube.\n\nGratuit à tester (50 générations, sans carte bancaire) : creatis.app\n\nBonne continuation !`,
+
+      youtube: (nom) => `Super vidéo${niche ? ' sur ' + niche : ''} ! J'ai lancé un outil pour les créateurs YouTube FR qui génère scripts, titres et SEO en 30s → creatis.app 🎬`
+    };
+
+    const template = messages[plateforme];
+    const resultat = document.getElementById('dm-resultats');
+
+    resultat.innerHTML = noms.map((nom, i) => `
+      <div class="dm-item">
+        <div class="dm-nom">${echapper(nom)} <span class="tag-vert">${plateforme}</span></div>
+        <pre id="dm-text-${i}">${echapper(template(nom))}</pre>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primaire btn-sm" onclick="copierTexte('dm-text-${i}')">📋 Copier</button>
+          <span style="font-size:12px;color:var(--texte-muted);align-self:center">→ Colle dans ${plateforme === 'youtube' ? 'un commentaire' : 'le DM'}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function copierTexte(id) {
+    const el = document.getElementById(id);
+    navigator.clipboard.writeText(el.textContent).then(() => afficherToast('Message copié !', 'succes'));
+  }
+
+  /* ============ UTILS ============ */
+  function echapper(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function afficherToast(message, type = 'info') {
+    const conteneur = document.getElementById('toast-conteneur');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    conteneur.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'glisserSortir 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+</script>
+
+</body>
+</html>

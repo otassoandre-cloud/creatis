@@ -1,0 +1,193 @@
+============================================================
+  CONFIGURATION DNS — CREATIS.APP
+  Registrar: OVH — Zone DNS : creatis.app
+  Mise à jour : 2026-05-10
+============================================================
+
+------------------------------------------------------------
+  1. VERCEL — Hébergement principal
+------------------------------------------------------------
+
+# Domaine racine
+Type : A
+Sous-domaine : (vide = @)
+Valeur : 76.76.21.21
+TTL : 3600
+
+# Sous-domaine www
+Type : CNAME
+Sous-domaine : www
+Valeur : cname.vercel-dns.com.
+TTL : 3600
+
+# Vérification après modification :
+#   nslookup creatis.app
+#   nslookup www.creatis.app
+# Résultat attendu : 76.76.21.21 pour A, alias vercel pour CNAME
+# Délai propagation : 5 à 30 minutes
+
+
+------------------------------------------------------------
+  2. BREVO — Authentification emails (SPF / DKIM / DMARC)
+------------------------------------------------------------
+
+# SPF — Autoriser Brevo à envoyer pour creatis.app
+Type : TXT
+Sous-domaine : @ (racine)
+Valeur : "v=spf1 include:spf.brevo.com mx ~all"
+TTL : 3600
+Note : Si tu as déjà un SPF pour OVH/Gmail, COMBINER :
+       "v=spf1 include:spf.brevo.com include:mx.ovh.com ~all"
+
+# DKIM Brevo — À récupérer dans Brevo Dashboard
+# Brevo → Settings → Senders & IPs → Domains → Authenticate a Domain
+# Brevo génère une valeur unique à copier ci-dessous :
+Type : TXT
+Sous-domaine : mail._domainkey
+Valeur : [VALEUR FOURNIE PAR BREVO — format "v=DKIM1; k=rsa; p=..."]
+TTL : 3600
+
+# Brevo DKIM link (alternative selon config Brevo)
+Type : CNAME
+Sous-domaine : mail._domainkey
+Valeur : [ex : mail._domainkey.brevo.com.]
+TTL : 3600
+
+# DMARC — Politique anti-usurpation
+Type : TXT
+Sous-domaine : _dmarc
+Valeur : "v=DMARC1; p=quarantine; rua=mailto:dmarc@creatis.app; pct=100"
+TTL : 3600
+Note : Commencer avec p=none pour monitoring, puis passer à quarantine
+
+# Vérification SPF :
+#   dig TXT creatis.app | grep spf
+# Vérification DKIM :
+#   dig TXT mail._domainkey.creatis.app
+# Testeur complet : https://www.mail-tester.com
+
+
+------------------------------------------------------------
+  3. BREVO — Sous-domaine tracking (liens email)
+------------------------------------------------------------
+
+# Pour tracker les clics dans les emails Brevo
+# Brevo → Settings → Senders & IPs → Domains → Tracking domain
+Type : CNAME
+Sous-domaine : click
+Valeur : [fourni par Brevo, ex : tracker.brevo.com.]
+TTL : 3600
+
+Type : CNAME
+Sous-domaine : open
+Valeur : [fourni par Brevo]
+TTL : 3600
+
+
+------------------------------------------------------------
+  4. EMAIL PRO — OVH MX (contact@creatis.app)
+------------------------------------------------------------
+
+# Si tu utilises la messagerie OVH (MX Plan ou Exchange)
+# Récupérer les valeurs dans OVH → Email → MX :
+
+Type : MX
+Sous-domaine : @ (racine)
+Priorité : 1
+Valeur : mx1.mail.ovh.net.
+TTL : 3600
+
+Type : MX
+Sous-domaine : @
+Priorité : 5
+Valeur : mx2.mail.ovh.net.
+TTL : 3600
+
+Type : MX
+Sous-domaine : @
+Priorité : 10
+Valeur : mx3.mail.ovh.net.
+TTL : 3600
+
+# SPF OVH (à combiner avec Brevo ci-dessus)
+# La valeur SPF finale doit être UN SEUL enregistrement TXT :
+# "v=spf1 include:spf.brevo.com include:mx.ovh.com ~all"
+
+
+------------------------------------------------------------
+  5. GOOGLE — Vérification Search Console
+------------------------------------------------------------
+
+# Option 1 : enregistrement TXT (recommandé)
+Type : TXT
+Sous-domaine : @
+Valeur : [fourni par Google Search Console lors de l'ajout de propriété]
+TTL : 3600
+
+# Option 2 : meta tag HTML dans index.html (plus simple)
+# <meta name="google-site-verification" content="VOTRE_CODE" />
+
+
+------------------------------------------------------------
+  6. STRIPE — Aucun DNS requis
+------------------------------------------------------------
+
+# Stripe ne nécessite pas d'entrée DNS spécifique.
+# Le webhook est configuré via l'URL :
+#   https://creatis.app/api/stripe-webhook
+# Stripe Checkout redirige vers :
+#   https://creatis.app/success.html
+#   https://creatis.app/cancel.html
+
+
+------------------------------------------------------------
+  7. RÉCAPITULATIF — Entrées à créer dans OVH
+------------------------------------------------------------
+
+| Type  | Sous-domaine          | Valeur                          | TTL  |
+|-------|-----------------------|---------------------------------|------|
+| A     | @                     | 76.76.21.21                     | 3600 |
+| CNAME | www                   | cname.vercel-dns.com.           | 3600 |
+| TXT   | @                     | v=spf1 include:spf.brevo.com mx ~all | 3600 |
+| TXT   | mail._domainkey       | [valeur DKIM Brevo]             | 3600 |
+| TXT   | _dmarc                | v=DMARC1; p=quarantine; rua=...| 3600 |
+| CNAME | click                 | [tracking Brevo]                | 3600 |
+| MX    | @                     | mx1.mail.ovh.net. (prio 1)      | 3600 |
+| MX    | @                     | mx2.mail.ovh.net. (prio 5)      | 3600 |
+| TXT   | @                     | [Google Search Console verify]  | 3600 |
+
+
+------------------------------------------------------------
+  8. OUTILS DE VÉRIFICATION
+------------------------------------------------------------
+
+# DNS propagation
+nslookup creatis.app
+nslookup www.creatis.app
+https://dnschecker.org/#A/creatis.app
+
+# Email auth
+https://www.mail-tester.com
+https://mxtoolbox.com/SuperTool.aspx?action=mx%3acreatis.app
+
+# SSL/HTTPS
+https://www.ssllabs.com/ssltest/analyze.html?d=creatis.app
+
+# Sécurité headers
+https://securityheaders.com/?q=creatis.app
+
+
+------------------------------------------------------------
+  9. ORDRE DE CONFIGURATION RECOMMANDÉ
+------------------------------------------------------------
+
+Étape 1 : Déployer sur Vercel + configurer domaine dans Dashboard
+Étape 2 : Ajouter entrée A et CNAME dans OVH
+Étape 3 : Attendre propagation DNS (5-30 min) → vérifier HTTPS
+Étape 4 : Configurer SPF + DKIM dans Brevo + ajouter dans OVH
+Étape 5 : Ajouter enregistrement DMARC (p=none d'abord)
+Étape 6 : Configurer MX OVH si messagerie pro souhaitée
+Étape 7 : Vérifier Search Console + soumettre sitemap.xml
+Étape 8 : Tester envoi email avec mail-tester.com (objectif score 9+/10)
+
+============================================================

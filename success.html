@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement réussi — Créatis</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); padding:24px; overflow:hidden; }
+
+    .confetti-piece {
+      position:fixed; width:8px; height:8px; border-radius:2px;
+      animation: confetti-fall linear forwards;
+      pointer-events:none; z-index:0;
+    }
+    @keyframes confetti-fall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity:1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity:0; }
+    }
+
+    .success-card {
+      max-width:500px; width:100%; position:relative; z-index:1;
+      background:var(--bg-card); border:1px solid var(--bordure); border-radius:24px; padding:48px 40px;
+      text-align:center; animation: apparaitre 0.4s ease;
+    }
+    @keyframes apparaitre { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+
+    .success-icon {
+      width:88px; height:88px; border-radius:50%;
+      background:rgba(16,185,129,0.1); border:2px solid var(--vert);
+      display:flex; align-items:center; justify-content:center;
+      font-size:40px; margin:0 auto 28px;
+      animation: pulse-vert 2s ease infinite;
+    }
+    @keyframes pulse-vert { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.3)} 50%{box-shadow:0 0 0 20px rgba(16,185,129,0)} }
+
+    h1 { font-size:30px; font-weight:800; margin-bottom:8px; letter-spacing:-0.5px; }
+    .success-sub { color:var(--texte-doux); font-size:15px; line-height:1.6; margin-bottom:28px; }
+
+    .success-plan {
+      background:var(--bg); border:1px solid rgba(16,185,129,0.3);
+      border-radius:var(--radius); padding:16px 20px;
+      margin-bottom:20px; font-size:14px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .success-plan-nom { font-weight:700; font-size:16px; color:var(--vert); }
+    .success-plan-prix { color:var(--texte-muted); font-size:13px; }
+
+    .promo-box {
+      background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25);
+      border-radius:var(--radius); padding:12px 16px; margin-bottom:20px;
+      font-size:13px; color:#fbbf24; display:none;
+    }
+
+    .next-steps { text-align:left; margin-bottom:28px; }
+    .next-steps-titre { font-size:12px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+    .next-step {
+      display:flex; align-items:flex-start; gap:12px;
+      font-size:14px; color:var(--texte-doux); margin-bottom:10px;
+    }
+    .step-num {
+      width:26px; height:26px; border-radius:50%; background:var(--vert); color:#000;
+      font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+    }
+    .step-text strong { color:var(--texte); }
+
+    .sync-status {
+      display:flex; align-items:center; gap:8px; font-size:13px;
+      color:var(--texte-muted); margin-bottom:24px; justify-content:center;
+    }
+    .sync-dot { width:8px; height:8px; border-radius:50%; background:var(--vert); animation: pulse-vert 1.5s infinite; }
+
+    .btn-cta {
+      display:block; padding:16px; font-size:15px; font-weight:700;
+      background:var(--vert); color:#000; border-radius:var(--radius); text-decoration:none;
+      transition:opacity .15s; margin-bottom:10px;
+    }
+    .btn-cta:hover { opacity:.9; }
+
+    .footer-links { font-size:12px; color:var(--texte-muted); margin-top:20px; }
+    .footer-links a { color:var(--texte-muted); margin:0 8px; text-decoration:none; }
+    .footer-links a:hover { color:var(--vert); }
+  </style>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+</head>
+<body>
+
+  <div class="success-card">
+    <div class="success-icon">✅</div>
+    <h1>Bienvenue dans le Pro !</h1>
+    <p class="success-sub">Ton abonnement est actif. Tu as maintenant accès à tous les agents IA et aux générations illimitées.</p>
+
+    <div class="success-plan">
+      <div>
+        <div class="success-plan-nom" id="plan-nom">Pro</div>
+        <div class="success-plan-prix" id="plan-desc">Générations illimitées · 10 miniatures/mois</div>
+      </div>
+      <span id="plan-prix" style="font-size:18px;font-weight:800;color:var(--texte);">19€/mois</span>
+    </div>
+
+    <div class="promo-box" id="promo-box">
+      🎁 Code <strong>CREATIS20</strong> appliqué — -20% pour toujours ✓
+    </div>
+
+    <div class="sync-status" id="sync-status">
+      <span class="sync-dot"></span>
+      Activation du plan en cours…
+    </div>
+
+    <div class="next-steps">
+      <div class="next-steps-titre">3 choses à faire maintenant</div>
+      <div class="next-step">
+        <span class="step-num">1</span>
+        <span class="step-text"><strong>Renseigne ta chaîne</strong> dans le dashboard — les agents s'adaptent à ton contenu</span>
+      </div>
+      <div class="next-step">
+        <span class="step-num">2</span>
+        <span class="step-text"><strong>Lance ton premier agent Pro</strong> — essaie "Prospection Sponsors" avec tes vraies stats</span>
+      </div>
+      <div class="next-step">
+        <span class="step-num">3</span>
+        <span class="step-text" id="step-miniatures"><strong>Génère tes miniatures</strong> ce mois avec l'agent Miniature Pro</span>
+      </div>
+    </div>
+
+    <a href="app.html" class="btn-cta">
+      ✨ Accéder à l'application →
+    </a>
+
+    <a href="mailto:contact@creatis.app" style="display:block;text-align:center;font-size:13px;color:var(--texte-muted);text-decoration:none;margin-top:6px;">
+      Une question ? contact@creatis.app
+    </a>
+
+    <div class="footer-links">
+      <a href="cgu.html">CGU</a>
+      <a href="confidentialite.html">Confidentialité</a>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script>
+    /* Confetti */
+    function lancerConfetti() {
+      const couleurs = ['#10b981','#34d399','#6ee7b7','#fbbf24','#f59e0b','#fff'];
+      for (let i = 0; i < 60; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.cssText = `
+          left:${Math.random()*100}vw;
+          top:-10px;
+          background:${couleurs[Math.floor(Math.random()*couleurs.length)]};
+          animation-duration:${1.5 + Math.random()*2}s;
+          animation-delay:${Math.random()*0.8}s;
+          width:${6+Math.random()*6}px;
+          height:${6+Math.random()*6}px;
+          opacity:${0.7+Math.random()*0.3};
+        `;
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      lancerConfetti();
+
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get('session_id');
+      const creditsParam = params.get('credits');
+
+      /* Achat crédits miniatures */
+      if (creditsParam) {
+        const credits = parseInt(creditsParam) || 0;
+        const cle = `creatis_mini_credits_${new Date().getFullYear()}_${new Date().getMonth()+1}`;
+        const actuel = parseInt(localStorage.getItem(cle) || '0');
+        localStorage.setItem(cle, (actuel + credits).toString());
+        document.querySelector('h1').textContent = `+${credits} miniatures ajoutées !`;
+        document.getElementById('plan-nom').textContent = `${credits} crédits miniatures`;
+        document.getElementById('plan-desc').textContent = 'Utilisables ce mois';
+        document.getElementById('plan-prix').textContent = '';
+        document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Crédits activés</span>';
+        return;
+      }
+
+      /* Récupérer le plan depuis Supabase (avec retry) */
+      let planActivé = null;
+      if (sessionId && typeof CONFIG !== 'undefined' && CONFIG.estSupabaseConfigured()) {
+        for (let tentative = 0; tentative < 4; tentative++) {
+          if (tentative > 0) await new Promise(r => setTimeout(r, 2000));
+          try {
+            const user = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+            const token = localStorage.getItem('creatis_sb_session')
+              ? JSON.parse(localStorage.getItem('creatis_sb_session'))?.access_token
+              : null;
+
+            const res = await fetch('/api/user-sync', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({ action: 'get', userId: user.id, email: user.email })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.user?.plan && data.user.plan !== 'gratuit') {
+                planActivé = data.user.plan;
+                user.plan = planActivé;
+                localStorage.setItem('creatis_user', JSON.stringify(user));
+                break;
+              }
+            }
+          } catch { /* retry */ }
+        }
+      }
+
+      /* Afficher les infos du plan */
+      const user = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+      const plan = planActivé || user.plan || 'pro';
+      const planConfig = CONFIG.PLANS[plan];
+
+      if (planConfig && plan !== 'gratuit') {
+        document.getElementById('plan-nom').textContent = planConfig.nom;
+        document.getElementById('plan-desc').textContent = planConfig.description;
+        document.getElementById('plan-prix').textContent = `${planConfig.prix}€/mois`;
+        document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Plan activé — accès complet débloqué</span>';
+        const miniQ = planConfig.miniatures > 0 ? planConfig.miniatures : null;
+        if (miniQ && document.getElementById('step-miniatures')) {
+          document.getElementById('step-miniatures').innerHTML = `<strong>Génère ${miniQ} miniatures</strong> ce mois avec l'agent Miniature Pro`;
+        }
+      } else {
+        document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Activation confirmée</span>';
+      }
+
+      if (localStorage.getItem('creatis_promo_used') === 'CREATIS20') {
+        document.getElementById('promo-box').style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
