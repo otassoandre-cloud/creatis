@@ -48,10 +48,10 @@ async function supabaseUpsert(table, data) {
   return res.ok;
 }
 
-async function supabaseGet(table, match) {
+async function supabaseGet(table, match, select = 'id,plan,email,referred_by') {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   const query = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}&select=id,plan,email`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}&select=${select}`, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
   });
   if (!res.ok) return null;
@@ -161,6 +161,13 @@ module.exports = async (req, res) => {
         if (process.env.BREVO_API_KEY && email) {
           await notifierBrevo(email, plan, customerId).catch(e =>
             console.warn('[Webhook] Erreur Brevo:', e.message)
+          );
+        }
+
+        // Notifier l'affilié si l'utilisateur a été parrainé
+        if (process.env.BREVO_API_KEY && userRow?.referred_by) {
+          await notifierAffilie(userRow.referred_by, email, plan).catch(e =>
+            console.warn('[Webhook] Erreur notif affilié:', e.message)
           );
         }
 
@@ -376,6 +383,54 @@ async function envoyerEmailBienvenue(email) {
 }
 
 module.exports.envoyerEmailBienvenue = envoyerEmailBienvenue;
+
+/* Notifier un affilié qu'il vient de gagner une commission */
+async function notifierAffilie(refCode, filleulEmail, plan) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
+  // Trouver l'email de l'affilié via son code (12 premiers chars de son UUID)
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=like.${encodeURIComponent(refCode)}*&select=email`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  if (!res.ok) return;
+  const rows = await res.json();
+  const affilieEmail = rows?.[0]?.email;
+  if (!affilieEmail) return;
+
+  const commissions = { pro: '5,70€', studio: '14,70€' };
+  const commission = commissions[plan] || '5,70€';
+  const planLabel = plan === 'studio' ? 'Studio' : 'Pro';
+
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: affilieEmail }],
+      subject: `💸 Tu viens de gagner ${commission} — Créatis Affiliation`,
+      htmlContent: `
+        <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
+          <div style="font-size:28px;font-weight:800;color:#ffffff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div>
+          <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Programme Affiliation</p>
+          <h1 style="font-size:24px;font-weight:800;color:#10b981;margin:0 0 8px;">+${commission} de commission 🎉</h1>
+          <p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">
+            Un utilisateur que tu as parrainé vient de passer au plan <strong style="color:#fff;">${planLabel}</strong>.<br/>
+            Tu touches <strong style="color:#10b981;">${commission}/mois</strong> tant qu'il reste abonné.
+          </p>
+          <div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;">
+            <p style="color:#6b7280;font-size:13px;margin:0 0 8px;">Résumé</p>
+            <p style="color:#fff;font-size:15px;margin:4px 0;">Plan souscrit : <strong>${planLabel}</strong></p>
+            <p style="color:#fff;font-size:15px;margin:4px 0;">Commission mensuelle : <strong style="color:#10b981;">${commission}</strong></p>
+          </div>
+          <a href="https://creatis.app/affiliation" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Voir mes stats →</a>
+          <p style="color:#4b5563;font-size:12px;margin-top:32px;">
+            Demande ton virement dès 20€ accumulés : <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a>
+          </p>
+        </div>
+      `
+    })
+  });
+}
 
 
 async function getRawBody(req) {
