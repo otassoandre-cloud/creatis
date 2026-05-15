@@ -156,13 +156,13 @@ function getPHLaunchTweet() {
   }
 }
 
-async function generateTweet() {
+async function generateTweet(forcedDay = null) {
   const now = new Date();
-  if (now.getFullYear() === 2026 && now.getMonth() === 4 && now.getDate() === 19) {
+  if (now.getFullYear() === 2026 && now.getMonth() === 4 && now.getDate() === 19 && forcedDay === null) {
     return getPHLaunchTweet();
   }
 
-  const day = now.getDay();
+  const day = forcedDay !== null ? forcedDay : now.getDay();
   const theme = THEMES[day];
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -188,10 +188,39 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { text, image } = await generateTweet();
+    const forcedDay = req.query.day !== undefined ? parseInt(req.query.day) : null;
+    const { text, image } = await generateTweet(forcedDay);
 
     if (req.query.preview === 'true') {
       return res.json({ preview: true, tweet: text, image });
+    }
+
+    // Debug : vérifie les credentials et appelle GET /2/users/me
+    if (req.query.debug === 'true') {
+      const creds = {
+        consumerKey: process.env.X_API_KEY,
+        consumerSecret: process.env.X_API_SECRET,
+        accessToken: process.env.X_ACCESS_TOKEN,
+        tokenSecret: process.env.X_ACCESS_TOKEN_SECRET
+      };
+      const url = 'https://api.twitter.com/2/users/me';
+      const auth = oauthHeader('GET', url, {}, creds);
+      const result = await httpsRequest({
+        hostname: 'api.twitter.com',
+        path: '/2/users/me',
+        method: 'GET',
+        headers: { 'Authorization': auth }
+      });
+      return res.json({
+        keys_present: {
+          api_key: !!process.env.X_API_KEY,
+          api_key_len: process.env.X_API_KEY?.length,
+          api_secret_len: process.env.X_API_SECRET?.length,
+          access_token_len: process.env.X_ACCESS_TOKEN?.length,
+          access_token_secret_len: process.env.X_ACCESS_TOKEN_SECRET?.length,
+        },
+        twitter_verify: result
+      });
     }
 
     const creds = {

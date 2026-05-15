@@ -1,0 +1,26 @@
+name: Prospection quotidienne — 200 emails/jour
+
+on:
+  schedule:
+    # Tous les jours à 8h00 UTC (10h Paris)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Déclenchement manuel depuis GitHub
+
+jobs:
+  prospect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lancer le batch prospection
+        run: |
+          response=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://creatis.app/api/prospect-batch")
+          cat /tmp/response.json
+          echo ""
+          if [ "$response" != "200" ]; then
+            echo "Erreur HTTP: $response"
+            exit 1
+          fi
+          sent=$(cat /tmp/response.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('sent',0))")
+          echo "Emails envoyés aujourd'hui: $sent"

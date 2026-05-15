@@ -13,14 +13,52 @@ const SUPA_BASE    = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const EMAIL_RE     = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 const SKIP         = ['example.com','youremail','votreemail','email.com','domain.com','sentry.io'];
 
-// Rotation des mots-clés — 6 sets différents (1 par jour de la semaine)
+// Rotation des mots-clés — 6 sets de 30 mots-clés (1 par jour de la semaine)
 const KEYWORD_SETS = [
-  ["intelligence artificielle youtube","chatgpt tutoriel francais","IA actualites france","automatisation IA","prompt engineering francais","machine learning francais","llm gpt france youtube","IA créateur contenu","nocode automatisation france","n8n automatisation francais"],
-  ["entrepreneur freelance france youtube","digital marketing france youtube","finance personnelle youtube france","investissement bourse youtube","personal branding france youtube","dropshipping youtube france","affiliation youtube france","growth hacking france youtube","email marketing france youtube","copywriting youtube france"],
-  ["gaming youtube france","vlog quotidien france youtube","fitness muscu youtube france","voyage vlog france youtube","lifestyle youtube france","cuisine recette facile youtube","mode fashion france youtube","maison décoration youtube france","beauté maquillage youtube france","humour sketch youtube france"],
-  ["formation en ligne france youtube","développeur web youtube france","python tutoriel francais youtube","javascript youtube france","cours gratuit france youtube","e-learning france youtube","productivité youtube france","développement personnel youtube france","tutoriel gratuit france","seo youtube france"],
-  ["psychologie bien-être youtube france","méditation mindfulness france youtube","histoire france youtube","science vulgarisation youtube france","philosophie youtube france","sport youtube france","musique guitare france youtube","photographie france youtube","animaux chien youtube france","podcast france youtube"],
-  ["agence marketing france youtube","consultant seo france youtube","startup france youtube","saas france youtube","webmarketing france youtube","interview entreprise france youtube","monétisation youtube france","chaîne youtube croissance france","créateur youtube conseils","tuto youtube abonnés"],
+  // Set 0 — Tech & IA
+  ["intelligence artificielle youtube","chatgpt tutoriel francais","IA actualites france","automatisation IA","prompt engineering francais",
+   "machine learning francais","llm gpt france youtube","IA créateur contenu","nocode automatisation france","n8n automatisation francais",
+   "crypto bitcoin youtube france","blockchain nft youtube francais","investissement crypto france","web3 france youtube","metaverse france youtube",
+   "cybersécurité youtube france","hacking éthique francais","informatique tutoriel france","réseaux sociaux stratégie france","tiktok croissance france youtube",
+   "youtube algorithm francais","référencement youtube france","créer chaîne youtube conseils","monétiser youtube france","revenus passifs youtube france",
+   "podcast tech france","newsletter marketing france","saas fondateur france youtube","indie hacker francais","product hunt france youtube"],
+  // Set 1 — Business & Finance
+  ["entrepreneur freelance france youtube","digital marketing france youtube","finance personnelle youtube france","investissement bourse youtube",
+   "personal branding france youtube","dropshipping youtube france","affiliation youtube france","growth hacking france youtube",
+   "email marketing france youtube","copywriting youtube france",
+   "e-commerce france youtube","shopify france tutoriel","amazon fba france youtube","immobilier investissement france youtube","trading forex france youtube",
+   "bourse débutant france youtube","epargne retraite france youtube","crédit immobilier france youtube","assurance vie france youtube","impôts optimisation france youtube",
+   "auto entrepreneur france youtube","micro entreprise france youtube","business en ligne france","revenus multiples france youtube","liberté financière france youtube",
+   "marketing digital débutant france","publicité facebook ads france","google ads france youtube","seo naturel france youtube","stratégie contenu france youtube"],
+  // Set 2 — Lifestyle & Divertissement
+  ["gaming youtube france","vlog quotidien france youtube","fitness muscu youtube france","voyage vlog france youtube","lifestyle youtube france",
+   "cuisine recette facile youtube","mode fashion france youtube","maison décoration youtube france","beauté maquillage youtube france","humour sketch youtube france",
+   "challenge youtube france","réaction youtube france","test produit youtube france","avis honnête youtube france","haul shopping youtube france",
+   "routine quotidienne youtube france","morning routine france youtube","sport maison france youtube","yoga france youtube","running marathon france youtube",
+   "randonnée montagne france youtube","camping survie france youtube","pêche chasse france youtube","bricolage maison france youtube","jardinage france youtube",
+   "animaux domestiques france youtube","chien chat youtube france","aquarium youtube france","reptiles youtube france","oiseaux perruche youtube france"],
+  // Set 3 — Formation & Éducation
+  ["formation en ligne france youtube","développeur web youtube france","python tutoriel francais youtube","javascript youtube france",
+   "cours gratuit france youtube","e-learning france youtube","productivité youtube france","développement personnel youtube france",
+   "tutoriel gratuit france","seo youtube france",
+   "graphisme design france youtube","photoshop illustrator france youtube","figma design france youtube","after effects france youtube","premiere pro france youtube",
+   "musique production france youtube","dj mix france youtube","guitare débutant france youtube","piano clavier france youtube","chant vocal france youtube",
+   "photographie débutant france youtube","lightroom france youtube","smartphone photo france youtube","drone pilotage france youtube","vidéo youtube débutant france",
+   "dessin manga france youtube","illustration numérique france youtube","peinture aquarelle france youtube","sculpture france youtube","artisanat diy france youtube"],
+  // Set 4 — Santé & Bien-être
+  ["psychologie bien-être youtube france","méditation mindfulness france youtube","histoire france youtube","science vulgarisation youtube france",
+   "philosophie youtube france","sport youtube france","musique guitare france youtube","photographie france youtube","animaux chien youtube france","podcast france youtube",
+   "nutrition alimentation france youtube","régime santé france youtube","véganisme vegan france youtube","intermittent fasting france youtube","perte poids france youtube",
+   "musculation naturelle france youtube","crossfit france youtube","boxe mma france youtube","arts martiaux france youtube","natation france youtube",
+   "sophrologie relaxation france youtube","gestion stress anxiété france youtube","sommeil insomnie france youtube","jeûne santé france youtube","naturopathie france youtube",
+   "couples relation france youtube","parentalité enfants france youtube","développement enfant france youtube","école parents france youtube","famille nombreuse youtube france"],
+  // Set 5 — Créateurs & Marketing
+  ["agence marketing france youtube","consultant seo france youtube","startup france youtube","saas france youtube","webmarketing france youtube",
+   "interview entreprise france youtube","monétisation youtube france","chaîne youtube croissance france","créateur youtube conseils","tuto youtube abonnés",
+   "influenceur instagram france youtube","tiktok france stratégie","réseaux sociaux manager france","community management france youtube","social media france tutoriel",
+   "branding identité visuelle france","logo design france youtube","communication entreprise france","relations presse france youtube","storytelling france youtube",
+   "podcast créer lancer france","newsletter substack france","blog créer monétiser france","affiliate marketing france","partenariat marque france youtube",
+   "ugc contenu sponsorisé france","média kit créateur france","agence influence france youtube","casting youtube france","production vidéo france youtube"],
 ];
 
 // ---- YouTube helpers ----
