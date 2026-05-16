@@ -171,7 +171,7 @@ async function sendOutreach(ch, appUrl) {
           <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer Créatis →</a>
           <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part si ça ne t'intéresse pas.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="color:#444;font-size:13px;margin:0"><strong>PS :</strong> Si tu connais d'autres créateurs YouTube, notre programme affilié verse <strong>30% récurrent à vie</strong> (8,70€/mois par abonné Pro). Ton lien sur <a href="${appUrl}/affiliation" style="color:#10b981">${appUrl}/affiliation</a></p>
+          <p style="color:#444;font-size:13px;margin:0"><strong>PS :</strong> Si tu connais d'autres créateurs YouTube, notre programme affilié verse <strong>30% récurrent à vie</strong> (5,70€/mois par abonné Pro). Ton lien sur <a href="${appUrl}/affiliation" style="color:#10b981">${appUrl}/affiliation</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p style="color:#aaa;font-size:12px;margin:0">Créatis · <a href="${appUrl}" style="color:#10b981">creatis.app</a></p>
         </div>

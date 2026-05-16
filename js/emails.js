@@ -32,7 +32,7 @@ const Emails = {
         <p style="color:#666;font-size:14px">Code promo early adopter : <strong>CREATIS20</strong> (-20% sur le Pro)</p>
         <div style="background:#f0fdf4;border-left:4px solid #10b981;padding:16px 20px;margin:20px 0;border-radius:0 8px 8px 0">
           <p style="margin:0 0 8px;font-weight:700;color:#059669">💸 Gagne 30% récurrent avec ton lien affilié</p>
-          <p style="margin:0 0 12px;font-size:14px;color:#333">Partage Créatis avec d'autres créateurs YouTube. Pour chaque abonnement Pro (29€/mois), tu touches <strong>8,70€/mois à vie</strong>.</p>
+          <p style="margin:0 0 12px;font-size:14px;color:#333">Partage Créatis avec d'autres créateurs YouTube. Pour chaque abonnement Pro (19€/mois), tu touches <strong>5,70€/mois à vie</strong>.</p>
           <a href="${origin}/affiliation" style="display:inline-block;background:#059669;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">Obtenir mon lien affilié →</a>
         </div>
         <hr style="border:none;border-top:1px solid #eee;margin:24px 0">

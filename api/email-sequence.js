@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
             <div style="background:#0d1f17;border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:20px;margin-bottom:24px;">
               <p style="color:#10b981;font-weight:700;margin:0 0 8px;">Ton lien affilié :</p>
               <p style="background:#111;border:1px solid #1f2937;border-radius:6px;padding:10px 14px;color:#10b981;font-family:monospace;font-size:14px;margin:0 0 12px;word-break:break-all;">${affilieLink}</p>
-              <p style="color:#6b7280;font-size:13px;margin:0;">Chaque vente depuis ce lien = <strong style="color:#10b981;">8,70€/mois à vie</strong> (30% de 29€)</p>
+              <p style="color:#6b7280;font-size:13px;margin:0;">Chaque vente depuis ce lien = <strong style="color:#10b981;">5,70€/mois à vie</strong> (30% de 19€)</p>
             </div>
             <div style="background:#111827;border:1px solid #1f2937;border-radius:10px;padding:20px;margin-bottom:28px;">
               <p style="color:#f59e0b;font-weight:700;margin:0 0 12px;">🎬 Script TikTok prêt à filmer :</p>
