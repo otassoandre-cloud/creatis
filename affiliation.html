@@ -11,7 +11,20 @@
   <meta property="og:url" content="https://creatis.app/affiliation">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://creatis.app/affiliation">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type":"Question","name":"Comment je génère mon lien affilié ?","acceptedAnswer":{"@type":"Answer","text":"Crée un compte gratuit sur Créatis puis reviens sur la page affiliation. Ton lien unique est généré automatiquement dans le tableau de bord."}},
+      {"@type":"Question","name":"Quand je reçois mes commissions ?","acceptedAnswer":{"@type":"Answer","text":"Dès 20€ cumulés, un virement est initié via Stripe. Tu reçois une notification email pour chaque abonnement généré."}},
+      {"@type":"Question","name":"La commission dure vraiment à vie ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois, sans limite de durée."}},
+      {"@type":"Question","name":"Dois-je avoir une grosse audience ?","acceptedAnswer":{"@type":"Answer","text":"Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube. Les scripts TikTok fournis sont conçus pour convertir même avec une petite audience engagée."}}
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -338,6 +351,38 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
       </div>
     </div>
 
+  </div>
+
+  <!-- FAQ -->
+  <div class="page" style="max-width:760px;margin:0 auto;padding:0 20px 80px">
+    <div class="section-label" style="text-align:center">Questions fréquentes</div>
+    <div class="section-title" style="text-align:center;margin-bottom:40px">Tout ce que tu dois savoir</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Comment je génère mon lien affilié ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Crée un compte gratuit sur Créatis (ou connecte-toi), puis reviens sur cette page. Ton lien unique est généré automatiquement dans le tableau de bord. Tu le copies et tu le partages où tu veux.</p>
+      </details>
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Quand et comment je reçois mes commissions ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Les commissions s'accumulent chaque mois. Dès que tu atteins 20€ de commissions cumulées, un virement est initié via Stripe. Tu reçois une notification email automatique pour chaque abonnement que tu génères.</p>
+      </details>
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">La commission dure vraiment à vie ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Oui. Tant que la personne que tu as amenée reste abonnée à Créatis Pro, tu touches 30% de son abonnement chaque mois, sans limite de durée. Si elle reste 2 ans, tu touches 2 ans de commissions.</p>
+      </details>
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Je dois avoir une grosse audience ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube (ou aspirants créateurs). 1 000 followers engagés dans cette niche valent mieux que 100 000 followers hors cible. Les scripts TikTok fournis sont conçus pour convertir même avec une petite audience.</p>
+      </details>
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Puis-je utiliser Créatis moi-même avant de le promouvoir ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Oui, et c'est recommandé. Ton compte gratuit te donne 10 générations pour tester. Si tu veux montrer l'interface dans une vidéo TikTok (screen record), c'est la meilleure façon de convertir. L'authenticité = plus de clics sur ton lien.</p>
+      </details>
+      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
+        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Que se passe-t-il si quelqu'un utilise mon lien mais ne s'abonne qu'un mois plus tard ? <span style="color:var(--vert)">+</span></summary>
+        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Le code affilié est sauvegardé dans le navigateur de la personne. Si elle s'inscrit dans les 90 jours après avoir cliqué sur ton lien, la commission t'est attribuée. Elle peut s'inscrire gratuitement maintenant et convertir plus tard.</p>
+      </details>
+    </div>
   </div>
 
   <div class="toast" id="toast">✅ Copié !</div>
