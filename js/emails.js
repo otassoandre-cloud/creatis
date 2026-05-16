@@ -128,6 +128,7 @@ const Emails = {
           <p>C'est le dernier email de notre séquence. On ne va pas continuer à te relancer.</p>
           <p>Si Créatis n'est pas pour toi maintenant, pas de problème. Mais si un jour tu veux passer au Pro, le code <strong>CREATIS20</strong> reste valable — c'est -20% à vie pour les early adopters.</p>
           <a href="${origin}/index.html#tarifs" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;margin:16px 0">Voir les offres →</a>
+          <p style="color:#666;font-size:14px">Autre option : si tu connais des créateurs YouTube dans ton entourage, notre <a href="${origin}/affiliation" style="color:#10b981">programme affilié</a> te reverse 30% de chaque abonnement à vie — sans rien payer toi-même.</p>
           <p style="color:#666;font-size:14px">Une question ? Réponds directement à cet email.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
           <p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#10b981">creatis.app</a> · <a href="mailto:contact@creatis.app" style="color:#10b981">contact@creatis.app</a></p>
