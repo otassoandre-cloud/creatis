@@ -421,6 +421,19 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
         el.textContent = el.textContent.replace(/creatis\.app/g, refLink);
       });
 
+      // Envoyer le kit affilié une seule fois (première visite du dashboard)
+      const kitKey = `creatis_affilie_kit_${userId}`;
+      if (!localStorage.getItem(kitKey)) {
+        localStorage.setItem(kitKey, '1');
+        const userEmail = session.user.email;
+        const userName = session.user.user_metadata?.full_name || userEmail.split('@')[0];
+        fetch('/api/email-sequence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send_affilie_recruitment', email: userEmail, nom: userName, codeAffilie: refCode })
+        }).catch(() => {});
+      }
+
       try {
         const res = await fetch(`/api/parrainage?code=${refCode}`);
         const data = await res.json();

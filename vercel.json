@@ -41,6 +41,7 @@
     { "src": "/mentions-legales", "dest": "/mentions-legales.html" },
     { "src": "/confidentialite", "dest": "/confidentialite.html" },
     { "src": "/affiliation", "dest": "/affiliation.html" },
+    { "src": "/parrainage", "dest": "/parrainage.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "headers": [
