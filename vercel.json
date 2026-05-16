@@ -42,6 +42,7 @@
     { "src": "/confidentialite", "dest": "/confidentialite.html" },
     { "src": "/affiliation", "dest": "/affiliation.html" },
     { "src": "/parrainage", "dest": "/parrainage.html" },
+    { "src": "/programme-affiliation-youtuber", "dest": "/programme-affiliation-youtuber.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "headers": [
