@@ -1325,6 +1325,8 @@ class AppCreatis {
     this._dashMettreAJourStats();
     this._dashMettreAJourHistorique();
     this._dashMettreAJourChaine();
+    const affilBloc = document.getElementById('dash-affiliation-bloc');
+    if (affilBloc) affilBloc.style.display = this.getGenerations() >= 3 ? '' : 'none';
   }
 
   _dashMettreAJourStats() {
