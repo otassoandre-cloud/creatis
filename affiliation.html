@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Programme Affiliation — Gagne 30% récurrent avec Créatis</title>
   <meta name="description" content="Rejoins le programme affilié Créatis. 30% de commission récurrente à vie. Script TikTok prêt à poster fourni. Lien personnalisé. Virement mensuel dès 20€.">
+  <meta property="og:title" content="Programme Affilié Créatis — 30% récurrent à vie">
+  <meta property="og:description" content="Partage Créatis avec ta communauté TikTok. 30% de commission récurrente à vie. Script prêt à copier-coller. Lien unique. Virement dès 20€.">
+  <meta property="og:image" content="https://creatis.app/images/higgsfield/hero-landing.webp">
+  <meta property="og:url" content="https://creatis.app/affiliation">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -305,6 +311,11 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
           <input type="text" class="link-input" id="ref-link" readonly>
           <button class="btn-copy" onclick="copierLien()">Copier</button>
         </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button onclick="partagerWhatsApp()" style="flex:1;background:#25d366;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">📱 WhatsApp</button>
+          <button onclick="partagerTwitter()" style="flex:1;background:#000;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">𝕏 Twitter / X</button>
+          <button onclick="copierScriptTikTok()" style="flex:1;background:#ff0050;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">🎵 Script TikTok</button>
+        </div>
         <div class="commission-info">
           <div class="comm-item"><div class="comm-pct">30%</div><div class="comm-label">Commission récurrente</div></div>
           <div class="comm-item"><div class="comm-pct">5,70€</div><div class="comm-label">Par abonné Pro / mois</div></div>
@@ -395,6 +406,25 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
         document.execCommand('copy');
       });
       afficherToast('Lien copié !');
+    }
+
+    function partagerWhatsApp() {
+      const link = document.getElementById('ref-link').value;
+      const texte = `J'utilise Créatis pour générer mes scripts YouTube en 30s avec l'IA 🎬 50 crédits gratuits → ${link}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(texte)}`, '_blank');
+    }
+
+    function partagerTwitter() {
+      const link = document.getElementById('ref-link').value;
+      const texte = `Créatis génère mon script YouTube complet en 30 secondes ⚡\nTitres, script, miniature — tout d'un coup.\n50 crédits gratuits → ${link}`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texte)}`, '_blank');
+    }
+
+    function copierScriptTikTok() {
+      const link = document.getElementById('ref-link').value;
+      const script = `Hook : "Cet outil génère mon script YouTube en 30 secondes..."\n\nCorps : "Tu rentres juste ton sujet — Créatis te donne 5 titres, un script complet avec timecodes, une description SEO et 30 tags. Avant j'utilisais ChatGPT, ça prenait 2h. Là c'est 30 secondes, calibré YouTube FR."\n\nCTA : "50 crédits gratuits, sans CB → lien en bio : ${link}"`;
+      navigator.clipboard.writeText(script).catch(() => {});
+      afficherToast('Script TikTok copié !');
     }
 
     function copierScript(btn) {
