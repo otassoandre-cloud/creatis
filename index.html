@@ -18,6 +18,7 @@
   <meta property="og:title" content="Créatis — L'IA pour créateurs YouTube">
   <meta property="og:description" content="Génère titres YouTube viraux, scripts complets, miniatures à fort CTR et descriptions SEO en 30 secondes grâce à l'IA. Pour créateurs YouTube.">
   <meta property="og:image" content="https://creatis.app/images/higgsfield/hero-landing.png">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1376">
   <meta property="og:image:height" content="768">
   <meta property="og:url" content="https://creatis.app/">
@@ -28,7 +29,7 @@
   <meta name="twitter:site" content="@creatisapp">
   <meta name="twitter:title" content="Créatis — L'IA pour créateurs YouTube">
   <meta name="twitter:description" content="Génère titres YouTube viraux, scripts complets et miniatures à fort CTR en 30 secondes. Essai gratuit.">
-  <meta name="twitter:image" content="https://creatis.app/images/higgsfield/thumbnail-youtube.png">
+  <meta name="twitter:image" content="https://creatis.app/images/higgsfield/hero-landing.png">
 
   <!-- ===== SCHEMA.ORG SaaS ===== -->
   <script type="application/ld+json">
@@ -101,9 +102,10 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
-  <link rel="preload" as="image" href="images/showcase/parachute.webp">
+  <link rel="preload" as="image" href="images/showcase/parachute.webp" fetchpriority="high">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/landing.css">
   <script defer src="/_vercel/insights/script.js"></script>
@@ -116,8 +118,26 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "wqzt6m475j");
   </script>
+  <script>
+    window.addEventListener('error', function(e) {
+      const src = (e.filename || '');
+      if (!src || src.indexOf('creatis.app') === -1 && src.indexOf('localhost') === -1 && src.indexOf('127.0.0.1') === -1) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  </script>
 </head>
 <body>
+
+  <!-- ===== BANDEAU OFFRE DE LANCEMENT ===== -->
+  <div id="bandeau-lancement" style="background:linear-gradient(90deg,#059669,#10b981);padding:10px 20px;text-align:center;font-size:13px;font-weight:700;color:#000;position:relative;z-index:100">
+    Offre de lancement — Pro à <strong>9,50€</strong> le premier mois
+    <span style="text-decoration:line-through;opacity:.65;margin:0 6px">19€</span>·
+    Limité dans le temps
+    <a href="#tarifs" style="color:#000;text-decoration:underline;margin-left:10px;font-weight:800">En profiter →</a>
+    <button onclick="document.getElementById('bandeau-lancement').style.display='none';document.getElementById('navbar').style.top='0'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#000;opacity:.6;line-height:1">✕</button>
+  </div>
 
   <!-- ===== NAVBAR ===== -->
   <nav class="navbar" id="navbar">
@@ -128,11 +148,11 @@
         <a href="#fonctionnalites" class="lien">Fonctionnalités</a>
         <a href="#comment-ca-marche" class="lien">Comment ça marche</a>
         <a href="#tarifs" class="lien">Tarifs</a>
-        <a href="/affiliation" class="lien" style="color:var(--vert)">Affiliation 30%</a>
         <a href="auth.html" class="btn-ghost btn-sm">Se connecter</a>
         <a href="auth.html" class="btn-primaire btn-sm">Commencer gratuitement</a>
       </div>
 
+      <a href="auth.html" class="btn-primaire btn-sm nav-cta-mobile">Commencer gratuitement</a>
       <button class="nav-burger" id="nav-burger" onclick="toggleMenu()" aria-label="Menu">
         ☰
       </button>
@@ -158,49 +178,69 @@
       <!-- Colonne texte -->
       <div class="hero-contenu">
         <div class="hero-badge">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Fait pour les créateurs YouTube francophones
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Fait pour les créateurs de contenu
         </div>
 
         <h1>
-          De l'idée<br>
-          à la vidéo <span class="surligne">prête</span><br>
-          à publier.
+          Crée ton contenu<br>
+          <span class="surligne" style="color:#10b981">10x plus vite.</span>
         </h1>
 
         <p class="hero-sous-titre">
-          Connecte ta chaîne YouTube. Décris ton sujet. Obtiens en 30 secondes un titre, un script complet, une description SEO et une stratégie sponsor — calibrés sur ta vraie chaîne.
+          Script, hook, titre, miniature, SEO… De plusieurs heures à <strong>30 secondes</strong> avec l'IA.
         </p>
 
         <div class="hero-cta">
           <div class="hero-cta-boutons">
             <a href="auth.html" class="btn-primaire btn-lg">
-              Essayer gratuitement
+              Générer mon premier script →
             </a>
-            <a href="#exemple-reel" class="btn-secondaire btn-lg">
-              Voir un exemple réel →
+            <a href="#exemple-reel" class="btn-secondaire btn-lg btn-secondaire-desktop">
+              Voir un exemple réel
+            </a>
+            <a href="#exemple-reel" class="hero-lien-exemple">
+              Voir un exemple réel ↓
             </a>
           </div>
           <p class="hero-note">
-            <span>Gratuit</span> · Sans carte bancaire · <span>Annulable à tout moment</span>
+            <span>Gratuit</span> · Sans carte bancaire · <span>50 crédits offerts</span>
           </p>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:14px">
+            <div style="display:flex">
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid #0a0f0a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">A</div>
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#4f46e5);border:2px solid #0a0f0a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-left:-6px">M</div>
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:2px solid #0a0f0a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-left:-6px">S</div>
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#be185d);border:2px solid #0a0f0a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-left:-6px">L</div>
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#14b8a6,#0d9488);border:2px solid #0a0f0a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-left:-6px">R</div>
+            </div>
+            <span style="font-size:13px;color:var(--texte-doux)"><strong style="color:#fff">+120 créateurs</strong> utilisent déjà Créatis</span>
+          </div>
         </div>
       </div>
 
-      <!-- Colonne visuelle — miniatures flottantes -->
+      <!-- Colonne visuelle — slider ads -->
       <div class="hero-visuel">
-        <div class="hero-mockup">
-          <div class="mockup-carte c1">
-            <img src="images/showcase/parachute.webp" alt="Miniature YouTube IA — Parachute" fetchpriority="high">
+        <div class="hero-slider" id="hero-slider">
+          <button class="hero-arrow hero-arrow-prev" onclick="heroSlide((heroIdx - 1 + heroSlides.length) % heroSlides.length)" aria-label="Précédent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="hero-slide actif">
+            <img src="images/ads/slide1.webp" alt="Pendant que tu cherches ton script, les autres ont déjà publié" fetchpriority="high" loading="eager">
           </div>
-          <div class="mockup-carte c2">
-            <img src="images/showcase/argent-youtube.webp" alt="Miniature YouTube IA — Argent" fetchpriority="high">
+          <div class="hero-slide">
+            <img src="images/ads/slide2.webp" alt="Ta miniature fait la différence entre 100 et 1M de vues" loading="lazy">
           </div>
-          <div class="mockup-carte c3">
-            <img src="images/showcase/avion-monaco.webp" alt="Miniature YouTube IA — Avion Monaco" fetchpriority="high">
+          <div class="hero-slide">
+            <img src="images/ads/slide3.webp" alt="2H de préparation vs 30 secondes avec Créatis" loading="lazy">
           </div>
-          <div class="mockup-carte c4">
-            <img src="images/showcase/voyage.webp" alt="Miniature YouTube IA — Voyage" fetchpriority="high">
+          <button class="hero-arrow hero-arrow-next" onclick="heroSlide((heroIdx + 1) % heroSlides.length)" aria-label="Suivant">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="hero-slider-dots">
+            <span class="hero-dot actif" onclick="heroSlide(0)"></span>
+            <span class="hero-dot" onclick="heroSlide(1)"></span>
+            <span class="hero-dot" onclick="heroSlide(2)"></span>
           </div>
         </div>
       </div>
@@ -212,156 +252,53 @@
   <div class="stats-barre">
     <div class="stats-grille">
       <div class="stat-item">
-        <h3>10</h3>
-        <p>Outils spécialisés YouTube</p>
+        <h3>+120</h3>
+        <p>Créateurs de contenu inscrits</p>
+      </div>
+      <div class="stat-item">
+        <h3>30s</h3>
+        <p>De l'idée au script complet</p>
       </div>
       <div class="stat-item">
         <h3>100%</h3>
         <p>Francophone, calibré YouTube FR</p>
       </div>
       <div class="stat-item">
-        <h3>0</h3>
-        <p>Prompt à écrire — interface guidée</p>
-      </div>
-      <div class="stat-item">
-        <h3>30s</h3>
-        <p>De l'idée au contenu complet</p>
+        <h3>0€</h3>
+        <p>Pour commencer — sans CB</p>
       </div>
     </div>
   </div>
 
-  <!-- ===== FONCTIONNALITÉS ===== -->
-  <section class="fonctionnalites" id="fonctionnalites">
-    <div class="section-entete">
-      <span class="section-label">10 outils inclus</span>
-      <h2>Tout le workflow d'un créateur YouTube,<br>sans ouvrir ChatGPT</h2>
-      <p>Chaque outil est conçu pour une tâche précise. Pas de prompts à écrire — tu remplis un formulaire, tu obtiens un résultat exploitable.</p>
+  <!-- ===== BANDE PROMESSE ===== -->
+  <div style="background:#0d1a10;border-top:1px solid rgba(16,185,129,.15);border-bottom:1px solid rgba(16,185,129,.15);padding:32px 20px">
+    <div style="max-width:900px;margin:0 auto;text-align:center">
+      <p style="color:var(--texte-doux);font-size:13px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 20px">Tu donnes le sujet → tu reçois en 30 secondes</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px">
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">5 titres accrocheurs</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Script complet avec timecodes</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Description SEO + 30 tags</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Miniature IA 1280×720</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Stratégie sponsor</span>
+        </div>
+      </div>
+      <a href="auth.html" style="display:inline-block;margin-top:24px;background:var(--vert);color:#000;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px">Générer mon premier script gratuitement →</a>
     </div>
-
-    <div class="agents-grille" id="agents-grille">
-
-      <div class="agent-carte" style="--couleur-agent: #10b981">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
-            <h3>YouTube Complet</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Génère en une fois : 5 titres accrocheurs, le script complet avec timecodes, la description SEO et 30 tags optimisés.</p>
-        <span class="agent-tag">Script · Titre · SEO · Tags</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #8b5cf6">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
-            <h3>Miniature IA</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Génère une vraie image de miniature YouTube HD avec gpt-image-1. Format 16:9 classique ou Short 9:16. Style pro, accrocheur, à fort CTR.</p>
-        <span class="agent-tag">gpt-image-1 · 16:9 & Short 9:16</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #f59e0b">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
-            <h3>YouTube Short</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Script viral 30 à 60 secondes optimisé pour YouTube Shorts, TikTok et Instagram Reels. Hook, textes à l'écran, hashtags.</p>
-        <span class="agent-tag">Shorts · TikTok · Reels</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #06b6d4">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>
-            <h3>Recyclage Contenu</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Transforme une vidéo en posts LinkedIn, thread Twitter/X, légende Instagram et newsletter. Un contenu, cinq formats.</p>
-        <span class="agent-tag">LinkedIn · Twitter · Newsletter</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #10b981">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></span>
-            <h3>Idées de Vidéos</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>30 idées personnalisées et un calendrier éditorial 4 semaines, basés sur ta niche et les tendances actuelles.</p>
-        <span class="agent-tag">30 idées · Calendrier éditorial</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #ec4899">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-            <h3>Réponses Commentaires</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Répond automatiquement à tes commentaires YouTube — positifs, négatifs, questions — avec le bon ton et la stratégie communauté.</p>
-        <span class="agent-tag">Engagement · Communauté</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #f97316">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
-            <h3>Prospection Sponsors</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Identifie 20 marques compatibles avec ta niche et génère 3 emails de prospection prêts à envoyer.</p>
-        <span class="agent-tag">Sponsors · Emails · Tarifs</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #eab308">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
-            <h3>Offre Commerciale</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Crée une proposition sponsor complète et professionnelle — media kit, ROI estimé, tarification, prochaines étapes.</p>
-        <span class="agent-tag">Media kit · Proposition · ROI</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #14b8a6">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
-            <h3>Analyse Vidéo</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Décortique n'importe quelle vidéo YouTube — structure, hooks, points forts, pistes d'amélioration et inspirations pour ta prochaine vidéo.</p>
-        <span class="agent-tag">Diagnostic · Hooks · Optimisation</span>
-      </div>
-
-      <div class="agent-carte" style="--couleur-agent: #6366f1">
-        <div class="agent-carte-header">
-          <div class="agent-carte-header-left">
-            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></span>
-            <h3>Chat IA Libre</h3>
-          </div>
-          <span class="agent-carte-chevron">+</span>
-        </div>
-        <p>Pose n'importe quelle question sur ta chaîne, ta stratégie ou ton contenu. Un assistant conversationnel au courant de tout ton univers.</p>
-        <span class="agent-tag">Conversation · Stratégie · Conseils</span>
-      </div>
-
-    </div>
-  </section>
+  </div>
 
   <!-- ===== DÉMO ANIMÉE ===== -->
   <section class="demo-section" id="demo">
@@ -370,57 +307,13 @@
       <h2>Créatis en action — génération en direct</h2>
       <p>Exactement comme dans l'app — en quelques secondes.</p>
     </div>
-    <div class="demo-frame-outer">
+    <div class="demo-gif-outer">
       <div class="demo-browser-bar">
         <div class="demo-dots"><span></span><span></span><span></span></div>
         <div class="demo-url-bar">creatis.app/app</div>
         <div style="width:60px"></div>
       </div>
-      <div class="demo-app">
-        <nav class="demo-nav">
-          <div class="demo-nav-logo">Créatis</div>
-          <button class="demo-nav-btn" id="dna-yt">🎬 <span>YouTube Complet</span></button>
-          <button class="demo-nav-btn demo-nav-actif" id="dna-short">⚡ <span>YouTube Short</span></button>
-          <button class="demo-nav-btn" id="dna-mini">🖼️ <span>Miniature Pro</span></button>
-          <button class="demo-nav-btn" id="dna-idees">💡 <span>30 Idées</span></button>
-          <div class="demo-nav-sep"></div>
-          <div class="demo-nav-plan"><span class="demo-nav-plan-badge">Pro</span><span>@FlemonoSekai</span></div>
-        </nav>
-        <div class="demo-workspace">
-          <div class="demo-workspace-header">
-            <span id="demo-ws-icon">⚡</span>
-            <span id="demo-ws-title">YouTube Short</span>
-          </div>
-          <div class="demo-ws-body">
-            <div class="demo-form-panel">
-              <div class="demo-form-field">
-                <label>Sujet de la vidéo *</label>
-                <div class="demo-input-wrap"><span id="dfi-sujet"></span><span class="demo-cursor" id="demo-cursor">|</span></div>
-              </div>
-              <div class="demo-form-field">
-                <label>Niche / Thématique</label>
-                <div class="demo-input-wrap demo-input-pre">Manga · Tuto dessin</div>
-              </div>
-              <div class="demo-form-field">
-                <label>Format</label>
-                <div class="demo-input-wrap demo-input-pre">Short viral — 30 à 60 secondes</div>
-              </div>
-              <button class="demo-btn-gen" id="demo-btn-gen">✨ Générer avec l'IA</button>
-              <div class="demo-progress-wrap" id="demo-progress-wrap">
-                <div class="demo-progress-track"><div class="demo-progress-fill" id="demo-progress-fill"></div></div>
-                <span class="demo-progress-lbl">Génération en cours…</span>
-              </div>
-            </div>
-            <div class="demo-result-panel" id="demo-result-panel">
-              <div class="demo-result-header">
-                <span>Résultat · YouTube Short</span>
-                <span class="demo-result-time" id="demo-result-time"></span>
-              </div>
-              <div class="demo-result-body" id="demo-result-body"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <img src="/images/demo-dashboard.gif" alt="Démo Créatis — dashboard en action" class="demo-gif-img" loading="lazy">
     </div>
   </section>
 
@@ -499,10 +392,6 @@
               <img src="images/showcase/voyage.webp" alt="Miniature voyage" loading="lazy">
               <div class="showcase-mini-caption">Voyage · soleil</div>
             </div>
-          </div>
-          <div class="showcase-mini-item showcase-mini-featured" style="margin-top:12px;border-radius:12px;overflow:hidden;aspect-ratio:16/6;position:relative;">
-            <img src="images/showcase/avion-monaco.webp" alt="Avion Monaco Créatis" style="width:100%;height:100%;object-fit:cover;" loading="lazy">
-            <div class="showcase-mini-caption">Avion de chasse · Monaco · généré en 45s</div>
           </div>
         </div>
       </div>
@@ -757,7 +646,7 @@ Flemo</div>
       <div class="etape">
         <div class="etape-numero">01.</div>
         <h3>Connecte ta chaîne</h3>
-        <p>Connecte ton compte YouTube en un clic. Créatis analyse automatiquement ta niche et ton style pour personnaliser tous les résultats.</p>
+        <p>Entre ton @handle YouTube, TikTok ou ton pseudo. Créatis analyse ta niche et ton style pour personnaliser tous les résultats.</p>
         <a href="auth.html" class="etape-lien">Commencer →</a>
       </div>
       <div class="etape actif">
@@ -768,8 +657,8 @@ Flemo</div>
       </div>
       <div class="etape">
         <div class="etape-numero">03.</div>
-        <h3>Génère et publie</h3>
-        <p>Le contenu est prêt en quelques secondes. Copie, ajuste si nécessaire, et publie directement sur YouTube.</p>
+        <h3>Génère ton contenu</h3>
+        <p>Script, titre, miniature prêts en quelques secondes. Copie, ajuste si nécessaire, et publie sur tous tes réseaux.</p>
         <a href="auth.html" class="etape-lien">Essayer gratuitement →</a>
       </div>
     </div>
@@ -818,13 +707,147 @@ Flemo</div>
         <strong>En résumé :</strong> ChatGPT, c'est un couteau suisse. Créatis, c'est le copilote qui connaît ta chaîne, ton audience et ton objectif — et qui travaille pendant que tu filmes.
       </div>
     </div>
+  <!-- ===== FONCTIONNALITÉS ===== -->
+  <section class="fonctionnalites" id="fonctionnalites">
+    <div class="section-entete">
+      <span class="section-label">10 outils inclus</span>
+      <h2>Tout le workflow d'un créateur de contenu,<br>sans ouvrir ChatGPT</h2>
+      <p>Chaque outil est conçu pour une tâche précise. Pas de prompts à écrire — tu remplis un formulaire, tu obtiens un résultat exploitable.</p>
+    </div>
+
+    <div class="agents-grille" id="agents-grille">
+
+      <div class="agent-carte" style="--couleur-agent: #10b981">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+            <h3>YouTube Complet</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Génère en une fois : 5 titres accrocheurs, le script complet avec timecodes, la description SEO et 30 tags optimisés.</p>
+        <span class="agent-tag">Script · Titre · SEO · Tags</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #8b5cf6">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+            <h3>Miniature IA</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Génère une vraie image de miniature YouTube HD avec gpt-image-1. Format 16:9 classique ou Short 9:16. Style pro, accrocheur, à fort CTR.</p>
+        <span class="agent-tag">gpt-image-1 · 16:9 & Short 9:16</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #f59e0b">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+            <h3>YouTube Short</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Script viral 30 à 60 secondes optimisé pour YouTube Shorts, TikTok et Instagram Reels. Hook, textes à l'écran, hashtags.</p>
+        <span class="agent-tag">Shorts · TikTok · Reels</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #06b6d4">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>
+            <h3>Recyclage Contenu</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Transforme une vidéo en posts LinkedIn, thread Twitter/X, légende Instagram et newsletter. Un contenu, cinq formats.</p>
+        <span class="agent-tag">LinkedIn · Twitter · Newsletter</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #10b981">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></span>
+            <h3>Idées de Vidéos</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>30 idées personnalisées et un calendrier éditorial 4 semaines, basés sur ta niche et les tendances actuelles.</p>
+        <span class="agent-tag">30 idées · Calendrier éditorial</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #ec4899">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <h3>Réponses Commentaires</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Répond automatiquement à tes commentaires YouTube — positifs, négatifs, questions — avec le bon ton et la stratégie communauté.</p>
+        <span class="agent-tag">Engagement · Communauté</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #f97316">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+            <h3>Prospection Sponsors</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Identifie 20 marques compatibles avec ta niche et génère 3 emails de prospection prêts à envoyer.</p>
+        <span class="agent-tag">Sponsors · Emails · Tarifs</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #eab308">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+            <h3>Offre Commerciale</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Crée une proposition sponsor complète et professionnelle — media kit, ROI estimé, tarification, prochaines étapes.</p>
+        <span class="agent-tag">Media kit · Proposition · ROI</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #14b8a6">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+            <h3>Analyse Vidéo</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Décortique n'importe quelle vidéo YouTube — structure, hooks, points forts, pistes d'amélioration et inspirations pour ta prochaine vidéo.</p>
+        <span class="agent-tag">Diagnostic · Hooks · Optimisation</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #6366f1">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></span>
+            <h3>Chat IA Libre</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Pose n'importe quelle question sur ta chaîne, ta stratégie ou ton contenu. Un assistant conversationnel au courant de tout ton univers.</p>
+        <span class="agent-tag">Conversation · Stratégie · Conseils</span>
+      </div>
+
+    </div>
+  </section>
+
+
   </section>
 
   <!-- ===== TARIFS ===== -->
   <!-- ===== BANNIÈRE COUNTDOWN CREATIS20 ===== -->
   <div class="early-banner" id="early-banner">
     <div class="early-banner-inner">
-      <span>🔥 Offre early adopters — code <strong>CREATIS20</strong> · -20% à vie ·</span>
+      <span>🔥 Offre de lancement — code <strong>CREATIS50</strong> pour -50% sur le 1er mois ·</span>
       <span class="early-countdown" id="early-countdown">⏳ expire dans <strong id="early-temps">47:59:59</strong></span>
       <button class="early-fermer" onclick="document.getElementById('early-banner').style.display='none'">✕</button>
     </div>
@@ -873,14 +896,15 @@ Flemo</div>
 
       <!-- Pro -->
       <div class="carte-tarif populaire">
-        <span class="badge-populaire">⭐ Le plus populaire</span>
+        <span class="badge-populaire" style="background:#f59e0b;color:#000">Offre de lancement</span>
         <h3>Pro</h3>
         <div class="prix">
           <span class="prix-devise">€</span>
-          <span class="prix-montant" id="prix-pro">19</span>
-          <span class="prix-periode">par mois</span>
+          <span class="prix-montant" id="prix-pro">9,50</span>
+          <span class="prix-periode">le 1er mois</span>
         </div>
-        <p class="carte-tarif-desc">Pour les créateurs sérieux qui veulent scaler leur chaîne YouTube.</p>
+        <p style="font-size:12px;color:var(--texte-muted);margin:-8px 0 12px">puis <span id="prix-pro-normal">19€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</p>
+        <p class="carte-tarif-desc">Pour les créateurs sérieux qui veulent scaler leur contenu.</p>
         <div class="tarif-garanties">
           <span>✓ Essai 7 jours</span>
           <span>✓ Sans CB requise</span>
@@ -889,15 +913,15 @@ Flemo</div>
         <ul class="fonctionnalites-liste">
           <li><span class="check">✓</span> Générations <strong>illimitées</strong></li>
           <li><span class="check">✓</span> Les <strong>10 agents IA</strong> débloqués</li>
-          <li><span class="check">✓</span> <strong>10 miniatures HD</strong> / mois</li>
+          <li><span class="check">✓</span> <strong>30 crédits image</strong> / mois</li>
           <li><span class="check">✓</span> Prospection sponsors</li>
           <li><span class="check">✓</span> Recyclage multiplateforme</li>
           <li><span class="check">✓</span> Support prioritaire</li>
         </ul>
-        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;text-align:center;font-size:12px;color:#10b981;">
-          🎁 Code <strong>CREATIS20</strong> — -20% à vie
+        <div id="launch50-block" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:8px;padding:8px 12px;margin-bottom:10px;text-align:center;font-size:12px;color:#f59e0b;">
+          Code promo : <strong>CREATIS50</strong> · <span id="launch50-label">-50% sur le 1er mois</span>
         </div>
-        <a href="auth.html?plan=pro" class="btn-primaire w-100 texte-centre">Démarrer le Pro</a>
+        <a href="auth.html?plan=pro" class="btn-primaire w-100 texte-centre">Démarrer le Pro →</a>
       </div>
 
       <!-- Studio -->
@@ -917,14 +941,11 @@ Flemo</div>
         <ul class="fonctionnalites-liste">
           <li><span class="check">✓</span> Crédits <strong>illimités</strong></li>
           <li><span class="check">✓</span> Les 10 agents IA débloqués</li>
-          <li><span class="check">✓</span> <strong>30 miniatures HD</strong> / mois</li>
+          <li><span class="check">✓</span> <strong>100 crédits image</strong> / mois</li>
           <li><span class="check">✓</span> 3 chaînes YouTube</li>
           <li><span class="check">✓</span> Accès API</li>
           <li><span class="check">✓</span> Support dédié & onboarding</li>
         </ul>
-        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;text-align:center;font-size:12px;color:#10b981;">
-          🎁 Code <strong>CREATIS20</strong> — -20% à vie
-        </div>
         <a href="auth.html?plan=studio" class="btn-secondaire w-100 texte-centre">Démarrer Studio</a>
       </div>
 
@@ -946,7 +967,7 @@ Flemo</div>
           <tbody>
             <tr><td>Générations IA</td><td>50 offertes</td><td class="col-populaire">Illimitées</td><td>Illimitées</td></tr>
             <tr><td>Outils disponibles</td><td>3 / 10</td><td class="col-populaire">10 / 10</td><td>10 / 10</td></tr>
-            <tr><td>Miniatures HD / mois</td><td>—</td><td class="col-populaire">10</td><td>30</td></tr>
+            <tr><td>Miniatures HD / mois</td><td>5</td><td class="col-populaire">30</td><td>100</td></tr>
             <tr><td>Connexion YouTube</td><td>✅</td><td class="col-populaire">✅</td><td>✅</td></tr>
             <tr><td>Prospection sponsors</td><td>—</td><td class="col-populaire">✅</td><td>✅</td></tr>
             <tr><td>Recyclage contenu</td><td>—</td><td class="col-populaire">✅</td><td>✅</td></tr>
@@ -959,29 +980,13 @@ Flemo</div>
 
   </section>
 
-  <!-- ===== CTA FINAL ===== -->
-  <section class="cta-final">
-    <div class="cta-conteneur">
-      <div class="hero-badge" style="margin-bottom:24px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        La plateforme YouTube IA tout-en-un
-      </div>
-      <h2>Essaie gratuitement.<br>Reste si ça <span class="surligne">te fait gagner du temps</span>.</h2>
-      <p>Connecte ta chaîne YouTube en 30 secondes et génère ton premier script, titre et description gratuitement. Sans carte bancaire, sans engagement.</p>
-      <div class="hero-cta-boutons" style="justify-content:center;">
-        <a href="auth.html" class="btn-primaire btn-lg">
-          ✨ Commencer gratuitement
-        </a>
-      </div>
-    </div>
-  </section>
 
   <!-- ===== OUTILS GRATUITS SEO ===== -->
   <section style="padding:80px 24px;background:var(--bg)">
     <div style="max-width:1100px;margin:0 auto">
       <div class="section-entete" style="text-align:center;margin-bottom:40px">
         <span class="section-label">Outils gratuits</span>
-        <h2 style="font-size:clamp(24px,4vw,36px);margin-top:12px">Génère ton contenu YouTube gratuitement</h2>
+        <h2 style="font-size:clamp(24px,4vw,36px);margin-top:12px">Génère ton contenu gratuitement</h2>
         <p style="color:var(--texte-doux);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto">Nos outils IA gratuits t'aident à créer titres, scripts et descriptions optimisées — sans inscription.</p>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
@@ -1073,7 +1078,7 @@ Flemo</div>
       </div>
       <div class="footer-bas">
         <p>© 2025 Créatis · <a href="cgu.html">CGU</a> · <a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Politique de confidentialité</a> · <a href="mailto:contact@creatis.app">contact@creatis.app</a></p>
-        <p>Fait avec ❤️ pour les créateurs YouTube</p>
+        <p>Fait avec ❤️ pour les créateurs de contenu</p>
       </div>
     </div>
   </footer>
@@ -1095,14 +1100,29 @@ Flemo</div>
       if (thumb) thumb.style.transform = annuel ? 'translateX(22px)' : '';
       if (labelMens) labelMens.style.color = annuel ? 'var(--texte-muted)' : 'var(--texte)';
       if (labelAnn) labelAnn.style.color = annuel ? 'var(--texte)' : 'var(--texte-muted)';
-      const prix = annuel ? prixAnn : prixMens;
-      ['pro', 'studio'].forEach(p => {
-        const el = document.getElementById(`prix-${p}`);
-        if (el) el.textContent = prix[p];
-      });
-      document.querySelectorAll('.prix-periode').forEach(el => {
-        if (el.textContent.includes('par')) el.textContent = annuel ? 'par mois, facturé annuellement' : 'par mois';
-      });
+
+      // Pro
+      const elPro = document.getElementById('prix-pro');
+      const elProNormal = document.getElementById('prix-pro-normal');
+      const elProSub = elProNormal ? elProNormal.closest('p') : null;
+      const elProPeriode = elPro ? elPro.closest('.prix').querySelector('.prix-periode') : null;
+      if (elPro) elPro.textContent = annuel ? '7,50' : '9,50';
+      if (elProPeriode) elProPeriode.textContent = 'le 1er mois';
+      if (elProNormal) elProNormal.textContent = annuel ? '15€' : '19€';
+      const elProNormalPeriode = document.getElementById('prix-pro-normal-periode');
+      if (elProNormalPeriode) elProNormalPeriode.textContent = annuel ? '/mois, facturé annuellement' : '/mois';
+      if (elProSub) elProSub.style.display = '';
+
+      // Label CREATIS50
+      const elLaunch = document.getElementById('launch50-label');
+      if (elLaunch) elLaunch.textContent = '-50% sur le 1er mois';
+
+      // Studio
+      const elStudio = document.getElementById('prix-studio');
+      const elStudioPeriode = elStudio ? elStudio.closest('.prix').querySelector('.prix-periode') : null;
+      if (elStudio) elStudio.textContent = annuel ? prixAnn.studio : prixMens.studio;
+      if (elStudioPeriode) elStudioPeriode.textContent = annuel ? 'par mois, facturé annuellement' : 'par mois';
+
       document.querySelectorAll('[href*="plan="]').forEach(a => {
         const planMatch = a.href.match(/plan=(\w+)/);
         if (planMatch) a.href = `auth.html?plan=${planMatch[1]}` + (annuel ? '&billing=annual' : '');
@@ -1172,6 +1192,7 @@ Flemo</div>
     // Navbar scroll effect
     window.addEventListener('scroll', () => {
       const navbar = document.getElementById('navbar');
+      if (!navbar) return;
       if (window.scrollY > 50) navbar.classList.add('defilé');
       else navbar.classList.remove('defilé');
     });
@@ -1189,12 +1210,25 @@ Flemo</div>
       document.getElementById('nav-burger').textContent = '☰';
     }
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="js/animations.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script defer src="js/animations.js"></script>
 
   <!-- ===== ACCORDÉON AGENTS MOBILE ===== -->
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const bandeau = document.getElementById('bandeau-lancement');
+      const navbar = document.getElementById('navbar');
+      if (bandeau && navbar) {
+        const h = bandeau.offsetHeight;
+        navbar.style.top = h + 'px';
+        window.addEventListener('scroll', function() {
+          if (window.scrollY > h) navbar.style.top = '0';
+          else navbar.style.top = (h - window.scrollY) + 'px';
+        });
+      }
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
       function initAccordeon() {
         if (window.innerWidth > 768) return;
@@ -1480,6 +1514,47 @@ Flemo</div>
       runDemo();
     }
   })();
+  </script>
+  <!-- ===== STICKY CTA MOBILE ===== -->
+  <div id="sticky-mobile-cta" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:linear-gradient(to top,#0a0f0a 60%,transparent);padding:16px 20px 24px;text-align:center">
+    <a href="auth.html" style="display:block;background:var(--vert);color:#000;font-weight:800;font-size:15px;padding:14px 20px;border-radius:10px;text-decoration:none">
+      Générer mon premier script — Gratuit →
+    </a>
+  </div>
+  <script>
+    // Afficher le sticky CTA mobile uniquement sur mobile après 3 secondes
+    if (window.innerWidth < 768) {
+      setTimeout(() => {
+        const el = document.getElementById('sticky-mobile-cta');
+        if (el) el.style.display = 'block';
+      }, 3000);
+      // Cacher si l'utilisateur clique sur le CTA principal
+      document.querySelectorAll('a[href="auth.html"]').forEach(a => {
+        a.addEventListener('click', () => {
+          const el = document.getElementById('sticky-mobile-cta');
+          if (el) el.style.display = 'none';
+        });
+      });
+    }
+  </script>
+
+  <script>
+    // Hero slider
+    (function() {
+      const heroSlides = document.querySelectorAll('.hero-slide');
+      const heroDots = document.querySelectorAll('.hero-dot');
+      if (!heroSlides.length) return;
+      let heroIdx = 0;
+      function heroSlide(n) {
+        if (heroSlides[heroIdx]) heroSlides[heroIdx].classList.remove('actif');
+        if (heroDots[heroIdx]) heroDots[heroIdx].classList.remove('actif');
+        heroIdx = n;
+        if (heroSlides[heroIdx]) heroSlides[heroIdx].classList.add('actif');
+        if (heroDots[heroIdx]) heroDots[heroIdx].classList.add('actif');
+      }
+      window.heroSlide = heroSlide;
+      setInterval(() => heroSlide((heroIdx + 1) % heroSlides.length), 4000);
+    })();
   </script>
 </body>
 </html>

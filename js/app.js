@@ -248,6 +248,118 @@ class AppCreatis {
     } catch { return this.getMiniaturesMois(); }
   }
 
+  /* ===== REPURPOSE CREDITS ===== */
+  _getCleRepurposeMois() {
+    const n = new Date();
+    return `creatis_repurpose_${n.getFullYear()}_${n.getMonth()}`;
+  }
+
+  getRepurposeMois() {
+    return parseInt(localStorage.getItem(this._getCleRepurposeMois()) || '0');
+  }
+
+  getMaxRepurpose() {
+    const user = this.getUtilisateur();
+    const plan = user?.plan || 'gratuit';
+    const limits = { gratuit: 0, pro: 5, studio: 20 };
+    return limits[plan] ?? 0;
+  }
+
+  incrementerRepurpose() {
+    const cle = this._getCleRepurposeMois();
+    const count = this.getRepurposeMois() + 1;
+    localStorage.setItem(cle, count.toString());
+    return count;
+  }
+
+  verifierQuotaRepurpose() {
+    const user = this.getUtilisateur();
+    if (!user || user.plan === 'gratuit') {
+      this.afficherToast('🔒 Repurpose Vidéo est disponible à partir du plan Pro (5/mois).', 'info', 4000);
+      this.afficherModalUpgrade();
+      return false;
+    }
+    const max = this.getMaxRepurpose();
+    const used = this.getRepurposeMois();
+    if (used >= max) {
+      this.afficherToast(`❌ Limite Repurpose atteinte (${used}/${max} ce mois). Renouvellement le 1er.`, 'erreur', 5000);
+      return false;
+    }
+    return true;
+  }
+
+  async _appelRepurpose(url) {
+    const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/repurpose', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ url })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.upgrade_required) { this.afficherModalUpgrade(); throw new Error('upgrade'); }
+      throw new Error(data.error || 'Erreur Repurpose');
+    }
+    return data;
+  }
+
+  afficherRepurpose(agentId, data) {
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return;
+
+    const panneau = document.getElementById(`panneau-${agentId}`);
+    const zone = panneau?.querySelector('.agent-resultat') || panneau?.querySelector('.resultat-zone');
+    if (!zone) { this.afficherTexte(agentId, data.content); return; }
+
+    const content = data.content || '';
+    const titre = data.title ? `<div class="repurpose-meta"><strong>${data.title}</strong>${data.duration ? ` · ${data.duration}` : ''}</div>` : '';
+
+    // Parser les sections du contenu
+    const sections = [
+      { key: 'tweets', label: '🐦 Tweets', icon: 'twitter', regex: /##\s*🐦\s*TWEETS.*?(?=##\s*💼|$)/s },
+      { key: 'linkedin', label: '💼 LinkedIn', icon: 'linkedin', regex: /##\s*💼\s*POSTS LINKEDIN.*?(?=##\s*⚡|$)/s },
+      { key: 'shorts', label: '⚡ Shorts', icon: 'shorts', regex: /##\s*⚡\s*IDÉES SHORTS.*?(?=##\s*🖼️|$)/s },
+      { key: 'miniatures', label: '🖼️ Miniatures', icon: 'image', regex: /##\s*🖼️\s*CONCEPTS MINIATURES.*$/s }
+    ];
+
+    const tabs = sections.map((s, i) => `
+      <button class="repurpose-tab${i === 0 ? ' actif' : ''}" onclick="app._repurposeTab(this, 'rp-${agentId}-${s.key}')">
+        ${s.label}
+      </button>`).join('');
+
+    const panels = sections.map((s, i) => {
+      const match = content.match(s.regex);
+      const sectionContent = match ? match[0].replace(/##\s*[^\n]+\n/, '').trim() : '(Non généré)';
+      return `<div class="repurpose-panel${i === 0 ? ' actif' : ''}" id="rp-${agentId}-${s.key}">
+        ${this.renduMarkdown(sectionContent)}
+      </div>`;
+    }).join('');
+
+    zone.innerHTML = `
+      <div class="repurpose-resultat">
+        ${titre}
+        <div class="repurpose-tabs">${tabs}</div>
+        <div class="repurpose-panels">${panels}</div>
+        <div class="resultat-actions" style="margin-top:12px">
+          <button class="btn-ghost btn-sm" onclick="app.telechargerResultat('${agentId}')">⬇️ Télécharger tout</button>
+          <button class="btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('panneau-${agentId}').querySelector('.repurpose-panels .actif')?.innerText||'').then(()=>app.afficherToast('✅ Copié !','succes'))">📋 Copier onglet</button>
+        </div>
+      </div>`;
+  }
+
+  _repurposeTab(btn, panelId) {
+    const container = btn.closest('.repurpose-resultat');
+    if (!container) return;
+    container.querySelectorAll('.repurpose-tab').forEach(b => b.classList.remove('actif'));
+    container.querySelectorAll('.repurpose-panel').forEach(p => p.classList.remove('actif'));
+    btn.classList.add('actif');
+    document.getElementById(panelId)?.classList.add('actif');
+  }
+
   _mettreAJourQuotaMiniaturesDash() {
     const used = this.getMiniaturesMois();
     const max = this.getMaxMiniatures();
@@ -348,22 +460,22 @@ class AppCreatis {
   /* ===== SIDEBAR ===== */
   construireSidebar() {
     const nav = document.getElementById('agents-nav');
-    if (!nav) return;
+    const chatNav = document.getElementById('chat-nav');
 
-    nav.innerHTML = AGENTS.map(agent => `
-      <button
-        class="agent-btn"
-        id="btn-${agent.id}"
-        onclick="app.selectionnerAgent('${agent.id}')"
-        title="${agent.description}"
-      >
+    const renderBtn = agent => `
+      <button class="agent-btn" id="btn-${agent.id}" onclick="app.selectionnerAgent('${agent.id}')" title="${agent.description}">
         <span class="agent-btn-icone">${agent.icone}</span>
         <span class="agent-btn-info">
           <span class="agent-btn-nom">${agent.nom}</span>
           <span class="agent-btn-desc">${agent.description.substring(0, 45)}${agent.description.length > 45 ? '…' : ''}</span>
         </span>
-      </button>
-    `).join('');
+      </button>`;
+
+    const agentsPrincipaux = AGENTS.filter(a => a.id !== 'chat-libre');
+    const chatLibre = AGENTS.find(a => a.id === 'chat-libre');
+
+    if (nav) nav.innerHTML = agentsPrincipaux.map(renderBtn).join('');
+    if (chatNav && chatLibre) chatNav.innerHTML = renderBtn(chatLibre);
   }
 
   afficherUtilisateur() {
@@ -420,9 +532,18 @@ class AppCreatis {
 
     this.agentActuel = agent;
 
-    // Cacher le dashboard
+    // Mode split : dashboard à gauche, agent à droite (CSS Grid)
     const dash = document.getElementById('panneau-dashboard');
-    if (dash) dash.style.display = 'none';
+    const wsResizer = document.getElementById('workspace-resizer');
+    const workspace = document.getElementById('workspace');
+    const savedW = parseInt(localStorage.getItem('creatis_workspace_split') || '360', 10);
+    if (dash) { dash.style.display = ''; dash.classList.add('split-mode'); }
+    if (workspace) {
+      workspace.classList.add('mode-split');
+      workspace.style.gridTemplateColumns = `${savedW}px 6px 1fr`;
+    }
+    if (wsResizer) wsResizer.style.display = 'flex';
+    if (!this._wsResizerInited) this._initWorkspaceResizer();
 
     // Mettre à jour sidebar
     document.querySelectorAll('.agent-btn').forEach(btn => btn.classList.remove('actif'));
@@ -494,9 +615,16 @@ class AppCreatis {
     panneau.className = 'panneau-agent actif';
     panneau.id = `panneau-${agent.id}`;
 
+    const savedW = parseInt(localStorage.getItem('creatis_form_width') || '380');
+    const formW = Math.min(600, Math.max(280, savedW));
+
     panneau.innerHTML = `
-      <div class="zone-formulaire">
+      <div class="zone-formulaire" id="form-zone-${agent.id}" style="width:${formW}px;min-width:${formW}px">
         <div class="formulaire-entete">
+          <button class="btn-retour-dashboard" onclick="app.afficherDashboard()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Tableau de bord
+          </button>
           <div class="agent-titre-form">
             <span class="agent-emoji">${agent.icone}</span>
             <h2>${agent.nom}</h2>
@@ -507,16 +635,25 @@ class AppCreatis {
           ${this.construireFormulaire(agent)}
         </div>
         <div class="formulaire-pied">
-          <button class="btn-generer" id="btn-generer-${agent.id}" onclick="app.generer('${agent.id}')">
-            <span class="icone-btn">✨</span>
+          <button class="btn-generer" id="btn-generer-${agent.id}" onclick="app.generer('${agent.id}', event)">
+            <span class="icone-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
             <span class="texte-btn">Générer avec l'IA</span>
           </button>
         </div>
       </div>
 
+      <div class="zone-resizer" id="resizer-${agent.id}" title="Glisser pour redimensionner">
+        <div class="zone-resizer-handle"></div>
+      </div>
+
       <div class="zone-resultats" id="resultats-${agent.id}">
         <div class="resultats-vide">
-          <div class="icone-vide">${agent.icone}</div>
+          <div class="agent-sphere-wrap">
+            <canvas class="agent-sphere-canvas" id="sphere-${agent.id}" width="160" height="160"></canvas>
+            <div class="agent-sphere-overlay">
+              <span class="agent-sphere-icone">${agent.icone}</span>
+            </div>
+          </div>
           <h3>Prêt à générer</h3>
           <p>Remplis le formulaire et clique sur<br>"Générer avec l'IA"</p>
         </div>
@@ -528,14 +665,17 @@ class AppCreatis {
           <div class="resultats-toolbar">
             <span class="resultats-toolbar-titre">Résultat généré</span>
             <div class="resultats-actions">
-              <button class="btn-ghost btn-sm" onclick="app.copierResultat('${agent.id}')" title="Copier">
-                📋 Copier
+              <button class="btn-ghost btn-sm" onclick="app.copierResultat('${agent.id}')" title="Copier" style="display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copier
               </button>
-              <button class="btn-ghost btn-sm" onclick="app.telechargerResultat('${agent.id}')" title="Télécharger">
-                ⬇️ Télécharger
+              <button class="btn-ghost btn-sm" onclick="app.telechargerResultat('${agent.id}')" title="Télécharger" style="display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Télécharger
               </button>
-              <button class="btn-ghost btn-sm" onclick="app.reinitialiserResultat('${agent.id}')" title="Effacer">
-                🗑️ Effacer
+              <button class="btn-ghost btn-sm" onclick="app.reinitialiserResultat('${agent.id}')" title="Effacer" style="display:flex;align-items:center;gap:5px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                Effacer
               </button>
             </div>
           </div>
@@ -545,6 +685,41 @@ class AppCreatis {
     `;
 
     workspace.appendChild(panneau);
+
+    // Sphère animée
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById(`sphere-${agent.id}`);
+      if (canvas) this._animerSphere(canvas, 52, 160);
+    });
+
+    // Resizer draggable
+    const resizer = document.getElementById(`resizer-${agent.id}`);
+    const formZone = document.getElementById(`form-zone-${agent.id}`);
+    if (resizer && formZone) {
+      let startX, startW;
+      const onMove = (e) => {
+        const dx = (e.clientX || e.touches?.[0]?.clientX || 0) - startX;
+        const newW = Math.min(620, Math.max(260, startW + dx));
+        formZone.style.width = newW + 'px';
+        formZone.style.minWidth = newW + 'px';
+        localStorage.setItem('creatis_form_width', newW);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      resizer.addEventListener('mousedown', (e) => {
+        startX = e.clientX;
+        startW = formZone.offsetWidth;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        e.preventDefault();
+      });
+    }
   }
 
   construireFormulaire(agent) {
@@ -620,15 +795,23 @@ class AppCreatis {
   }
 
   /* ===== GÉNÉRATION ===== */
-  async generer(agentId) {
+  async generer(agentId, evt) {
     if (this.enChargement) return;
 
     const agent = AGENTS.find(a => a.id === agentId);
     if (!agent) return;
 
-    // Vérifier limites plan gratuit
+    // Vérifier limites
     const user = this.getUtilisateur();
-    if (user?.plan === 'gratuit') {
+    if (user?.demo) {
+      // Mode démo : 3 générations puis popup signup
+      const demoCount = parseInt(localStorage.getItem('creatis_demo_count') || '0');
+      if (demoCount >= 3) {
+        evt?.stopPropagation();
+        this.afficherModalSignup();
+        return;
+      }
+    } else if (user?.plan === 'gratuit') {
       const count = this.getGenerations();
       if (count >= CONFIG.PLANS.gratuit.generations) {
         this.afficherModalUpgrade();
@@ -714,7 +897,14 @@ class AppCreatis {
         ? YouTubeContext.getContexte(agentId)
         : '';
 
-      if (agent.type === 'miniature') {
+      if (agent.type === 'repurpose') {
+        if (!this.verifierQuotaRepurpose()) return;
+        this.afficherToast('🎙️ Transcription en cours… (30-90 secondes)', 'info', 15000);
+        const data = await this._appelRepurpose(donnees.url);
+        this.afficherRepurpose(agentId, data);
+        this.incrementerRepurpose();
+        resultat = data.content;
+      } else if (agent.type === 'miniature') {
         if (!this.verifierQuotaMiniatures()) return;
 
         const panneau = document.getElementById(`panneau-${agentId}`);
@@ -745,7 +935,15 @@ class AppCreatis {
 
       this.incrementerGenerations();
       this._sauvegarderHistorique(agent, donnees, resultat);
-      this.afficherToast('✅ Contenu généré avec succès !', 'succes');
+      if (user?.demo) {
+        const dc = parseInt(localStorage.getItem('creatis_demo_count') || '0');
+        localStorage.setItem('creatis_demo_count', (dc + 1).toString());
+        const restants = 3 - (dc + 1);
+        if (restants > 0) this.afficherToast(`✅ Généré ! Il te reste ${restants} test${restants > 1 ? 's' : ''} gratuit${restants > 1 ? 's' : ''} en mode démo`, 'succes');
+        else this.afficherToast('✅ Généré ! C\'est ton dernier test démo — crée ton compte pour continuer', 'succes', 5000);
+      } else {
+        this.afficherToast('✅ Contenu généré avec succès !', 'succes');
+      }
 
     } catch (erreur) {
       console.error('Erreur génération:', erreur);
@@ -979,12 +1177,21 @@ class AppCreatis {
           { role: 'user', content: prompt }
         ],
         temperature: 0.8,
-        max_tokens: 4096
+        max_tokens: 8000
       })
     });
 
     if (!reponse.ok) {
       const erreur = await reponse.json().catch(() => ({}));
+      if (reponse.status === 401) {
+        localStorage.removeItem('creatis_user');
+        setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+        throw new Error('Session expirée — tu vas être redirigé pour te reconnecter');
+      }
+      if (reponse.status === 403 && erreur.demo_limit) {
+        setTimeout(() => this.afficherModalSignup(), 100);
+        throw new Error('Limite démo atteinte');
+      }
       throw new Error(erreur.error || `Erreur API Groq (${reponse.status})`);
     }
 
@@ -1017,6 +1224,8 @@ class AppCreatis {
     }
 
     const data = await response.json();
+    const url = data.data?.[0]?.url;
+    if (url) return url;
     const b64 = data.data?.[0]?.b64_json;
     if (!b64) throw new Error('Réponse image invalide du serveur');
     return `data:image/jpeg;base64,${b64}`;
@@ -1050,7 +1259,10 @@ class AppCreatis {
 
     if (vide) vide.style.display = 'none';
     if (texteEl) texteEl.innerHTML = this.renduMarkdown(texte);
-    if (conteneur) conteneur.classList.add('visible');
+    if (conteneur) {
+      conteneur.classList.add('visible');
+      setTimeout(() => conteneur.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
   }
 
   afficherImage(agentId, dataUrl) {
@@ -1281,6 +1493,12 @@ class AppCreatis {
     if (modal) modal.classList.add('visible');
   }
 
+  /* ===== MODAL SIGNUP (démo) ===== */
+  afficherModalSignup() {
+    const modal = document.getElementById('modal-signup');
+    if (modal) modal.classList.add('visible');
+  }
+
   fermerModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove('visible');
@@ -1305,12 +1523,31 @@ class AppCreatis {
     }
   }
 
+  afficherHistorique() {
+    this.afficherDashboard();
+    // Sur mobile, switcher sur l'onglet Historique
+    setTimeout(() => {
+      if (window.innerWidth <= 640 && typeof dashTab === 'function') dashTab('historique');
+    }, 50);
+    this.fermerSidebarMobile();
+  }
+
   /* ===== TABLEAU DE BORD ===== */
   afficherDashboard() {
     document.querySelectorAll('.panneau-agent').forEach(p => p.classList.remove('actif'));
     document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('actif'));
     const dash = document.getElementById('panneau-dashboard');
-    if (dash) dash.style.display = '';
+    if (dash) {
+      dash.style.display = '';
+      dash.classList.remove('split-mode');
+    }
+    const workspace = document.getElementById('workspace');
+    if (workspace) {
+      workspace.classList.remove('mode-split');
+      workspace.style.gridTemplateColumns = '';
+    }
+    const wsResizer = document.getElementById('workspace-resizer');
+    if (wsResizer) wsResizer.style.display = 'none';
     const btnDash = document.getElementById('btn-dashboard');
     if (btnDash) btnDash.classList.add('actif');
     const headerTitre = document.getElementById('header-titre');
@@ -1325,54 +1562,209 @@ class AppCreatis {
     this._dashMettreAJourStats();
     this._dashMettreAJourHistorique();
     this._dashMettreAJourChaine();
+
+    const gens = this.getGenerations();
+
+    // Affiliation après 3 générations
     const affilBloc = document.getElementById('dash-affiliation-bloc');
-    if (affilBloc) affilBloc.style.display = this.getGenerations() >= 3 ? '' : 'none';
+    if (affilBloc) affilBloc.style.display = gens >= 3 ? '' : 'none';
+
+    // Stats compactes dans plan card
+    const statsCompact = document.getElementById('dash-stats-compact');
+    if (statsCompact) statsCompact.style.display = gens > 0 ? '' : 'none';
+
+    // Greeting personnalisé
+    const greetingEl = document.getElementById('dash-greeting');
+    if (greetingEl) {
+      const user = this.getUtilisateur();
+      const nom = user?.nom || (user?.email && user.email !== 'demo@creatis.fr' ? user.email.split('@')[0] : '');
+      const heure = new Date().getHours();
+      const salut = heure < 18 ? 'Bonjour' : 'Bonsoir';
+      greetingEl.textContent = nom ? `${salut} ${nom}` : salut;
+    }
+
+    // Date en haut à droite
+    const dateEl = document.getElementById('dash-header-date');
+    if (dateEl) {
+      const now = new Date();
+      const opts = { weekday: 'long', day: 'numeric', month: 'long' };
+      dateEl.textContent = now.toLocaleDateString('fr-FR', opts);
+    }
+
+    // KPI quota restant
+    const kpiQuota = document.getElementById('dash-kpi-quota');
+    const kpiPlanLbl = document.getElementById('dash-kpi-plan-lbl');
+    if (kpiQuota) {
+      const user = this.getUtilisateur();
+      const plan = user?.plan || 'gratuit';
+      const planCfg = CONFIG.PLANS[plan] || CONFIG.PLANS.gratuit;
+      if (plan !== 'gratuit') {
+        kpiQuota.textContent = '∞';
+        if (kpiPlanLbl) kpiPlanLbl.textContent = 'générations illimitées';
+      } else {
+        const restant = Math.max(0, planCfg.generations - gens);
+        kpiQuota.textContent = restant;
+        if (kpiPlanLbl) kpiPlanLbl.textContent = `sur ${planCfg.generations} gratuites`;
+      }
+    }
+
+    // AI tip selon contexte
+    const tipEl = document.getElementById('dash-ai-tip');
+    if (tipEl) {
+      if (gens === 0) {
+        tipEl.textContent = 'Lance ton premier agent pour créer script, titres et description YouTube en 30 secondes.';
+      } else if (gens < 5) {
+        tipEl.textContent = `${gens} génération${gens > 1 ? 's' : ''} effectuée${gens > 1 ? 's' : ''} — continue, chaque vidéo optimisée compte !`;
+      } else {
+        tipEl.textContent = `${gens} générations — tu es sur la bonne voie. Essaie l'agent Prospection Sponsors !`;
+      }
+    }
+
+    // Initialiser la sphère animée (une seule fois)
+    if (!this._sphereInit) {
+      this._sphereInit = true;
+      requestAnimationFrame(() => this._initAISphere());
+    }
+  }
+
+  _initAISphere() {
+    const canvas = document.getElementById('ai-sphere-canvas');
+    if (canvas) this._animerSphere(canvas, 72, 200);
+  }
+
+
+  _initWorkspaceResizer() {
+    this._wsResizerInited = true;
+    const resizer = document.getElementById('workspace-resizer');
+    if (!resizer) return;
+    let startX, startW;
+    const onMove = (e) => {
+      const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+      const dx = x - startX;
+      const ws = document.getElementById('workspace');
+      if (!ws) return;
+      const maxW = ws.offsetWidth - 212;
+      const newW = Math.min(maxW, Math.max(260, startW + dx));
+      ws.style.gridTemplateColumns = `${newW}px 6px 1fr`;
+      localStorage.setItem('creatis_workspace_split', newW);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    resizer.addEventListener('mousedown', (e) => {
+      const ws = document.getElementById('workspace');
+      if (!ws) return;
+      startX = e.clientX;
+      startW = parseInt(ws.style.gridTemplateColumns) || parseInt(localStorage.getItem('creatis_workspace_split') || '360', 10);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+  }
+
+  _animerSphere(canvas, R = 60, size = 160) {
+    if (!canvas || canvas._sphereRunning) return;
+    canvas._sphereRunning = true;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const N = R > 60 ? 220 : 160;
+    let angle = 0;
+    let alive = true;
+
+    const pts = Array.from({ length: N }, () => {
+      const u = Math.random(), v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      return {
+        x: R * Math.sin(phi) * Math.cos(theta),
+        y: R * Math.sin(phi) * Math.sin(theta),
+        z: R * Math.cos(phi),
+        r: Math.random() * 1.5 + 0.4
+      };
+    });
+
+    // Stop animation when canvas leaves the DOM
+    const observer = new IntersectionObserver(entries => {
+      alive = entries[0].isIntersecting;
+      if (alive) loop();
+    }, { threshold: 0 });
+    observer.observe(canvas);
+
+    const loop = () => {
+      if (!alive || !canvas.isConnected) { observer.disconnect(); return; }
+      ctx.clearRect(0, 0, W, H);
+      angle += 0.006;
+      const cosA = Math.cos(angle), sinA = Math.sin(angle);
+      const cosB = Math.cos(angle * 0.35), sinB = Math.sin(angle * 0.35);
+
+      const projected = pts.map(p => {
+        const x1 = p.x * cosA + p.z * sinA;
+        const z1 = -p.x * sinA + p.z * cosA;
+        const y1 = p.y * cosB - z1 * sinB;
+        const z2 = p.y * sinB + z1 * cosB;
+        const depth = (z2 + R * 1.2) / (R * 2.4);
+        return { sx: cx + x1, sy: cy + y1, depth, r: p.r * depth };
+      }).sort((a, b) => a.depth - b.depth);
+
+      projected.forEach(p => {
+        const alpha = Math.max(0.06, p.depth * 0.85);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, Math.max(0.3, p.r), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16,185,129,${alpha.toFixed(2)})`;
+        ctx.fill();
+      });
+
+      const grad = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R * 1.05);
+      grad.addColorStop(0, 'rgba(16,185,129,0)');
+      grad.addColorStop(1, 'rgba(16,185,129,0.05)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.05, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      requestAnimationFrame(loop);
+    };
+
+    loop();
   }
 
   _dashMettreAJourStats() {
-    /* Générations totales */
     const totalGen = this.getGenerations();
+    const hist = this._getHistorique();
+    const agentsDistincts = new Set(hist.map(h => h.agentId)).size;
+    const joursDistincts = new Set(hist.map(h => new Date(h.date).toDateString())).size;
+
+    // KPI cards (grands chiffres en haut)
     const elGen = document.getElementById('stat-generations');
     if (elGen) elGen.textContent = totalGen.toLocaleString('fr-FR');
 
-    /* Agents distincts utilisés */
-    const hist = this._getHistorique();
-    const agentsDistincts = new Set(hist.map(h => h.agentId)).size;
     const elAgents = document.getElementById('stat-agents');
     if (elAgents) elAgents.textContent = `${agentsDistincts}/${AGENTS.length}`;
 
-    /* Jours d'utilisation (basé sur l'historique) */
-    const joursDistincts = new Set(
-      hist.map(h => new Date(h.date).toDateString())
-    ).size;
     const elStreak = document.getElementById('stat-streak');
-    if (elStreak) elStreak.textContent = `${joursDistincts || 0}j`;
+    if (elStreak) elStreak.textContent = joursDistincts || 0;
 
-    /* Statut personnalisation */
-    const user = this.getUtilisateur();
-    const aYT = !!(user?.chaine?.nom);
-    const aManuel = !!((() => { try { return JSON.parse(localStorage.getItem('creatis_chaine_manuelle') || '{}').nom; } catch { return null; } })());
-    const elPerso = document.getElementById('stat-perso');
-    const elPersoCard = document.getElementById('stat-perso-card');
-    if (elPerso) {
-      if (aYT) {
-        elPerso.textContent = '⚡ YT';
-        elPerso.style.color = 'var(--vert)';
-        if (elPersoCard) elPersoCard.title = 'Personnalisation active via YouTube OAuth';
-      } else if (aManuel) {
-        elPerso.textContent = '✅ OK';
-        elPerso.style.color = 'var(--vert)';
-        if (elPersoCard) elPersoCard.title = 'Personnalisation active via profil manuel';
-      } else {
-        elPerso.textContent = '⚠️ Non';
-        elPerso.style.color = 'var(--texte-muted)';
-        if (elPersoCard) {
-          elPersoCard.title = 'Renseigne ta chaîne pour personnaliser les agents';
-          elPersoCard.style.cursor = 'pointer';
-          elPersoCard.onclick = () => document.getElementById('profil-nom')?.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
+    // Sous-titre KPI générations
+    const subGen = document.getElementById('dash-kpi-gen-sub');
+    if (subGen) {
+      if (totalGen === 0) subGen.textContent = 'Lance ton premier agent →';
+      else if (totalGen === 1) subGen.textContent = '1ère génération effectuée !';
+      else subGen.textContent = `+${totalGen} depuis le début`;
     }
+
+    // Stats mini dans plan card
+    const elGenC = document.getElementById('stat-gen-compact');
+    if (elGenC) elGenC.textContent = totalGen;
+    const elAgC = document.getElementById('stat-agents-compact');
+    if (elAgC) elAgC.textContent = `${agentsDistincts}/${AGENTS.length}`;
+    const elStrC = document.getElementById('stat-streak-compact');
+    if (elStrC) elStrC.textContent = `${joursDistincts || 0}j`;
   }
 
   _dashMettreAJourPlan() {
@@ -1414,17 +1806,31 @@ class AppCreatis {
     const user = this.getUtilisateur();
     const plan = user?.plan || 'gratuit';
     const agentsAutorisés = CONFIG.PLANS[plan]?.agents || CONFIG.PLANS.gratuit.agents;
+    const hasLocked = AGENTS.some(a => !(agentsAutorisés === 'tous' || agentsAutorisés.includes(a.id)));
 
     grid.innerHTML = AGENTS.map(agent => {
       const actif = agentsAutorisés === 'tous' || agentsAutorisés.includes(agent.id);
-      return `<button class="dash-agent-btn${actif ? '' : ' dash-agent-locked'}"
-        onclick="${actif ? `app.selectionnerAgent('${agent.id}')` : `document.getElementById('modal-upgrade').classList.add('visible')`}"
-        title="${agent.description}">
-        <span class="dash-agent-icone">${agent.icone}</span>
-        <span class="dash-agent-nom">${agent.nom}</span>
-        ${!actif ? '<span class="dash-agent-lock">🔒</span>' : ''}
+      const featured = agent.id === 'youtube-complet';
+      const onClick = actif
+        ? `app.selectionnerAgent('${agent.id}')`
+        : `document.getElementById('modal-upgrade').classList.add('visible')`;
+      return `<button class="dash-agent-btn${actif ? '' : ' dash-agent-locked'}${featured ? ' dash-agent-featured' : ''}"
+        onclick="${onClick}">
+        <div class="dash-agent-content">
+          <div class="dash-agent-icone">${agent.icone}</div>
+          <div class="dash-agent-nom">${agent.nom}</div>
+          <div class="dash-agent-desc">${agent.description}</div>
+        </div>
+        <div class="dash-agent-footer">
+          ${actif
+            ? `<span class="dash-agent-cta">Utiliser <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>`
+            : `<span class="dash-agent-lock-lbl"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Pro</span>`}
+        </div>
       </button>`;
     }).join('');
+
+    const hint = document.getElementById('dash-pro-hint');
+    if (hint) hint.style.display = (plan === 'gratuit' && hasLocked) ? '' : 'none';
   }
 
   _dashMettreAJourHistorique() {
@@ -1440,7 +1846,7 @@ class AppCreatis {
         <div class="dash-hist-item" onclick="app.restaurerGeneration(${i})" style="cursor:pointer">
           ${h.imageUrl
             ? `<img src="${h.imageUrl}" style="width:48px;height:27px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`
-            : `<span class="dash-hist-icone">${h.icone || '🤖'}</span>`}
+            : `<span class="dash-hist-icone">${(AGENTS.find(a => a.id === (h.agentId || h.agent_id))?.icone) || h.icone || ''}</span>`}
           <div class="dash-hist-info">
             <span class="dash-hist-agent">${h.agentNom || h.agent_nom || 'Agent'}</span>
             <span class="dash-hist-sujet">${h.sujet || '—'}</span>
@@ -1632,15 +2038,91 @@ class AppCreatis {
     if (!section || !zone) return;
     section.style.display = '';
     const suggestions = [
-      { icone: '🎬', texte: `Générer un script complet pour "${chaine.nom}"`, agentId: 'youtube-complet' },
-      { icone: '⚡', texte: 'Créer un Short viral sur ta niche', agentId: 'youtube-short' },
-      { icone: '🖼️', texte: 'Générer une miniature ultra-cliquable', agentId: 'miniature-ia' },
-      { icone: '💡', texte: '30 idées de vidéos pour ce mois', agentId: 'idees-videos' }
+      {
+        icone: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+        texte: `Générer un script complet pour "${chaine.nom}"`, agentId: 'youtube-complet'
+      },
+      {
+        icone: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+        texte: 'Créer un Short viral sur ta niche', agentId: 'youtube-short'
+      },
+      {
+        icone: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+        texte: 'Générer une miniature ultra-cliquable', agentId: 'miniature-ia'
+      },
+      {
+        icone: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>',
+        texte: '30 idées de vidéos pour ce mois', agentId: 'idees-videos'
+      }
     ];
+    const chaineData = encodeURIComponent(JSON.stringify({ niche: chaine.niche || chaine.nicheDetectee || '', nom: chaine.nom || '', abonnes: chaine.abonnes || '', ton: chaine.ton || '' }));
     zone.innerHTML = suggestions.map(s => `
-      <button class="dash-suggestion" onclick="app.selectionnerAgent('${s.agentId}')">
-        ${s.icone} ${s.texte}
+      <button class="dash-suggestion" onclick="app.selectionnerAgentSuggestion('${s.agentId}', '${chaineData}')">
+        <span class="dash-suggestion-icone">${s.icone}</span>
+        <span>${s.texte}</span>
       </button>`).join('');
+  }
+
+  selectionnerAgentSuggestion(agentId, chaineJson) {
+    let profil = {};
+    try { profil = JSON.parse(decodeURIComponent(chaineJson || '{}')); } catch { /* ignore */ }
+    if (!profil.niche) {
+      try { const m = JSON.parse(localStorage.getItem('creatis_chaine_manuelle') || '{}'); if (m.niche) profil = m; } catch { /* ignore */ }
+    }
+
+    this.selectionnerAgent(agentId);
+
+    if (agentId === 'idees-videos') {
+      const niche = profil.niche || profil.nom || 'YouTube';
+      const infos = [
+        profil.nom && `Chaîne : ${profil.nom}`,
+        profil.abonnes && `${profil.abonnes} abonnés`,
+        profil.ton && `Ton : ${profil.ton}`
+      ].filter(Boolean).join(', ');
+      const donnees = { niche, infos_chaine: infos, type_contenu: 'Mix varié', objectif: 'Gagner des abonnés rapidement' };
+      setTimeout(() => this._genererDirectement(agentId, donnees), 200);
+      return;
+    }
+
+    setTimeout(() => {
+      const set = (fieldId, val) => {
+        const el = document.getElementById(`champ-${agentId}-${fieldId}`);
+        if (el && val) el.value = val;
+      };
+      if (profil.niche) set('niche', profil.niche);
+      const infos = [
+        profil.nom && `Chaîne : ${profil.nom}`,
+        profil.abonnes && `${profil.abonnes} abonnés`,
+        profil.ton && `Ton : ${profil.ton}`
+      ].filter(Boolean).join(', ');
+      if (infos) set('infos_chaine', infos);
+    }, 200);
+  }
+
+  async _genererDirectement(agentId, donnees) {
+    const agent = AGENTS.find(a => a.id === agentId);
+    if (!agent || this.enChargement) return;
+    const user = this.getUtilisateur();
+    if (user?.plan === 'gratuit' && this.getGenerations() >= CONFIG.PLANS.gratuit.generations) { this.afficherModalUpgrade(); return; }
+    if (!CONFIG.estConfigured()) { this.afficherToast('⚠️ Clé API Groq manquante', 'erreur'); return; }
+    this.enChargement = true;
+    this.afficherChargement(agentId, true);
+    this.desactiverBouton(agentId, true);
+    try {
+      const contexteYT = (typeof YouTubeContext !== 'undefined') ? YouTubeContext.getContexte(agentId) : '';
+      const prompt = agent.construirePrompt(donnees, contexteYT);
+      const resultat = await this.appelGroq(prompt);
+      this.afficherTexte(agentId, resultat);
+      this.incrementerGenerations();
+      this._sauvegarderHistorique(agent, donnees, resultat);
+      if (user?.demo) localStorage.setItem('creatis_demo_count', (parseInt(localStorage.getItem('creatis_demo_count') || '0') + 1).toString());
+    } catch (err) {
+      this.afficherToast('❌ ' + err.message, 'erreur');
+    } finally {
+      this.enChargement = false;
+      this.afficherChargement(agentId, false);
+      this.desactiverBouton(agentId, false);
+    }
   }
 
   _sauvegarderHistorique(agent, donnees, resultat = null) {
@@ -1723,6 +2205,8 @@ class AppCreatis {
       throw new Error(err.error || `Erreur génération image (${response.status})`);
     }
     const data = await response.json();
+    const url = data.data?.[0]?.url;
+    if (url) return url;
     const b64 = data.data?.[0]?.b64_json;
     if (!b64) throw new Error('Aucune image retournée');
     return `data:image/png;base64,${b64}`;
@@ -1767,6 +2251,8 @@ class AppCreatis {
       throw new Error(err.error || `Erreur édition image (${response.status})`);
     }
     const data = await response.json();
+    const url = data.data?.[0]?.url;
+    if (url) return url;
     const b64 = data.data?.[0]?.b64_json;
     if (!b64) throw new Error('Réponse image invalide du serveur');
     return `data:image/jpeg;base64,${b64}`;
@@ -2074,6 +2560,13 @@ class AppCreatis {
       }
     });
 
+    // Click-outside : ferme le modal uniquement si on clique sur le fond (pas à l'intérieur)
+    document.querySelectorAll('.modal-fond').forEach(fond => {
+      fond.addEventListener('click', (e) => {
+        if (e.target === fond) fond.classList.remove('visible');
+      });
+    });
+
     // Déconnexion — le bouton a son onclick dans app.html (Auth.deconnecter)
     // Le listener ici sert de fallback si onclick n'est pas défini
     const btnDeconnexion = document.getElementById('btn-deconnexion');
@@ -2119,11 +2612,52 @@ class AppCreatis {
   }
 
   _onbEtape(n) {
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 5; i++) {
       document.getElementById(`onb-step-${i}`)?.classList.toggle('actif', i === n);
       const dot = document.getElementById(`onb-dot-${i}`);
       if (dot) dot.classList.toggle('actif', i === n);
     }
+  }
+
+  _onbTogglePlateforme(btn) {
+    btn.classList.toggle('actif');
+  }
+
+  _onbSauvegarderNiche() {
+    const niche = document.getElementById('onb-niche')?.value.trim();
+    if (niche) {
+      const user = this.getUtilisateur() || {};
+      user.niche = niche;
+      this.setUtilisateur(user);
+      // Sync Supabase silencieux
+      const userId = user.id || user.email;
+      if (userId) {
+        fetch(CONFIG.USER_SYNC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_profile', userId, email: user.email, niche })
+        }).catch(() => {});
+      }
+    }
+    this._onbEtape(3);
+  }
+
+  _onbSauvegarderPlateformes() {
+    const selected = [...document.querySelectorAll('.onb-plateforme.actif')].map(b => b.dataset.plateforme);
+    if (selected.length) {
+      const user = this.getUtilisateur() || {};
+      user.plateformes = selected;
+      this.setUtilisateur(user);
+      const userId = user.id || user.email;
+      if (userId) {
+        fetch(CONFIG.USER_SYNC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update_profile', userId, email: user.email, plateformes: selected })
+        }).catch(() => {});
+      }
+    }
+    this._onbEtape(4);
   }
 
   async _onbAnalyser() {
@@ -2155,8 +2689,8 @@ class AppCreatis {
 
       if (!res.ok) {
         if (res.status === 503) {
-          if (msg) { msg.style.color = 'var(--texte-doux)'; msg.textContent = 'Analyse auto indisponible (clé API manquante) — configuration manuelle possible dans l\'app.'; }
-          setTimeout(() => this._onbEtape(3), 2000);
+          if (msg) { msg.style.color = 'var(--vert)'; msg.textContent = '✓ On continue — tu pourras connecter ta chaîne depuis l\'app.'; }
+          this._onbEtape(5);
           return;
         }
         throw new Error(data.error || `Erreur ${res.status}`);
@@ -2170,7 +2704,7 @@ class AppCreatis {
       this.afficherBandeauChaine(data);
 
       if (msg) { msg.style.color = 'var(--vert)'; msg.textContent = `✓ "${data.chaine.nom}" connectée — ${data.chaine.abonnes.toLocaleString('fr-FR')} abonnés`; }
-      setTimeout(() => this._onbEtape(3), 1500);
+      setTimeout(() => this._onbEtape(5), 1500);
 
     } catch (err) {
       if (msg) { msg.style.color = 'var(--rouge, #ef4444)'; msg.textContent = `❌ ${err.message}`; }
@@ -2181,31 +2715,33 @@ class AppCreatis {
   }
 
   _onbLancerAgent(id) {
-    this._onbTerminer();
-    const btn = document.querySelector(`.agent-btn[data-agent="${id}"]`);
-    if (btn) btn.click();
+    this._onbTerminer(false); // false = don't auto-open (we open manually below)
+    this.selectionnerAgent(id);
 
-    // Pré-remplir un exemple pour réduire la friction
     const exemples = {
-      'youtube-complet': { sujet: 'Comment gagner du temps avec l\'IA en 2025', niche: 'technologie' },
-      'youtube-short': { sujet: '3 astuces pour doubler ses abonnés YouTube', niche: 'création de contenu' },
-      'idees-videos': { niche: 'technologie et productivité', style: 'éducatif et pratique' }
+      'youtube-complet': { sujet: 'Comment gagner du temps avec l\'IA en 2025', niche: 'Technologie et productivité' },
+      'youtube-short': { sujet: '3 astuces pour doubler ses abonnés YouTube', niche: 'Création de contenu' },
+      'idees-videos': { niche: 'Technologie et productivité', style: 'Éducatif et pratique' }
     };
     const ex = exemples[id];
     if (!ex) return;
 
     setTimeout(() => {
       Object.entries(ex).forEach(([key, val]) => {
-        const el = document.getElementById(`input-${key}`) || document.querySelector(`[name="${key}"]`);
+        const el = document.getElementById(`champ-${id}-${key}`);
         if (el && !el.value) el.value = val;
       });
-    }, 200);
+    }, 300);
   }
 
-  _onbTerminer() {
+  _onbTerminer(autoOpen = true) {
     localStorage.setItem('creatis_onboarding_done', '1');
     const modal = document.getElementById('modal-onboarding');
     if (modal) modal.classList.remove('visible');
+    // Si l'utilisateur n'a pas encore généré, ouvrir youtube-complet directement
+    if (autoOpen && this.getGenerations() === 0) {
+      setTimeout(() => this.selectionnerAgent('youtube-complet'), 200);
+    }
   }
 }
 

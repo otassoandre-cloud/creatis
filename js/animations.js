@@ -1,5 +1,9 @@
 /* ===== CRÉATIS — Animations GSAP ===== */
 
+if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+  console.warn('[Créatis] GSAP non disponible — animations désactivées');
+} else {
+
 gsap.registerPlugin(ScrollTrigger);
 
 (function () {
@@ -10,10 +14,32 @@ gsap.registerPlugin(ScrollTrigger);
 
   // ── Utilitaires ────────────────────────────────────────────────────────────
   function splitWords(el) {
-    const text = el.textContent;
-    el.innerHTML = text.trim().split(/\s+/).map(w =>
-      `<span style="overflow:hidden;display:inline-block;"><span class="word" style="display:inline-block;">${w}</span></span>`
-    ).join(' ');
+    const nodes = Array.from(el.childNodes);
+    el.innerHTML = '';
+    nodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent.trim().split(/\s+/).filter(w => w).forEach((w, i, arr) => {
+          const outer = document.createElement('span');
+          outer.style.cssText = 'overflow:hidden;display:inline-block;';
+          const inner = document.createElement('span');
+          inner.className = 'word';
+          inner.style.display = 'inline-block';
+          inner.textContent = w;
+          outer.appendChild(inner);
+          el.appendChild(outer);
+          if (i < arr.length - 1) el.appendChild(document.createTextNode(' '));
+        });
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const outer = document.createElement('span');
+        outer.style.cssText = 'overflow:hidden;display:inline-block;';
+        const inner = document.createElement('span');
+        inner.className = 'word';
+        inner.style.display = 'inline-block';
+        inner.appendChild(node.cloneNode(true));
+        outer.appendChild(inner);
+        el.appendChild(outer);
+      }
+    });
     return el.querySelectorAll('.word');
   }
 
@@ -121,3 +147,5 @@ gsap.registerPlugin(ScrollTrigger);
   }
 
 })();
+
+} // end GSAP guard

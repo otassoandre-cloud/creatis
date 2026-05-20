@@ -19,6 +19,16 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "wqzt6m475j");
   </script>
+  <script>
+    // Ignore errors from browser extensions and third-party scripts
+    window.addEventListener('error', function(e) {
+      const src = (e.filename || '');
+      if (!src || src.indexOf('creatis.app') === -1 && src.indexOf('localhost') === -1 && src.indexOf('127.0.0.1') === -1) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  </script>
 </head>
 <body>
 
@@ -40,9 +50,50 @@
             <span class="agent-btn-desc">Vue d'ensemble & accès rapide</span>
           </span>
         </button>
-        <div class="sidebar-section-titre">Agents IA</div>
-        <div id="agents-nav">
-          <!-- Généré dynamiquement par app.js -->
+        <!-- Catégorie Agents IA -->
+        <div class="nav-categorie" id="cat-agents">
+          <button class="nav-cat-header" onclick="toggleNavCat('cat-agents')">
+            <span>Agents IA</span>
+            <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-cat-body" id="agents-nav">
+            <!-- Généré dynamiquement par app.js -->
+          </div>
+        </div>
+
+        <!-- Catégorie Assistant -->
+        <div class="nav-categorie" id="cat-assistant">
+          <button class="nav-cat-header" onclick="toggleNavCat('cat-assistant')">
+            <span>Assistant</span>
+            <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-cat-body" id="chat-nav">
+            <!-- Généré dynamiquement par app.js -->
+          </div>
+        </div>
+
+        <!-- Catégorie Navigation -->
+        <div class="nav-categorie" id="cat-navigation">
+          <button class="nav-cat-header" onclick="toggleNavCat('cat-navigation')">
+            <span>Navigation</span>
+            <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="nav-cat-body">
+            <button class="agent-btn" id="btn-historique-nav" onclick="app.afficherHistorique()">
+              <span class="agent-btn-icone"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>
+              <span class="agent-btn-info">
+                <span class="agent-btn-nom">Historique</span>
+                <span class="agent-btn-desc">Tes dernières générations</span>
+              </span>
+            </button>
+            <a href="mailto:contact@creatis.app" class="agent-btn" style="text-decoration:none">
+              <span class="agent-btn-icone"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+              <span class="agent-btn-info">
+                <span class="agent-btn-nom">Contact</span>
+                <span class="agent-btn-desc">Une question ? Écris-nous</span>
+              </span>
+            </a>
+          </div>
         </div>
       </nav>
 
@@ -85,14 +136,14 @@
         </div>
 
         <!-- Actions compte -->
-        <button class="btn-ghost btn-sm w-100" style="margin-bottom:6px;" id="btn-upgrade-sidebar" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
-          ✨ Passer au Pro
+        <button class="btn-sm w-100" style="position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;margin-bottom:6px;" id="btn-upgrade-sidebar" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          Passer au Pro
+          <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f97316;color:#fff;font-size:11px;font-weight:800;padding:3px 7px;border-radius:20px;line-height:1.2;letter-spacing:0;">-50%</span>
         </button>
-        <a href="/affiliation" class="btn-ghost btn-sm w-100" style="display:block;text-align:center;text-decoration:none;margin-bottom:6px;color:var(--vert);border-color:var(--vert)">
-          💸 Gagner 30% — Affiliation
-        </a>
-        <button class="btn-ghost btn-sm w-100" id="btn-deconnexion" onclick="typeof Auth !== 'undefined' ? Auth.deconnecter() : (window.location.href='auth.html')">
-          ← Déconnexion
+        <button class="btn-ghost btn-sm w-100" style="display:flex;align-items:center;justify-content:center;gap:6px;" id="btn-deconnexion" onclick="typeof Auth !== 'undefined' ? Auth.deconnecter() : (window.location.href='auth.html')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
         </button>
       </div>
 
@@ -114,10 +165,12 @@
         </div>
         <div class="header-actions">
           <div id="app-header-badge"></div>
-          <button class="btn-ghost btn-sm" onclick="actualiserContexteYT()" title="Recharger les données de la chaîne">
-            🔄
+          <button class="btn-icon-header" onclick="actualiserContexteYT()" title="Recharger les données de la chaîne">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           </button>
-          <a href="index.html" class="btn-ghost btn-sm">← Accueil</a>
+          <a href="index.html" class="btn-icon-header" title="Accueil">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </a>
         </div>
       </header>
 
@@ -128,165 +181,253 @@
         <div id="panneau-dashboard" class="panneau-dashboard">
           <div class="dashboard-scroll">
 
-            <!-- Bloc chaîne YouTube -->
-            <section class="dash-section">
-              <div id="dash-chaine-connectee" style="display:none">
-                <div class="dash-chaine-card">
-                  <img id="dash-avatar" src="" alt="Avatar" class="dash-avatar">
-                  <div class="dash-chaine-info">
-                    <h3 id="dash-chaine-nom">Ma chaîne</h3>
-                    <p id="dash-chaine-stats" class="dash-chaine-meta"></p>
-                  </div>
-                  <span class="badge badge-vert">⚡ Connectée</span>
-                </div>
+            <!-- ── HEADER ROW ── -->
+            <div class="dash-header-row">
+              <div>
+                <div class="dash-greeting-line" id="dash-greeting">Bonjour</div>
+                <p class="dash-greeting-sub">Voici ton espace de création</p>
               </div>
-              <div id="dash-chaine-deconnectee">
-                <div class="dash-profil-chaine" id="dash-profil-form">
-                  <div class="dash-profil-entete">
-                    <div class="dash-profil-icone">📺</div>
-                    <div>
-                      <h3>Connecte ta chaîne YouTube</h3>
-                      <p>Colle l'URL ou entre ton @handle — les agents analysent ta chaîne automatiquement</p>
-                    </div>
-                  </div>
+              <div class="dash-header-date" id="dash-header-date"></div>
+            </div>
 
-                  <!-- Connexion automatique via handle/URL -->
-                  <div class="dash-analyse-input">
-                    <input
-                      type="text"
-                      id="profil-handle"
-                      class="dash-handle-input"
-                      placeholder="youtube.com/@TaChaine ou @TaChaine"
-                      onkeydown="if(event.key==='Enter') app.analyserChaine()"
-                    >
-                    <button class="btn-primaire" id="btn-analyser" onclick="app.analyserChaine()">
-                      <span id="btn-analyser-texte">Analyser →</span>
+            <!-- ── KPI CARDS ── -->
+            <div class="dash-kpi-row">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                  <span class="dash-kpi-label">Générations</span>
+                  <span class="dash-kpi-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  </span>
+                </div>
+                <div class="dash-kpi-num" id="stat-generations">0</div>
+                <div class="dash-kpi-sub" id="dash-kpi-gen-sub">Lance ton premier agent →</div>
+              </div>
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                  <span class="dash-kpi-label">Agents utilisés</span>
+                  <span class="dash-kpi-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  </span>
+                </div>
+                <div class="dash-kpi-num" id="stat-agents">0</div>
+                <div class="dash-kpi-sub">sur 8 disponibles</div>
+              </div>
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-top">
+                  <span class="dash-kpi-label">Jours actifs</span>
+                  <span class="dash-kpi-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  </span>
+                </div>
+                <div class="dash-kpi-num" id="stat-streak">0</div>
+                <div class="dash-kpi-sub">jours d'utilisation</div>
+              </div>
+              <div class="dash-kpi-card dash-kpi-card--accent">
+                <div class="dash-kpi-top">
+                  <span class="dash-kpi-label">Quota restant</span>
+                  <span class="dash-kpi-ico">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  </span>
+                </div>
+                <div class="dash-kpi-num" id="dash-kpi-quota">—</div>
+                <div class="dash-kpi-sub" id="dash-kpi-plan-lbl">générations gratuites</div>
+              </div>
+            </div>
+
+            <!-- ── MAIN CONTENT GRID ── -->
+            <div class="dash-content-grid">
+
+              <!-- COLONNE GAUCHE : Agents + Historique -->
+              <div class="dash-col-main">
+
+                <!-- Onglets mobile -->
+                <div class="dash-mobile-tabs">
+                  <button class="dash-mobile-tab actif" id="tab-agents" onclick="dashTab('agents')">Agents IA</button>
+                  <button class="dash-mobile-tab" id="tab-historique" onclick="dashTab('historique')">Historique</button>
+                </div>
+
+                <div class="dash-section-head dash-tab-agents">
+                  <h4 class="dash-section-titre">Agents IA</h4>
+                  <div id="dash-pro-hint" style="display:none">
+                    <button class="btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                      Pro
                     </button>
                   </div>
-                  <p class="dash-analyse-hint" id="dash-analyse-hint">
-                    Données publiques récupérées automatiquement — abonnés, top vidéos, tags, niche
-                  </p>
+                </div>
 
-                  <!-- Séparateur -->
-                  <div class="dash-separateur"><span>ou renseigne manuellement</span></div>
+                <div class="dash-agents-grid dash-tab-agents" id="dash-agents-grid">
+                  <!-- Généré dynamiquement par JS -->
+                </div>
 
-                  <!-- Formulaire manuel (repli) -->
-                  <details class="dash-manuel-details">
-                    <summary>Saisir les informations manuellement</summary>
-                    <div class="dash-profil-inputs" style="margin-top:14px">
-                      <div class="dash-profil-row">
-                        <div class="form-groupe">
-                          <label for="profil-nom">Nom de la chaîne <span class="texte-vert">*</span></label>
-                          <input type="text" id="profil-nom" placeholder="ex : MoneyMaker, TechWithLuc…">
-                        </div>
-                        <div class="form-groupe">
-                          <label for="profil-niche">Niche / Thématique <span class="texte-vert">*</span></label>
-                          <input type="text" id="profil-niche" placeholder="ex : Finance, Gaming, Cuisine…">
-                        </div>
-                      </div>
-                      <div class="dash-profil-row">
-                        <div class="form-groupe">
-                          <label for="profil-abonnes">Abonnés</label>
-                          <input type="text" id="profil-abonnes" placeholder="ex : 5 000">
-                        </div>
-                        <div class="form-groupe">
-                          <label for="profil-ton">Ton</label>
-                          <input type="text" id="profil-ton" placeholder="ex : décontracté, humour…">
-                        </div>
-                      </div>
-                      <div class="form-groupe">
-                        <label for="profil-audience">Audience</label>
-                        <input type="text" id="profil-audience" placeholder="ex : 20-35 ans, entrepreneurs…">
-                      </div>
-                      <div class="form-groupe">
-                        <label for="profil-videos">Meilleures vidéos (titres)</label>
-                        <textarea id="profil-videos" rows="3" placeholder="Une par ligne…"></textarea>
-                      </div>
-                      <button class="btn-ghost btn-sm" style="margin-top:4px" onclick="app.sauvegarderProfilChaine()">
-                        💾 Sauvegarder le profil manuel
-                      </button>
+                <!-- Historique -->
+                <div class="dash-section dash-tab-historique" style="margin-top:4px">
+                  <div id="dash-historique" class="dash-historique">
+                    <p class="dash-vide-msg">Aucune génération pour l'instant — lance un agent !</p>
+                  </div>
+                </div>
+
+                <!-- Suggestions IA (chaîne connectée) -->
+                <div class="dash-section" id="dash-suggestions-section" style="display:none;margin-top:20px">
+                  <h4 class="dash-section-titre">Idées personnalisées</h4>
+                  <div id="dash-suggestions" class="dash-suggestions-grid"></div>
+                </div>
+
+              </div>
+
+              <!-- COLONNE DROITE : IA Widget + Plan + YouTube -->
+              <div class="dash-col-side">
+
+                <!-- AI Assistant Widget -->
+                <div class="dash-ai-widget">
+                  <div class="dash-ai-header">
+                    <span class="dash-ai-dot"></span>
+                    <span class="dash-ai-title">IA Assistant</span>
+                  </div>
+                  <div class="dash-ai-sphere-wrap">
+                    <canvas id="ai-sphere-canvas" width="200" height="200"></canvas>
+                  </div>
+                  <p class="dash-ai-tip" id="dash-ai-tip">Choisis un agent pour commencer à créer du contenu YouTube.</p>
+                  <div class="dash-ai-btns">
+                    <button class="dash-ai-btn-primary" onclick="app.selectionnerAgent('youtube-complet')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      YouTube Complet
+                    </button>
+                    <button class="dash-ai-btn-ghost" onclick="app.selectionnerAgent('chat-libre')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Chat IA
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Plan + quota -->
+                <div class="dash-plan-card" id="dash-plan-card">
+                  <div class="dash-plan-top">
+                    <div>
+                      <span class="dash-plan-badge" id="dash-plan-badge">Gratuit</span>
+                      <p class="dash-plan-desc" id="dash-plan-desc">50 générations pour découvrir</p>
                     </div>
-                  </details>
-
-                  <span id="profil-sauvegarde-msg" class="dash-profil-msg" style="display:block;margin-top:10px"></span>
-                </div>
-              </div>
-            </section>
-
-            <!-- Suggestions IA -->
-            <section class="dash-section" id="dash-suggestions-section" style="display:none">
-              <h4 class="dash-section-titre">💡 Suggestions IA personnalisées</h4>
-              <div id="dash-suggestions" class="dash-suggestions-grid"></div>
-            </section>
-
-            <!-- Accès rapide agents -->
-            <section class="dash-section">
-              <h4 class="dash-section-titre">⚡ Accès rapide aux agents</h4>
-              <div class="dash-agents-grid" id="dash-agents-grid"></div>
-            </section>
-
-            <!-- Plan actuel + quota -->
-            <section class="dash-section">
-              <h4 class="dash-section-titre">📊 Mon plan</h4>
-              <div class="dash-plan-card" id="dash-plan-card">
-                <div class="dash-plan-top">
-                  <div>
-                    <span class="dash-plan-badge" id="dash-plan-badge">Gratuit</span>
-                    <p class="dash-plan-desc" id="dash-plan-desc">10 générations pour découvrir</p>
+                    <button class="btn-primaire btn-sm" style="display:flex;align-items:center;gap:5px;" id="dash-upgrade-btn" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                      Upgrade
+                    </button>
                   </div>
-                  <button class="btn-primaire btn-sm" id="dash-upgrade-btn" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
-                    ✨ Upgrade
-                  </button>
-                </div>
-                <div id="dash-quota-zone">
-                  <div class="dash-quota-label">
-                    <span>Générations utilisées</span>
-                    <span id="dash-quota-val">0/10</span>
+                  <div id="dash-quota-zone">
+                    <div class="dash-quota-label">
+                      <span>Générations utilisées</span>
+                      <span id="dash-quota-val">0/50</span>
+                    </div>
+                    <div class="dash-quota-barre">
+                      <div class="dash-quota-remplie" id="dash-quota-remplie" style="width:0%"></div>
+                    </div>
                   </div>
-                  <div class="dash-quota-barre">
-                    <div class="dash-quota-remplie" id="dash-quota-remplie" style="width:0%"></div>
+                  <div id="dash-miniatures-quota" style="display:none">
+                    <div class="dash-quota-label" style="margin-top:10px">
+                      <span>Miniatures ce mois</span>
+                      <span id="dash-miniatures-val">0/0</span>
+                    </div>
+                    <div class="dash-quota-barre">
+                      <div class="dash-quota-remplie" id="dash-miniatures-remplie" style="width:0%"></div>
+                    </div>
+                  </div>
+                  <div class="dash-stats-compact" id="dash-stats-compact" style="display:none">
+                    <div class="dash-stat-mini">
+                      <span class="dash-stat-mini-val" id="stat-gen-compact">0</span>
+                      <span class="dash-stat-mini-lbl">générations</span>
+                    </div>
+                    <div class="dash-stat-mini">
+                      <span class="dash-stat-mini-val" id="stat-agents-compact">0</span>
+                      <span class="dash-stat-mini-lbl">agents</span>
+                    </div>
+                    <div class="dash-stat-mini">
+                      <span class="dash-stat-mini-val" id="stat-streak-compact">0j</span>
+                      <span class="dash-stat-mini-lbl">jours actifs</span>
+                    </div>
                   </div>
                 </div>
-                <div id="dash-miniatures-quota" style="display:none">
-                  <div class="dash-quota-label" style="margin-top:10px">
-                    <span>Miniatures générées ce mois</span>
-                    <span id="dash-miniatures-val">0/0</span>
-                  </div>
-                  <div class="dash-quota-barre">
-                    <div class="dash-quota-remplie" id="dash-miniatures-remplie" style="width:0%"></div>
-                  </div>
-                </div>
-              </div>
-            </section>
 
-            <!-- Statistiques d'utilisation -->
-            <section class="dash-section">
-              <h4 class="dash-section-titre">📈 Mes statistiques</h4>
-              <div class="dash-stats-grid" id="dash-stats-grid">
-                <div class="dash-stat-card">
-                  <div class="dash-stat-val" id="stat-generations">0</div>
-                  <div class="dash-stat-label">Générations totales</div>
+                <!-- Chaîne YouTube -->
+                <div class="dash-yt-section">
+                  <div id="dash-chaine-connectee" style="display:none">
+                    <div class="dash-chaine-card">
+                      <img id="dash-avatar" src="" alt="Avatar" class="dash-avatar">
+                      <div class="dash-chaine-info">
+                        <h3 id="dash-chaine-nom">Ma chaîne</h3>
+                        <p id="dash-chaine-stats" class="dash-chaine-meta"></p>
+                      </div>
+                      <span class="badge badge-vert" style="display:flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0;"></span> Connectée</span>
+                    </div>
+                  </div>
+                  <div id="dash-chaine-deconnectee">
+                    <div class="dash-profil-chaine" id="dash-profil-form">
+                      <div class="dash-profil-entete">
+                        <div class="dash-profil-icone">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                      </div>
+                        <div>
+                          <h3>Connecte ta chaîne YouTube</h3>
+                          <p>Entre ton @handle — les agents s'adaptent automatiquement</p>
+                        </div>
+                      </div>
+                      <div class="dash-analyse-input">
+                        <input type="text" id="profil-handle" class="dash-handle-input" placeholder="@TaChaine ou youtube.com/@handle" onkeydown="if(event.key==='Enter') app.analyserChaine()">
+                        <button class="btn-primaire" id="btn-analyser" onclick="app.analyserChaine()">
+                          <span id="btn-analyser-texte">Analyser →</span>
+                        </button>
+                      </div>
+                      <p class="dash-analyse-hint" id="dash-analyse-hint">Abonnés, top vidéos, niche récupérés automatiquement</p>
+                      <div class="dash-separateur"><span>ou saisir manuellement</span></div>
+                      <details class="dash-manuel-details">
+                        <summary>Renseigner manuellement</summary>
+                        <div class="dash-profil-inputs" style="margin-top:14px">
+                          <div class="dash-profil-row">
+                            <div class="form-groupe">
+                              <label for="profil-nom">Nom de la chaîne <span class="texte-vert">*</span></label>
+                              <input type="text" id="profil-nom" placeholder="ex : MoneyMaker…">
+                            </div>
+                            <div class="form-groupe">
+                              <label for="profil-niche">Niche <span class="texte-vert">*</span></label>
+                              <input type="text" id="profil-niche" placeholder="ex : Finance, Gaming…">
+                            </div>
+                          </div>
+                          <div class="dash-profil-row">
+                            <div class="form-groupe">
+                              <label for="profil-abonnes">Abonnés</label>
+                              <input type="text" id="profil-abonnes" placeholder="ex : 5 000">
+                            </div>
+                            <div class="form-groupe">
+                              <label for="profil-ton">Ton</label>
+                              <input type="text" id="profil-ton" placeholder="ex : décontracté…">
+                            </div>
+                          </div>
+                          <div class="form-groupe">
+                            <label for="profil-audience">Audience</label>
+                            <input type="text" id="profil-audience" placeholder="ex : 20-35 ans…">
+                          </div>
+                          <div class="form-groupe">
+                            <label for="profil-videos">Meilleures vidéos (titres)</label>
+                            <textarea id="profil-videos" rows="2" placeholder="Une par ligne…"></textarea>
+                          </div>
+                          <button class="btn-ghost btn-sm" style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;" onclick="app.sauvegarderProfilChaine()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Sauvegarder
+                          </button>
+                        </div>
+                      </details>
+                      <span id="profil-sauvegarde-msg" class="dash-profil-msg" style="display:block;margin-top:8px"></span>
+                    </div>
+                  </div>
                 </div>
-                <div class="dash-stat-card">
-                  <div class="dash-stat-val" id="stat-agents">0</div>
-                  <div class="dash-stat-label">Agents utilisés</div>
-                </div>
-                <div class="dash-stat-card">
-                  <div class="dash-stat-val" id="stat-streak">0j</div>
-                  <div class="dash-stat-label">Jours d'utilisation</div>
-                </div>
-                <div class="dash-stat-card" id="stat-perso-card">
-                  <div class="dash-stat-val" id="stat-perso">—</div>
-                  <div class="dash-stat-label">Personnalisation IA</div>
-                </div>
-              </div>
-            </section>
 
-            <!-- Bloc affiliation -->
+              </div><!-- dash-col-side -->
+
+            </div><!-- dash-content-grid -->
+
+            <!-- Affiliation -->
             <section class="dash-section" id="dash-affiliation-bloc" style="display:none">
               <div style="background:linear-gradient(135deg,#0d1f14,#0a0f0a);border:1px solid rgba(16,185,129,.3);border-radius:14px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
                 <div>
-                  <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:4px;">💸 Programme Affilié</div>
+                  <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Programme Affilié</div>
                   <div style="font-size:15px;font-weight:700;color:var(--texte);margin-bottom:4px;">Gagne 30% récurrent en partageant Créatis</div>
                   <div style="font-size:13px;color:var(--texte-doux);">Script TikTok fourni · 5,70€/mois par abonné Pro · Virement mensuel</div>
                 </div>
@@ -294,15 +435,12 @@
               </div>
             </section>
 
-            <!-- Historique -->
-            <section class="dash-section">
-              <h4 class="dash-section-titre">🕐 5 dernières générations</h4>
-              <div id="dash-historique" class="dash-historique">
-                <p class="dash-vide-msg">Aucune génération pour l'instant — lance un agent !</p>
-              </div>
-            </section>
-
           </div>
+        </div>
+
+        <!-- Workspace split resizer -->
+        <div id="workspace-resizer" class="workspace-resizer" style="display:none">
+          <div class="workspace-resizer-handle"></div>
         </div>
 
       </div>
@@ -316,7 +454,7 @@
       <button class="modal-fermer" onclick="app.fermerModal('modal-upgrade')">✕</button>
 
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="font-size:40px;margin-bottom:10px;">✨</div>
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
         <h2 style="font-size:20px;margin-bottom:6px;">Passe à la vitesse supérieure</h2>
         <p style="font-size:14px;color:var(--texte-doux);">Débloque tous les agents et génère sans limite</p>
       </div>
@@ -325,19 +463,25 @@
       <div style="background:var(--bg);border:2px solid var(--vert);border-radius:var(--radius);padding:18px;margin-bottom:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
-            <div style="font-size:20px;font-weight:800;">19€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
+            <div style="display:flex;align-items:baseline;gap:10px;">
+              <div style="font-size:20px;font-weight:800;text-decoration:line-through;color:var(--texte-muted);">19€</div>
+              <div style="font-size:24px;font-weight:800;color:var(--texte);">9,50€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
+            </div>
             <div style="font-size:12px;color:var(--texte-doux);">Plan Pro — Sans engagement</div>
           </div>
-          <span class="badge badge-vert">Le plus populaire</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+            <span class="badge badge-vert">Le plus populaire</span>
+            <span style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">-50% avec CREATIS50</span>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Générations <strong style="color:var(--texte);">illimitées</strong></div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Les <strong style="color:var(--texte);">10 agents IA</strong> débloqués</div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">5 miniatures HD</strong> par mois</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">30 miniatures HD</strong> par mois</div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Prospection sponsors</div>
         </div>
         <button class="btn-primaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('pro')">
-          ✨ Passer au Pro — 19€/mois
+          Passer au Pro — 9,50€ le 1er mois
         </button>
       </div>
 
@@ -352,7 +496,7 @@
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Crédits <strong style="color:var(--texte);">illimités</strong></div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Les <strong style="color:var(--texte);">10 agents IA</strong> débloqués</div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">20 miniatures HD</strong> par mois</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">100 miniatures HD</strong> par mois</div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> 3 chaînes YouTube</div>
         </div>
         <button class="btn-primaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('studio')">
@@ -360,8 +504,8 @@
         </button>
       </div>
 
-      <div style="text-align:center;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:10px;margin-bottom:12px;">
-        <span style="font-size:13px;color:#10b981;">🎁 Code promo <strong>CREATIS20</strong> — -20% pour toujours</span>
+      <div style="text-align:center;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35);border-radius:8px;padding:10px;margin-bottom:12px;">
+        <span style="font-size:13px;color:#f97316;display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Code promo <strong>CREATIS50</strong> — -50% sur le premier mois</span>
       </div>
       <p style="text-align:center;font-size:12px;color:var(--texte-muted);">
         Paiement sécurisé par Stripe · Annulable à tout moment
@@ -394,6 +538,33 @@
   <script src="js/emails.js"></script>
   <script src="js/app.js"></script>
 
+  <!-- ===== MODAL SIGNUP (démo) ===== -->
+  <div class="modal-fond" id="modal-signup">
+    <div class="modal" style="max-width:440px;">
+      <button class="modal-fermer" onclick="app.fermerModal('modal-signup')">✕</button>
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:10px;">🚀</div>
+        <h2 style="font-size:20px;margin-bottom:6px;">Tu as utilisé tes 3 tests gratuits</h2>
+        <p style="font-size:14px;color:var(--texte-doux);line-height:1.5;">Crée ton compte gratuit pour débloquer <strong style="color:var(--texte)">50 générations</strong>, sans carte bancaire.</p>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--bordure);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Ce que tu débloques</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--texte-doux);">
+          <div>✅ <strong style="color:var(--texte)">50 générations gratuites</strong></div>
+          <div>✅ <strong style="color:var(--texte)">4 agents IA</strong> — Script, Short, Idées, Chat</div>
+          <div>✅ <strong style="color:var(--texte)">Personnalisation</strong> selon ta chaîne YouTube</div>
+          <div>✅ <strong style="color:var(--texte)">Sans carte bancaire</strong></div>
+        </div>
+      </div>
+      <a href="auth.html" class="btn btn-primaire" style="display:block;text-align:center;padding:14px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:10px;">
+        Créer mon compte gratuit →
+      </a>
+      <button onclick="app.fermerModal('modal-signup')" style="width:100%;background:none;border:none;color:var(--texte-muted);font-size:13px;cursor:pointer;padding:8px;">
+        Continuer à regarder sans générer
+      </button>
+    </div>
+  </div>
+
   <!-- ===== MODAL ONBOARDING ===== -->
   <div class="modal-fond" id="modal-onboarding">
     <div class="modal modal-onboarding">
@@ -402,37 +573,83 @@
         <span class="onb-dot actif" id="onb-dot-1"></span>
         <span class="onb-dot" id="onb-dot-2"></span>
         <span class="onb-dot" id="onb-dot-3"></span>
+        <span class="onb-dot" id="onb-dot-4"></span>
+        <span class="onb-dot" id="onb-dot-5"></span>
       </div>
 
       <!-- Étape 1 : Bienvenue -->
       <div class="onb-step actif" id="onb-step-1">
-        <div class="onb-emoji">🚀</div>
+        <div class="onb-emoji"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
         <h2 class="onb-titre">Bienvenue sur Créatis</h2>
-        <p class="onb-texte">Ton assistant IA pour créer du contenu YouTube 10x plus vite. Connecte ta chaîne et les agents s'adaptent à ton univers.</p>
+        <p class="onb-texte">Ton assistant IA pour créer du contenu vidéo 10x plus vite. Script, titre, miniature, description — en 30 secondes.</p>
         <button class="btn btn-primaire" style="width:100%;" onclick="app._onbEtape(2)">Commencer →</button>
         <button class="onb-passer" onclick="app._onbTerminer()">Passer la configuration</button>
       </div>
 
-      <!-- Étape 2 : Chaîne YouTube -->
+      <!-- Étape 2 : Niche -->
       <div class="onb-step" id="onb-step-2">
-        <div class="onb-emoji">📺</div>
-        <h2 class="onb-titre">Ta chaîne YouTube</h2>
-        <p class="onb-texte">Entre ton @handle pour que les agents s'adaptent à ta niche et ton audience.</p>
+        <div class="onb-emoji">🎯</div>
+        <h2 class="onb-titre">Tu crées du contenu sur quoi ?</h2>
+        <p class="onb-texte">Ça aide Créatis à personnaliser tes scripts, titres et idées.</p>
+        <input type="text" id="onb-niche" class="input" placeholder="Finance, gaming, cuisine…" style="width:100%;margin-bottom:16px;" />
+        <button class="btn btn-primaire" style="width:100%;" onclick="app._onbSauvegarderNiche()">Suivant →</button>
+        <button class="onb-passer" onclick="app._onbEtape(3)">Passer cette étape →</button>
+      </div>
+
+      <!-- Étape 3 : Plateformes -->
+      <div class="onb-step" id="onb-step-3">
+        <div class="onb-emoji">📡</div>
+        <h2 class="onb-titre">Tu publies où ?</h2>
+        <p class="onb-texte">Sélectionne toutes tes plateformes.</p>
+        <div class="onb-plateformes" id="onb-plateformes">
+          <button class="onb-plateforme" data-plateforme="YouTube" onclick="app._onbTogglePlateforme(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805z"/></svg>
+            YouTube
+          </button>
+          <button class="onb-plateforme" data-plateforme="TikTok" onclick="app._onbTogglePlateforme(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/></svg>
+            TikTok
+          </button>
+          <button class="onb-plateforme" data-plateforme="Instagram" onclick="app._onbTogglePlateforme(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            Instagram
+          </button>
+          <button class="onb-plateforme" data-plateforme="X" onclick="app._onbTogglePlateforme(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.733-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            X (Twitter)
+          </button>
+          <button class="onb-plateforme" data-plateforme="LinkedIn" onclick="app._onbTogglePlateforme(this)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            LinkedIn
+          </button>
+        </div>
+        <button class="btn btn-primaire" style="width:100%;margin-top:16px;" onclick="app._onbSauvegarderPlateformes()">Suivant →</button>
+        <button class="onb-passer" onclick="app._onbEtape(4)">Passer cette étape →</button>
+      </div>
+
+      <!-- Étape 4 : Chaîne YouTube -->
+      <div class="onb-step" id="onb-step-4">
+        <div class="onb-emoji"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <h2 class="onb-titre">Ta chaîne (optionnel)</h2>
+        <p class="onb-texte">Entre ton @handle YouTube pour que les agents s'adaptent à ta niche et ton audience. Tu peux passer cette étape.</p>
         <input type="text" id="onb-handle" class="input" placeholder="@machaine ou youtube.com/c/machaine" style="width:100%;margin-bottom:12px;" />
         <p class="onb-msg" id="onb-msg"></p>
         <button class="btn btn-primaire" id="onb-btn-analyser" style="width:100%;" onclick="app._onbAnalyser()">
           <span id="onb-btn-texte">Analyser ma chaîne</span>
         </button>
-        <button class="onb-passer" onclick="app._onbEtape(3)">Passer cette étape</button>
+        <button class="onb-passer" onclick="app._onbEtape(5)">Passer cette étape →</button>
       </div>
 
-      <!-- Étape 3 : Premier agent -->
-      <div class="onb-step" id="onb-step-3">
-        <div class="onb-emoji">⚡</div>
-        <h2 class="onb-titre">Essaie ton premier agent</h2>
-        <p class="onb-texte">3 agents disponibles gratuitement — clique pour commencer à créer.</p>
+      <!-- Étape 5 : Premier agent -->
+      <div class="onb-step" id="onb-step-5">
+        <div class="onb-emoji"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <h2 class="onb-titre">Génère ton premier contenu</h2>
+        <p class="onb-texte">Clique sur un agent — ton contenu est prêt en 30 secondes.</p>
         <div class="onb-agents" id="onb-agents"></div>
-        <button class="btn btn-secondaire" style="width:100%;margin-top:8px;" onclick="app._onbTerminer()">Explorer l'application →</button>
+        <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="app._onbLancerAgent('youtube-complet')">
+          Lancer YouTube Complet →
+        </button>
+        <button class="onb-passer" onclick="app._onbTerminer()">Voir le tableau de bord</button>
       </div>
 
     </div>
@@ -442,27 +659,27 @@
   <div class="modal-fond" id="modal-post-gen">
     <div class="modal modal-post-gen">
       <div class="mpg-header">
-        <div class="mpg-emoji">🎉</div>
+        <div class="mpg-emoji"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
         <h2 class="mpg-titre">Premier contenu généré !</h2>
         <p class="mpg-sous">Tu viens de gagner 2h de travail créatif.</p>
       </div>
       <div class="mpg-benefits">
         <div class="mpg-benefit">
-          <span class="mpg-b-ico">🖼️</span>
+          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
           <div>
             <div class="mpg-b-titre">Miniature Pro</div>
             <div class="mpg-b-desc">Génère des visuels YouTube avec IA (gpt-image-1)</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico">🤖</span>
+          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
           <div>
             <div class="mpg-b-titre">6 agents supplémentaires</div>
             <div class="mpg-b-desc">Recyclage, sponsors, analyse vidéo, réponses…</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico">♾️</span>
+          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z"/><path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z"/></svg></span>
           <div>
             <div class="mpg-b-titre">Générations illimitées</div>
             <div class="mpg-b-desc">Plus de limite mensuelle — crée autant que tu veux</div>
@@ -470,7 +687,7 @@
         </div>
       </div>
       <button class="btn btn-primaire" style="width:100%;margin-top:20px;" onclick="window.location.href='index.html#tarifs'">
-        Voir le plan Pro — 19€/mois →
+        Voir le plan Pro — 9,50€ le 1er mois →
       </button>
       <button class="onb-passer" onclick="document.getElementById('modal-post-gen').classList.remove('visible')">
         Continuer avec le plan gratuit
@@ -515,6 +732,33 @@
         return;
       }
       Stripe_Integration.lancerPaiement(plan);
+    }
+  </script>
+  <script>
+    function toggleNavCat(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const body = el.querySelector('.nav-cat-body');
+      const ouvert = el.classList.contains('ouvert');
+      if (ouvert) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(() => { body.style.maxHeight = '0'; });
+        el.classList.remove('ouvert');
+      } else {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        body.addEventListener('transitionend', () => { body.style.maxHeight = ''; }, { once: true });
+        el.classList.add('ouvert');
+      }
+    }
+  </script>
+  <script>
+    function dashTab(tab) {
+      const agents = document.querySelectorAll('.dash-tab-agents');
+      const hist = document.querySelectorAll('.dash-tab-historique');
+      document.getElementById('tab-agents').classList.toggle('actif', tab === 'agents');
+      document.getElementById('tab-historique').classList.toggle('actif', tab === 'historique');
+      agents.forEach(el => el.classList.toggle('masque', tab !== 'agents'));
+      hist.forEach(el => el.classList.toggle('actif', tab === 'historique'));
     }
   </script>
 </body>

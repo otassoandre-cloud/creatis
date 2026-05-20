@@ -29,12 +29,17 @@
     "api/prospect-batch.js": {
       "memory": 1024,
       "maxDuration": 300
+    },
+    "api/repurpose.js": {
+      "memory": 1024,
+      "maxDuration": 300
     }
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/app", "dest": "/app.html" },
     { "src": "/auth", "dest": "/auth.html" },
+    { "src": "/auth/callback", "dest": "/auth/callback.html" },
     { "src": "/success", "dest": "/success.html" },
     { "src": "/cancel", "dest": "/cancel.html" },
     { "src": "/cgu", "dest": "/cgu.html" },
@@ -42,6 +47,7 @@
     { "src": "/confidentialite", "dest": "/confidentialite.html" },
     { "src": "/affiliation", "dest": "/affiliation.html" },
     { "src": "/parrainage", "dest": "/parrainage.html" },
+    { "src": "/test-chat", "dest": "/test-chat.html" },
     { "src": "/programme-affiliation-youtuber", "dest": "/programme-affiliation-youtuber.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],

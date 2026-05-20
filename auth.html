@@ -2,341 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion — Créatis</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Créatis — Créer un compte</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <style>
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
-      padding: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      top: -30%;
-      left: -20%;
-      width: 700px;
-      height: 700px;
-      background: radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -20%;
-      right: -10%;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(16,185,129,0.04) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
-    .page-auth {
-      width: 100%;
-      max-width: 460px;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* En-tête */
-    .auth-entete {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-
-    .auth-logo {
-      font-size: 32px;
-      font-weight: 800;
-      color: var(--texte);
-      text-decoration: none;
-      display: inline-block;
-      margin-bottom: 8px;
-      letter-spacing: -1px;
-    }
-
-    .auth-logo span { color: var(--vert); }
-
-    .auth-entete p {
-      font-size: 14px;
-      color: var(--texte-muted);
-    }
-
-    /* Carte principale */
-    .auth-carte {
-      background: var(--bg-card);
-      border: 1px solid var(--bordure);
-      border-radius: 20px;
-      padding: 40px;
-    }
-
-    .auth-titre {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      text-align: center;
-    }
-
-    .auth-sous-titre {
-      font-size: 14px;
-      color: var(--texte-doux);
-      text-align: center;
-      margin-bottom: 32px;
-      line-height: 1.5;
-    }
-
-    /* Bouton YouTube */
-    .btn-youtube {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 16px;
-      background: #ff0000;
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: var(--transition);
-      text-decoration: none;
-      margin-bottom: 12px;
-    }
-
-    .btn-youtube:hover {
-      background: #cc0000;
-      color: #fff;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(255,0,0,0.3);
-    }
-
-    .btn-youtube svg {
-      width: 22px;
-      height: 22px;
-      fill: currentColor;
-      flex-shrink: 0;
-    }
-
-    /* Séparateur */
-    .auth-sep {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0;
-    }
-
-    .auth-sep::before, .auth-sep::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--bordure);
-    }
-
-    .auth-sep span {
-      font-size: 12px;
-      color: var(--texte-muted);
-      white-space: nowrap;
-    }
-
-    /* Bouton démo */
-    .btn-demo {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 14px;
-      background: transparent;
-      color: var(--texte-doux);
-      border: 1.5px solid var(--bordure);
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-    }
-
-    .btn-demo:hover {
-      border-color: var(--vert);
-      color: var(--vert);
-    }
-
-    /* Zone état connexion */
-    .etat-connexion {
-      min-height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 16px;
-      font-size: 14px;
-      color: var(--texte-doux);
-    }
-
-    /* Avantages liste */
-    .avantages {
-      margin-top: 28px;
-      padding-top: 24px;
-      border-top: 1px solid var(--bordure);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .avantage {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: var(--texte-doux);
-    }
-
-    .avantage .check-ic {
-      color: var(--vert);
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-
-    /* Retour */
-    .retour-lien {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 28px;
-      font-size: 14px;
-      color: var(--texte-muted);
-    }
-
-    .retour-lien a { color: var(--vert); }
-    .retour-lien a:hover { color: var(--vert-clair); }
-
-    /* Mentions RGPD */
-    .rgpd {
-      text-align: center;
-      font-size: 11px;
-      color: var(--texte-muted);
-      margin-top: 16px;
-      line-height: 1.5;
-    }
-
-    .rgpd a { color: var(--texte-muted); text-decoration: underline; }
-
-    /* Info clé manquante */
-    .alerte-config {
-      display: none;
-      background: rgba(245,158,11,0.1);
-      border: 1px solid rgba(245,158,11,0.3);
-      border-radius: var(--radius-sm);
-      padding: 12px 16px;
-      font-size: 13px;
-      color: var(--jaune);
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-
-    /* Formulaire email/password */
-    .auth-form { display: flex; flex-direction: column; gap: 14px; }
-
-    .form-champ { display: flex; flex-direction: column; gap: 6px; }
-
-    .form-champ label {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--texte-doux);
-    }
-
-    .form-champ input {
-      width: 100%;
-      padding: 12px 16px;
-      background: var(--bg-input);
-      border: 1.5px solid var(--bordure);
-      border-radius: var(--radius-sm);
-      color: var(--texte);
-      font-size: 15px;
-      font-family: inherit;
-      transition: var(--transition);
-      box-sizing: border-box;
-    }
-
-    .form-champ input:focus {
-      outline: none;
-      border-color: var(--vert);
-      box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
-    }
-
-    .form-champ input::placeholder { color: var(--texte-muted); }
-
-    .btn-email {
-      width: 100%;
-      padding: 14px;
-      background: var(--vert);
-      color: #000;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-email:hover { background: var(--vert-clair); transform: translateY(-1px); }
-    .btn-email:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-    .toggle-mode {
-      text-align: center;
-      font-size: 13px;
-      color: var(--texte-muted);
-      margin-top: 4px;
-    }
-
-    .toggle-mode button {
-      background: none;
-      border: none;
-      color: var(--vert);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 0;
-    }
-
-    .toggle-mode button:hover { color: var(--vert-clair); }
-
-    .erreur-auth {
-      display: none;
-      background: rgba(239,68,68,0.1);
-      border: 1px solid rgba(239,68,68,0.3);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
-      font-size: 13px;
-      color: #f87171;
-    }
-
-    .succes-auth {
-      display: none;
-      background: rgba(16,185,129,0.1);
-      border: 1px solid rgba(16,185,129,0.3);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
-      font-size: 13px;
-      color: var(--vert);
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
   <!-- Microsoft Clarity -->
@@ -347,366 +18,685 @@
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "wqzt6m475j");
   </script>
+  <script>
+    window.addEventListener('error', function(e) {
+      const src = (e.filename || '');
+      if (!src || src.indexOf('creatis.app') === -1 && src.indexOf('localhost') === -1 && src.indexOf('127.0.0.1') === -1) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  </script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '953153460847578');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0f0d;
+      --surface: #111915;
+      --border: #1e2d24;
+      --green: #3ecf6e;
+      --green-dim: #2a9e52;
+      --white: #f0f5f1;
+      --muted: #6b8070;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0;
+    }
+
+    .auth-wrap {
+      width: 100%;
+      max-width: 430px;
+      padding: 48px 24px 48px;
+    }
+
+    /* Logo */
+    .auth-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 24px;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: 6px;
+      text-decoration: none;
+      display: block;
+    }
+    .auth-logo span { color: var(--green); }
+
+    .auth-tagline {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* Badge plan sélectionné */
+    .badge-plan {
+      display: none;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .badge-plan-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(62,207,110,0.1);
+      border: 1px solid rgba(62,207,110,0.3);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* Bloc démo */
+    .demo-block {
+      background: linear-gradient(135deg, #0f1f15 0%, #132019 100%);
+      border: 1.5px solid var(--green);
+      border-radius: 20px;
+      padding: 22px 20px;
+      margin-bottom: 14px;
+    }
+
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(62,207,110,0.15);
+      border: 1px solid rgba(62,207,110,0.3);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 12px;
+    }
+
+    .demo-titre {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .demo-sub {
+      font-size: 13.5px;
+      color: #8aab96;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    .btn-demo-essai {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 15px;
+      background: var(--green);
+      color: #0a0f0d;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .15s;
+    }
+    .btn-demo-essai:hover { background: #4ddb7d; }
+
+    .demo-features {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .demo-feat {
+      flex: 1;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .demo-feat strong {
+      display: block;
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* Séparateur */
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .auth-divider-line { flex: 1; height: 1px; background: var(--border); }
+    .auth-divider-text { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    /* Bloc signup */
+    .signup-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+    }
+
+    .signup-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .signup-label strong { color: var(--white); }
+
+    /* Messages */
+    .erreur-auth {
+      display: none;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #f87171;
+      margin-bottom: 12px;
+    }
+    .succes-auth {
+      display: none;
+      background: rgba(62,207,110,0.1);
+      border: 1px solid rgba(62,207,110,0.3);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    /* Bouton Google */
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px;
+      background: #fff;
+      color: #1a1a1a;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .15s, box-shadow .15s;
+    }
+    .btn-google:hover { background: #f5f5f5; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .btn-google:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* Séparateur interne */
+    .or-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+    .or-row .line { flex: 1; height: 1px; background: var(--border); }
+    .or-row span { font-size: 11px; color: var(--muted); }
+
+    /* Champs */
+    .form-field { margin-bottom: 10px; }
+    .form-field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--white);
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-field input:focus { border-color: var(--green); }
+    .form-field input::placeholder { color: var(--muted); }
+
+    /* Champ password avec bouton voir */
+    .field-password-wrap { position: relative; }
+    .field-password-wrap input { padding-right: 44px; }
+    .btn-voir-mdp {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      font-size: 16px; padding: 0;
+    }
+
+    /* Mot de passe oublié */
+    .lien-oublie {
+      display: none;
+      font-size: 12px;
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 500;
+      float: right;
+      margin-bottom: 4px;
+    }
+
+    /* Bouton submit */
+    .btn-signup {
+      width: 100%;
+      padding: 13px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 2px;
+      font-family: 'DM Sans', sans-serif;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-signup:hover { border-color: var(--green); background: rgba(62,207,110,0.05); }
+    .btn-signup:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* Note bas */
+    .free-note {
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+    .free-note .green { color: var(--green); font-weight: 600; }
+    .free-note .toggle-lien {
+      background: none; border: none; color: var(--green);
+      cursor: pointer; font-size: 11.5px; font-weight: 600;
+      font-family: 'DM Sans', sans-serif; padding: 0;
+    }
+    .free-note .toggle-lien:hover { text-decoration: underline; }
+
+    /* Formulaire reset password */
+    .reset-wrap { padding: 4px 0; }
+    .reset-wrap h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+    .reset-wrap .form-field input { margin-bottom: 0; }
+
+    /* Toast */
+    .toast-conteneur {
+      position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      padding: 12px 18px; border-radius: 10px; font-size: 14px;
+      animation: glisserEntrer .3s forwards;
+      max-width: 320px;
+    }
+    .toast.succes { background: #0d2d1a; border: 1px solid var(--green); color: var(--green); }
+    .toast.erreur { background: #2d0d0d; border: 1px solid #f87171; color: #f87171; }
+    .toast.info { background: #1a1f1a; border: 1px solid #444; color: #aaa; }
+    @keyframes glisserEntrer { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
+    @keyframes glisserSortir { from { opacity:1; } to { opacity:0; transform: translateX(20px); } }
+
+    @media (max-width: 480px) {
+      .auth-wrap { padding: 32px 16px 40px; }
+      .demo-titre { font-size: 20px; }
+    }
+  </style>
 </head>
 <body>
 
-  <div class="page-auth">
+<div class="auth-wrap">
 
-    <!-- En-tête -->
-    <div class="auth-entete">
-      <a href="index.html" class="auth-logo">Créatis<span>.</span></a>
-      <p>L'IA pour créateurs YouTube</p>
+  <a href="index.html" class="auth-logo">Créatis<span>.</span></a>
+  <p class="auth-tagline">L'IA pour créateurs de contenu</p>
+
+  <!-- Badge plan -->
+  <div class="badge-plan" id="badge-plan">
+    <div class="badge-plan-inner">
+      ✨ Plan <span id="badge-plan-nom">Pro</span> sélectionné — <span id="badge-plan-prix">9,50€ le 1er mois</span>
+      <span style="background:#f97316;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;">-50%</span>
     </div>
-
-    <!-- Badge plan sélectionné -->
-    <div id="badge-plan" style="display:none;text-align:center;margin-bottom:16px;">
-      <span style="display:inline-flex;align-items:center;gap:8px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:6px 16px;font-size:13px;color:var(--vert);font-weight:600;">
-        ✨ Plan <span id="badge-plan-nom">Pro</span> sélectionné — <span id="badge-plan-prix">49€/mois</span>
-      </span>
-    </div>
-
-    <!-- Carte connexion -->
-    <div class="auth-carte">
-      <h1 class="auth-titre" id="auth-titre">Créer ton compte</h1>
-      <p class="auth-sous-titre" id="auth-sous-titre">
-        50 générations gratuites pour démarrer.<br>Sans carte bancaire.
-      </p>
-
-      <!-- Messages feedback -->
-      <div class="erreur-auth" id="erreur-auth"></div>
-      <div class="succes-auth" id="succes-auth"></div>
-
-      <!-- Formulaire email/password -->
-      <form class="auth-form" id="form-auth" onsubmit="soumettreForm(event)">
-        <div class="form-champ">
-          <label for="auth-email">Adresse email</label>
-          <input type="email" id="auth-email" placeholder="toi@exemple.fr" required autocomplete="email">
-        </div>
-        <div class="form-champ">
-          <label for="auth-password" style="display:flex;justify-content:space-between;align-items:center">
-            Mot de passe
-            <span id="lien-oublie" onclick="motDePasseOublie()" style="font-size:12px;color:var(--vert);cursor:pointer;font-weight:500;display:none">Mot de passe oublié ?</span>
-          </label>
-          <div style="position:relative">
-            <input type="password" id="auth-password" placeholder="Au moins 6 caractères" required autocomplete="current-password" minlength="6" style="width:100%;padding-right:44px;box-sizing:border-box">
-            <button type="button" onclick="togglePassword()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--texte-muted);font-size:16px;padding:0" id="btn-voir-mdp">👁</button>
-          </div>
-        </div>
-        <button type="submit" class="btn-email" id="btn-submit">
-          <span id="btn-submit-texte">Créer mon compte gratuit →</span>
-        </button>
-      </form>
-
-      <div class="toggle-mode">
-        <span id="toggle-label">Déjà un compte ?</span>
-        <button onclick="toggleMode()" id="toggle-btn">Se connecter</button>
-      </div>
-
-      <!-- Séparateur YouTube -->
-      <div class="auth-sep" id="sep-youtube" style="display:none">
-        <span>ou connecte ta chaîne</span>
-      </div>
-
-      <!-- Bouton YouTube (si configuré) -->
-      <button class="btn-youtube" id="btn-connexion-youtube" onclick="lancerConnexionYouTube()" style="display:none">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
-        </svg>
-        Connecter avec YouTube
-      </button>
-
-      <!-- Séparateur démo -->
-      <div class="auth-sep">
-        <span>ou</span>
-      </div>
-
-      <!-- Bouton démo -->
-      <button class="btn-demo" onclick="connexionDemo()">
-        Essayer sans compte (mode démo)
-      </button>
-
-      <!-- Avantages -->
-      <div class="avantages">
-        <div class="avantage">
-          <span class="check-ic">✓</span>
-          <span>50 générations gratuites offertes</span>
-        </div>
-        <div class="avantage">
-          <span class="check-ic">✓</span>
-          <span>10 agents IA spécialisés YouTube</span>
-        </div>
-        <div class="avantage">
-          <span class="check-ic">✓</span>
-          <span>Personnalisation selon ta chaîne</span>
-        </div>
-        <div class="avantage">
-          <span class="check-ic">✓</span>
-          <span>Sans carte bancaire requise</span>
-        </div>
-      </div>
-
-      <!-- RGPD -->
-      <p class="rgpd">
-        En continuant, tu acceptes nos <a href="cgu.html">Conditions d'utilisation</a>
-        et notre <a href="confidentialite.html">Politique de confidentialité</a>.<br>
-        Tes données ne sont jamais revendues.
-      </p>
-    </div>
-
-    <!-- Retour -->
-    <div class="retour-lien">
-      <span>←</span>
-      <a href="index.html">Retour à l'accueil</a>
-    </div>
-
   </div>
 
-  <!-- Toast -->
-  <div class="toast-conteneur" id="toast-conteneur"></div>
+  <!-- Bloc démo -->
+  <div class="demo-block" id="demo-block">
+    <div class="demo-badge">⚡ Recommandé</div>
+    <div class="demo-titre">Essaie d'abord,<br>inscris-toi ensuite.</div>
+    <div class="demo-sub">Génère un vrai script maintenant — sans email, sans mot de passe.</div>
+    <button class="btn-demo-essai" onclick="connexionDemo()">Générer mon script maintenant →</button>
+    <div class="demo-features">
+      <div class="demo-feat"><strong>Script</strong>complet</div>
+      <div class="demo-feat"><strong>Hook</strong>viral</div>
+      <div class="demo-feat"><strong>Titre</strong>+ SEO</div>
+      <div class="demo-feat"><strong>30s</strong>chrono</div>
+    </div>
+  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script src="https://js.stripe.com/v3/"></script>
-  <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/integrations.js"></script>
-  <script src="js/emails.js"></script>
-  <script src="js/prospection.js"></script>
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const planCible = urlParams.get('plan');
-    let modeConnexion = false; // false = inscription, true = connexion
+  <!-- Séparateur -->
+  <div class="auth-divider">
+    <div class="auth-divider-line"></div>
+    <div class="auth-divider-text">ou crée un compte pour sauvegarder</div>
+    <div class="auth-divider-line"></div>
+  </div>
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Détecter le flow reset password (lien Supabase avec type=recovery dans le hash)
-      const hash = Object.fromEntries(new URLSearchParams(window.location.hash.replace('#', '')));
-      if (hash.type === 'recovery' && hash.access_token) {
-        window._recoverySession = { access_token: hash.access_token, refresh_token: hash.refresh_token || '' };
-        document.getElementById('form-auth').style.display = 'none';
-        const resetDiv = document.createElement('div');
-        resetDiv.innerHTML = `
-          <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">Nouveau mot de passe</h2>
-          <div class="form-champ" style="margin-bottom:14px">
-            <label>Nouveau mot de passe</label>
-            <div style="position:relative">
-              <input type="password" id="new-password" placeholder="Au moins 6 caractères" minlength="6" style="width:100%;padding-right:44px;box-sizing:border-box">
-              <button type="button" onclick="toggleNewPassword()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--texte-muted);font-size:16px;padding:0">👁</button>
-            </div>
+  <!-- Bloc signup -->
+  <div class="signup-block">
+    <div class="signup-label"><strong>50 générations gratuites</strong> · Sans carte bancaire</div>
+
+    <div class="erreur-auth" id="erreur-auth"></div>
+    <div class="succes-auth" id="succes-auth"></div>
+
+    <!-- Google -->
+    <button class="btn-google" id="btn-google" onclick="connexionGoogle()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuer avec Google
+    </button>
+
+    <div class="or-row">
+      <div class="line"></div>
+      <span>ou par email</span>
+      <div class="line"></div>
+    </div>
+
+    <!-- Formulaire email/mdp -->
+    <form id="form-auth" onsubmit="soumettreForm(event)">
+      <span class="lien-oublie" id="lien-oublie" onclick="motDePasseOublie()">Mot de passe oublié ?</span>
+      <div class="form-field">
+        <input type="email" id="auth-email" placeholder="toi@exemple.fr" required autocomplete="email">
+      </div>
+      <div class="form-field">
+        <div class="field-password-wrap">
+          <input type="password" id="auth-password" placeholder="Mot de passe (6 car. min.)" required autocomplete="new-password" minlength="6">
+          <button type="button" class="btn-voir-mdp" id="btn-voir-mdp" onclick="togglePassword()">👁</button>
+        </div>
+      </div>
+      <button type="submit" class="btn-signup" id="btn-submit">
+        <span id="btn-submit-texte">Créer mon compte gratuit →</span>
+      </button>
+    </form>
+
+    <div class="free-note">
+      <span class="green">50 générations offertes</span> · Aucune carte requise<br>
+      <span id="toggle-label">Déjà un compte ?</span>
+      <button class="toggle-lien" onclick="toggleMode()" id="toggle-btn">Se connecter</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-conteneur" id="toast-conteneur"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/integrations.js"></script>
+<script src="js/emails.js"></script>
+<script src="js/prospection.js"></script>
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const planCible = urlParams.get('plan');
+  let modeConnexion = false;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Flow reset password (lien Supabase avec type=recovery dans le hash)
+    const hash = Object.fromEntries(new URLSearchParams(window.location.hash.replace('#', '')));
+    if (hash.type === 'recovery' && hash.access_token) {
+      window._recoverySession = { access_token: hash.access_token, refresh_token: hash.refresh_token || '' };
+      document.getElementById('form-auth').style.display = 'none';
+      document.querySelector('.or-row').style.display = 'none';
+      document.getElementById('btn-google').style.display = 'none';
+      document.getElementById('demo-block').style.display = 'none';
+      const resetDiv = document.createElement('div');
+      resetDiv.className = 'reset-wrap';
+      resetDiv.innerHTML = `
+        <h2>Nouveau mot de passe</h2>
+        <div class="form-field">
+          <div class="field-password-wrap">
+            <input type="password" id="new-password" placeholder="Au moins 6 caractères" minlength="6">
+            <button type="button" class="btn-voir-mdp" onclick="toggleNewPassword()">👁</button>
           </div>
-          <button onclick="enregistrerNouveauMdp()" class="btn-email" style="width:100%">Enregistrer le mot de passe →</button>
-          <div id="reset-msg" style="margin-top:12px;font-size:14px;text-align:center"></div>
-        `;
-        document.getElementById('form-auth').parentNode.insertBefore(resetDiv, document.getElementById('form-auth'));
-        return;
-      }
+        </div>
+        <button onclick="enregistrerNouveauMdp()" class="btn-signup" style="margin-top:8px;width:100%">Enregistrer le mot de passe →</button>
+        <div id="reset-msg" style="margin-top:12px;font-size:14px;text-align:center"></div>
+      `;
+      document.getElementById('form-auth').parentNode.insertBefore(resetDiv, document.getElementById('form-auth'));
+      return;
+    }
 
-      // Si YouTube configuré, montrer le bouton YouTube
-      if (CONFIG.estYouTubeConfigured()) {
-        document.getElementById('btn-connexion-youtube').style.display = 'flex';
-        document.getElementById('sep-youtube').style.display = 'flex';
-      }
+    // Badge plan
+    if (planCible && CONFIG.PLANS[planCible] && planCible !== 'gratuit') {
+      const planConfig = CONFIG.PLANS[planCible];
+      document.getElementById('badge-plan').style.display = 'block';
+      document.getElementById('badge-plan-nom').textContent = planConfig.nom;
+      document.getElementById('badge-plan-prix').textContent = planCible === 'pro' ? '9,50€ le 1er mois' : `${planConfig.prix}€/mois`;
+      if (typeof Stripe_Integration !== 'undefined') Stripe_Integration.sauvegarderPlanCible(planCible);
+    }
 
-      // Badge plan sélectionné
-      if (planCible && CONFIG.PLANS[planCible] && planCible !== 'gratuit') {
-        const planConfig = CONFIG.PLANS[planCible];
-        document.getElementById('badge-plan').style.display = 'block';
-        document.getElementById('badge-plan-nom').textContent = planConfig.nom;
-        document.getElementById('badge-plan-prix').textContent = `${planConfig.prix}€/mois`;
-        document.getElementById('auth-titre').textContent = `Crée ton compte ${planConfig.nom}`;
-        document.getElementById('auth-sous-titre').textContent =
-          `Tu seras redirigé vers le paiement sécurisé Stripe après ta connexion.`;
-        if (typeof Stripe_Integration !== 'undefined') {
-          Stripe_Integration.sauvegarderPlanCible(planCible);
-        }
-      }
+    // Déjà connecté → rediriger (exclure sessions démo)
+    await Auth.init();
+    if (Auth.estAuthentifie() && !Auth.estDemoMode()) {
+      const returnUrl = urlParams.get('returnUrl');
+      window.location.href = returnUrl || 'app.html';
+    }
+  });
 
-      // Vérifier si déjà connecté → rediriger directement
-      await Auth.init();
-      if (Auth.estAuthentifie()) {
-        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
-        window.location.href = returnUrl || 'app.html';
-      }
-    });
+  function toggleMode() {
+    modeConnexion = !modeConnexion;
+    const btnTexte = document.getElementById('btn-submit-texte');
+    const toggleLabel = document.getElementById('toggle-label');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const passwordInput = document.getElementById('auth-password');
 
-    function toggleMode() {
-      modeConnexion = !modeConnexion;
-      const titre = document.getElementById('auth-titre');
-      const sousTitre = document.getElementById('auth-sous-titre');
-      const btnTexte = document.getElementById('btn-submit-texte');
-      const toggleLabel = document.getElementById('toggle-label');
-      const toggleBtn = document.getElementById('toggle-btn');
-      const passwordInput = document.getElementById('auth-password');
+    document.getElementById('lien-oublie').style.display = modeConnexion ? 'block' : 'none';
+    document.getElementById('demo-block').style.display = modeConnexion ? 'none' : 'block';
+    document.querySelector('.auth-divider').style.display = modeConnexion ? 'none' : 'flex';
+    document.querySelector('.signup-label').textContent = modeConnexion ? 'Bon retour sur Créatis' : '50 générations gratuites · Sans carte bancaire';
 
-      document.getElementById('lien-oublie').style.display = modeConnexion ? 'inline' : 'none';
+    if (modeConnexion) {
+      btnTexte.textContent = 'Se connecter →';
+      toggleLabel.textContent = 'Pas encore de compte ?';
+      toggleBtn.textContent = 'Créer un compte';
+      passwordInput.setAttribute('autocomplete', 'current-password');
+      passwordInput.removeAttribute('minlength');
+      passwordInput.placeholder = 'Ton mot de passe';
+    } else {
+      btnTexte.textContent = 'Créer mon compte gratuit →';
+      toggleLabel.textContent = 'Déjà un compte ?';
+      toggleBtn.textContent = 'Se connecter';
+      passwordInput.setAttribute('autocomplete', 'new-password');
+      passwordInput.setAttribute('minlength', '6');
+      passwordInput.placeholder = 'Mot de passe (6 car. min.)';
+    }
+    afficherErreur('');
+    afficherSucces('');
+  }
 
+  function togglePassword() {
+    const input = document.getElementById('auth-password');
+    const btn = document.getElementById('btn-voir-mdp');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? '👁' : '🙈';
+  }
+
+  async function connexionGoogle() {
+    const btn = document.getElementById('btn-google');
+    btn.disabled = true;
+    btn.textContent = 'Redirection vers Google…';
+    afficherErreur('');
+    try {
+      await Auth.signInWithGoogle();
+    } catch (err) {
+      afficherErreur('Erreur Google : ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Continuer avec Google`;
+    }
+  }
+
+  async function soumettreForm(e) {
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const btn = document.getElementById('btn-submit');
+    const btnTexte = document.getElementById('btn-submit-texte');
+
+    afficherErreur('');
+    afficherSucces('');
+    btn.disabled = true;
+    btnTexte.textContent = 'Chargement…';
+
+    try {
       if (modeConnexion) {
-        titre.textContent = 'Connexion';
-        sousTitre.textContent = 'Bon retour sur Créatis.';
-        btnTexte.textContent = 'Se connecter →';
-        toggleLabel.textContent = 'Pas encore de compte ?';
-        toggleBtn.textContent = 'Créer un compte';
-        passwordInput.setAttribute('autocomplete', 'current-password');
-        passwordInput.removeAttribute('minlength');
+        await Auth.connecter(email, password);
+        afficherSucces('Connexion réussie — redirection…');
+        setTimeout(() => verifierPlanPostAuth(), 700);
       } else {
-        titre.textContent = 'Créer ton compte';
-        sousTitre.textContent = '50 générations gratuites pour démarrer. Sans carte bancaire.';
-        btnTexte.textContent = 'Créer mon compte gratuit →';
-        toggleLabel.textContent = 'Déjà un compte ?';
-        toggleBtn.textContent = 'Se connecter';
-        passwordInput.setAttribute('autocomplete', 'new-password');
-        passwordInput.setAttribute('minlength', '6');
-      }
-
-      // Effacer les messages
-      afficherErreur('');
-      afficherSucces('');
-    }
-
-    function togglePassword() {
-      const input = document.getElementById('auth-password');
-      const btn = document.getElementById('btn-voir-mdp');
-      if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-      else { input.type = 'password'; btn.textContent = '👁'; }
-    }
-
-    async function motDePasseOublie() {
-      const email = document.getElementById('auth-email').value.trim();
-      if (!email) { afficherErreur('Entre ton email d\'abord'); return; }
-      try {
-        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-        const client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        const { error } = await client.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + '/auth'
-        });
-        if (error) throw error;
-        afficherSucces('Email de réinitialisation envoyé — vérifie ta boîte.');
-      } catch (e) { afficherErreur('Erreur : ' + e.message); }
-    }
-
-    async function soumettreForm(e) {
-      e.preventDefault();
-      const email = document.getElementById('auth-email').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const btn = document.getElementById('btn-submit');
-      const btnTexte = document.getElementById('btn-submit-texte');
-
-      afficherErreur('');
-      afficherSucces('');
-      btn.disabled = true;
-      btnTexte.textContent = 'Chargement…';
-
-      try {
-        if (modeConnexion) {
-          await Auth.connecter(email, password);
-          afficherSucces('Connexion réussie — redirection…');
-          setTimeout(() => verifierPlanPostAuth(), 700);
-        } else {
-          const data = await Auth.inscrire(email, password);
-          // Envoyer emails d'onboarding (silencieux si Brevo non configuré)
-          const newUser = { email, nom: email.split('@')[0], plan: 'gratuit', dateInscription: Date.now() };
-          if (typeof Emails !== 'undefined') {
-            Emails.envoyerBienvenue(newUser).catch(() => {});
-            Emails.ajouterContactBrevo(newUser).catch(() => {});
-          }
-          // Enregistrer le parrainage si un code ref est en localStorage
-          const refCode = localStorage.getItem('creatis_ref');
-          if (refCode && data?.user?.id) {
-            fetch('/api/parrainage', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: data.user.id, refCode })
-            }).catch(() => {});
-            localStorage.removeItem('creatis_ref');
-          }
-          if (!data.session) {
-            afficherSucces('Compte créé ! Vérifie ta boîte email pour confirmer ton adresse, puis connecte-toi.');
-            toggleMode();
-          } else {
-            afficherSucces('Compte créé — redirection…');
-            setTimeout(() => verifierPlanPostAuth(), 700);
-          }
+        const data = await Auth.inscrire(email, password);
+        const newUser = { email, nom: email.split('@')[0], plan: 'gratuit', dateInscription: Date.now() };
+        if (typeof Emails !== 'undefined') {
+          Emails.envoyerBienvenue(newUser).catch(() => {});
+          Emails.ajouterContactBrevo(newUser).catch(() => {});
         }
-      } catch (err) {
-        afficherErreur(err.message);
-        btn.disabled = false;
-        btnTexte.textContent = modeConnexion ? 'Se connecter →' : 'Créer mon compte gratuit →';
+        const refCode = localStorage.getItem('creatis_ref');
+        if (refCode && data?.user?.id) {
+          fetch('/api/parrainage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: data.user.id, refCode })
+          }).catch(() => {});
+          localStorage.removeItem('creatis_ref');
+        }
+        // Meta Pixel + CAPI — même event_id pour déduplication
+        const capiEventId = 'reg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        if (typeof fbq !== 'undefined') {
+          fbq('track', 'CompleteRegistration', {}, { eventID: capiEventId });
+        }
+        fetch('/api/user-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'track_event', email, eventId: capiEventId, eventSourceUrl: window.location.href })
+        }).catch(() => {});
+        if (!data.session) {
+          afficherSucces('Compte créé ! Vérifie ta boîte email pour confirmer ton adresse, puis connecte-toi.');
+          toggleMode();
+        } else {
+          afficherSucces('Compte créé — redirection…');
+          setTimeout(() => verifierPlanPostAuth(), 700);
+        }
       }
+    } catch (err) {
+      afficherErreur(err.message);
+      btn.disabled = false;
+      btnTexte.textContent = modeConnexion ? 'Se connecter →' : 'Créer mon compte gratuit →';
     }
+  }
 
-    function lancerConnexionYouTube() {
-      if (!CONFIG.estYouTubeConfigured()) {
-        connexionDemo();
+  async function motDePasseOublie() {
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) { afficherErreur('Entre ton email d\'abord'); return; }
+    try {
+      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+      const client = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/auth' });
+      if (error) throw error;
+      afficherSucces('Email de réinitialisation envoyé — vérifie ta boîte.');
+    } catch (e) { afficherErreur('Erreur : ' + e.message); }
+  }
+
+  function connexionDemo() {
+    Auth.connexionDemo();
+    verifierPlanPostAuth();
+  }
+
+  async function verifierPlanPostAuth() {
+    if (typeof Stripe_Integration !== 'undefined') {
+      const plan = Stripe_Integration.getPlanCible();
+      if (plan && CONFIG.PLANS[plan]) {
+        await Stripe_Integration.lancerPaiement(plan);
         return;
       }
-      if (typeof YouTube !== 'undefined') YouTube.connecter();
     }
+    const returnUrl = urlParams.get('returnUrl');
+    window.location.href = returnUrl || 'app.html';
+  }
 
-    function connexionDemo() {
-      Auth.connexionDemo();
-      verifierPlanPostAuth();
+  function afficherErreur(msg) {
+    const el = document.getElementById('erreur-auth');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function afficherSucces(msg) {
+    const el = document.getElementById('succes-auth');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  function toggleNewPassword() {
+    const input = document.getElementById('new-password');
+    const btn = input.parentNode.querySelector('button');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? '👁' : '🙈';
+  }
+
+  async function enregistrerNouveauMdp() {
+    const password = document.getElementById('new-password').value;
+    const msg = document.getElementById('reset-msg');
+    if (password.length < 6) { msg.textContent = 'Au moins 6 caractères'; msg.style.color = '#f87171'; return; }
+    msg.textContent = 'Enregistrement…'; msg.style.color = 'var(--muted)';
+    try {
+      const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+      const { error: sessionError } = await client.auth.setSession(window._recoverySession);
+      if (sessionError) throw sessionError;
+      const { error } = await client.auth.updateUser({ password });
+      if (error) throw error;
+      msg.textContent = '✅ Mot de passe mis à jour — redirection…';
+      msg.style.color = 'var(--green)';
+      setTimeout(() => window.location.href = 'app.html', 1500);
+    } catch (e) {
+      msg.textContent = 'Erreur : ' + e.message;
+      msg.style.color = '#f87171';
     }
+  }
 
-    async function verifierPlanPostAuth() {
-      if (typeof Stripe_Integration !== 'undefined') {
-        const plan = Stripe_Integration.getPlanCible();
-        if (plan && CONFIG.PLANS[plan]) {
-          await Stripe_Integration.lancerPaiement(plan);
-          return;
-        }
-      }
-      const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
-      window.location.href = returnUrl || (modeConnexion ? 'app.html' : 'cancel.html');
-    }
+  function afficherAlerte(msg) { afficherToast(msg, 'erreur'); }
 
-    function afficherErreur(msg) {
-      const el = document.getElementById('erreur-auth');
-      el.textContent = msg;
-      el.style.display = msg ? 'block' : 'none';
-    }
-
-    function afficherSucces(msg) {
-      const el = document.getElementById('succes-auth');
-      el.textContent = msg;
-      el.style.display = msg ? 'block' : 'none';
-    }
-
-    function toggleNewPassword() {
-      const input = document.getElementById('new-password');
-      const btn = input.parentNode.querySelector('button');
-      if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
-      else { input.type = 'password'; btn.textContent = '👁'; }
-    }
-
-    async function enregistrerNouveauMdp() {
-      const password = document.getElementById('new-password').value;
-      const msg = document.getElementById('reset-msg');
-      if (password.length < 6) { msg.textContent = 'Au moins 6 caractères'; msg.style.color = '#f87171'; return; }
-      msg.textContent = 'Enregistrement…'; msg.style.color = 'var(--texte-muted)';
-      try {
-        const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-        const { error: sessionError } = await client.auth.setSession(window._recoverySession);
-        if (sessionError) throw sessionError;
-        const { error } = await client.auth.updateUser({ password });
-        if (error) throw error;
-        msg.textContent = '✅ Mot de passe mis à jour — redirection…';
-        msg.style.color = 'var(--vert)';
-        setTimeout(() => window.location.href = 'app.html', 1500);
-      } catch (e) {
-        msg.textContent = 'Erreur : ' + e.message;
-        msg.style.color = '#f87171';
-      }
-    }
-
-    function afficherAlerte(msg) { afficherToast(msg, 'erreur'); }
-
-    function afficherToast(msg, type) {
-      const c = document.getElementById('toast-conteneur');
-      const t = document.createElement('div');
-      t.className = `toast ${type}`;
-      t.textContent = msg;
-      c.appendChild(t);
-      setTimeout(() => { t.style.animation = 'glisserSortir 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3500);
-    }
-  </script>
+  function afficherToast(msg, type) {
+    const c = document.getElementById('toast-conteneur');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.animation = 'glisserSortir 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3500);
+  }
+</script>
 </body>
 </html>
