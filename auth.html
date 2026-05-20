@@ -492,6 +492,12 @@
       return;
     }
 
+    // Pré-remplir email depuis #email= (landing page lp.html)
+    if (!hash.type && hash.email) {
+      const emailField = document.getElementById('auth-email');
+      if (emailField) emailField.value = decodeURIComponent(hash.email);
+    }
+
     // Badge plan
     if (planCible && CONFIG.PLANS[planCible] && planCible !== 'gratuit') {
       const planConfig = CONFIG.PLANS[planCible];

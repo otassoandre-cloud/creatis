@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ta vidéo YouTube → 15 posts en 60 secondes — Créatis</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '953153460847578');
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","wqzt6m475j");
+  </script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f0a;--surface:#111915;--card:#14201a;
+  --vert:#10b981;--vert-dim:#0d9668;
+  --texte:#f0f5f1;--muted:#6b8070;--bordure:#1e2d24;
+  --rouge:#ef4444;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--texte);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* ── HEADER ── */
+.lp-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--bordure)}
+.lp-logo{font-size:20px;font-weight:900;color:var(--texte);text-decoration:none}
+.lp-logo span{color:var(--vert)}
+.lp-header-cta{font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s}
+.lp-header-cta:hover{color:var(--vert)}
+
+/* ── HERO ── */
+.lp-hero{max-width:760px;margin:0 auto;padding:64px 24px 48px;text-align:center}
+.lp-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--vert);letter-spacing:.04em;text-transform:uppercase;margin-bottom:24px}
+.lp-h1{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.1;letter-spacing:-.02em;margin-bottom:18px}
+.lp-h1 em{font-style:normal;color:var(--vert)}
+.lp-sub{font-size:clamp(15px,2vw,18px);color:var(--muted);line-height:1.6;max-width:560px;margin:0 auto 36px}
+.lp-proof{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:36px}
+.lp-proof-item{font-size:12px;color:var(--muted)}
+.lp-proof-item strong{color:var(--texte)}
+
+/* ── INPUT ZONE ── */
+.lp-input-box{background:var(--surface);border:1.5px solid var(--bordure);border-radius:14px;padding:6px 6px 6px 16px;display:flex;gap:8px;align-items:center;max-width:600px;margin:0 auto;transition:border-color .2s}
+.lp-input-box:focus-within{border-color:var(--vert)}
+.lp-input-box input{flex:1;background:none;border:none;outline:none;font-size:15px;color:var(--texte);padding:8px 0}
+.lp-input-box input::placeholder{color:var(--muted)}
+.lp-btn-gen{background:var(--vert);color:#000;font-weight:800;font-size:14px;padding:12px 22px;border-radius:10px;border:none;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+.lp-btn-gen:hover{background:var(--vert-dim)}
+.lp-btn-gen:active{transform:scale(.97)}
+.lp-btn-gen:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.lp-input-hint{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* ── LOADER ── */
+#lp-loader{display:none;padding:60px 24px;text-align:center;max-width:480px;margin:0 auto}
+.lp-loader-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.lp-loader-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+.lp-progress-track{background:var(--bordure);border-radius:99px;height:4px;overflow:hidden;margin-bottom:28px}
+.lp-progress-fill{height:100%;background:var(--vert);border-radius:99px;width:0%;transition:width .4s ease}
+.lp-steps{display:flex;flex-direction:column;gap:14px;text-align:left}
+.lp-step{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted);transition:color .3s}
+.lp-step.actif{color:var(--texte)}
+.lp-step.done{color:var(--vert)}
+.lp-step-dot{width:8px;height:8px;border-radius:50%;background:var(--bordure);flex-shrink:0;transition:background .3s}
+.lp-step.actif .lp-step-dot{background:var(--vert);box-shadow:0 0 8px var(--vert);animation:pulse 1s infinite}
+.lp-step.done .lp-step-dot{background:var(--vert)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── RÉSULTATS ── */
+#lp-results{display:none;max-width:720px;margin:0 auto;padding:0 24px 80px}
+.lp-results-header{text-align:center;margin-bottom:28px}
+.lp-results-header h2{font-size:22px;font-weight:800;margin-bottom:6px}
+.lp-video-title{color:var(--vert)}
+.lp-results-header p{font-size:14px;color:var(--muted)}
+.lp-tabs-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.lp-tab{padding:7px 16px;font-size:13px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--bordure);border-radius:20px;cursor:pointer;transition:all .15s}
+.lp-tab:hover{color:var(--vert);border-color:var(--vert)}
+.lp-tab.actif{color:#000;background:var(--vert);border-color:var(--vert)}
+
+.lp-panel{display:none}
+.lp-panel.actif{display:flex;flex-direction:column;gap:12px}
+
+/* Cartes de contenu */
+.lp-card{background:var(--card);border:1px solid var(--bordure);border-radius:12px;padding:16px 18px;position:relative;font-size:14px;line-height:1.6;color:var(--texte)}
+.lp-card-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.lp-card.blurred{filter:blur(6px);user-select:none;pointer-events:none}
+
+/* Zone floue + CTA */
+.lp-blur-zone{position:relative;margin-top:-60px}
+.lp-blur-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 0%,var(--bg) 55%);pointer-events:none}
+.lp-cta-block{text-align:center;padding:20px 16px 0;position:relative;z-index:2}
+.lp-cta-block h3{font-size:20px;font-weight:800;margin-bottom:8px}
+.lp-cta-block p{font-size:14px;color:var(--muted);margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto}
+.lp-cta-main{display:inline-block;background:var(--vert);color:#000;font-weight:800;font-size:15px;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;transition:background .15s;width:100%;max-width:320px}
+.lp-cta-main:hover{background:var(--vert-dim)}
+.lp-cta-sub{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* ── MODAL ── */
+.lp-modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:16px}
+.lp-modal-bg.visible{display:flex}
+.lp-modal{background:var(--surface);border:1px solid var(--bordure);border-radius:20px;padding:36px 32px;max-width:420px;width:100%;text-align:center;position:relative}
+.lp-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
+.lp-modal h3{font-size:22px;font-weight:900;margin-bottom:8px}
+.lp-modal-desc{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.lp-modal-preview{background:var(--card);border:1px solid var(--bordure);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);text-align:left;margin-bottom:20px;line-height:1.5}
+.lp-modal-preview strong{color:var(--texte);font-size:13px}
+.lp-modal-form{display:flex;flex-direction:column;gap:10px}
+.lp-modal-input{background:var(--card);border:1.5px solid var(--bordure);border-radius:10px;padding:13px 16px;font-size:15px;color:var(--texte);outline:none;transition:border-color .15s;width:100%}
+.lp-modal-input:focus{border-color:var(--vert)}
+.lp-modal-input::placeholder{color:var(--muted)}
+.lp-modal-submit{background:var(--vert);color:#000;font-weight:800;font-size:15px;padding:14px;border-radius:10px;border:none;cursor:pointer;transition:background .15s}
+.lp-modal-submit:hover{background:var(--vert-dim)}
+.lp-modal-submit:disabled{opacity:.6;cursor:not-allowed}
+.lp-modal-mention{font-size:11px;color:var(--muted);margin-top:6px}
+.lp-modal-err{color:var(--rouge);font-size:13px;display:none;margin-top:4px}
+
+@media(max-width:600px){
+  .lp-hero{padding:40px 16px 32px}
+  .lp-modal{padding:28px 20px}
+  .lp-input-box{flex-direction:column;padding:12px}
+  .lp-btn-gen{width:100%;text-align:center;padding:14px}
+}
+</style>
+</head>
+<body>
+
+<header class="lp-header">
+  <a href="/" class="lp-logo">Créatis<span>.</span></a>
+  <a href="/auth.html" class="lp-header-cta">Déjà un compte ? Se connecter →</a>
+</header>
+
+<!-- HERO -->
+<section class="lp-hero" id="lp-hero">
+  <div class="lp-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    Nouveau — Repurpose IA
+  </div>
+  <h1 class="lp-h1">Ta vidéo YouTube →<br><em>15 posts prêts à publier</em></h1>
+  <p class="lp-sub">Tweets viraux, posts LinkedIn, scripts Shorts et idées de miniatures.<br>Générés depuis ta vidéo en 60 secondes.</p>
+
+  <div class="lp-proof">
+    <span class="lp-proof-item"><strong>2 400+</strong> créateurs</span>
+    <span class="lp-proof-item" style="color:var(--bordure)">|</span>
+    <span class="lp-proof-item"><strong>50 crédits</strong> offerts</span>
+    <span class="lp-proof-item" style="color:var(--bordure)">|</span>
+    <span class="lp-proof-item"><strong>Aucune</strong> carte bancaire</span>
+  </div>
+
+  <div class="lp-input-box">
+    <input type="url" id="lp-url" placeholder="https://youtube.com/watch?v=..." autocomplete="off" onkeydown="if(event.key==='Enter')lancerDemo()">
+    <button class="lp-btn-gen" id="lp-btn" onclick="lancerDemo()">Générer le contenu →</button>
+  </div>
+  <p class="lp-input-hint">Colle n'importe quelle URL YouTube — résultat en moins de 60 secondes</p>
+</section>
+
+<!-- LOADER -->
+<div id="lp-loader">
+  <p class="lp-loader-title">Analyse en cours…</p>
+  <p class="lp-loader-sub" id="lp-loader-sub">Connexion à YouTube</p>
+  <div class="lp-progress-track"><div class="lp-progress-fill" id="lp-fill"></div></div>
+  <div class="lp-steps">
+    <div class="lp-step" id="st1"><div class="lp-step-dot"></div><span>📥 Récupération de la vidéo</span></div>
+    <div class="lp-step" id="st2"><div class="lp-step-dot"></div><span>🎙️ Transcription audio</span></div>
+    <div class="lp-step" id="st3"><div class="lp-step-dot"></div><span>✨ Génération du contenu</span></div>
+    <div class="lp-step" id="st4"><div class="lp-step-dot"></div><span>🎯 Mise en forme finale</span></div>
+  </div>
+</div>
+
+<!-- RÉSULTATS -->
+<section id="lp-results">
+  <div class="lp-results-header">
+    <h2>Contenu créé pour :<br><span class="lp-video-title" id="lp-vid-title">"ta vidéo"</span></h2>
+    <p>Voici un aperçu — crée ton compte pour accéder à tout</p>
+  </div>
+
+  <div class="lp-tabs-row">
+    <button class="lp-tab actif" onclick="lpTab(this,'lp-tweets')">🐦 Tweets (5)</button>
+    <button class="lp-tab" onclick="lpTab(this,'lp-linkedin')">💼 LinkedIn (3)</button>
+    <button class="lp-tab" onclick="lpTab(this,'lp-shorts')">⚡ Shorts (3)</button>
+  </div>
+
+  <div id="lp-tweets" class="lp-panel actif"></div>
+  <div id="lp-linkedin" class="lp-panel"></div>
+  <div id="lp-shorts" class="lp-panel"></div>
+
+  <div class="lp-blur-zone">
+    <div class="lp-blur-overlay"></div>
+    <div class="lp-cta-block">
+      <h3>+ 8 contenus supplémentaires<br>t'attendent 🔓</h3>
+      <p>Crée ton compte gratuit pour voir tout le contenu et le générer vraiment pour tes prochaines vidéos.</p>
+      <button class="lp-cta-main" onclick="ouvrirModal()">Voir le contenu complet — Gratuit →</button>
+      <p class="lp-cta-sub">50 crédits offerts · Aucune carte bancaire</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL SIGNUP -->
+<div class="lp-modal-bg" id="lp-modal-bg" onclick="if(event.target===this)fermerModal()">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="fermerModal()">✕</button>
+    <h3>Voir le contenu complet</h3>
+    <p class="lp-modal-desc">Crée ton compte en 30 secondes.<br>On génère vraiment le contenu depuis ta vidéo.</p>
+    <div class="lp-modal-preview">
+      <strong>Ta vidéo :</strong><br>
+      <span id="modal-vid-title" style="color:var(--vert)"></span>
+    </div>
+    <div class="lp-modal-form">
+      <input class="lp-modal-input" type="email" id="modal-email" placeholder="ton@email.com" autocomplete="email">
+      <div class="lp-modal-err" id="modal-err"></div>
+      <button class="lp-modal-submit" id="modal-btn" onclick="soumettreLead()">Accéder au contenu complet →</button>
+    </div>
+    <p class="lp-modal-mention">En créant un compte, tu acceptes nos <a href="/cgu" style="color:var(--vert)">CGU</a>. Pas de spam.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  let videoUrl = '';
+  let videoTitle = '';
+
+  // ── Validation URL YouTube ────────────────────────────────────────────────
+  function isYouTubeUrl(url) {
+    return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?.*v=|shorts\/)|youtu\.be\/)/.test(url.trim());
+  }
+
+  // ── Extraction titre via oEmbed (sans clé API) ────────────────────────────
+  async function getTitre(url) {
+    try {
+      const r = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      return { title: d.title, author: d.author_name };
+    } catch { return null; }
+  }
+
+  // ── Extraction mots-clés depuis le titre ──────────────────────────────────
+  function extraireMotsCles(titre) {
+    const stopwords = ['comment','faire','les','des','une','pour','avec','dans','sur','par','que','qui','est','son','ses','mon','ton','mes','tes','ses','notre','leur','leurs','mais','donc','car','ni','ou','et','le','la','il','elle','on','nous','vous','ils','elles','je','tu','ce','cet','cette','ces','au','aux','du','de','en','un'];
+    const mots = titre.toLowerCase()
+      .replace(/['"«»,!?;:.]/g, ' ')
+      .split(/\s+/)
+      .filter(m => m.length > 3 && !stopwords.includes(m));
+    return [...new Set(mots)].slice(0, 4);
+  }
+
+  // ── Génération contenu simulé ──────────────────────────────────────────────
+  function genererContenu(titre, auteur) {
+    const mots = extraireMotsCles(titre);
+    const k0 = mots[0] || 'ce sujet';
+    const k1 = mots[1] || 'cette technique';
+    const k2 = mots[2] || 'cette méthode';
+    const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+    const tweets = [
+      `🧵 ${cap(k0)} — le thread que tu attendais :\n\n1/ La plupart des créateurs passent des heures sur ${k0} sans jamais voir de résultats.\n\nVoilà ce qui change tout 👇`,
+      `Tu veux savoir pourquoi 90% des créateurs stagnent avec ${k0} ?\n\nCe n'est pas le talent.\nCe n'est pas le matériel.\n\nC'est une erreur de base que tout le monde fait. 🧵`,
+      `"${cap(k1)}, c'est trop compliqué pour moi"\n\nJ'entendais ça tout le temps.\n\nMais après avoir regardé cette vidéo sur ${k0}, tout le monde peut le faire. 🎯`,
+      `POV : tu découvres la méthode de ${k0} qui m'a pris 2 ans à comprendre.\n\nTenant en 3 étapes. 👇\n\n(thread complet 🧵)`,
+      `Stats qui font réfléchir :\n→ 95% abandonnent ${k0} avant 30 jours\n→ 4% progressent lentement\n→ 1% explosent en 3 mois\n\nLa différence ? Une seule habitude. ↓`
+    ];
+
+    const linkedin = [
+      `J'ai passé 2 ans à chercher la méthode parfaite pour ${k0}.\n\nRésultat ? J'ai produit une vidéo complète sur "${titre}".\n\nVoici les 3 insights que j'aurais aimé avoir au départ :\n\n1️⃣ ${cap(k0)} ne s'apprend pas de façon linéaire\n2️⃣ La régularité bat la perfection\n3️⃣ La communauté accélère tout\n\nQu'est-ce que vous en pensez ?`,
+      `Dans les coulisses de "${titre}" :\n\nAvant de tourner cette vidéo, j'ai réalisé quelque chose sur ${k1}.\n\nCe que la plupart des gens ne voient pas :\n• Le processus visible prend 20% du temps\n• La préparation cachée prend 80%\n\nC'est cette préparation que je partage maintenant.\n\nLa leçon numéro 1 pour tout créateur qui débute avec ${k0} ?`,
+      `Opinion impopulaire sur ${k0} :\n\n"Il faut des années pour maîtriser ${k2}"\n\nJe ne suis pas d'accord.\n\nAvec la bonne méthode, les premiers résultats arrivent en semaines, pas en années.\n\nMa vidéo "${titre}" montre exactement comment.\n\nDes questions ?`
+    ];
+
+    const shorts = [
+      { titre: `Le secret de ${k0} que personne ne dit`, hook: `"Tu veux enfin comprendre ${k0} ?"`, structure: `0:00 Accroche question · 0:05 Erreur commune · 0:25 Solution en 3 étapes · 0:40 Résultat + CTA` },
+      { titre: `${cap(k1)} en 30 secondes`, hook: `"${cap(k0)} semble compliqué — jusqu'à ce que tu connaisses ça"`, structure: `0:00 Résultat final d'abord · 0:05 Problème · 0:20 Technique clé · 0:40 Abonne-toi` },
+      { titre: `POV : tu maîtrises enfin ${k2}`, hook: `"POV : tu regardes la vidéo qui va tout changer"`, structure: `0:00 Hook visuel fort · 0:08 Promesse claire · 0:25 Démonstration rapide · 0:42 CTA fort` }
+    ];
+
+    return { tweets, linkedin, shorts };
+  }
+
+  // ── Rendu HTML ────────────────────────────────────────────────────────────
+  function renderContenu(contenu) {
+    const { tweets, linkedin, shorts } = contenu;
+
+    // Tweets : 2 visibles + 1 flou
+    document.getElementById('lp-tweets').innerHTML = [
+      carte('Tweet 1', tweets[0]),
+      carte('Tweet 2', tweets[1]),
+      carte('Tweet 3', tweets[2], true),
+    ].join('');
+
+    // LinkedIn : 2 visibles + 1 flou
+    document.getElementById('lp-linkedin').innerHTML = [
+      carte('Post LinkedIn 1', linkedin[0]),
+      carte('Post LinkedIn 2', linkedin[1], true),
+    ].join('');
+
+    // Shorts : 2 visibles + 1 flou
+    document.getElementById('lp-shorts').innerHTML = [
+      carteShort(shorts[0]),
+      carteShort(shorts[1], true),
+    ].join('');
+  }
+
+  function carte(label, texte, flou = false) {
+    const safe = texte.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    return `<div class="lp-card${flou ? ' blurred' : ''}"><div class="lp-card-label">${label}</div>${safe}</div>`;
+  }
+
+  function carteShort(s, flou = false) {
+    return `<div class="lp-card${flou ? ' blurred' : ''}">
+      <div class="lp-card-label">Short Idea</div>
+      <strong>${s.titre}</strong><br>
+      <span style="color:var(--muted);font-size:13px;display:block;margin-top:4px">Hook : ${s.hook}</span>
+      <span style="color:var(--muted);font-size:12px;display:block;margin-top:4px">${s.structure}</span>
+    </div>`;
+  }
+
+  // ── Animation loader ──────────────────────────────────────────────────────
+  async function animer() {
+    const fill = document.getElementById('lp-fill');
+    const sub = document.getElementById('lp-loader-sub');
+    const steps = [
+      { id: 'st1', label: 'Récupération de la vidéo', pct: 20, delay: 800 },
+      { id: 'st2', label: 'Transcription audio en cours', pct: 55, delay: 2200 },
+      { id: 'st3', label: 'Génération du contenu multi-plateforme', pct: 80, delay: 2000 },
+      { id: 'st4', label: 'Mise en forme finale', pct: 100, delay: 1000 },
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      // Marquer étapes précédentes comme done
+      if (i > 0) document.getElementById(steps[i-1].id)?.classList.replace('actif', 'done');
+      document.getElementById(s.id)?.classList.add('actif');
+      sub.textContent = s.label + '…';
+      fill.style.width = s.pct + '%';
+      await sleep(s.delay);
+    }
+    document.getElementById('st4')?.classList.replace('actif', 'done');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ── Tab switcher ──────────────────────────────────────────────────────────
+  window.lpTab = function(btn, panelId) {
+    document.querySelectorAll('.lp-tab').forEach(b => b.classList.remove('actif'));
+    document.querySelectorAll('.lp-panel').forEach(p => p.classList.remove('actif'));
+    btn.classList.add('actif');
+    document.getElementById(panelId)?.classList.add('actif');
+  };
+
+  // ── Lancer la démo ────────────────────────────────────────────────────────
+  window.lancerDemo = async function() {
+    const input = document.getElementById('lp-url');
+    const url = input.value.trim();
+
+    if (!url) { input.focus(); input.style.borderColor = '#ef4444'; setTimeout(() => input.style.borderColor = '', 2000); return; }
+    if (!isYouTubeUrl(url)) {
+      input.style.borderColor = '#ef4444';
+      setTimeout(() => input.style.borderColor = '', 2000);
+      alert('Entre une URL YouTube valide (youtube.com ou youtu.be)');
+      return;
+    }
+
+    videoUrl = url;
+    if (typeof fbq !== 'undefined') fbq('track', 'Lead', { content_name: 'lp_url_submit' });
+
+    // Transition hero → loader
+    document.getElementById('lp-hero').style.display = 'none';
+    document.getElementById('lp-loader').style.display = 'block';
+
+    // Fetch titre + animer en parallèle
+    const [metaResult] = await Promise.all([
+      getTitre(url),
+      animer()
+    ]);
+
+    videoTitle = metaResult?.title || 'ta vidéo';
+    const auteur = metaResult?.author || '';
+
+    // Générer le contenu simulé
+    const contenu = genererContenu(videoTitle, auteur);
+    renderContenu(contenu);
+
+    // Afficher résultats
+    document.getElementById('lp-loader').style.display = 'none';
+    document.getElementById('lp-vid-title').textContent = `"${videoTitle}"`;
+    document.getElementById('modal-vid-title').textContent = videoTitle;
+    const results = document.getElementById('lp-results');
+    results.style.display = 'block';
+    results.style.opacity = '0';
+    results.style.transition = 'opacity .5s';
+    requestAnimationFrame(() => { results.style.opacity = '1'; });
+  };
+
+  // ── Modal ────────────────────────────────────────────────────────────────
+  window.ouvrirModal = function() {
+    document.getElementById('lp-modal-bg').classList.add('visible');
+    setTimeout(() => document.getElementById('modal-email')?.focus(), 100);
+  };
+
+  window.fermerModal = function() {
+    document.getElementById('lp-modal-bg').classList.remove('visible');
+  };
+
+  // ── Soumission lead ───────────────────────────────────────────────────────
+  window.soumettreLead = function() {
+    const email = document.getElementById('modal-email').value.trim();
+    const errEl = document.getElementById('modal-err');
+    const btn = document.getElementById('modal-btn');
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = 'Entre un email valide';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Redirection…';
+
+    // Stocker URL pour pré-remplir l'agent après signup
+    if (videoUrl) localStorage.setItem('creatis_repurpose_pending', videoUrl);
+
+    // Pixel : conversion
+    if (typeof fbq !== 'undefined') fbq('track', 'CompleteRegistration', { content_name: 'lp_signup' });
+
+    // Redirect vers auth avec email pré-rempli
+    const params = new URLSearchParams({ ref: 'lp', returnUrl: 'app.html' });
+    window.location.href = `/auth.html?${params}#email=${encodeURIComponent(email)}`;
+  };
+
+  // ── Pré-remplir email depuis le hash (retour de lp.html) ─────────────────
+  // (géré dans auth.html via URL hash — rien à faire ici)
+
+})();
+</script>
+</body>
+</html>

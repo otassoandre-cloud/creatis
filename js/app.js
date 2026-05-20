@@ -29,6 +29,18 @@ class AppCreatis {
     if (!localStorage.getItem('creatis_onboarding_done')) {
       setTimeout(() => this._afficherOnboarding(), 600);
     }
+
+    const pendingRepurpose = localStorage.getItem('creatis_repurpose_pending');
+    if (pendingRepurpose) {
+      localStorage.removeItem('creatis_repurpose_pending');
+      setTimeout(() => {
+        this.selectionnerAgent('repurpose');
+        setTimeout(() => {
+          const el = document.getElementById('champ-repurpose-url');
+          if (el) el.value = pendingRepurpose;
+        }, 300);
+      }, 600);
+    }
   }
 
   async _traiterCallbackYouTube() {
