@@ -911,7 +911,7 @@ class AppCreatis {
 
       if (agent.type === 'repurpose') {
         if (!this.verifierQuotaRepurpose()) return;
-        this.afficherToast('🎙️ Transcription en cours… (30-90 secondes)', 'info', 15000);
+        this.afficherToast('🎙️ Récupération des sous-titres et génération en cours…', 'info', 15000);
         const data = await this._appelRepurpose(donnees.url);
         this.afficherRepurpose(agentId, data);
         this.incrementerRepurpose();

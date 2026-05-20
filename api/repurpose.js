@@ -60,18 +60,83 @@ async function incrementRepurposeCount(userId) {
   } catch {}
 }
 
-async function transcribeWithCloudRun(url) {
-  if (!REPURPOSE_SERVICE_URL) {
-    throw new Error('Service de transcription non configuré — déploie le service Cloud Run et ajoute REPURPOSE_SERVICE_URL dans Vercel');
+function extractVideoId(url) {
+  const patterns = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /shorts\/([a-zA-Z0-9_-]{11})/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
   }
+  return null;
+}
+
+async function getYouTubeTranscript(videoId) {
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+    },
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!pageRes.ok) throw new Error('Impossible d\'accéder à la vidéo YouTube');
+  const html = await pageRes.text();
+
+  // Extract video title
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+  const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+
+  // Find caption tracks (auto-generated or manual)
+  const captionsMatch = html.match(/"captionTracks":\s*(\[.*?\])/s);
+  if (!captionsMatch) {
+    throw new Error('Pas de sous-titres disponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube, ou utilise une vidéo avec des sous-titres.');
+  }
+
+  let tracks;
+  try {
+    tracks = JSON.parse(captionsMatch[1].replace(/\\u0026/g, '&').replace(/\\\\/g, '\\').replace(/\\"/g, '"'));
+  } catch {
+    throw new Error('Impossible de lire les sous-titres de cette vidéo');
+  }
+
+  // Prefer French, then original auto-generated, then any
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
+    || tracks.find(t => t.languageCode === 'fr')
+    || tracks.find(t => t.kind === 'asr')
+    || tracks[0];
+
+  if (!track?.baseUrl) throw new Error('Aucune piste de sous-titres trouvable');
+
+  const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
+  const captionsRes = await fetch(captionsUrl, { signal: AbortSignal.timeout(10000) });
+  if (!captionsRes.ok) throw new Error('Impossible de récupérer les sous-titres');
+
+  const captionsData = await captionsRes.json();
+  const events = captionsData.events || [];
+  const transcript = events
+    .filter(e => e.segs)
+    .map(e => e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join(''))
+    .filter(t => t.trim())
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!transcript || transcript.length < 50) throw new Error('Transcription trop courte — vidéo peut-être sans paroles');
+
+  const durationSec = events.length ? Math.round((events[events.length - 1].tStartMs || 0) / 1000) : 0;
+  const duration = durationSec > 0 ? `${Math.floor(durationSec / 60)}m${durationSec % 60}s` : '';
+
+  return { transcript, title, duration, r2_url: null };
+}
+
+async function transcribeWithCloudRun(url) {
   const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcribe`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
     body: JSON.stringify({ url }),
-    signal: AbortSignal.timeout(180000) // 3 min max
+    signal: AbortSignal.timeout(180000)
   });
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
@@ -180,8 +245,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Étape 1 : transcription via Cloud Run
-    const transcription = await transcribeWithCloudRun(url);
+    // Étape 1 : transcription — sous-titres YouTube directement, ou Cloud Run si configuré
+    const videoId = extractVideoId(url);
+    if (!videoId) return res.status(400).json({ error: 'Impossible d\'extraire l\'ID de la vidéo YouTube' });
+
+    let transcription;
+    if (REPURPOSE_SERVICE_URL) {
+      transcription = await transcribeWithCloudRun(url);
+    } else {
+      transcription = await getYouTubeTranscript(videoId);
+    }
     const { transcript, title, duration, r2_url } = transcription;
 
     if (!transcript) throw new Error('Transcription vide — la vidéo n\'a peut-être pas de paroles');
