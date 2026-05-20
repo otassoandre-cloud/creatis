@@ -230,7 +230,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  const { url } = req.body || {};
+  const { url, mode = 'text' } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'URL YouTube manquante' });
   }
@@ -240,12 +240,46 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'URL invalide — entre une URL YouTube (youtube.com ou youtu.be)' });
   }
 
+  // ── Mode CLIPS : délégue entièrement au service Cloud Run/Railway ──
+  if (mode === 'clips') {
+    if (!REPURPOSE_SERVICE_URL) {
+      return res.status(503).json({
+        error: 'Le service de clips vidéo n\'est pas encore configuré.',
+        setup_required: true
+      });
+    }
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ url, n_clips: 5 }),
+        signal: AbortSignal.timeout(280000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
+
+      // Réécrire les URLs de download pour pointer vers le service
+      if (data.clips) {
+        data.clips = data.clips.map(clip => ({
+          ...clip,
+          download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
+        }));
+      }
+
+      if (authUser) await incrementRepurposeCount(authUser.id);
+      return res.status(200).json({ ok: true, mode: 'clips', ...data });
+    } catch (err) {
+      console.error('[Clips] Erreur:', err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (!GROQ_KEY) {
     return res.status(500).json({ error: 'Clé Groq non configurée' });
   }
 
   try {
-    // Étape 1 : transcription — sous-titres YouTube directement, ou Cloud Run si configuré
+    // Étape 1 : transcription — sous-titres YouTube directement, ou service si configuré
     const videoId = extractVideoId(url);
     if (!videoId) return res.status(400).json({ error: 'Impossible d\'extraire l\'ID de la vidéo YouTube' });
 

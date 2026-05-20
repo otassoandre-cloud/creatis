@@ -710,6 +710,20 @@ Réponds en français. Rapport direct sans commentaires introductifs.`;
   },
 
   {
+    id: 'clips-viraux',
+    icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12l2-2 2 2"/></svg>',
+    nom: 'Clips Viraux',
+    description: 'Transforme n\'importe quelle vidéo YouTube en 5 Shorts/Reels viraux prêts à publier',
+    couleur: '#f59e0b',
+    type: 'clips',
+    plan: 'pro',
+    inputs: [
+      { id: 'url', label: 'URL de la vidéo YouTube à découper', type: 'text', placeholder: 'https://youtube.com/watch?v=...', requis: true }
+    ],
+    construirePrompt(d) { return d.url; }
+  },
+
+  {
     id: 'chat-libre',
     icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>',
     nom: 'Chat IA Libre',

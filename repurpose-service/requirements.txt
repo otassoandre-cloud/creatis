@@ -4,3 +4,4 @@ yt-dlp==2024.11.18
 faster-whisper==1.1.0
 boto3==1.35.80
 pydantic==2.10.3
+httpx==0.28.1

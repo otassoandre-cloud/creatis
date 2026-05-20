@@ -300,7 +300,7 @@ class AppCreatis {
     return true;
   }
 
-  async _appelRepurpose(url) {
+  async _appelRepurpose(url, mode = 'text') {
     const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -308,7 +308,7 @@ class AppCreatis {
     const res = await fetch('/api/repurpose', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url, mode })
     });
 
     const data = await res.json();
@@ -370,6 +370,60 @@ class AppCreatis {
     container.querySelectorAll('.repurpose-panel').forEach(p => p.classList.remove('actif'));
     btn.classList.add('actif');
     document.getElementById(panelId)?.classList.add('actif');
+  }
+
+  afficherClips(agentId, data) {
+    const panneau = document.getElementById(`panneau-${agentId}`);
+    if (!panneau) return;
+
+    if (!data.clips || !data.clips.length) {
+      panneau.innerHTML = `<div class="repurpose-resultat"><p style="color:var(--texte-secondaire);padding:2rem;text-align:center">Aucun clip généré.</p></div>`;
+      return;
+    }
+
+    if (data.setup_required) {
+      panneau.innerHTML = `<div class="clips-setup-msg">
+        <p>⚙️ Le service de clips vidéo n'est pas encore activé.</p>
+        <p style="font-size:13px;color:var(--texte-secondaire);margin-top:8px">Déploie le service Railway pour générer de vrais clips .mp4</p>
+      </div>`;
+      return;
+    }
+
+    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f59e0b' : '#6b7280';
+
+    const clipsHtml = data.clips.map((clip, i) => `
+      <div class="clip-card">
+        <div class="clip-header">
+          <span class="clip-num">#${i + 1}</span>
+          <span class="clip-score" style="background:${scoreColor(clip.score)}20;color:${scoreColor(clip.score)}">
+            ⚡ ${clip.score}/100
+          </span>
+          <span class="clip-duration">${clip.duration || Math.round(clip.end - clip.start)}s</span>
+        </div>
+        <div class="clip-hook">${this._escapeHtml(clip.hook)}</div>
+        <div class="clip-why">${this._escapeHtml(clip.why || '')}</div>
+        ${clip.transcript ? `<div class="clip-transcript">"${this._escapeHtml(clip.transcript.substring(0, 150))}…"</div>` : ''}
+        <div class="clip-actions">
+          <a href="${clip.download_url}" download="clip-${i + 1}.mp4" class="btn-clip-dl" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger le clip
+          </a>
+        </div>
+      </div>
+    `).join('');
+
+    panneau.innerHTML = `
+      <div class="repurpose-resultat">
+        <div class="clips-header">
+          <strong>🎬 ${data.clips.length} clips viraux — "${this._escapeHtml(data.title || '')}"</strong>
+          <span style="font-size:12px;color:var(--texte-secondaire)">Les fichiers expirent dans 1h</span>
+        </div>
+        <div class="clips-grid">${clipsHtml}</div>
+      </div>`;
+  }
+
+  _escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   _mettreAJourQuotaMiniaturesDash() {
@@ -909,10 +963,17 @@ class AppCreatis {
         ? YouTubeContext.getContexte(agentId)
         : '';
 
-      if (agent.type === 'repurpose') {
+      if (agent.type === 'clips') {
+        if (!this.verifierQuotaRepurpose()) return;
+        this.afficherToast('🎬 Analyse de la vidéo en cours… (2-5 min)', 'info', 300000);
+        const data = await this._appelRepurpose(donnees.url, 'clips');
+        this.afficherClips(agentId, data);
+        this.incrementerRepurpose();
+        resultat = JSON.stringify(data.clips?.map(c => c.hook) || []);
+      } else if (agent.type === 'repurpose') {
         if (!this.verifierQuotaRepurpose()) return;
         this.afficherToast('🎙️ Récupération des sous-titres et génération en cours…', 'info', 15000);
-        const data = await this._appelRepurpose(donnees.url);
+        const data = await this._appelRepurpose(donnees.url, 'text');
         this.afficherRepurpose(agentId, data);
         this.incrementerRepurpose();
         resultat = data.content;
