@@ -2361,19 +2361,51 @@
 
 .repurpose-resultat { width: 100%; }
 
-/* ── Clips Viraux ── */
-.clips-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.07); }
-.clips-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; padding:16px; }
-.clip-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; transition:border-color 0.2s; }
-.clip-card:hover { border-color:rgba(16,185,129,0.3); }
-.clip-header { display:flex; align-items:center; gap:8px; }
-.clip-num { font-size:11px; font-weight:700; color:var(--texte-secondaire); background:rgba(255,255,255,0.06); padding:2px 7px; border-radius:20px; }
-.clip-score { font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; }
-.clip-duration { font-size:11px; color:var(--texte-secondaire); margin-left:auto; }
-.clip-hook { font-size:15px; font-weight:600; color:var(--texte-principal); line-height:1.3; }
-.clip-why { font-size:12px; color:#f59e0b; }
-.clip-transcript { font-size:12px; color:var(--texte-secondaire); font-style:italic; border-left:2px solid rgba(255,255,255,0.1); padding-left:8px; }
-.btn-clip-dl { display:inline-flex; align-items:center; gap:6px; background:#10b981; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:background 0.2s; }
-.btn-clip-dl:hover { background:#059669; }
+/* ── Clips Viraux — OpusClip style ── */
+.panneau-clips { display:flex; flex-direction:column; width:100%; height:100%; overflow-y:auto; background:var(--fond-app); }
+.clips-page { display:flex; flex-direction:column; height:100%; }
+.clips-page-header { padding:14px 20px 0; }
+.clips-hero { display:flex; flex-direction:column; align-items:center; padding:24px 20px 20px; gap:20px; }
+.clips-preview-box { width:260px; height:146px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.clips-preview-placeholder { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--texte-secondaire); font-size:12px; }
+.clips-preview-badge { position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,.7); border-radius:6px; padding:3px 7px; color:#fff; display:flex; align-items:center; gap:4px; font-size:11px; }
+.clips-input-row { width:100%; max-width:680px; display:flex; flex-direction:column; gap:8px; }
+.clips-input-wrap { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.12); border-radius:50px; padding:8px 8px 8px 18px; transition:border-color 0.2s; }
+.clips-input-wrap:focus-within { border-color:rgba(16,185,129,0.5); }
+.clips-url-input { flex:1; background:transparent; border:none; outline:none; color:var(--texte-principal); font-size:15px; }
+.clips-url-input::placeholder { color:var(--texte-secondaire); }
+.btn-get-clips { display:flex; align-items:center; gap:8px; background:#10b981; color:#fff; border:none; border-radius:40px; padding:11px 22px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap; transition:background 0.2s; flex-shrink:0; }
+.btn-get-clips:hover:not(:disabled) { background:#059669; }
+.btn-get-clips:disabled { opacity:.6; cursor:default; }
+.clips-hint { font-size:12px; color:var(--texte-secondaire); text-align:center; }
+.clips-results-zone { flex:1; padding:0 20px 20px; }
+
+/* Loading */
+.clips-loading { display:flex; justify-content:center; padding:3rem 0; }
+.clips-loading-steps { display:flex; flex-direction:column; gap:12px; }
+.clips-step { font-size:14px; color:var(--texte-secondaire); opacity:0; transform:translateX(-12px); transition:opacity 0.5s, transform 0.5s; }
+.clips-step.actif { opacity:1; transform:translateX(0); color:var(--texte-principal); }
+.clips-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+
+/* Résultats OpusClip style */
+.clips-opus-header { display:flex; align-items:center; gap:10px; padding:16px 0 12px; flex-wrap:wrap; font-size:13px; }
+.clips-opus-header strong { font-size:16px; }
+.clips-opus-header span { color:var(--texte-secondaire); }
+.clips-expire { margin-left:auto; background:rgba(245,158,11,.1); color:#f59e0b; border-radius:20px; padding:2px 10px; font-size:12px; }
+.clips-opus-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; }
+.clip-opus-card { display:flex; flex-direction:column; gap:8px; cursor:pointer; }
+.clip-opus-preview { position:relative; border-radius:12px; overflow:hidden; aspect-ratio:9/16; background:#111; }
+.clip-opus-video { width:100%; height:100%; object-fit:cover; display:block; }
+.clip-opus-score { position:absolute; bottom:8px; left:8px; display:flex; flex-direction:column; align-items:center; background:rgba(0,0,0,.75); border-radius:8px; padding:4px 8px; line-height:1; }
+.clip-opus-score span { font-size:9px; font-weight:700; text-transform:uppercase; color:inherit; opacity:.8; }
+.clip-opus-score strong { font-size:18px; font-weight:900; }
+.clip-opus-platform { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.75); border-radius:20px; padding:3px 8px; font-size:11px; font-weight:700; color:#fff; }
+.clip-opus-info { display:flex; justify-content:space-between; align-items:start; gap:4px; }
+.clip-opus-hook { font-size:12px; font-weight:600; color:var(--texte-principal); line-height:1.3; flex:1; }
+.clip-opus-dur { font-size:11px; color:var(--texte-secondaire); white-space:nowrap; }
+.clip-opus-dl { display:flex; align-items:center; justify-content:center; gap:6px; background:rgba(255,255,255,0.08); color:var(--texte-principal); border-radius:8px; padding:7px 0; font-size:12px; font-weight:600; text-decoration:none; transition:background 0.2s; }
+.clip-opus-dl:hover { background:#10b981; color:#fff; }
+
+/* Setup msg */
 .clips-setup-msg { padding:2rem; text-align:center; color:var(--texte-secondaire); }
 

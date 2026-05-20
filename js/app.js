@@ -673,6 +673,10 @@ class AppCreatis {
       this.construirePanneauChat(agent);
       return;
     }
+    if (agent.type === 'clips') {
+      this.construirePanneauClips(agent);
+      return;
+    }
 
     const workspace = document.getElementById('workspace');
     if (!workspace) return;
@@ -964,12 +968,7 @@ class AppCreatis {
         : '';
 
       if (agent.type === 'clips') {
-        if (!this.verifierQuotaRepurpose()) return;
-        this.afficherToast('🎬 Analyse de la vidéo en cours… (2-5 min)', 'info', 300000);
-        const data = await this._appelRepurpose(donnees.url, 'clips');
-        this.afficherClips(agentId, data);
-        this.incrementerRepurpose();
-        resultat = JSON.stringify(data.clips?.map(c => c.hook) || []);
+        return; // géré par lancerClips()
       } else if (agent.type === 'repurpose') {
         if (!this.verifierQuotaRepurpose()) return;
         this.afficherToast('🎙️ Récupération des sous-titres et génération en cours…', 'info', 15000);
@@ -1028,6 +1027,171 @@ class AppCreatis {
       this.desactiverBouton(agentId, false);
       this.afficherChargement(agentId, false);
     }
+  }
+
+  /* ===== CLIPS VIRAUX — Interface style OpusClip ===== */
+  construirePanneauClips(agent) {
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return;
+
+    const panneau = document.createElement('div');
+    panneau.className = 'panneau-agent panneau-clips actif';
+    panneau.id = `panneau-${agent.id}`;
+
+    panneau.innerHTML = `
+      <div class="clips-page">
+        <div class="clips-page-header">
+          <button class="btn-retour-dashboard" onclick="app.afficherDashboard()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Tableau de bord
+          </button>
+        </div>
+
+        <div class="clips-hero">
+          <div class="clips-preview-box" id="clips-preview-${agent.id}">
+            <div class="clips-preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <p>Aperçu de la vidéo</p>
+            </div>
+          </div>
+
+          <div class="clips-input-row">
+            <div class="clips-input-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <input type="text" id="clips-url-${agent.id}" class="clips-url-input"
+                placeholder="Colle un lien YouTube, TikTok, Instagram…"
+                oninput="app._clipsPreviewUrl('${agent.id}', this.value)"
+                onkeydown="if(event.key==='Enter') app.lancerClips('${agent.id}')">
+              <button class="btn-get-clips" id="btn-clips-${agent.id}" onclick="app.lancerClips('${agent.id}')">
+                Créer les Shorts
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              </button>
+            </div>
+            <p class="clips-hint">Formats supportés : YouTube · Vidéo longue → 5 Shorts viraux en 9:16 avec sous-titres</p>
+          </div>
+        </div>
+
+        <div id="clips-results-${agent.id}" class="clips-results-zone"></div>
+      </div>`;
+
+    workspace.appendChild(panneau);
+    this._initSphereCanvas(agent.id);
+  }
+
+  _clipsPreviewUrl(agentId, url) {
+    const box = document.getElementById(`clips-preview-${agentId}`);
+    if (!box) return;
+    const videoId = this._extractYtId(url);
+    if (videoId) {
+      box.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg"
+        style="width:100%;height:100%;object-fit:cover;border-radius:12px" alt="aperçu">
+        <div class="clips-preview-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>`;
+    } else {
+      box.innerHTML = `<div class="clips-preview-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p>Aperçu de la vidéo</p></div>`;
+    }
+  }
+
+  _extractYtId(url) {
+    const m = (url || '').match(/(?:[?&]v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  async lancerClips(agentId) {
+    const agent = AGENTS.find(a => a.id === agentId);
+    if (!agent) return;
+    if (!this.verifierQuotaRepurpose()) return;
+
+    const urlInput = document.getElementById(`clips-url-${agentId}`);
+    const url = urlInput?.value?.trim();
+    if (!url) { this.afficherToast('❌ Entre une URL YouTube', 'erreur'); urlInput?.focus(); return; }
+
+    const btn = document.getElementById(`btn-clips-${agentId}`);
+    const resultsZone = document.getElementById(`clips-results-${agentId}`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Analyse en cours…'; }
+
+    if (resultsZone) {
+      resultsZone.innerHTML = `
+        <div class="clips-loading">
+          <div class="clips-loading-steps">
+            ${['📥 Téléchargement de la vidéo…', '🎙️ Transcription audio…', '🧠 Identification des moments viraux…', '✂️ Création des clips 9:16…', '💬 Ajout des sous-titres…'].map((s,i) =>
+              `<div class="clips-step" id="cstep-${agentId}-${i}" style="animation-delay:${i*1.2}s">${s}</div>`
+            ).join('')}
+          </div>
+        </div>`;
+      this._animateClipsSteps(agentId);
+    }
+
+    try {
+      const data = await this._appelRepurpose(url, 'clips');
+      this.incrementerRepurpose();
+      this._afficherClipsResultats(agentId, data);
+    } catch (err) {
+      if (err.message !== 'upgrade') this.afficherToast(`❌ ${err.message}`, 'erreur');
+      if (resultsZone) resultsZone.innerHTML = '';
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'; }
+    }
+  }
+
+  _animateClipsSteps(agentId) {
+    [0,1,2,3,4].forEach((i) => {
+      setTimeout(() => {
+        const el = document.getElementById(`cstep-${agentId}-${i}`);
+        if (el) el.classList.add('actif');
+      }, i * 1500);
+    });
+  }
+
+  _afficherClipsResultats(agentId, data) {
+    const zone = document.getElementById(`clips-results-${agentId}`);
+    if (!zone) return;
+
+    if (!data.clips?.length) {
+      zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip généré.</p>`;
+      return;
+    }
+
+    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f59e0b' : '#6b7280';
+    const platforms = [
+      { icon: '▶', label: 'YouTube', color: '#ff0000' },
+      { icon: '📸', label: 'Instagram', color: '#e1306c' },
+      { icon: '💼', label: 'LinkedIn', color: '#0077b5' },
+      { icon: '♪', label: 'TikTok', color: '#000' },
+      { icon: 'f', label: 'Facebook', color: '#1877f2' },
+    ];
+
+    const clipsHtml = data.clips.map((clip, i) => `
+      <div class="clip-opus-card">
+        <div class="clip-opus-preview">
+          <video src="${clip.download_url}" class="clip-opus-video"
+            preload="metadata" playsinline muted
+            onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0">
+          </video>
+          <div class="clip-opus-score" style="background:${scoreColor(clip.score)}">
+            <span>SCORE</span>
+            <strong>${clip.score}</strong>
+          </div>
+          <div class="clip-opus-platform">${platforms[i % platforms.length].label.substring(0,2)}</div>
+        </div>
+        <div class="clip-opus-info">
+          <p class="clip-opus-hook">${this._escapeHtml(clip.hook)}</p>
+          <p class="clip-opus-dur">${clip.duration}s</p>
+        </div>
+        <a href="${clip.download_url}" download="short-${i+1}.mp4" class="clip-opus-dl" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger
+        </a>
+      </div>`).join('');
+
+    zone.innerHTML = `
+      <div class="clips-opus-header">
+        <strong>${data.clips.length} Shorts générés</strong>
+        <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
+        <span class="clips-expire">⏱ Clips disponibles 1h</span>
+      </div>
+      <div class="clips-opus-grid">${clipsHtml}</div>`;
   }
 
   /* ===== CHAT LIBRE ===== */
