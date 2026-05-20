@@ -1,7 +1,7 @@
-/* ===== VERCEL FUNCTION — Proxy Image IA (OpenAI → Together → HuggingFace) ===== */
+/* ===== VERCEL FUNCTION — Proxy Image IA (Higgsfield → OpenAI → Together → HuggingFace) ===== */
 /* POST /api/generate-image
    Body: { prompt, width, height, steps, n }
-   Priorité : OpenAI gpt-image-1 → Together AI FLUX → HuggingFace FLUX */
+   Priorité : Higgsfield nano_banana_flash → OpenAI gpt-image-1 → Together AI FLUX → HuggingFace FLUX */
 
 /* ── Rate limiter in-memory ── */
 const imgRateLimit = new Map();
@@ -45,7 +45,7 @@ async function verifyToken(token) {
 }
 
 /* ── Quotas par plan ── */
-const PLAN_QUOTAS = { gratuit: 0, pro: 10, studio: 30 };
+const PLAN_QUOTAS = { gratuit: 2, pro: 10, studio: 30 };
 
 /* ── Supabase query (service key) ── */
 async function sbQuery(path, method = 'GET', body) {
@@ -97,7 +97,7 @@ async function checkAndIncrementMiniature(userId, email) {
   const quota = PLAN_QUOTAS[plan] ?? 0;
 
   if (quota === 0) {
-    return { ok: false, error: 'Plan gratuit — passe au Pro pour générer des miniatures' };
+    return { ok: false, error: 'Génération de miniatures non disponible sur ce plan' };
   }
 
   // Reset mensuel automatique
@@ -158,13 +158,83 @@ module.exports = async (req, res) => {
     if (!quota.ok) return res.status(403).json({ error: quota.error });
   }
 
-  const { prompt, width = 1280, height = 720, steps = 4, n = 1, mode, image_b64 } = req.body || {};
+  const { prompt, width = 1280, height = 720, steps = 4, n = 1, mode, image_b64, type } = req.body || {};
+
+  // ── Route remove-bg (fusion pour rester sous la limite 12 fonctions Vercel) ────
+  if (type === 'remove-bg') {
+    const { image } = req.body;
+    if (!image || !image.startsWith('data:image')) return res.status(400).json({ error: 'Image manquante' });
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const hfToken = process.env.HF_TOKEN;
+    const hfHeaders = { 'Content-Type': 'application/octet-stream', ...(hfToken ? { 'Authorization': `Bearer ${hfToken}` } : {}) };
+    const hfRes = await fetch('https://api-inference.huggingface.co/models/briaai/RMBG-1.4', { method: 'POST', headers: hfHeaders, body: buffer });
+    if (hfRes.status === 503) return res.status(503).json({ error: 'Modèle en cours de chargement — réessaie dans 20 secondes' });
+    if (!hfRes.ok) return res.status(500).json({ error: `Suppression de fond échouée (${hfRes.status})` });
+    const resultBuffer = await hfRes.arrayBuffer();
+    return res.json({ image: `data:image/png;base64,${Buffer.from(resultBuffer).toString('base64')}` });
+  }
 
   if (!prompt || typeof prompt !== 'string' || prompt.length < 5) {
     return res.status(400).json({ error: 'Prompt invalide' });
   }
   if (prompt.length > 4000) {
     return res.status(400).json({ error: 'Prompt trop long (max 4000 caractères)' });
+  }
+
+  // ── Essai 0 : Higgsfield nano_banana_flash ────────────────────────────────────
+  const higgsfieldKey = (process.env.HIGGSFIELD_API_KEY || '').trim();
+  if (higgsfieldKey) {
+    try {
+      const aspectRatio = width > height ? '16:9' : width < height ? '9:16' : '1:1';
+      const submitRes = await fetch('https://platform.higgsfield.ai/v1/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${higgsfieldKey}`
+        },
+        body: JSON.stringify({
+          task: 'text-to-image',
+          model: 'nano_banana_flash',
+          prompt,
+          aspect_ratio: aspectRatio,
+          resolution: '1k'
+        })
+      });
+
+      if (submitRes.ok || submitRes.status === 202) {
+        const job = await submitRes.json();
+        const jobId = job.id || job.generation_id || job.job_id;
+
+        if (jobId) {
+          // Poll jusqu'à 30s (images ~10-20s selon Higgsfield)
+          for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            const pollRes = await fetch(`https://platform.higgsfield.ai/v1/generations/${jobId}`, {
+              headers: { 'Authorization': `Bearer ${higgsfieldKey}` }
+            });
+            if (!pollRes.ok) break;
+            const result = await pollRes.json();
+            const status = result.status;
+            if (status === 'completed' || status === 'succeeded') {
+              const url = result.output?.[0]?.url || result.url || result.image_url || result.media_url;
+              if (url) {
+                // Retourner au format compatible avec le reste du code
+                return res.status(200).json({ data: [{ url }], provider: 'higgsfield' });
+              }
+              // Fallback si b64 disponible
+              const b64 = result.output?.[0]?.b64_json || result.b64_json;
+              if (b64) return res.status(200).json({ data: [{ b64_json: b64 }], provider: 'higgsfield' });
+              break;
+            }
+            if (status === 'failed' || status === 'error' || status === 'nsfw') break;
+          }
+        }
+      }
+      console.warn('[Image Proxy] Higgsfield indisponible — fallback OpenAI');
+    } catch (err) {
+      console.warn('[Image Proxy] Higgsfield erreur:', err.message, '— fallback OpenAI');
+    }
   }
 
   // ── Mode édition : fond IA autour d'une personne (canvas avec fond transparent) ──

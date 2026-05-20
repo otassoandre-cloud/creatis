@@ -2534,10 +2534,10 @@ class AppCreatis {
     if (btn) { btn.textContent = '⏳ Suppression en cours…'; btn.disabled = true; }
 
     try {
-      const res = await fetch('/api/remove-bg', {
+      const res = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: img.src })
+        body: JSON.stringify({ type: 'remove-bg', image: img.src })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur API');
