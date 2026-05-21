@@ -32,9 +32,10 @@ from faster_whisper import WhisperModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("creatis-clips")
 
-SERVICE_SECRET  = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
-GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
-WHISPER_MODEL   = os.environ.get("WHISPER_MODEL", "base")
+SERVICE_SECRET       = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
+GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
+WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "base")
+YOUTUBE_COOKIES_B64  = os.environ.get("YOUTUBE_COOKIES_B64", "")
 
 SESSIONS_DIR = Path(tempfile.gettempdir()) / "creatis_clips"
 SESSIONS_DIR.mkdir(exist_ok=True)
@@ -42,12 +43,30 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 # Job store en mémoire (session_id → état)
 JOBS: dict = {}
 
-# Options yt-dlp communes — client Android contourne la détection bot de YouTube sur serveur
-YT_BASE_OPTS = {
-    "quiet": True,
-    "no_warnings": True,
-    "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
-}
+# Fichier cookies YouTube (écrit une fois au démarrage)
+_COOKIE_FILE: Optional[str] = None
+if YOUTUBE_COOKIES_B64:
+    try:
+        import base64 as _b64
+        _cookie_path = str(SESSIONS_DIR / "yt_cookies.txt")
+        with open(_cookie_path, "w") as _f:
+            _f.write(_b64.b64decode(YOUTUBE_COOKIES_B64).decode("utf-8"))
+        _COOKIE_FILE = _cookie_path
+        logger.info("Cookies YouTube chargés ✓")
+    except Exception as _e:
+        logger.warning(f"Erreur chargement cookies: {_e}")
+
+def _yt_opts(**extra) -> dict:
+    """Options yt-dlp de base avec cookies si disponibles."""
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
+        **extra,
+    }
+    if _COOKIE_FILE:
+        opts["cookiefile"] = _COOKIE_FILE
+    return opts
 
 app = FastAPI(title="Créatis Clips Service", version="3.0.0")
 security = HTTPBearer(auto_error=False)
@@ -68,14 +87,13 @@ def get_whisper():
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, str, int]:
     """Télécharge la vidéo en qualité réduite. Retourne (path, titre, durée_s)."""
-    opts = {
-        **YT_BASE_OPTS,
-        "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
-        "outtmpl": f"{out_dir}/video.%(ext)s",
-        "noplaylist": True,
-        "max_filesize": 500 * 1024 * 1024,
-        "merge_output_format": "mp4",
-    }
+    opts = _yt_opts(
+        format=f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
+        outtmpl=f"{out_dir}/video.%(ext)s",
+        noplaylist=True,
+        max_filesize=500 * 1024 * 1024,
+        merge_output_format="mp4",
+    )
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         title = info.get("title", "Vidéo YouTube")
@@ -87,14 +105,13 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
     return video, title, duration
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
-    opts = {
-        **YT_BASE_OPTS,
-        "format": "bestaudio/best",
-        "outtmpl": f"{out_dir}/audio.%(ext)s",
-        "noplaylist": True,
-        "max_filesize": 200 * 1024 * 1024,
-        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "64"}],
-    }
+    opts = _yt_opts(
+        format="bestaudio/best",
+        outtmpl=f"{out_dir}/audio.%(ext)s",
+        noplaylist=True,
+        max_filesize=200 * 1024 * 1024,
+        postprocessors=[{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "64"}],
+    )
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         title = info.get("title", "Vidéo YouTube")
@@ -111,7 +128,7 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
     """Extrait les sous-titres auto YouTube via extract_info (pas de téléchargement vidéo)."""
     import requests as req_lib
     try:
-        with yt_dlp.YoutubeDL({**YT_BASE_OPTS}) as ydl:
+        with yt_dlp.YoutubeDL(_yt_opts()) as ydl:
             info = ydl.extract_info(url, download=False)
 
         title = info.get("title", "Vidéo YouTube")
@@ -162,14 +179,13 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
 def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: str, stem: str) -> str:
     """Télécharge uniquement un segment vidéo via yt-dlp download_ranges."""
     from yt_dlp.utils import download_range_func
-    opts = {
-        **YT_BASE_OPTS,
-        "format": "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
-        "outtmpl": f"{out_dir}/{stem}.%(ext)s",
-        "download_ranges": download_range_func(None, [(dl_start, dl_end)]),
-        "merge_output_format": "mp4",
-        "noplaylist": True,
-    }
+    opts = _yt_opts(
+        format="bestvideo[height<=480]+bestaudio/best[height<=480]/best",
+        outtmpl=f"{out_dir}/{stem}.%(ext)s",
+        download_ranges=download_range_func(None, [(dl_start, dl_end)]),
+        merge_output_format="mp4",
+        noplaylist=True,
+    )
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
     result = next(
