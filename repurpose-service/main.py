@@ -476,6 +476,12 @@ async def transcribe(req: TranscribeRequest, _: None = Depends(verify_secret)):
     url = req.url.strip()
     if "youtube.com" not in url and "youtu.be" not in url:
         raise HTTPException(400, "URL YouTube invalide")
+    # Vérifier la durée avant de télécharger
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+        meta = ydl.extract_info(url, download=False)
+        dur = int(meta.get("duration", 0))
+        if dur > 900:
+            raise HTTPException(400, f"Vidéo trop longue ({dur//60} min). Maximum 15 minutes.")
     with tempfile.TemporaryDirectory() as tmp:
         audio_path, title, duration_s = download_audio_only(url, tmp)
         segs = transcribe_with_timestamps(audio_path)

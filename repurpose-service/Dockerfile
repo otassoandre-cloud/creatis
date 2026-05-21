@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pré-télécharger le modèle Whisper au build
-ARG WHISPER_MODEL=base
+ARG WHISPER_MODEL=tiny
 RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8')"
 
 COPY main.py .
