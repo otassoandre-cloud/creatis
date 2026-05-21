@@ -39,6 +39,9 @@ WHISPER_MODEL   = os.environ.get("WHISPER_MODEL", "base")
 SESSIONS_DIR = Path(tempfile.gettempdir()) / "creatis_clips"
 SESSIONS_DIR.mkdir(exist_ok=True)
 
+# Job store en mémoire (session_id → état)
+JOBS: dict = {}
+
 app = FastAPI(title="Créatis Clips Service", version="3.0.0")
 security = HTTPBearer(auto_error=False)
 
@@ -373,64 +376,51 @@ def download_clip(session_id: str, filename: str):
         raise HTTPException(404, "Clip expiré ou introuvable")
     return FileResponse(str(clip_path), media_type="video/mp4", filename=filename)
 
-@app.post("/clips")
-async def create_clips(req: ClipsRequest, background_tasks: BackgroundTasks, _: None = Depends(verify_secret)):
-    url = req.url.strip()
-    n = min(max(1, req.n_clips), 7)
-
-    if "youtube.com" not in url and "youtu.be" not in url:
-        raise HTTPException(400, "URL YouTube invalide")
-
-    session_id = str(uuid.uuid4())
-    session_dir = SESSIONS_DIR / session_id
-    session_dir.mkdir(parents=True, exist_ok=True)
-    background_tasks.add_task(cleanup_old_sessions)
-
+async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
+    """Traitement asynchrone en arrière-plan — met à jour JOBS[session_id]."""
+    sid = session_id[:8]
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            # 1. Télécharger la vidéo complète (480p pour économiser espace)
-            logger.info(f"[{session_id[:8]}] Téléchargement vidéo…")
+            JOBS[session_id]["progress"] = "Téléchargement vidéo…"
+            logger.info(f"[{sid}] Téléchargement vidéo…")
             video_path, title, video_duration = download_video(url, tmp, quality="480")
-            logger.info(f"[{session_id[:8]}] Vidéo OK — {video_duration}s — {Path(video_path).stat().st_size // 1024 // 1024}MB")
+            logger.info(f"[{sid}] Vidéo OK — {video_duration}s — {Path(video_path).stat().st_size // 1024 // 1024}MB")
 
-            # 2. Extraire audio + transcrire
-            logger.info(f"[{session_id[:8]}] Transcription…")
+            JOBS[session_id]["progress"] = "Transcription audio…"
+            logger.info(f"[{sid}] Transcription…")
             audio_path = str(Path(tmp) / "audio.mp3")
             subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ar", "16000",
                             "-ac", "1", "-b:a", "32k", audio_path],
                            capture_output=True, check=True)
             segments = transcribe_with_timestamps(audio_path)
-            logger.info(f"[{session_id[:8]}] {len(segments)} segments")
+            logger.info(f"[{sid}] {len(segments)} segments")
 
             if not segments:
-                raise HTTPException(422, "Transcription vide")
+                JOBS[session_id] = {"status": "error", "error": "Transcription vide", "progress": None, "result": None}
+                return
 
-            # 3. Identifier moments viraux avec Gemini Flash
-            logger.info(f"[{session_id[:8]}] Analyse Gemini…")
+            JOBS[session_id]["progress"] = "Analyse des moments viraux…"
+            logger.info(f"[{sid}] Analyse Gemini…")
             moments = await identify_moments_gemini(segments, title, n, video_duration)
-            logger.info(f"[{session_id[:8]}] {len(moments)} moments identifiés")
+            logger.info(f"[{sid}] {len(moments)} moments identifiés")
 
-            # 4. Couper chaque clip
             clips_result = []
             for i, moment in enumerate(moments):
                 start, end = float(moment["start"]), float(moment["end"])
                 clip_filename = f"clip_{i+1:02d}.mp4"
                 clip_path = str(session_dir / clip_filename)
 
-                logger.info(f"[{session_id[:8]}] Clip {i+1}: {start:.0f}s→{end:.0f}s ({end-start:.0f}s)")
+                JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — {start:.0f}s→{end:.0f}s…"
+                logger.info(f"[{sid}] Clip {i+1}: {start:.0f}s→{end:.0f}s")
 
                 try:
-                    # Générer SRT pour ce clip
                     srt_content = generate_srt(segments, start, end)
                     srt_path = str(Path(tmp) / f"clip_{i+1}.srt")
                     with open(srt_path, "w", encoding="utf-8") as f:
                         f.write(srt_content)
 
-                    # Face tracking (échantillonné, léger)
                     face_pos = compute_face_track(video_path, start, end, sample_fps=1.0)
                     face_pos = smooth_positions(face_pos)
-
-                    # Couper + recadrer 9:16 + captions
                     cut_clip_9_16(video_path, start, end, clip_path, face_pos, srt_path)
 
                     clips_result.append({
@@ -446,29 +436,59 @@ async def create_clips(req: ClipsRequest, background_tasks: BackgroundTasks, _: 
                             s["text"] for s in segments if s["start"] >= start and s["end"] <= end
                         )[:300],
                     })
-                    logger.info(f"[{session_id[:8]}] Clip {i+1} OK")
-
+                    logger.info(f"[{sid}] Clip {i+1} OK")
                 except Exception as e:
-                    logger.error(f"[{session_id[:8]}] Clip {i+1} FAILED: {e}")
+                    logger.error(f"[{sid}] Clip {i+1} FAILED: {e}")
 
             if not clips_result:
-                raise HTTPException(500, "Aucun clip généré")
+                JOBS[session_id] = {"status": "error", "error": "Aucun clip généré", "progress": None, "result": None}
+                return
 
-            return {
-                "ok": True,
-                "title": title,
-                "duration": video_duration,
-                "session_id": session_id,
-                "clips": clips_result,
+            JOBS[session_id] = {
+                "status": "done",
+                "progress": None,
+                "error": None,
+                "result": {
+                    "ok": True,
+                    "title": title,
+                    "duration": video_duration,
+                    "session_id": session_id,
+                    "clips": clips_result,
+                }
             }
+            logger.info(f"[{sid}] Job terminé — {len(clips_result)} clips")
 
-    except HTTPException:
-        shutil.rmtree(session_dir, ignore_errors=True)
-        raise
     except Exception as e:
         shutil.rmtree(session_dir, ignore_errors=True)
-        logger.error(f"[{session_id[:8]}] Erreur: {e}")
-        raise HTTPException(500, str(e))
+        logger.error(f"[{sid}] Erreur fatale: {e}")
+        JOBS[session_id] = {"status": "error", "error": str(e), "progress": None, "result": None}
+
+
+@app.post("/clips")
+async def create_clips(req: ClipsRequest, background_tasks: BackgroundTasks, _: None = Depends(verify_secret)):
+    url = req.url.strip()
+    n = min(max(1, req.n_clips), 7)
+
+    if "youtube.com" not in url and "youtu.be" not in url:
+        raise HTTPException(400, "URL YouTube invalide")
+
+    session_id = str(uuid.uuid4())
+    session_dir = SESSIONS_DIR / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    JOBS[session_id] = {"status": "processing", "progress": "Démarrage…", "result": None, "error": None}
+    background_tasks.add_task(process_clips_job, session_id, url, n, session_dir)
+    background_tasks.add_task(cleanup_old_sessions)
+
+    return {"ok": True, "session_id": session_id, "status": "processing"}
+
+
+@app.get("/status/{session_id}")
+async def get_status(session_id: str, _: None = Depends(verify_secret)):
+    job = JOBS.get(session_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
 
 
 @app.post("/transcribe")
@@ -476,12 +496,6 @@ async def transcribe(req: TranscribeRequest, _: None = Depends(verify_secret)):
     url = req.url.strip()
     if "youtube.com" not in url and "youtu.be" not in url:
         raise HTTPException(400, "URL YouTube invalide")
-    # Vérifier la durée avant de télécharger
-    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
-        meta = ydl.extract_info(url, download=False)
-        dur = int(meta.get("duration", 0))
-        if dur > 900:
-            raise HTTPException(400, f"Vidéo trop longue ({dur//60} min). Maximum 15 minutes.")
     with tempfile.TemporaryDirectory() as tmp:
         audio_path, title, duration_s = download_audio_only(url, tmp)
         segs = transcribe_with_timestamps(audio_path)

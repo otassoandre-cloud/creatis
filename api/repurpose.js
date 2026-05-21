@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'URL invalide — entre une URL YouTube (youtube.com ou youtu.be)' });
   }
 
-  // ── Mode CLIPS : délégue entièrement au service Cloud Run/Railway ──
+  // ── Mode CLIPS : lance le job async sur Railway ──
   if (mode === 'clips') {
     if (!REPURPOSE_SERVICE_URL) {
       return res.status(503).json({
@@ -253,23 +253,44 @@ module.exports = async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
         body: JSON.stringify({ url, n_clips: 5 }),
-        signal: AbortSignal.timeout(280000)
+        signal: AbortSignal.timeout(30000)
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
+      return res.status(200).json({ ok: true, mode: 'clips', session_id: data.session_id, status: 'processing' });
+    } catch (err) {
+      console.error('[Clips] Erreur démarrage:', err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
 
-      // Réécrire les URLs de download pour pointer vers le service
-      if (data.clips) {
-        data.clips = data.clips.map(clip => ({
+  // ── Mode CLIPS_STATUS : vérifie l'état d'un job async ──
+  if (mode === 'clips_status') {
+    const { session_id } = req.body || {};
+    if (!session_id) return res.status(400).json({ error: 'session_id manquant' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/status/${session_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `Erreur statut (${r.status})`);
+      }
+      const job = await r.json();
+
+      // Si terminé, réécrire les URLs de download et créditer
+      if (job.status === 'done' && job.result?.clips) {
+        job.result.clips = job.result.clips.map(clip => ({
           ...clip,
           download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
         }));
+        if (authUser) await incrementRepurposeCount(authUser.id);
       }
-
-      if (authUser) await incrementRepurposeCount(authUser.id);
-      return res.status(200).json({ ok: true, mode: 'clips', ...data });
+      return res.status(200).json({ ok: true, mode: 'clips_status', ...job });
     } catch (err) {
-      console.error('[Clips] Erreur:', err.message);
+      console.error('[Clips Status] Erreur:', err.message);
       return res.status(502).json({ error: err.message });
     }
   }

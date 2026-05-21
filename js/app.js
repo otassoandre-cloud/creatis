@@ -1109,39 +1109,81 @@ class AppCreatis {
 
     const btn = document.getElementById(`btn-clips-${agentId}`);
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Analyse en cours…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Démarrage…'; }
 
+    const steps = ['📥 Téléchargement de la vidéo…', '🎙️ Transcription audio…', '🧠 Identification des moments viraux…', '✂️ Création des clips 9:16…', '💬 Ajout des sous-titres…'];
     if (resultsZone) {
       resultsZone.innerHTML = `
         <div class="clips-loading">
           <div class="clips-loading-steps">
-            ${['📥 Téléchargement de la vidéo…', '🎙️ Transcription audio…', '🧠 Identification des moments viraux…', '✂️ Création des clips 9:16…', '💬 Ajout des sous-titres…'].map((s,i) =>
-              `<div class="clips-step" id="cstep-${agentId}-${i}" style="animation-delay:${i*1.2}s">${s}</div>`
-            ).join('')}
+            ${steps.map((s,i) => `<div class="clips-step" id="cstep-${agentId}-${i}">${s}</div>`).join('')}
           </div>
+          <p id="clips-progress-${agentId}" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px"></p>
         </div>`;
-      this._animateClipsSteps(agentId);
     }
 
+    let stepTimer = null;
+    const activateStep = (i) => {
+      const el = document.getElementById(`cstep-${agentId}-${i}`);
+      if (el) el.classList.add('actif');
+    };
+    activateStep(0);
+
     try {
-      const data = await this._appelRepurpose(url, 'clips');
+      // Lancer le job async
+      const start = await this._appelRepurpose(url, 'clips');
+      const sessionId = start.session_id;
+      if (!sessionId) throw new Error('Pas de session_id reçu');
+
+      // Polling toutes les 4 secondes
+      const result = await new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 180; // 180 × 4s = 12 minutes max
+        const progressEl = () => document.getElementById(`clips-progress-${agentId}`);
+
+        const poll = async () => {
+          attempts++;
+          if (attempts > maxAttempts) { reject(new Error('Délai dépassé (12 min). La vidéo est peut-être trop longue.')); return; }
+
+          try {
+            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch('/api/repurpose', {
+              method: 'POST', headers,
+              body: JSON.stringify({ url, mode: 'clips_status', session_id: sessionId })
+            });
+            const job = await res.json();
+            if (!res.ok) { reject(new Error(job.error || `Erreur ${res.status}`)); return; }
+
+            // Mettre à jour la progression
+            const prog = job.progress || '';
+            const el = progressEl();
+            if (el) el.textContent = prog;
+
+            // Activer les étapes selon la progression
+            if (prog.includes('Télécharg')) activateStep(0);
+            else if (prog.includes('Transcript')) { activateStep(0); activateStep(1); }
+            else if (prog.includes('Analyse') || prog.includes('viraux')) { activateStep(0); activateStep(1); activateStep(2); }
+            else if (prog.includes('Clip')) { activateStep(0); activateStep(1); activateStep(2); activateStep(3); }
+
+            if (job.status === 'done') { steps.forEach((_,i) => activateStep(i)); resolve(job.result); }
+            else if (job.status === 'error') { reject(new Error(job.error || 'Erreur inconnue')); }
+            else { stepTimer = setTimeout(poll, 4000); }
+          } catch (e) { reject(e); }
+        };
+        stepTimer = setTimeout(poll, 4000);
+      });
+
       this.incrementerRepurpose();
-      this._afficherClipsResultats(agentId, data);
+      this._afficherClipsResultats(agentId, result);
     } catch (err) {
       if (err.message !== 'upgrade') this.afficherToast(`❌ ${err.message}`, 'erreur');
       if (resultsZone) resultsZone.innerHTML = '';
     } finally {
+      if (stepTimer) clearTimeout(stepTimer);
       if (btn) { btn.disabled = false; btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'; }
     }
-  }
-
-  _animateClipsSteps(agentId) {
-    [0,1,2,3,4].forEach((i) => {
-      setTimeout(() => {
-        const el = document.getElementById(`cstep-${agentId}-${i}`);
-        if (el) el.classList.add('actif');
-      }, i * 1500);
-    });
   }
 
   _afficherClipsResultats(agentId, data) {
