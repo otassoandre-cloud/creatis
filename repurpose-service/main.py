@@ -99,9 +99,12 @@ def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
         info = ydl.extract_info(url, download=True)
         title = info.get("title", "Vidéo YouTube")
         duration = int(info.get("duration", 0))
-    audio = next((str(p) for p in Path(out_dir).iterdir() if p.suffix in (".mp3", ".m4a", ".webm", ".opus")), None)
+
+    files = list(Path(out_dir).iterdir())
+    logger.info(f"download_audio_only: fichiers dans {out_dir}: {[f.name for f in files]}")
+    audio = next((str(p) for p in files if p.suffix in (".mp3", ".m4a", ".webm", ".opus", ".ogg", ".flac")), None)
     if not audio:
-        raise RuntimeError("Audio non trouvé")
+        raise RuntimeError(f"Audio non trouvé — fichiers présents: {[f.name for f in files]}")
     return audio, title, duration
 
 def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], str, int]]:
@@ -590,12 +593,21 @@ async def transcribe(req: TranscribeRequest, _: None = Depends(verify_secret)):
     url = req.url.strip()
     if "youtube.com" not in url and "youtu.be" not in url:
         raise HTTPException(400, "URL YouTube invalide")
+
     with tempfile.TemporaryDirectory() as tmp:
-        audio_path, title, duration_s = download_audio_only(url, tmp)
-        segs = transcribe_with_timestamps(audio_path)
-    transcript = segments_to_text(segs)
+        # Essai 1 : sous-titres YouTube (pas de download, quasi instantané)
+        sub_result = get_subtitles_youtube(url, tmp)
+        if sub_result:
+            segs, title, duration_s = sub_result
+            transcript = segments_to_text(segs)
+        else:
+            # Fallback : télécharger audio + Whisper
+            audio_path, title, duration_s = download_audio_only(url, tmp)
+            segs = transcribe_with_timestamps(audio_path)
+            transcript = segments_to_text(segs)
+
     if not transcript:
-        raise HTTPException(422, "Transcription vide")
+        raise HTTPException(422, "Transcription vide — sous-titres indisponibles et Whisper vide")
     m, s = divmod(duration_s, 60)
     return {"ok": True, "title": title, "duration": f"{m}:{s:02d}", "transcript": transcript, "r2_url": None}
 
