@@ -97,6 +97,69 @@ def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
         raise RuntimeError("Audio non trouvé")
     return audio, title, duration
 
+def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], str, int]]:
+    """Extrait les sous-titres auto YouTube sans télécharger la vidéo. Retourne (segments, title, duration) ou None."""
+    opts = {
+        "writesubtitles": True, "writeautomaticsub": True,
+        "subtitleslangs": ["fr", "fr-FR", "en", "en-US", "en-GB"],
+        "subtitlesformat": "json3",
+        "skip_download": True,
+        "outtmpl": f"{out_dir}/subs",
+        "quiet": True, "no_warnings": True,
+    }
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            title = info.get("title", "Vidéo YouTube")
+            duration = int(info.get("duration", 0))
+
+        sub_file = next((p for p in Path(out_dir).iterdir() if p.suffix == ".json3"), None)
+        if not sub_file:
+            return None
+
+        with open(sub_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        segments = []
+        for ev in data.get("events", []):
+            if not ev.get("segs"):
+                continue
+            start_s = ev["tStartMs"] / 1000
+            dur_ms = ev.get("dDurationMs", 2000)
+            text = "".join(s.get("utf8", "") for s in ev["segs"]).replace("\n", " ").strip()
+            if text and text.strip():
+                segments.append({"start": round(start_s, 2), "end": round(start_s + dur_ms / 1000, 2), "text": text})
+
+        if len(segments) < 10:
+            return None
+
+        logger.info(f"Sous-titres YouTube OK — {len(segments)} segments")
+        return segments, title, duration
+    except Exception as e:
+        logger.warning(f"Sous-titres YouTube indisponibles: {e}")
+        return None
+
+def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: str, stem: str) -> str:
+    """Télécharge uniquement un segment vidéo via yt-dlp download_ranges."""
+    from yt_dlp.utils import download_range_func
+    opts = {
+        "format": "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]/best",
+        "outtmpl": f"{out_dir}/{stem}.%(ext)s",
+        "download_ranges": download_range_func(None, [(dl_start, dl_end)]),
+        "force_keyframes_at_cuts": True,
+        "merge_output_format": "mp4",
+        "noplaylist": True, "quiet": True, "no_warnings": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download([url])
+    result = next(
+        (str(p) for p in Path(out_dir).iterdir() if p.stem == stem and p.suffix in (".mp4", ".mkv", ".webm")),
+        None
+    )
+    if not result:
+        raise RuntimeError("Segment vidéo non trouvé après téléchargement")
+    return result
+
 # ── Transcription avec timestamps ─────────────────────────────────────────────
 def transcribe_with_timestamps(audio_path: str) -> list[dict]:
     model = get_whisper()
@@ -377,51 +440,69 @@ def download_clip(session_id: str, filename: str):
     return FileResponse(str(clip_path), media_type="video/mp4", filename=filename)
 
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
-    """Traitement asynchrone en arrière-plan — met à jour JOBS[session_id]."""
+    """Traitement asynchrone — 2 phases : transcript rapide puis segments ciblés."""
     sid = session_id[:8]
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            JOBS[session_id]["progress"] = "Téléchargement vidéo…"
-            logger.info(f"[{sid}] Téléchargement vidéo…")
-            video_path, title, video_duration = download_video(url, tmp, quality="480")
-            logger.info(f"[{sid}] Vidéo OK — {video_duration}s — {Path(video_path).stat().st_size // 1024 // 1024}MB")
-
-            JOBS[session_id]["progress"] = "Transcription audio…"
-            logger.info(f"[{sid}] Transcription…")
-            audio_path = str(Path(tmp) / "audio.mp3")
-            subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vn", "-ar", "16000",
-                            "-ac", "1", "-b:a", "32k", audio_path],
-                           capture_output=True, check=True)
-            segments = transcribe_with_timestamps(audio_path)
-            logger.info(f"[{sid}] {len(segments)} segments")
+            # ── Phase 1 : Transcript (sous-titres YouTube si dispo, sinon Whisper) ──
+            JOBS[session_id]["progress"] = "Récupération des sous-titres…"
+            sub_result = get_subtitles_youtube(url, tmp)
+            if sub_result:
+                segments, title, video_duration = sub_result
+                logger.info(f"[{sid}] Sous-titres YouTube ✓ {len(segments)} segs, {video_duration}s")
+            else:
+                JOBS[session_id]["progress"] = "Téléchargement audio…"
+                audio_path, title, video_duration = download_audio_only(url, tmp)
+                JOBS[session_id]["progress"] = "Transcription Whisper…"
+                audio_16k = str(Path(tmp) / "audio16k.mp3")
+                subprocess.run(["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", "-b:a", "32k", audio_16k],
+                               capture_output=True, check=True)
+                segments = transcribe_with_timestamps(audio_16k)
+                logger.info(f"[{sid}] Whisper ✓ {len(segments)} segs")
 
             if not segments:
                 JOBS[session_id] = {"status": "error", "error": "Transcription vide", "progress": None, "result": None}
                 return
 
+            # ── Phase 2 : Identifier les moments viraux ──
             JOBS[session_id]["progress"] = "Analyse des moments viraux…"
-            logger.info(f"[{sid}] Analyse Gemini…")
             moments = await identify_moments_gemini(segments, title, n, video_duration)
             logger.info(f"[{sid}] {len(moments)} moments identifiés")
 
+            # ── Phase 3 : Télécharger et processer chaque segment individuellement ──
             clips_result = []
             for i, moment in enumerate(moments):
-                start, end = float(moment["start"]), float(moment["end"])
+                clip_start = float(moment["start"])
+                clip_end = float(moment["end"])
                 clip_filename = f"clip_{i+1:02d}.mp4"
-                clip_path = str(session_dir / clip_filename)
+                final_clip_path = str(session_dir / clip_filename)
 
-                JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — {start:.0f}s→{end:.0f}s…"
-                logger.info(f"[{sid}] Clip {i+1}: {start:.0f}s→{end:.0f}s")
+                JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — téléchargement {clip_start:.0f}s→{clip_end:.0f}s…"
+                logger.info(f"[{sid}] Clip {i+1}: segment {clip_start:.0f}s→{clip_end:.0f}s")
 
                 try:
-                    srt_content = generate_srt(segments, start, end)
-                    srt_path = str(Path(tmp) / f"clip_{i+1}.srt")
+                    seg_dir = Path(tmp) / f"seg_{i+1}"
+                    seg_dir.mkdir(exist_ok=True)
+
+                    # Télécharger uniquement ce segment (avec 1s de buffer)
+                    pre_buf = min(clip_start, 1.0)
+                    dl_start = max(0.0, clip_start - pre_buf)
+                    seg_video = download_video_segment(url, dl_start, clip_end + 1.0, str(seg_dir), f"seg{i+1}")
+
+                    # Timestamps relatifs dans le segment téléchargé
+                    seg_clip_start = clip_start - dl_start  # ~1.0
+                    seg_clip_end = seg_clip_start + (clip_end - clip_start)
+
+                    JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — recadrage 9:16…"
+
+                    srt_content = generate_srt(segments, clip_start, clip_end)
+                    srt_path = str(seg_dir / f"clip_{i+1}.srt")
                     with open(srt_path, "w", encoding="utf-8") as f:
                         f.write(srt_content)
 
-                    face_pos = compute_face_track(video_path, start, end, sample_fps=1.0)
+                    face_pos = compute_face_track(seg_video, seg_clip_start, seg_clip_end, sample_fps=1.0)
                     face_pos = smooth_positions(face_pos)
-                    cut_clip_9_16(video_path, start, end, clip_path, face_pos, srt_path)
+                    cut_clip_9_16(seg_video, seg_clip_start, seg_clip_end, final_clip_path, face_pos, srt_path)
 
                     clips_result.append({
                         "clip_id": clip_filename,
@@ -429,11 +510,11 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                         "hook": str(moment.get("hook", ""))[:80],
                         "why": str(moment.get("why", ""))[:200],
                         "score": int(moment.get("score", 80)),
-                        "start": start,
-                        "end": end,
-                        "duration": round(end - start, 1),
+                        "start": clip_start,
+                        "end": clip_end,
+                        "duration": round(clip_end - clip_start, 1),
                         "transcript": " ".join(
-                            s["text"] for s in segments if s["start"] >= start and s["end"] <= end
+                            s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end
                         )[:300],
                     })
                     logger.info(f"[{sid}] Clip {i+1} OK")
@@ -445,15 +526,10 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                 return
 
             JOBS[session_id] = {
-                "status": "done",
-                "progress": None,
-                "error": None,
+                "status": "done", "progress": None, "error": None,
                 "result": {
-                    "ok": True,
-                    "title": title,
-                    "duration": video_duration,
-                    "session_id": session_id,
-                    "clips": clips_result,
+                    "ok": True, "title": title, "duration": video_duration,
+                    "session_id": session_id, "clips": clips_result,
                 }
             }
             logger.info(f"[{sid}] Job terminé — {len(clips_result)} clips")
