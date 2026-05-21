@@ -42,6 +42,13 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 # Job store en mémoire (session_id → état)
 JOBS: dict = {}
 
+# Options yt-dlp communes — client Android contourne la détection bot de YouTube sur serveur
+YT_BASE_OPTS = {
+    "quiet": True,
+    "no_warnings": True,
+    "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
+}
+
 app = FastAPI(title="Créatis Clips Service", version="3.0.0")
 security = HTTPBearer(auto_error=False)
 
@@ -62,11 +69,11 @@ def get_whisper():
 def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, str, int]:
     """Télécharge la vidéo en qualité réduite. Retourne (path, titre, durée_s)."""
     opts = {
-        "format": f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/best[height<={quality}][ext=mp4]/best[height<={quality}]/best",
+        **YT_BASE_OPTS,
+        "format": f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
         "outtmpl": f"{out_dir}/video.%(ext)s",
         "noplaylist": True,
         "max_filesize": 500 * 1024 * 1024,
-        "quiet": True, "no_warnings": True,
         "merge_output_format": "mp4",
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -81,12 +88,12 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     opts = {
+        **YT_BASE_OPTS,
         "format": "bestaudio/best",
         "outtmpl": f"{out_dir}/audio.%(ext)s",
         "noplaylist": True,
         "max_filesize": 200 * 1024 * 1024,
         "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "64"}],
-        "quiet": True, "no_warnings": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -98,27 +105,37 @@ def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     return audio, title, duration
 
 def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], str, int]]:
-    """Extrait les sous-titres auto YouTube sans télécharger la vidéo. Retourne (segments, title, duration) ou None."""
-    opts = {
-        "writesubtitles": True, "writeautomaticsub": True,
-        "subtitleslangs": ["fr", "fr-FR", "en", "en-US", "en-GB"],
-        "subtitlesformat": "json3",
-        "skip_download": True,
-        "outtmpl": f"{out_dir}/subs",
-        "quiet": True, "no_warnings": True,
-    }
+    """Extrait les sous-titres auto YouTube via extract_info (pas de téléchargement vidéo)."""
+    import requests as req_lib
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            title = info.get("title", "Vidéo YouTube")
-            duration = int(info.get("duration", 0))
+        with yt_dlp.YoutubeDL({**YT_BASE_OPTS}) as ydl:
+            info = ydl.extract_info(url, download=False)
 
-        sub_file = next((p for p in Path(out_dir).iterdir() if p.suffix == ".json3"), None)
-        if not sub_file:
+        title = info.get("title", "Vidéo YouTube")
+        duration = int(info.get("duration", 0))
+
+        # Chercher piste de sous-titres : auto > manuel, fr > en > n'importe quelle langue
+        auto_caps = info.get("automatic_captions", {})
+        manual = info.get("subtitles", {})
+        sub_track = None
+        for lang in ["fr", "fr-FR", "en", "en-US", "en-GB"]:
+            sub_track = auto_caps.get(lang) or manual.get(lang)
+            if sub_track:
+                break
+        if not sub_track:
+            for tracks in list(auto_caps.values()) + list(manual.values()):
+                sub_track = tracks
+                break
+        if not sub_track:
             return None
 
-        with open(sub_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        entry = next((t for t in sub_track if t.get("ext") == "json3"), sub_track[0] if sub_track else None)
+        if not entry or not entry.get("url"):
+            return None
+
+        r = req_lib.get(entry["url"], timeout=15)
+        r.raise_for_status()
+        data = r.json()
 
         segments = []
         for ev in data.get("events", []):
@@ -127,7 +144,7 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
             start_s = ev["tStartMs"] / 1000
             dur_ms = ev.get("dDurationMs", 2000)
             text = "".join(s.get("utf8", "") for s in ev["segs"]).replace("\n", " ").strip()
-            if text and text.strip():
+            if text:
                 segments.append({"start": round(start_s, 2), "end": round(start_s + dur_ms / 1000, 2), "text": text})
 
         if len(segments) < 10:
@@ -143,12 +160,13 @@ def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: st
     """Télécharge uniquement un segment vidéo via yt-dlp download_ranges."""
     from yt_dlp.utils import download_range_func
     opts = {
-        "format": "bestvideo[height<=480][ext=mp4]+bestaudio[ext=m4a]/best[height<=480][ext=mp4]/best[height<=480]/best",
+        **YT_BASE_OPTS,
+        "format": "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
         "outtmpl": f"{out_dir}/{stem}.%(ext)s",
         "download_ranges": download_range_func(None, [(dl_start, dl_end)]),
         "force_keyframes_at_cuts": True,
         "merge_output_format": "mp4",
-        "noplaylist": True, "quiet": True, "no_warnings": True,
+        "noplaylist": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
