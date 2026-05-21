@@ -167,7 +167,6 @@ def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: st
         "format": "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
         "outtmpl": f"{out_dir}/{stem}.%(ext)s",
         "download_ranges": download_range_func(None, [(dl_start, dl_end)]),
-        "force_keyframes_at_cuts": True,
         "merge_output_format": "mp4",
         "noplaylist": True,
     }
@@ -505,14 +504,18 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                     seg_dir = Path(tmp) / f"seg_{i+1}"
                     seg_dir.mkdir(exist_ok=True)
 
-                    # Télécharger uniquement ce segment (avec 1s de buffer)
-                    pre_buf = min(clip_start, 1.0)
+                    # Buffer 5s : sans force_keyframes_at_cuts, le segment peut démarrer
+                    # 0-4s avant la cible (dépend de la position des keyframes YouTube)
+                    pre_buf = min(clip_start, 5.0)
                     dl_start = max(0.0, clip_start - pre_buf)
-                    seg_video = download_video_segment(url, dl_start, clip_end + 1.0, str(seg_dir), f"seg{i+1}")
+                    seg_video = download_video_segment(url, dl_start, clip_end + 2.0, str(seg_dir), f"seg{i+1}")
 
                     # Timestamps relatifs dans le segment téléchargé
-                    seg_clip_start = clip_start - dl_start  # ~1.0
+                    seg_clip_start = clip_start - dl_start  # ~5.0
                     seg_clip_end = seg_clip_start + (clip_end - clip_start)
+
+                    # Petite pause entre les clips pour éviter le rate limiting YouTube
+                    await asyncio.sleep(1)
 
                     JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — recadrage 9:16…"
 
