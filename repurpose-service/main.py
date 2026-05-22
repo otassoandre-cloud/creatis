@@ -669,6 +669,19 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
         for moment in moments:
             clip_start = float(moment["start"])
             clip_end   = float(moment["end"])
+            # Enrichir caption_segments avec les vrais sous-titres (relatifs au clip)
+            real_caps = []
+            if segments:
+                for seg in segments:
+                    t = seg.get("start", 0)
+                    d = seg.get("duration", 2)
+                    if t >= clip_start and t < clip_end:
+                        real_caps.append({
+                            "start": round(t - clip_start, 2),
+                            "end":   round(min(t + d - clip_start, clip_end - clip_start), 2),
+                            "text":  seg.get("text", "").strip()
+                        })
+            caption_segs = real_caps if real_caps else moment.get("caption_segments", [])
             clips_result.append({
                 "hook":      str(moment.get("hook", ""))[:80],
                 "why":       str(moment.get("why",  ""))[:200],
@@ -680,7 +693,7 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                 "video_id":   video_id,
                 "youtube_url":  f"https://www.youtube.com/watch?v={video_id}&t={int(clip_start)}s",
                 "embed_url":    f"https://www.youtube.com/embed/{video_id}?start={int(clip_start)}&end={int(clip_end)}&rel=0",
-                "caption_segments": moment.get("caption_segments", []),
+                "caption_segments": caption_segs,
             })
 
         JOBS[session_id] = {
