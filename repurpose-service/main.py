@@ -413,11 +413,14 @@ Pas d'introduction, juste le JSON."""
                     logger.warning(f"Gemini {model} rate limit, essai modèle suivant…")
                     await asyncio.sleep(8)
                     continue
-                if r.status_code == 404:
+                if r.status_code in (404, 400):
                     logger.warning(f"Gemini {model} introuvable, essai modèle suivant…")
                     continue
                 r.raise_for_status()
                 break
+            else:
+                logger.warning("Tous les modèles Gemini ont échoué (rate limit / quota épuisé)")
+                return None
             text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
             m = re.search(r'\{[\s\S]*\}', text)
             if not m:
