@@ -806,61 +806,33 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         def _export():
             import requests as req_lib
 
-            # Étape 1 : obtenir URL vidéo via cobalt (gère bot detection YouTube)
-            cobalt_headers = {"Accept": "application/json", "Content-Type": "application/json"}
-            if COBALT_API_KEY:
-                cobalt_headers["Authorization"] = f"Api-Key {COBALT_API_KEY}"
-
+            # Récupérer l'URL stream via Invidious (contourne bot detection YouTube)
+            # Invidious retourne des URLs directes YouTube CDN via son API publique
             video_url = None
-            # Essayer cobalt (v10: POST / avec videoQuality, v9: POST /api/json avec vQuality)
-            for cobalt_base in COBALT_INSTANCES:
-                for endpoint, body in [
-                    ("/", {"url": yt_url, "videoQuality": "720"}),
-                    ("/api/json", {"url": yt_url, "vQuality": "720"}),
-                ]:
-                    try:
-                        r = req_lib.post(
-                            f"{cobalt_base}{endpoint}",
-                            json=body,
-                            headers=cobalt_headers,
-                            timeout=15,
-                        )
-                        if r.status_code == 200:
-                            data = r.json()
-                            status = data.get("status", "")
-                            su = data.get("url", "")
-                            if status in ("stream", "redirect", "tunnel") and su:
-                                video_url = su
-                                logger.info(f"[export {job_id[:8]}] cobalt OK {cobalt_base}{endpoint} type={status}")
-                                break
-                            logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}{endpoint}: {status}")
-                    except Exception as exc:
-                        logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}{endpoint}: {exc}")
-                if video_url:
-                    break
-
-            # Fallback : yt-dlp extract_info (sans téléchargement, URL valide ~5min)
-            if not video_url:
-                logger.info(f"[export {job_id[:8]}] fallback yt-dlp extract_info")
+            for instance in INVIDIOUS_INSTANCES:
                 try:
-                    opts_info = {
-                        **_yt_opts(),
-                        "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
-                    }
-                    with yt_dlp.YoutubeDL(opts_info) as ydl:
-                        info = ydl.extract_info(yt_url, download=False)
-                    video_url = info.get("url")
-                    if not video_url:
-                        fmts = [f for f in info.get("formats", []) if f.get("url") and f.get("vcodec", "none") != "none" and f.get("acodec", "none") != "none"]
-                        if fmts:
-                            video_url = fmts[-1]["url"]
-                    if video_url:
-                        logger.info(f"[export {job_id[:8]}] yt-dlp fallback OK")
+                    r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=12)
+                    if r.status_code != 200:
+                        logger.warning(f"[export {job_id[:8]}] Invidious {instance}: HTTP {r.status_code}")
+                        continue
+                    fmts = r.json().get("formatStreams", [])
+                    # Préférer 720p (itag 22) puis 360p (itag 18) — formats pré-fusionnés h264+aac
+                    itag = None
+                    for target in ["22", "18"]:
+                        if any(str(f.get("itag")) == target for f in fmts):
+                            itag = target
+                            break
+                    if not itag and fmts:
+                        itag = str(fmts[-1].get("itag", "18"))
+                    if itag:
+                        video_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
+                        logger.info(f"[export {job_id[:8]}] Invidious OK {instance} itag={itag}")
+                        break
                 except Exception as exc:
-                    logger.error(f"[export {job_id[:8]}] yt-dlp fallback échoué: {exc}")
+                    logger.warning(f"[export {job_id[:8]}] Invidious {instance}: {exc}")
 
             if not video_url:
-                raise Exception("Service indisponible — réessaie dans quelques secondes")
+                raise Exception("Service indisponible — réessaie dans quelques minutes")
 
             # Étape 2 : ffmpeg — HTTP range seek + extraction + 9:16
             # -ss avant -i = fast seek via HTTP range (ne télécharge pas tout le fichier)
