@@ -1185,12 +1185,7 @@ class AppCreatis {
   _ensureYTListener() {
     if (window._ytMsgReady) return;
     window._ytMsgReady = true;
-    window._ytImap = new Map(); // contentWindow → {prev, agentId, i}
-    if (!window._ccHtml) window._ccHtml = t => {
-      const w = t.trim().split(/\s+/);
-      if (w.length < 2) return `<span class="cc-hi">${t}</span>`;
-      return w.slice(0, -1).join(' ') + ` <span class="cc-hi">${w[w.length - 1]}</span>`;
-    };
+    window._ytImap = new Map();
     window.addEventListener('message', e => {
       if (!e.data || typeof e.data !== 'string') return;
       try {
@@ -1202,25 +1197,13 @@ class AppCreatis {
         if (!iframe) return;
         if (m.event === 'onStateChange' && m.info === 1) {
           if (prev.classList.contains('loading-poster')) {
-            // Capturer le poster : pause après 150ms
             setTimeout(() => {
               try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
               prev.classList.remove('loading-poster');
               prev.classList.add('has-poster');
             }, 150);
-          } else if (prev.classList.contains('playing')) {
-            // Recaler le timer au moment où YouTube confirme le vrai départ
-            if (prev._clipElapsed < 1.5) {
-              prev._clipElapsed = 0;
-              prev._clipLastTick = Date.now();
-            }
-          }
-        }
-        // Sync currentTime pour captions précises
-        if (m.event === 'infoDelivery' && m.info?.currentTime != null && prev.classList.contains('playing') && !prev.classList.contains('paused')) {
-          const yt = m.info.currentTime - (prev._clipStart || 0);
-          if (Math.abs(yt - prev._clipElapsed) > 0.5) {
-            prev._clipElapsed = Math.max(0, yt);
+          } else if (prev.classList.contains('playing') && prev._clipElapsed < 1.5) {
+            prev._clipElapsed = 0;
             prev._clipLastTick = Date.now();
           }
         }
@@ -1237,7 +1220,6 @@ class AppCreatis {
     prev._clipEnd = endSec;
     prev._clipElapsed = 0;
     prev._clipLastTick = Date.now();
-    prev._clipCaptions = (this._clipsData || {})[`${agentId}-${i}`] || [];
     if (prev.classList.contains('has-poster')) {
       // iframe déjà chargée et pausée au bon moment → unmute + play
       try {
@@ -1254,7 +1236,7 @@ class AppCreatis {
           try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
         }, 300);
       };
-      iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
+      iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1&cc_load_policy=1&cc_lang_pref=fr`;
     }
     prev.classList.add('playing');
     if (prev._clipTicker) clearInterval(prev._clipTicker);
@@ -1267,17 +1249,8 @@ class AppCreatis {
       const pct = Math.min(prev._clipElapsed / duration * 100, 100);
       const fill = document.getElementById(`cprog-${agentId}-${i}`);
       if (fill) fill.style.width = pct + '%';
-      const ccDiv = document.getElementById(`ccc-${agentId}-${i}`);
-      if (ccDiv && prev._clipCaptions.length) {
-        const el = prev._clipElapsed;
-        const seg = prev._clipCaptions.find(s => el >= s.start && el < (s.end ?? s.start + 2));
-        if (seg) { ccDiv.innerHTML = window._ccHtml ? window._ccHtml(seg.text) : seg.text; ccDiv.classList.add('active'); }
-        else ccDiv.classList.remove('active');
-      }
       if (prev._clipElapsed >= duration) {
         clearInterval(prev._clipTicker);
-        const ccDiv2 = document.getElementById(`ccc-${agentId}-${i}`);
-        if (ccDiv2) ccDiv2.classList.remove('active');
         try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
         setTimeout(() => { prev.classList.remove('playing', 'paused'); iframe.src = ''; }, 1200);
       }
@@ -1331,63 +1304,27 @@ class AppCreatis {
     const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
 
-    this._clipsData = this._clipsData || {};
     const clipsHtml = data.clips.map((clip, i) => {
-      // Découpe les segments en chunks de 3 mots max (style OpusClip)
-      const rawSegs = clip.caption_segments || [];
-      const chunks = [];
-      for (const seg of rawSegs) {
-        const words = (seg.text || '').trim().split(/\s+/).filter(w => w);
-        if (!words.length) continue;
-        const segEnd = seg.end ?? (seg.start + (seg.duration || 2));
-        const segDur = Math.max(segEnd - seg.start, 0.1);
-        const chunkSize = 3;
-        const n = Math.ceil(words.length / chunkSize);
-        const rawChunkDur = segDur / n;
-        const chunkDur = Math.min(rawChunkDur, 2.0); // max 2s par chunk
-        for (let j = 0; j < n; j++) {
-          chunks.push({
-            start: seg.start + j * rawChunkDur,
-            end:   seg.start + j * rawChunkDur + chunkDur,
-            text:  words.slice(j * chunkSize, (j + 1) * chunkSize).join(' ')
-          });
-        }
-      }
-      // Fallback : hook découpé sur la durée du clip
-      if (!chunks.length && clip.hook) {
-        const words = clip.hook.trim().split(/\s+/).filter(w => w);
-        const dur = clip.end - clip.start;
-        const n = Math.ceil(words.length / 3);
-        for (let j = 0; j < n; j++) {
-          chunks.push({ start: j * dur / n, end: (j + 1) * dur / n, text: words.slice(j * 3, (j + 1) * 3).join(' ') });
-        }
-      }
-      this._clipsData[`${agentId}-${i}`] = chunks;
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
       const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
       const thumbUrl = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
-      const caption = ((clip.caption_segments || []).slice(0, 2).map(s => s.text).join(' ') || clip.hook || '').substring(0, 70);
+      const title = (clip.hook || '').substring(0, 80);
       const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
         <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
           <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
           <div class="clip-thumb-overlay">
-            <div class="clip-timestamps">
-              <span class="clip-ts-box">${fmt(clip.start)}</span>
-              <span class="clip-ts-box">${fmt(clip.end)}</span>
-            </div>
-            ${caption ? `<div class="clip-caption-text">${this._escapeHtml(caption)}</div>` : ''}
+            ${title ? `<div class="clip-caption-text">${this._escapeHtml(title)}</div>` : ''}
             <div class="clip-play-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             </div>
           </div>
           <iframe class="clip-opus-iframe" id="ciframe-${agentId}-${i}"
             frameborder="0" allowfullscreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
           </iframe>
-          <div class="clip-cc-overlay" id="ccc-${agentId}-${i}"></div>
           <div class="clip-playing-controls">
             <div class="clip-prog-track" onclick="event.stopPropagation();app._seekClip('${agentId}',${i},event)"><div class="clip-prog-fill" id="cprog-${agentId}-${i}"></div></div>
             <button class="clip-pause-btn" onclick="event.stopPropagation();app._togglePause('${agentId}',${i})" title="Pause / Play">
