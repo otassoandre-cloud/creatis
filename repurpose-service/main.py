@@ -104,14 +104,16 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
         raise RuntimeError("Vidéo non trouvée après téléchargement")
     return video, title, duration
 
-# Instances Invidious publiques — proxy YouTube sans bot detection
+COBALT_INSTANCES = [
+    "https://cobalt.tools",
+    "https://cobalt.api.nadeko.net",
+]
 INVIDIOUS_INSTANCES = [
     "https://inv.nadeko.net",
     "https://invidious.nerdvpn.de",
     "https://yt.artemislena.eu",
     "https://invidious.flokinet.to",
     "https://iv.melmac.space",
-    "https://invidious.privacydev.net",
 ]
 
 def _extract_video_id(url: str) -> Optional[str]:
@@ -122,12 +124,34 @@ def _extract_video_id(url: str) -> Optional[str]:
     return None
 
 def _get_invidious_stream(url: str) -> tuple[str, str, int]:
-    """Récupère l'URL stream via Invidious (proxy YouTube, bypass blocage IP Railway)."""
+    """Récupère l'URL stream via cobalt.tools puis Invidious en fallback."""
     import requests as req_lib
     video_id = _extract_video_id(url)
     if not video_id:
         raise RuntimeError("ID vidéo YouTube invalide")
 
+    # 1. cobalt.tools — service de download YouTube dédié
+    for cobalt in COBALT_INSTANCES:
+        try:
+            r = req_lib.post(
+                f"{cobalt}/api/json",
+                json={"url": url, "vQuality": "360", "isAudioOnly": False},
+                headers={"Accept": "application/json", "Content-Type": "application/json"},
+                timeout=15,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                status = data.get("status", "")
+                stream_url = data.get("url", "")
+                if status in ("stream", "redirect", "tunnel") and stream_url:
+                    logger.info(f"cobalt.tools OK via {cobalt}")
+                    # Pas de métadonnées titre/durée depuis cobalt — on les récupère via Invidious séparément
+                    title, duration = _get_video_meta(video_id)
+                    return stream_url, title, duration
+        except Exception as e:
+            logger.warning(f"cobalt {cobalt} échoué: {e}")
+
+    # 2. Invidious proxy
     for instance in INVIDIOUS_INSTANCES:
         try:
             r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=12)
@@ -136,27 +160,30 @@ def _get_invidious_stream(url: str) -> tuple[str, str, int]:
             data = r.json()
             title = data.get("title", "Vidéo YouTube")
             duration = int(data.get("lengthSeconds", 0))
-
-            # itag 18 = 360p mp4 progressif (vidéo+audio) — le plus compatible
-            itag = "18"
-            for fmt in data.get("formatStreams", []):
-                if str(fmt.get("itag")) == "18":
-                    break
-            else:
-                # Prendre le premier format disponible
-                fmts = data.get("formatStreams", [])
-                if fmts:
-                    itag = str(fmts[0].get("itag", "18"))
-
-            # local=true = Invidious proxifie le stream (pas de redirection vers YouTube CDN)
-            proxy_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
-            logger.info(f"Invidious stream OK via {instance} (itag={itag})")
+            fmts = data.get("formatStreams", [])
+            itag = next((str(f.get("itag")) for f in fmts if str(f.get("itag")) == "18"), None)
+            if not itag and fmts:
+                itag = str(fmts[0].get("itag", "18"))
+            proxy_url = f"{instance}/latest_version?id={video_id}&itag={itag or '18'}&local=true"
+            logger.info(f"Invidious OK via {instance}")
             return proxy_url, title, duration
         except Exception as e:
             logger.warning(f"Invidious {instance} échoué: {e}")
-            continue
 
-    raise RuntimeError("Toutes les instances Invidious sont indisponibles — réessaie dans quelques minutes")
+    raise RuntimeError("Service vidéo indisponible — réessaie dans quelques minutes")
+
+def _get_video_meta(video_id: str) -> tuple[str, int]:
+    """Récupère titre+durée via Invidious (métadonnées seulement)."""
+    import requests as req_lib
+    for instance in INVIDIOUS_INSTANCES:
+        try:
+            r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=8)
+            if r.status_code == 200:
+                d = r.json()
+                return d.get("title", "Vidéo YouTube"), int(d.get("lengthSeconds", 0))
+        except Exception:
+            continue
+    return "Vidéo YouTube", 0
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     """Télécharge l'audio via pytubefix + ffmpeg extract audio (max 20 min pour Whisper)."""
