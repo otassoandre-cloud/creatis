@@ -332,7 +332,7 @@ Contraintes : durée 30-60s, pas de chevauchement, trié par score décroissant.
         if m:
             data = json.loads(m.group())
             clips = [c for c in data.get("clips", [])
-                     if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 70]
+                     if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 60]
             if clips:
                 logger.info(f"Groq identify ✓ {len(clips)} moments")
                 return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
@@ -368,7 +368,7 @@ Contraintes : durée 30-60s, pas de chevauchement, trié par score."""
             if m:
                 data = json.loads(m.group())
                 clips = [c for c in data.get("clips", [])
-                         if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 70]
+                         if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 60]
                 if clips:
                     return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
         except Exception as e:

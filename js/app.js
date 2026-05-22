@@ -1184,6 +1184,16 @@ class AppCreatis {
     }
   }
 
+  _playClip(agentId, i, embedUrl) {
+    const prev = document.getElementById(`cprev-${agentId}-${i}`);
+    const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
+    if (!prev || !iframe) return;
+    if (!prev.classList.contains('playing')) {
+      iframe.src = embedUrl + '&autoplay=1';
+      prev.classList.add('playing');
+    }
+  }
+
   _afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`clips-results-${agentId}`);
     if (!zone) return;
@@ -1193,39 +1203,48 @@ class AppCreatis {
       return;
     }
 
-    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f59e0b' : '#6b7280';
+    const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
 
     const clipsHtml = data.clips.map((clip, i) => {
-      const captionPreview = (clip.caption_segments || []).slice(0, 4).map(s => this._escapeHtml(s.text)).join(' ');
       const ytUrl = clip.youtube_url || `https://www.youtube.com/watch?v=${clip.video_id}&t=${Math.floor(clip.start)}s`;
       const embedUrl = clip.embed_url || `https://www.youtube.com/embed/${clip.video_id}?start=${Math.floor(clip.start)}&end=${Math.floor(clip.end)}&rel=0`;
+      const thumbUrl = `https://img.youtube.com/vi/${clip.video_id}/hqdefault.jpg`;
+      const caption = ((clip.caption_segments || []).slice(0, 2).map(s => s.text).join(' ') || clip.hook || '').substring(0, 70);
+      const dur = `${fmt(clip.start)} &nbsp;→&nbsp; ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
-        <div class="clip-opus-preview">
-          <iframe src="${embedUrl}" class="clip-youtube-embed"
+        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._playClip('${agentId}',${i},'${embedUrl}')">
+          <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
+          <div class="clip-thumb-overlay">
+            <div class="clip-timestamps">
+              <span class="clip-ts-box">00:00</span>
+              <span class="clip-ts-box">${fmt(clip.end - clip.start)}</span>
+            </div>
+            ${caption ? `<div class="clip-caption-text">${this._escapeHtml(caption)}</div>` : ''}
+            <div class="clip-play-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+          <iframe class="clip-opus-iframe" id="ciframe-${agentId}-${i}"
             frameborder="0" allowfullscreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
           </iframe>
-          <div class="clip-opus-score" style="background:${scoreColor(clip.score)}">
-            <span>SCORE</span>
-            <strong>${clip.score}</strong>
+        </div>
+        <div class="clip-score-row">
+          <span class="clip-score-num" style="color:${scoreColor(clip.score)}">${clip.score}</span>
+          <div class="clip-action-btns">
+            <a href="${ytUrl}" target="_blank" class="clip-action-btn" title="Voir sur YouTube">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            </a>
+            <button class="clip-action-btn" title="Copier URL + ouvrir cobalt.tools" onclick="navigator.clipboard.writeText('${ytUrl}').then(()=>{ window.open('https://cobalt.tools/','_blank'); app.afficherToast('URL copiée — colle dans cobalt.tools','succes'); })">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="clip-action-btn clip-action-del" title="Supprimer" onclick="this.closest('.clip-opus-card').remove()">✕</button>
           </div>
         </div>
-        <div class="clip-opus-info">
-          <p class="clip-opus-hook">${this._escapeHtml(clip.hook)}</p>
-          <p class="clip-opus-dur">${clip.duration}s · ${Math.floor(clip.start / 60)}:${String(Math.floor(clip.start % 60)).padStart(2,'0')} → ${Math.floor(clip.end / 60)}:${String(Math.floor(clip.end % 60)).padStart(2,'0')}</p>
-          ${captionPreview ? `<p class="clip-opus-captions">"${captionPreview}"</p>` : ''}
-        </div>
-        <div class="clip-opus-actions">
-          <a href="${ytUrl}" target="_blank" class="clip-opus-dl clip-opus-yt">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
-            Voir sur YouTube
-          </a>
-          <button class="clip-opus-dl" onclick="navigator.clipboard.writeText('${ytUrl}').then(()=>{ window.open('https://cobalt.tools/','_blank'); app.afficherToast('URL copiée — colle dans cobalt.tools','succes'); })">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Télécharger
-          </button>
-        </div>
+        <div class="clip-opus-title">${this._escapeHtml(clip.hook || `Moment ${i+1}`)}</div>
+        <div class="clip-opus-dur">${dur}</div>
       </div>`;
     }).join('');
 
