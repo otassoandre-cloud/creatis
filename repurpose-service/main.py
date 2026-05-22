@@ -80,10 +80,12 @@ def verify_secret(credentials: Optional[HTTPAuthorizationCredentials] = Security
 
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 COBALT_INSTANCES = [
-    "https://api.cobalt.tools",
-    "https://cobalt.tools",
+    "https://cobalt.imput.net",
+    "https://cobalt.catvibers.me",
+    "https://cob.vert.run",
     "https://cobalt.hukibarak.hu",
     "https://co.wuk.sh",
+    "https://api.cobalt.tools",
 ]
 INVIDIOUS_INSTANCES = [
     "https://inv.nadeko.net",
@@ -810,25 +812,52 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
                 cobalt_headers["Authorization"] = f"Api-Key {COBALT_API_KEY}"
 
             video_url = None
+            # Essayer cobalt (v10: POST / avec videoQuality, v9: POST /api/json avec vQuality)
             for cobalt_base in COBALT_INSTANCES:
+                for endpoint, body in [
+                    ("/", {"url": yt_url, "videoQuality": "720"}),
+                    ("/api/json", {"url": yt_url, "vQuality": "720"}),
+                ]:
+                    try:
+                        r = req_lib.post(
+                            f"{cobalt_base}{endpoint}",
+                            json=body,
+                            headers=cobalt_headers,
+                            timeout=15,
+                        )
+                        if r.status_code == 200:
+                            data = r.json()
+                            status = data.get("status", "")
+                            su = data.get("url", "")
+                            if status in ("stream", "redirect", "tunnel") and su:
+                                video_url = su
+                                logger.info(f"[export {job_id[:8]}] cobalt OK {cobalt_base}{endpoint} type={status}")
+                                break
+                            logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}{endpoint}: {status}")
+                    except Exception as exc:
+                        logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}{endpoint}: {exc}")
+                if video_url:
+                    break
+
+            # Fallback : yt-dlp extract_info (sans téléchargement, URL valide ~5min)
+            if not video_url:
+                logger.info(f"[export {job_id[:8]}] fallback yt-dlp extract_info")
                 try:
-                    r = req_lib.post(
-                        f"{cobalt_base}/",
-                        json={"url": yt_url, "videoQuality": "720"},
-                        headers=cobalt_headers,
-                        timeout=20,
-                    )
-                    if r.status_code == 200:
-                        data = r.json()
-                        status = data.get("status", "")
-                        su = data.get("url", "")
-                        if status in ("stream", "redirect", "tunnel") and su:
-                            video_url = su
-                            logger.info(f"[export {job_id[:8]}] cobalt OK {cobalt_base} type={status}")
-                            break
-                        logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}: {status} {data}")
+                    opts_info = {
+                        **_yt_opts(),
+                        "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
+                    }
+                    with yt_dlp.YoutubeDL(opts_info) as ydl:
+                        info = ydl.extract_info(yt_url, download=False)
+                    video_url = info.get("url")
+                    if not video_url:
+                        fmts = [f for f in info.get("formats", []) if f.get("url") and f.get("vcodec", "none") != "none" and f.get("acodec", "none") != "none"]
+                        if fmts:
+                            video_url = fmts[-1]["url"]
+                    if video_url:
+                        logger.info(f"[export {job_id[:8]}] yt-dlp fallback OK")
                 except Exception as exc:
-                    logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base} échoué: {exc}")
+                    logger.error(f"[export {job_id[:8]}] yt-dlp fallback échoué: {exc}")
 
             if not video_url:
                 raise Exception("Service indisponible — réessaie dans quelques secondes")
