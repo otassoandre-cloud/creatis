@@ -88,11 +88,10 @@ def get_whisper():
 def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, str, int]:
     """Télécharge la vidéo en qualité réduite. Retourne (path, titre, durée_s)."""
     opts = _yt_opts(
-        format=f"bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best",
+        format=f"best[height<={quality}][ext=mp4]/best[height<={quality}]/best[ext=mp4]/best",
         outtmpl=f"{out_dir}/video.%(ext)s",
         noplaylist=True,
         max_filesize=500 * 1024 * 1024,
-        merge_output_format="mp4",
     )
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -180,10 +179,9 @@ def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: st
     """Télécharge uniquement un segment vidéo via yt-dlp download_ranges."""
     from yt_dlp.utils import download_range_func
     opts = _yt_opts(
-        format="bestvideo[height<=480]+bestaudio/best[height<=480]/best",
+        format="best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best",
         outtmpl=f"{out_dir}/{stem}.%(ext)s",
         download_ranges=download_range_func(None, [(dl_start, dl_end)]),
-        merge_output_format="mp4",
         noplaylist=True,
     )
     with yt_dlp.YoutubeDL(opts) as ydl:
