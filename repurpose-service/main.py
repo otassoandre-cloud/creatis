@@ -798,22 +798,35 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         out_path = out_dir / filename
 
         def _download():
-            from yt_dlp.utils import download_range_func
-            opts = {
+            # Étape 1 : récupérer l'URL directe du stream (rapide, pas de download)
+            opts_info = {
                 **_yt_opts(),
-                "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best",
-                "download_ranges": download_range_func(None, [(start, end)]),
-                "force_keyframes_at_cuts": True,
-                "outtmpl": str(out_path),
-                "merge_output_format": "mp4",
+                "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
+                "quiet": True,
             }
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([url])
+            with yt_dlp.YoutubeDL(opts_info) as ydl:
+                info = ydl.extract_info(url, download=False)
+                stream_url = info.get("url") or info.get("formats", [{}])[-1].get("url")
+            if not stream_url:
+                raise Exception("Impossible d'obtenir l'URL du stream")
+
+            # Étape 2 : ffmpeg découpe directement depuis l'URL (pas de download complet)
+            cmd = [
+                "ffmpeg", "-y",
+                "-ss", str(start),
+                "-to", str(end),
+                "-i", stream_url,
+                "-c", "copy",
+                "-avoid_negative_ts", "make_zero",
+                str(out_path)
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=120)
+            if result.returncode != 0:
+                raise Exception(f"ffmpeg erreur: {result.stderr.decode()[-300:]}")
 
         await asyncio.get_event_loop().run_in_executor(None, _download)
 
         if not out_path.exists():
-            # yt-dlp peut ajouter une extension
             candidates = list(out_dir.glob("*.mp4"))
             if candidates:
                 out_path = candidates[0]
