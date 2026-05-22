@@ -796,62 +796,67 @@ class ClipExportRequest(BaseModel):
 
 async def process_export_job(job_id: str, video_id: str, start: float, end: float, out_dir: Path):
     try:
-        url = f"https://www.youtube.com/watch?v={video_id}"
+        yt_url = f"https://www.youtube.com/watch?v={video_id}"
         filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
         out_path = out_dir / filename
+        duration = end - start
 
-        def _download():
-            from yt_dlp.utils import download_range_func
-            temp_path = out_dir / f"temp_{job_id}"
-            # Étape 1 : télécharger uniquement la section du clip
-            opts_dl = {
-                **_yt_opts(),
-                "format": "bestvideo[vcodec^=avc1][height<=720]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<=720]+bestaudio/best[height<=720]/best",
-                "merge_output_format": "mp4",
-                "download_ranges": download_range_func(None, [(start, end)]),
-                "force_keyframes_at_cuts": True,
-                "outtmpl": str(temp_path) + ".%(ext)s",
-            }
-            with yt_dlp.YoutubeDL(opts_dl) as ydl:
-                ydl.download([url])
+        def _export():
+            import requests as req_lib
 
-            # Trouver le fichier téléchargé
-            candidates = list(out_dir.glob(f"temp_{job_id}.*"))
-            if not candidates:
-                raise Exception("Fichier téléchargé introuvable")
-            temp_file = candidates[0]
-            logger.info(f"[export {job_id[:8]}] Fichier dl: {temp_file.name} ({temp_file.stat().st_size} bytes)")
+            # Étape 1 : obtenir URL vidéo via cobalt (gère bot detection YouTube)
+            cobalt_headers = {"Accept": "application/json", "Content-Type": "application/json"}
+            if COBALT_API_KEY:
+                cobalt_headers["Authorization"] = f"Api-Key {COBALT_API_KEY}"
 
-            # Étape 2 : transcode en 9:16 (scale pour remplir la hauteur, crop au centre)
-            # scale=1920/h*iw → largeur calculée pour hauteur 1920, puis crop 1080 au centre
+            video_url = None
+            for cobalt_base in COBALT_INSTANCES:
+                try:
+                    r = req_lib.post(
+                        f"{cobalt_base}/",
+                        json={"url": yt_url, "videoQuality": "720"},
+                        headers=cobalt_headers,
+                        timeout=20,
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        status = data.get("status", "")
+                        su = data.get("url", "")
+                        if status in ("stream", "redirect", "tunnel") and su:
+                            video_url = su
+                            logger.info(f"[export {job_id[:8]}] cobalt OK {cobalt_base} type={status}")
+                            break
+                        logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base}: {status} {data}")
+                except Exception as exc:
+                    logger.warning(f"[export {job_id[:8]}] cobalt {cobalt_base} échoué: {exc}")
+
+            if not video_url:
+                raise Exception("Service indisponible — réessaie dans quelques secondes")
+
+            # Étape 2 : ffmpeg — HTTP range seek + extraction + 9:16
+            # -ss avant -i = fast seek via HTTP range (ne télécharge pas tout le fichier)
             vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
             cmd = [
                 "ffmpeg", "-y",
-                "-fflags", "+genpts+discardcorrupt",
-                "-i", str(temp_file),
+                "-ss", str(start),
+                "-i", video_url,
+                "-t", str(duration),
                 "-vf", vf,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-pix_fmt", "yuv420p",
-                "-vsync", "vfr",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
                 str(out_path)
             ]
-            result = subprocess.run(cmd, capture_output=True, timeout=180)
-            temp_file.unlink(missing_ok=True)
+            logger.info(f"[export {job_id[:8]}] ffmpeg start={start:.1f}s dur={duration:.1f}s")
+            result = subprocess.run(cmd, capture_output=True, timeout=300)
             if result.returncode != 0:
-                err_out = (result.stdout.decode() + result.stderr.decode())[-500:]
-                raise Exception(f"ffmpeg erreur: {err_out}")
+                err = (result.stdout.decode() + result.stderr.decode())[-800:]
+                raise Exception(f"ffmpeg: {err}")
+            if not out_path.exists() or out_path.stat().st_size < 1000:
+                raise Exception("ffmpeg n'a pas produit de fichier valide")
 
-        await asyncio.get_event_loop().run_in_executor(None, _download)
-
-        if not out_path.exists():
-            candidates = list(out_dir.glob("*.mp4"))
-            if candidates:
-                out_path = candidates[0]
-                filename = out_path.name
-            else:
-                raise Exception("Fichier non trouvé après téléchargement")
+        await asyncio.get_event_loop().run_in_executor(None, _export)
 
         EXPORT_JOBS[job_id] = {
             "status": "done",
