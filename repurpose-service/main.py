@@ -20,14 +20,11 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-import cv2
-import numpy as np
 from fastapi import FastAPI, HTTPException, Security, Depends, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import yt_dlp
-from faster_whisper import WhisperModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("creatis-clips")
@@ -76,15 +73,6 @@ security = HTTPBearer(auto_error=False)
 def verify_secret(credentials: Optional[HTTPAuthorizationCredentials] = Security(security)):
     if SERVICE_SECRET and (not credentials or credentials.credentials != SERVICE_SECRET):
         raise HTTPException(status_code=401, detail="Secret invalide")
-
-# ── Whisper (lazy) ────────────────────────────────────────────────────────────
-_whisper = None
-def get_whisper():
-    global _whisper
-    if _whisper is None:
-        logger.info(f"Chargement Whisper '{WHISPER_MODEL}'…")
-        _whisper = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
-    return _whisper
 
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, str, int]:
@@ -579,7 +567,7 @@ class TranscribeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": WHISPER_MODEL, "gemini": bool(GEMINI_API_KEY)}
+    return {"status": "ok", "version": "4.0", "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY)}
 
 @app.get("/download/{session_id}/{filename}")
 def download_clip(session_id: str, filename: str):
@@ -647,11 +635,11 @@ Pas d'introduction, juste le JSON."""
         return None
 
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
-    """Traitement asynchrone — 2 phases : transcript rapide puis segments ciblés."""
+    """Traitement asynchrone — transcript + identification Gemini, retourne métadonnées (pas de download vidéo)."""
     sid = session_id[:8]
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            # ── Phase 1 : Transcript (sous-titres → Gemini → Whisper) ──
+            # ── Phase 1 : Transcript (sous-titres → Gemini) ──
             JOBS[session_id]["progress"] = "Récupération des sous-titres…"
             sub_result = get_subtitles_youtube(url, tmp)
             if sub_result:
@@ -664,14 +652,12 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                     segments, title, video_duration = gemini_result
                     logger.info(f"[{sid}] Gemini transcription ✓ {len(segments)} segs")
                 else:
-                    JOBS[session_id]["progress"] = "Téléchargement audio…"
-                    audio_path, title, video_duration = download_audio_only(url, tmp)
-                    JOBS[session_id]["progress"] = "Transcription Whisper…"
-                    audio_16k = str(Path(tmp) / "audio16k.mp3")
-                    subprocess.run(["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", "-b:a", "32k", audio_16k],
-                                   capture_output=True, check=True)
-                    segments = transcribe_with_timestamps(audio_16k)
-                    logger.info(f"[{sid}] Whisper ✓ {len(segments)} segs")
+                    JOBS[session_id] = {
+                        "status": "error",
+                        "error": "Sous-titres indisponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube ou essaie une autre vidéo.",
+                        "progress": None, "result": None
+                    }
+                    return
 
             if not segments:
                 JOBS[session_id] = {"status": "error", "error": "Transcription vide", "progress": None, "result": None}
@@ -682,71 +668,41 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
             moments = await identify_moments_gemini(segments, title, n, video_duration)
             logger.info(f"[{sid}] {len(moments)} moments identifiés")
 
-            # ── Phase 3 : Télécharger et processer chaque segment individuellement ──
+            # ── Phase 3 : Construire métadonnées (embed YouTube, captions) ──
+            video_id = _extract_video_id(url)
             clips_result = []
             for i, moment in enumerate(moments):
                 clip_start = float(moment["start"])
-                clip_end = float(moment["end"])
-                clip_filename = f"clip_{i+1:02d}.mp4"
-                final_clip_path = str(session_dir / clip_filename)
-
-                JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — téléchargement {clip_start:.0f}s→{clip_end:.0f}s…"
-                logger.info(f"[{sid}] Clip {i+1}: segment {clip_start:.0f}s→{clip_end:.0f}s")
-
-                try:
-                    seg_dir = Path(tmp) / f"seg_{i+1}"
-                    seg_dir.mkdir(exist_ok=True)
-
-                    # Buffer 5s : sans force_keyframes_at_cuts, le segment peut démarrer
-                    # 0-4s avant la cible (dépend de la position des keyframes YouTube)
-                    pre_buf = min(clip_start, 5.0)
-                    dl_start = max(0.0, clip_start - pre_buf)
-                    seg_video = download_video_segment(url, dl_start, clip_end + 2.0, str(seg_dir), f"seg{i+1}")
-
-                    # Timestamps relatifs dans le segment téléchargé
-                    seg_clip_start = clip_start - dl_start  # ~5.0
-                    seg_clip_end = seg_clip_start + (clip_end - clip_start)
-
-                    # Petite pause entre les clips pour éviter le rate limiting YouTube
-                    await asyncio.sleep(1)
-
-                    JOBS[session_id]["progress"] = f"Clip {i+1}/{len(moments)} — recadrage 9:16…"
-
-                    srt_content = generate_srt(segments, clip_start, clip_end)
-                    srt_path = str(seg_dir / f"clip_{i+1}.srt")
-                    with open(srt_path, "w", encoding="utf-8") as f:
-                        f.write(srt_content)
-
-                    face_pos = compute_face_track(seg_video, seg_clip_start, seg_clip_end, sample_fps=1.0)
-                    face_pos = smooth_positions(face_pos)
-                    cut_clip_9_16(seg_video, seg_clip_start, seg_clip_end, final_clip_path, face_pos, srt_path)
-
-                    clips_result.append({
-                        "clip_id": clip_filename,
-                        "download_url": f"/download/{session_id}/{clip_filename}",
-                        "hook": str(moment.get("hook", ""))[:80],
-                        "why": str(moment.get("why", ""))[:200],
-                        "score": int(moment.get("score", 80)),
-                        "start": clip_start,
-                        "end": clip_end,
-                        "duration": round(clip_end - clip_start, 1),
-                        "transcript": " ".join(
-                            s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end
-                        )[:300],
-                    })
-                    logger.info(f"[{sid}] Clip {i+1} OK")
-                except Exception as e:
-                    logger.error(f"[{sid}] Clip {i+1} FAILED: {e}")
-
-            if not clips_result:
-                JOBS[session_id] = {"status": "error", "error": "Aucun clip généré", "progress": None, "result": None}
-                return
+                clip_end   = float(moment["end"])
+                clip_captions = [
+                    {
+                        "start": round(s["start"] - clip_start, 2),
+                        "end":   round(s["end"]   - clip_start, 2),
+                        "text":  s["text"]
+                    }
+                    for s in segments
+                    if s["start"] >= clip_start - 0.5 and s["end"] <= clip_end + 0.5
+                ]
+                clips_result.append({
+                    "hook":      str(moment.get("hook", ""))[:80],
+                    "why":       str(moment.get("why",  ""))[:200],
+                    "score":     int(moment.get("score", 80)),
+                    "start":     clip_start,
+                    "end":       clip_end,
+                    "duration":  round(clip_end - clip_start, 1),
+                    "transcript": " ".join(s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end)[:300],
+                    "video_id":   video_id,
+                    "youtube_url":  f"https://www.youtube.com/watch?v={video_id}&t={int(clip_start)}s",
+                    "embed_url":    f"https://www.youtube.com/embed/{video_id}?start={int(clip_start)}&end={int(clip_end)}&rel=0",
+                    "caption_segments": clip_captions,
+                })
 
             JOBS[session_id] = {
                 "status": "done", "progress": None, "error": None,
                 "result": {
                     "ok": True, "title": title, "duration": video_duration,
-                    "session_id": session_id, "clips": clips_result,
+                    "video_id": video_id, "session_id": session_id,
+                    "clips": clips_result,
                 }
             }
             logger.info(f"[{sid}] Job terminé — {len(clips_result)} clips")

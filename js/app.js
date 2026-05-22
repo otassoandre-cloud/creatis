@@ -1111,7 +1111,7 @@ class AppCreatis {
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Démarrage…'; }
 
-    const steps = ['📥 Téléchargement de la vidéo…', '🎙️ Transcription audio…', '🧠 Identification des moments viraux…', '✂️ Création des clips 9:16…', '💬 Ajout des sous-titres…'];
+    const steps = ['📡 Récupération des sous-titres…', '🧠 Analyse Gemini…', '✅ Clips identifiés !'];
     if (resultsZone) {
       resultsZone.innerHTML = `
         <div class="clips-loading">
@@ -1162,10 +1162,8 @@ class AppCreatis {
             if (el) el.textContent = prog;
 
             // Activer les étapes selon la progression
-            if (prog.includes('Télécharg')) activateStep(0);
-            else if (prog.includes('Transcript')) { activateStep(0); activateStep(1); }
-            else if (prog.includes('Analyse') || prog.includes('viraux')) { activateStep(0); activateStep(1); activateStep(2); }
-            else if (prog.includes('Clip')) { activateStep(0); activateStep(1); activateStep(2); activateStep(3); }
+            if (prog.includes('sous-titres') || prog.includes('Récup')) activateStep(0);
+            else if (prog.includes('Analyse') || prog.includes('Gemini') || prog.includes('viraux')) { activateStep(0); activateStep(1); }
 
             if (job.status === 'done') { steps.forEach((_,i) => activateStep(i)); resolve(job.result); }
             else if (job.status === 'error') { reject(new Error(job.error || 'Erreur inconnue')); }
@@ -1191,47 +1189,50 @@ class AppCreatis {
     if (!zone) return;
 
     if (!data.clips?.length) {
-      zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip généré.</p>`;
+      zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip identifié.</p>`;
       return;
     }
 
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f59e0b' : '#6b7280';
-    const platforms = [
-      { icon: '▶', label: 'YouTube', color: '#ff0000' },
-      { icon: '📸', label: 'Instagram', color: '#e1306c' },
-      { icon: '💼', label: 'LinkedIn', color: '#0077b5' },
-      { icon: '♪', label: 'TikTok', color: '#000' },
-      { icon: 'f', label: 'Facebook', color: '#1877f2' },
-    ];
 
-    const clipsHtml = data.clips.map((clip, i) => `
+    const clipsHtml = data.clips.map((clip, i) => {
+      const captionPreview = (clip.caption_segments || []).slice(0, 4).map(s => this._escapeHtml(s.text)).join(' ');
+      const ytUrl = clip.youtube_url || `https://www.youtube.com/watch?v=${clip.video_id}&t=${Math.floor(clip.start)}s`;
+      const embedUrl = clip.embed_url || `https://www.youtube.com/embed/${clip.video_id}?start=${Math.floor(clip.start)}&end=${Math.floor(clip.end)}&rel=0`;
+      return `
       <div class="clip-opus-card">
         <div class="clip-opus-preview">
-          <video src="${clip.download_url}" class="clip-opus-video"
-            preload="metadata" playsinline muted
-            onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0">
-          </video>
+          <iframe src="${embedUrl}" class="clip-youtube-embed"
+            frameborder="0" allowfullscreen
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+          </iframe>
           <div class="clip-opus-score" style="background:${scoreColor(clip.score)}">
             <span>SCORE</span>
             <strong>${clip.score}</strong>
           </div>
-          <div class="clip-opus-platform">${platforms[i % platforms.length].label.substring(0,2)}</div>
         </div>
         <div class="clip-opus-info">
           <p class="clip-opus-hook">${this._escapeHtml(clip.hook)}</p>
-          <p class="clip-opus-dur">${clip.duration}s</p>
+          <p class="clip-opus-dur">${clip.duration}s · ${Math.floor(clip.start / 60)}:${String(Math.floor(clip.start % 60)).padStart(2,'0')} → ${Math.floor(clip.end / 60)}:${String(Math.floor(clip.end % 60)).padStart(2,'0')}</p>
+          ${captionPreview ? `<p class="clip-opus-captions">"${captionPreview}"</p>` : ''}
         </div>
-        <a href="${clip.download_url}" download="short-${i+1}.mp4" class="clip-opus-dl" target="_blank">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Télécharger
-        </a>
-      </div>`).join('');
+        <div class="clip-opus-actions">
+          <a href="${ytUrl}" target="_blank" class="clip-opus-dl clip-opus-yt">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            Voir sur YouTube
+          </a>
+          <button class="clip-opus-dl" onclick="navigator.clipboard.writeText('${ytUrl}').then(()=>{ window.open('https://cobalt.tools/','_blank'); app.afficherToast('URL copiée — colle dans cobalt.tools','succes'); })">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger
+          </button>
+        </div>
+      </div>`;
+    }).join('');
 
     zone.innerHTML = `
       <div class="clips-opus-header">
-        <strong>${data.clips.length} Shorts générés</strong>
+        <strong>${data.clips.length} moments viraux identifiés</strong>
         <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
-        <span class="clips-expire">⏱ Clips disponibles 1h</span>
       </div>
       <div class="clips-opus-grid">${clipsHtml}</div>`;
   }
