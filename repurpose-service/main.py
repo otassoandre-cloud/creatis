@@ -104,32 +104,63 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
         raise RuntimeError("Vidéo non trouvée après téléchargement")
     return video, title, duration
 
-def _get_pytube_stream_url(url: str) -> tuple[str, str, int]:
-    """Récupère l'URL directe du flux vidéo — essaie plusieurs clients YouTube."""
-    from pytubefix import YouTube
-    last_err = None
-    # ANDROID/IOS/MWEB = clients mobiles moins filtrés par YouTube sur IPs cloud
-    for client in ["ANDROID", "IOS", "MWEB", "WEB_EMBED", "TV_EMBED"]:
+# Instances Invidious publiques — proxy YouTube sans bot detection
+INVIDIOUS_INSTANCES = [
+    "https://inv.nadeko.net",
+    "https://invidious.nerdvpn.de",
+    "https://yt.artemislena.eu",
+    "https://invidious.flokinet.to",
+    "https://iv.melmac.space",
+    "https://invidious.privacydev.net",
+]
+
+def _extract_video_id(url: str) -> Optional[str]:
+    for pat in [r"[?&]v=([a-zA-Z0-9_-]{11})", r"youtu\.be/([a-zA-Z0-9_-]{11})", r"shorts/([a-zA-Z0-9_-]{11})"]:
+        m = re.search(pat, url)
+        if m:
+            return m.group(1)
+    return None
+
+def _get_invidious_stream(url: str) -> tuple[str, str, int]:
+    """Récupère l'URL stream via Invidious (proxy YouTube, bypass blocage IP Railway)."""
+    import requests as req_lib
+    video_id = _extract_video_id(url)
+    if not video_id:
+        raise RuntimeError("ID vidéo YouTube invalide")
+
+    for instance in INVIDIOUS_INSTANCES:
         try:
-            yt = YouTube(url, client=client)
-            title = yt.title or "Vidéo YouTube"
-            duration = yt.length or 0
-            stream = (
-                yt.streams.filter(progressive=True, file_extension="mp4", res="480p").first()
-                or yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").last()
-                or yt.streams.filter(progressive=True).order_by("resolution").last()
-            )
-            if stream and stream.url:
-                logger.info(f"pytubefix client={client} OK")
-                return stream.url, title, duration
+            r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=12)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            title = data.get("title", "Vidéo YouTube")
+            duration = int(data.get("lengthSeconds", 0))
+
+            # itag 18 = 360p mp4 progressif (vidéo+audio) — le plus compatible
+            itag = "18"
+            for fmt in data.get("formatStreams", []):
+                if str(fmt.get("itag")) == "18":
+                    break
+            else:
+                # Prendre le premier format disponible
+                fmts = data.get("formatStreams", [])
+                if fmts:
+                    itag = str(fmts[0].get("itag", "18"))
+
+            # local=true = Invidious proxifie le stream (pas de redirection vers YouTube CDN)
+            proxy_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
+            logger.info(f"Invidious stream OK via {instance} (itag={itag})")
+            return proxy_url, title, duration
         except Exception as e:
-            logger.warning(f"pytubefix client={client} échoué: {e}")
-            last_err = e
-    raise RuntimeError(f"Impossible d'accéder à la vidéo YouTube (tous les clients bloqués): {last_err}")
+            logger.warning(f"Invidious {instance} échoué: {e}")
+            continue
+
+    raise RuntimeError("Toutes les instances Invidious sont indisponibles — réessaie dans quelques minutes")
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     """Télécharge l'audio via pytubefix + ffmpeg extract audio (max 20 min pour Whisper)."""
-    stream_url, title, duration = _get_pytube_stream_url(url)
+    stream_url, title, duration = _get_invidious_stream(url)
     out_path = f"{out_dir}/audio.mp3"
     # Limite à 20 min pour éviter OOM sur Railway
     cmd = ["ffmpeg", "-i", stream_url, "-t", "1200", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", "-y", out_path]
@@ -210,7 +241,7 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
 
 def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: str, stem: str) -> str:
     """Télécharge un segment vidéo via pytubefix URL + ffmpeg seek (bypass bot detection)."""
-    stream_url, _, _ = _get_pytube_stream_url(url)
+    stream_url, _, _ = _get_invidious_stream(url)
     out_path = f"{out_dir}/{stem}.mp4"
     cmd = [
         "ffmpeg",
