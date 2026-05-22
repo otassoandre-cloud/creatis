@@ -1340,13 +1340,15 @@ class AppCreatis {
         const words = (seg.text || '').trim().split(/\s+/).filter(w => w);
         if (!words.length) continue;
         const segEnd = seg.end ?? (seg.start + (seg.duration || 2));
-        const segDur = segEnd - seg.start;
+        const segDur = Math.max(segEnd - seg.start, 0.1);
         const chunkSize = 3;
         const n = Math.ceil(words.length / chunkSize);
+        const rawChunkDur = segDur / n;
+        const chunkDur = Math.min(rawChunkDur, 2.0); // max 2s par chunk
         for (let j = 0; j < n; j++) {
           chunks.push({
-            start: seg.start + j * segDur / n,
-            end:   seg.start + (j + 1) * segDur / n,
+            start: seg.start + j * rawChunkDur,
+            end:   seg.start + j * rawChunkDur + chunkDur,
             text:  words.slice(j * chunkSize, (j + 1) * chunkSize).join(' ')
           });
         }

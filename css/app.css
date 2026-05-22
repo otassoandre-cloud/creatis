@@ -2402,13 +2402,13 @@
 .clip-opus-preview { position:relative; border-radius:10px; overflow:hidden; background:#111; cursor:pointer; width:100%; height:0; padding-bottom:177.78%; }
 .clip-thumb-img { position:absolute; top:0; left:50%; transform:translateX(-50%); width:178%; height:100%; object-fit:cover; }
 
-/* Overlay (miniature + captions) */
-.clip-thumb-overlay { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:10px; background:linear-gradient(to bottom,rgba(0,0,0,.25) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 60%,rgba(0,0,0,.3) 100%); }
+/* Overlay poster style OpusClip — titre en bas, play au centre */
+.clip-thumb-overlay { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; justify-content:flex-end; background:linear-gradient(to bottom,rgba(0,0,0,.3) 0%,transparent 25%,transparent 55%,rgba(0,0,0,.65) 100%); }
 .clip-timestamps { position:absolute; top:8px; left:0; right:0; display:flex; justify-content:space-between; padding:0 8px; }
 .clip-ts-box { background:rgba(0,0,0,.72); color:#fff; font-size:10px; font-weight:700; padding:2px 5px; border-radius:4px; letter-spacing:.3px; }
-.clip-caption-text { background:rgba(0,0,0,.78); color:#fff; font-size:11px; font-weight:700; text-align:center; padding:5px 8px; border-radius:6px; line-height:1.35; max-width:90%; }
-.clip-play-btn { position:absolute; bottom:10px; right:10px; width:30px; height:30px; background:rgba(255,255,255,.92); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; }
-.clip-thumb-overlay:hover .clip-play-btn { background:#10b981; color:#fff; }
+.clip-caption-text { color:#fff; font-size:12px; font-weight:800; text-align:center; padding:8px 10px 14px; line-height:1.4; text-transform:uppercase; letter-spacing:.3px; text-shadow:0 1px 4px rgba(0,0,0,.9); }
+.clip-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:42px; height:42px; background:rgba(255,255,255,.88); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; transition:background .15s,transform .15s; }
+.clip-thumb-overlay:hover .clip-play-btn { background:#10b981; color:#fff; transform:translate(-50%,-50%) scale(1.1); }
 
 /* Iframe sans contrôles — remplit le 9:16 comme un vrai Short */
 .clip-opus-iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:316%; height:100%; border:none; display:none; pointer-events:none; }
@@ -2419,6 +2419,8 @@
 /* Sous-titres style OpusClip */
 .clip-cc-overlay { position:absolute; bottom:56px; left:50%; transform:translateX(-50%); width:88%; text-align:center; z-index:11; pointer-events:none; opacity:0; transition:opacity .15s; font-size:14px; font-weight:900; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.72); padding:5px 10px; border-radius:5px; letter-spacing:.4px; line-height:1.35; text-shadow:1px 1px 0 rgba(0,0,0,.9); }
 .clip-cc-overlay.active { opacity:1; }
+.clip-opus-preview:not(.playing) .clip-cc-overlay,
+.clip-opus-preview.paused .clip-cc-overlay { opacity:0 !important; }
 .cc-hi { color:#10b981; }
 
 /* Contrôles custom (timeline + pause) */
