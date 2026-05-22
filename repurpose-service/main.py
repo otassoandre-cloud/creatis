@@ -586,26 +586,82 @@ def download_clip(session_id: str, filename: str):
         raise HTTPException(404, "Clip expiré ou introuvable")
     return FileResponse(str(clip_path), media_type="video/mp4", filename=filename)
 
+async def get_transcript_via_gemini(url: str) -> Optional[tuple[list[dict], str, int]]:
+    """Transcrit une vidéo YouTube via Gemini (accès direct Google, pas de download)."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        video_id = _extract_video_id(url)
+        yt_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
+        prompt = """Transcris cette vidéo YouTube avec les timestamps précis.
+Réponds UNIQUEMENT en JSON valide :
+{
+  "title": "<titre de la vidéo>",
+  "duration": <durée totale en secondes entier>,
+  "segments": [
+    {"start": <float secondes>, "end": <float secondes>, "text": "<texte du segment>"}
+  ]
+}
+Segments de 3-8 secondes max, couvrir toute la vidéo (max 400 segments).
+Pas d'introduction, juste le JSON."""
+
+        async with httpx.AsyncClient(timeout=120) as client:
+            r = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [
+                        {"fileData": {"fileUri": yt_url, "mimeType": "video/mp4"}},
+                        {"text": prompt}
+                    ]}],
+                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
+                }
+            )
+            r.raise_for_status()
+            text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            m = re.search(r'\{[\s\S]*\}', text)
+            if not m:
+                return None
+            data = json.loads(m.group())
+            segments = [
+                {"start": round(float(s["start"]), 2), "end": round(float(s["end"]), 2), "text": str(s["text"]).strip()}
+                for s in data.get("segments", []) if s.get("text")
+            ]
+            if len(segments) < 5:
+                return None
+            title = data.get("title", "Vidéo YouTube")
+            duration = int(data.get("duration", 0)) or (int(segments[-1]["end"]) if segments else 0)
+            logger.info(f"Gemini transcription ✓ {len(segments)} segments, {duration}s")
+            return segments, title, duration
+    except Exception as e:
+        logger.warning(f"Gemini transcription échouée: {e}")
+        return None
+
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
     """Traitement asynchrone — 2 phases : transcript rapide puis segments ciblés."""
     sid = session_id[:8]
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            # ── Phase 1 : Transcript (sous-titres YouTube si dispo, sinon Whisper) ──
+            # ── Phase 1 : Transcript (sous-titres → Gemini → Whisper) ──
             JOBS[session_id]["progress"] = "Récupération des sous-titres…"
             sub_result = get_subtitles_youtube(url, tmp)
             if sub_result:
                 segments, title, video_duration = sub_result
-                logger.info(f"[{sid}] Sous-titres YouTube ✓ {len(segments)} segs, {video_duration}s")
+                logger.info(f"[{sid}] Sous-titres YouTube ✓ {len(segments)} segs")
             else:
-                JOBS[session_id]["progress"] = "Téléchargement audio…"
-                audio_path, title, video_duration = download_audio_only(url, tmp)
-                JOBS[session_id]["progress"] = "Transcription Whisper…"
-                audio_16k = str(Path(tmp) / "audio16k.mp3")
-                subprocess.run(["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", "-b:a", "32k", audio_16k],
-                               capture_output=True, check=True)
-                segments = transcribe_with_timestamps(audio_16k)
-                logger.info(f"[{sid}] Whisper ✓ {len(segments)} segs")
+                JOBS[session_id]["progress"] = "Analyse vidéo via Gemini…"
+                gemini_result = await get_transcript_via_gemini(url)
+                if gemini_result:
+                    segments, title, video_duration = gemini_result
+                    logger.info(f"[{sid}] Gemini transcription ✓ {len(segments)} segs")
+                else:
+                    JOBS[session_id]["progress"] = "Téléchargement audio…"
+                    audio_path, title, video_duration = download_audio_only(url, tmp)
+                    JOBS[session_id]["progress"] = "Transcription Whisper…"
+                    audio_16k = str(Path(tmp) / "audio16k.mp3")
+                    subprocess.run(["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", "-b:a", "32k", audio_16k],
+                                   capture_output=True, check=True)
+                    segments = transcribe_with_timestamps(audio_16k)
+                    logger.info(f"[{sid}] Whisper ✓ {len(segments)} segs")
 
             if not segments:
                 JOBS[session_id] = {"status": "error", "error": "Transcription vide", "progress": None, "result": None}
