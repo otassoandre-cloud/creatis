@@ -798,33 +798,37 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         out_path = out_dir / filename
 
         def _download():
-            # Étape 1 : récupérer l'URL directe du stream (rapide, pas de download)
-            opts_info = {
+            from yt_dlp.utils import download_range_func
+            temp_path = out_dir / f"temp_{job_id}"
+            # Étape 1 : télécharger uniquement la section du clip
+            opts_dl = {
                 **_yt_opts(),
-                "format": "best[height<=720][ext=mp4]/best[height<=720]/best",
-                "quiet": True,
+                "format": "best[height<=720]/best",
+                "download_ranges": download_range_func(None, [(start, end)]),
+                "force_keyframes_at_cuts": True,
+                "outtmpl": str(temp_path) + ".%(ext)s",
             }
-            with yt_dlp.YoutubeDL(opts_info) as ydl:
-                info = ydl.extract_info(url, download=False)
-                stream_url = info.get("url") or info.get("formats", [{}])[-1].get("url")
-            if not stream_url:
-                raise Exception("Impossible d'obtenir l'URL du stream")
+            with yt_dlp.YoutubeDL(opts_dl) as ydl:
+                ydl.download([url])
 
-            # Étape 2 : ffmpeg découpe + recadre en 9:16 (Short vertical)
+            # Trouver le fichier téléchargé
+            candidates = list(out_dir.glob(f"temp_{job_id}.*"))
+            if not candidates:
+                raise Exception("Fichier téléchargé introuvable")
+            temp_file = candidates[0]
+
+            # Étape 2 : crop 9:16 + scale 1080x1920
             cmd = [
-                "ffmpeg", "-y",
-                "-ss", str(start),
-                "-to", str(end),
-                "-i", stream_url,
+                "ffmpeg", "-y", "-i", str(temp_file),
                 "-vf", "crop=ih*9/16:ih,scale=1080:1920",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-c:a", "aac", "-b:a", "128k",
-                "-avoid_negative_ts", "make_zero",
                 str(out_path)
             ]
             result = subprocess.run(cmd, capture_output=True, timeout=180)
+            temp_file.unlink(missing_ok=True)
             if result.returncode != 0:
-                raise Exception(f"ffmpeg erreur: {result.stderr.decode()[-300:]}")
+                raise Exception(f"ffmpeg erreur: {result.stderr.decode()[-200:]}")
 
         await asyncio.get_event_loop().run_in_executor(None, _download)
 
