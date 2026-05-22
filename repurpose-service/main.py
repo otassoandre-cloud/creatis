@@ -103,25 +103,31 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
         raise RuntimeError("Vidéo non trouvée après téléchargement")
     return video, title, duration
 
-def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
-    opts = _yt_opts(
-        format="bestaudio/best",
-        outtmpl=f"{out_dir}/audio.%(ext)s",
-        noplaylist=True,
-        max_filesize=200 * 1024 * 1024,
-        postprocessors=[{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "64"}],
+def _get_pytube_stream_url(url: str) -> tuple[str, str, int]:
+    """Récupère l'URL directe du flux vidéo via pytubefix (bypass bot detection yt-dlp)."""
+    from pytubefix import YouTube
+    yt = YouTube(url)
+    title = yt.title or "Vidéo YouTube"
+    duration = yt.length or 0
+    # Flux progressif mp4 (vidéo+audio combiné) — le plus compatible avec ffmpeg
+    stream = (
+        yt.streams.filter(progressive=True, file_extension="mp4", res="480p").first()
+        or yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").last()
+        or yt.streams.filter(progressive=True).order_by("resolution").last()
     )
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        title = info.get("title", "Vidéo YouTube")
-        duration = int(info.get("duration", 0))
+    if not stream:
+        raise RuntimeError("Aucun flux vidéo disponible via pytubefix")
+    return stream.url, title, duration
 
-    files = list(Path(out_dir).iterdir())
-    logger.info(f"download_audio_only: fichiers dans {out_dir}: {[f.name for f in files]}")
-    audio = next((str(p) for p in files if p.suffix in (".mp3", ".m4a", ".webm", ".opus", ".ogg", ".flac")), None)
-    if not audio:
-        raise RuntimeError(f"Audio non trouvé — fichiers présents: {[f.name for f in files]}")
-    return audio, title, duration
+def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
+    """Télécharge l'audio via pytubefix + ffmpeg extract audio."""
+    stream_url, title, duration = _get_pytube_stream_url(url)
+    out_path = f"{out_dir}/audio.mp3"
+    cmd = ["ffmpeg", "-i", stream_url, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", "-y", out_path]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg audio: {result.stderr[-300:]}")
+    return out_path, title, duration
 
 def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], str, int]]:
     """Extrait les sous-titres via youtube-transcript-api (sans yt-dlp, sans bot detection)."""
@@ -194,24 +200,21 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
         return None
 
 def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: str, stem: str) -> str:
-    """Télécharge uniquement un segment vidéo via FFmpeg external downloader."""
-    opts = _yt_opts(
-        format="bv[height<=720]+ba/b[height<=720]/bv+ba/b",
-        outtmpl=f"{out_dir}/{stem}.%(ext)s",
-        external_downloader="ffmpeg",
-        external_downloader_args={"ffmpeg_i": ["-ss", str(dl_start), "-to", str(dl_end)]},
-        merge_output_format="mp4",
-        noplaylist=True,
-    )
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
-    result = next(
-        (str(p) for p in Path(out_dir).iterdir() if p.stem == stem and p.suffix in (".mp4", ".mkv", ".webm")),
-        None
-    )
-    if not result:
+    """Télécharge un segment vidéo via pytubefix URL + ffmpeg seek (bypass bot detection)."""
+    stream_url, _, _ = _get_pytube_stream_url(url)
+    out_path = f"{out_dir}/{stem}.mp4"
+    cmd = [
+        "ffmpeg",
+        "-ss", str(dl_start), "-to", str(dl_end),
+        "-i", stream_url,
+        "-c", "copy", "-y", out_path
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg segment: {result.stderr[-300:]}")
+    if not Path(out_path).exists():
         raise RuntimeError("Segment vidéo non trouvé après téléchargement")
-    return result
+    return out_path
 
 # ── Transcription avec timestamps ─────────────────────────────────────────────
 def transcribe_with_timestamps(audio_path: str) -> list[dict]:
