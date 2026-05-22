@@ -2411,7 +2411,7 @@
 .clip-thumb-overlay:hover .clip-play-btn { background:#10b981; color:#fff; }
 
 /* Iframe sans contrôles — remplit le 9:16 comme un vrai Short */
-.clip-opus-iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:178%; height:178%; border:none; display:none; pointer-events:none; }
+.clip-opus-iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:316%; height:100%; border:none; display:none; pointer-events:none; }
 .clip-opus-preview.playing .clip-thumb-overlay { display:none; }
 .clip-opus-preview.playing .clip-opus-iframe { display:block; }
 
