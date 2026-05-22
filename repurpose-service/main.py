@@ -124,37 +124,56 @@ def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     return audio, title, duration
 
 def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], str, int]]:
-    """Extrait les sous-titres auto YouTube via extract_info (pas de téléchargement vidéo)."""
+    """Extrait les sous-titres auto YouTube via HTTP direct (sans yt-dlp, évite bot detection)."""
     import requests as req_lib
+    import re, json as json_lib
     try:
-        with yt_dlp.YoutubeDL(_yt_opts()) as ydl:
-            info = ydl.extract_info(url, download=False)
-
-        title = info.get("title", "Vidéo YouTube")
-        duration = int(info.get("duration", 0))
-
-        # Chercher piste de sous-titres : auto > manuel, fr > en > n'importe quelle langue
-        auto_caps = info.get("automatic_captions", {})
-        manual = info.get("subtitles", {})
-        sub_track = None
-        for lang in ["fr", "fr-FR", "en", "en-US", "en-GB"]:
-            sub_track = auto_caps.get(lang) or manual.get(lang)
-            if sub_track:
+        video_id = None
+        for pat in [r"[?&]v=([a-zA-Z0-9_-]{11})", r"youtu\.be/([a-zA-Z0-9_-]{11})", r"shorts/([a-zA-Z0-9_-]{11})"]:
+            m = re.search(pat, url)
+            if m:
+                video_id = m.group(1)
                 break
-        if not sub_track:
-            for tracks in list(auto_caps.values()) + list(manual.values()):
-                sub_track = tracks
-                break
-        if not sub_track:
+        if not video_id:
             return None
 
-        entry = next((t for t in sub_track if t.get("ext") == "json3"), sub_track[0] if sub_track else None)
-        if not entry or not entry.get("url"):
-            return None
-
-        r = req_lib.get(entry["url"], timeout=15)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+        }
+        r = req_lib.get(f"https://www.youtube.com/watch?v={video_id}", headers=headers, timeout=20)
         r.raise_for_status()
-        data = r.json()
+        html = r.text
+
+        # Titre
+        title_m = re.search(r'"title":"([^"]{3,120})"', html) or re.search(r'<title>([^<]+)</title>', html)
+        title = title_m.group(1).replace(" - YouTube", "") if title_m else "Vidéo YouTube"
+        title = title.encode().decode("unicode_escape") if "\\u" in title else title
+
+        # Durée approximative depuis les métadonnées
+        dur_m = re.search(r'"lengthSeconds":"(\d+)"', html)
+        duration = int(dur_m.group(1)) if dur_m else 0
+
+        # Pistes de sous-titres
+        caps_m = re.search(r'"captionTracks":\s*(\[.*?\])', html, re.DOTALL)
+        if not caps_m:
+            logger.warning("Pas de captionTracks dans la page YouTube")
+            return None
+
+        tracks = json_lib.loads(caps_m.group(1).replace("\\u0026", "&").replace('\\"', '"'))
+        track = (
+            next((t for t in tracks if t.get("languageCode") == "fr" and t.get("kind") == "asr"), None)
+            or next((t for t in tracks if t.get("languageCode") == "fr"), None)
+            or next((t for t in tracks if t.get("kind") == "asr"), None)
+            or (tracks[0] if tracks else None)
+        )
+        if not track or not track.get("baseUrl"):
+            return None
+
+        caps_url = track["baseUrl"].replace("\\u0026", "&") + "&fmt=json3"
+        rc = req_lib.get(caps_url, timeout=15)
+        rc.raise_for_status()
+        data = rc.json()
 
         segments = []
         for ev in data.get("events", []):
@@ -167,9 +186,10 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
                 segments.append({"start": round(start_s, 2), "end": round(start_s + dur_ms / 1000, 2), "text": text})
 
         if len(segments) < 10:
+            logger.warning(f"Sous-titres trop courts ({len(segments)} segments)")
             return None
 
-        logger.info(f"Sous-titres YouTube OK — {len(segments)} segments")
+        logger.info(f"Sous-titres YouTube OK — {len(segments)} segments, durée {duration}s")
         return segments, title, duration
     except Exception as e:
         logger.warning(f"Sous-titres YouTube indisponibles: {e}")
