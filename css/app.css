@@ -2414,7 +2414,6 @@
 .clip-opus-iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:316%; height:100%; border:none; display:none; pointer-events:none; }
 .clip-opus-preview.playing .clip-thumb-overlay { display:none; }
 .clip-opus-preview.playing .clip-opus-iframe,
-.clip-opus-preview.loading-poster .clip-opus-iframe,
 .clip-opus-preview.has-poster .clip-opus-iframe { display:block; }
 
 /* Sous-titres style OpusClip */

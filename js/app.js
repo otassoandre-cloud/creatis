@@ -1202,20 +1202,24 @@ class AppCreatis {
         if (!iframe) return;
         if (m.event === 'onStateChange' && m.info === 1) {
           if (prev.classList.contains('loading-poster')) {
+            // Capturer le poster : pause après 150ms
             setTimeout(() => {
               try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
               prev.classList.remove('loading-poster');
               prev.classList.add('has-poster');
             }, 150);
-          } else if (prev._waitingForPlay) {
-            prev._waitingForPlay = false;
-            prev._clipLastTick = Date.now();
+          } else if (prev.classList.contains('playing')) {
+            // Recaler le timer au moment où YouTube confirme le vrai départ
+            if (prev._clipElapsed < 1.5) {
+              prev._clipElapsed = 0;
+              prev._clipLastTick = Date.now();
+            }
           }
         }
         // Sync currentTime pour captions précises
         if (m.event === 'infoDelivery' && m.info?.currentTime != null && prev.classList.contains('playing') && !prev.classList.contains('paused')) {
           const yt = m.info.currentTime - (prev._clipStart || 0);
-          if (Math.abs(yt - prev._clipElapsed) > 0.4) {
+          if (Math.abs(yt - prev._clipElapsed) > 0.5) {
             prev._clipElapsed = Math.max(0, yt);
             prev._clipLastTick = Date.now();
           }
@@ -1234,7 +1238,6 @@ class AppCreatis {
     prev._clipElapsed = 0;
     prev._clipLastTick = Date.now();
     prev._clipCaptions = (this._clipsData || {})[`${agentId}-${i}`] || [];
-    prev._waitingForPlay = true;
     if (prev.classList.contains('has-poster')) {
       // iframe déjà chargée et pausée au bon moment → unmute + play
       try {
@@ -1246,14 +1249,17 @@ class AppCreatis {
       prev.classList.remove('loading-poster');
       iframe.onload = () => {
         if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i });
-        try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
+        // Envoyer listening après un court délai pour laisser le player s'initialiser
+        setTimeout(() => {
+          try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
+        }, 300);
       };
       iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
     }
     prev.classList.add('playing');
     if (prev._clipTicker) clearInterval(prev._clipTicker);
     prev._clipTicker = setInterval(() => {
-      if (!prev.classList.contains('paused') && !prev._waitingForPlay) {
+      if (!prev.classList.contains('paused')) {
         prev._clipElapsed += (Date.now() - prev._clipLastTick) / 1000;
       }
       prev._clipLastTick = Date.now();
