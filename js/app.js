@@ -1111,7 +1111,7 @@ class AppCreatis {
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Démarrage…'; }
 
-    const steps = ['📡 Récupération des sous-titres…', '🧠 Analyse Gemini…', '✅ Clips identifiés !'];
+    const steps = ['📡 Récupération des sous-titres…', '🧠 Analyse IA…', '✅ Clips identifiés !'];
     if (resultsZone) {
       resultsZone.innerHTML = `
         <div class="clips-loading">
@@ -1163,7 +1163,7 @@ class AppCreatis {
 
             // Activer les étapes selon la progression
             if (prog.includes('sous-titres') || prog.includes('Récup')) activateStep(0);
-            else if (prog.includes('Analyse') || prog.includes('Gemini') || prog.includes('viraux')) { activateStep(0); activateStep(1); }
+            else if (prog.includes('Analyse') || prog.includes('Gemini') || prog.includes('Groq') || prog.includes('viraux')) { activateStep(0); activateStep(1); }
 
             if (job.status === 'done') { steps.forEach((_,i) => activateStep(i)); resolve(job.result); }
             else if (job.status === 'error') { reject(new Error(job.error || 'Erreur inconnue')); }
