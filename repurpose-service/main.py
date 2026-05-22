@@ -61,7 +61,10 @@ def _yt_opts(**extra) -> dict:
     opts = {
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
+        "extractor_args": {"youtube": {"player_client": ["tv_embedded", "ios"]}},
+        "http_headers": {
+            "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
+        },
         **extra,
     }
     if _COOKIE_FILE:
@@ -803,7 +806,8 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             # Étape 1 : télécharger uniquement la section du clip
             opts_dl = {
                 **_yt_opts(),
-                "format": "best[height<=720]/best",
+                "format": "bestvideo[vcodec^=avc1][height<=720]+bestaudio[ext=m4a]/bestvideo[ext=mp4][height<=720]+bestaudio/best[height<=720]/best",
+                "merge_output_format": "mp4",
                 "download_ranges": download_range_func(None, [(start, end)]),
                 "force_keyframes_at_cuts": True,
                 "outtmpl": str(temp_path) + ".%(ext)s",
@@ -819,13 +823,16 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             logger.info(f"[export {job_id[:8]}] Fichier dl: {temp_file.name} ({temp_file.stat().st_size} bytes)")
 
             # Étape 2 : transcode en 9:16 (scale pour remplir la hauteur, crop au centre)
+            # scale=1920/h*iw → largeur calculée pour hauteur 1920, puis crop 1080 au centre
+            vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
             cmd = [
                 "ffmpeg", "-y",
-                "-fflags", "+genpts",
+                "-fflags", "+genpts+discardcorrupt",
                 "-i", str(temp_file),
-                "-vf", "scale=-2:1920,crop=1080:1920,setsar=1",
+                "-vf", vf,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-pix_fmt", "yuv420p",
+                "-vsync", "vfr",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
                 str(out_path)
