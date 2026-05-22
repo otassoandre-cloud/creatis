@@ -41,6 +41,7 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 
 # Job store en mémoire (session_id → état)
 JOBS: dict = {}
+EXPORT_JOBS: dict = {}
 
 # Fichier cookies YouTube (écrit une fois au démarrage)
 _COOKIE_FILE: Optional[str] = None
@@ -783,6 +784,78 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
         shutil.rmtree(session_dir, ignore_errors=True)
         logger.error(f"[{sid}] Erreur fatale: {e}")
         JOBS[session_id] = {"status": "error", "error": str(e), "progress": None, "result": None}
+
+
+class ClipExportRequest(BaseModel):
+    video_id: str
+    start: float
+    end: float
+
+async def process_export_job(job_id: str, video_id: str, start: float, end: float, out_dir: Path):
+    try:
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
+        out_path = out_dir / filename
+
+        def _download():
+            from yt_dlp.utils import download_range_func
+            opts = {
+                **_yt_opts(),
+                "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best",
+                "download_ranges": download_range_func(None, [(start, end)]),
+                "force_keyframes_at_cuts": True,
+                "outtmpl": str(out_path),
+                "merge_output_format": "mp4",
+            }
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+
+        await asyncio.get_event_loop().run_in_executor(None, _download)
+
+        if not out_path.exists():
+            # yt-dlp peut ajouter une extension
+            candidates = list(out_dir.glob("*.mp4"))
+            if candidates:
+                out_path = candidates[0]
+                filename = out_path.name
+            else:
+                raise Exception("Fichier non trouvé après téléchargement")
+
+        EXPORT_JOBS[job_id] = {
+            "status": "done",
+            "download_url": f"/clip-export-file/{job_id}/{filename}",
+            "filename": filename,
+        }
+        logger.info(f"[export {job_id[:8]}] OK → {filename}")
+    except Exception as e:
+        logger.error(f"[export {job_id[:8]}] Erreur: {e}")
+        EXPORT_JOBS[job_id] = {"status": "error", "error": str(e)}
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+@app.post("/clip-export")
+async def start_clip_export(req: ClipExportRequest, background_tasks: BackgroundTasks, _: None = Depends(verify_secret)):
+    job_id = str(uuid.uuid4())[:12]
+    out_dir = SESSIONS_DIR / f"export_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    EXPORT_JOBS[job_id] = {"status": "processing"}
+    background_tasks.add_task(process_export_job, job_id, req.video_id, req.start, req.end, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+@app.get("/clip-export-status/{job_id}")
+async def clip_export_status(job_id: str, _: None = Depends(verify_secret)):
+    job = EXPORT_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+@app.get("/clip-export-file/{job_id}/{filename}")
+def clip_export_file(job_id: str, filename: str):
+    if ".." in job_id or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = SESSIONS_DIR / f"export_{job_id}" / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier expiré ou introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
 
 
 @app.post("/clips")
