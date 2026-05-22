@@ -2393,7 +2393,9 @@
 .clips-opus-header span { color:var(--texte-secondaire); }
 .clips-expire { margin-left:auto; background:rgba(245,158,11,.1); color:#f59e0b; border-radius:20px; padding:2px 10px; font-size:12px; }
 /* ── Clips Viraux — style OpusClip ── */
-.clips-opus-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:16px; }
+.clips-opus-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
+@media (max-width:1100px) { .clips-opus-grid { grid-template-columns:repeat(4,1fr); } }
+@media (max-width:800px)  { .clips-opus-grid { grid-template-columns:repeat(3,1fr); } }
 .clip-opus-card { display:flex; flex-direction:column; gap:5px; }
 
 /* Thumbnail 9:16 avec crop centre */

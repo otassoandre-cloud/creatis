@@ -301,22 +301,33 @@ async def _gemini_call(payload: dict, timeout: int = 60) -> Optional[str]:
 
 
 async def identify_moments_groq(segments: list[dict], title: str, n: int, video_duration: int) -> list[dict]:
-    """Identifie les moments viraux via Groq llama (fallback Gemini). Pas de limite vidéo."""
-    if not GROQ_API_KEY or not segments:
+    """Identifie les moments viraux via Groq. Fonctionne avec ou sans transcription."""
+    if not GROQ_API_KEY:
         return []
-    formatted = "\n".join(
-        f"[{int(s['start']//60):02d}:{int(s['start']%60):02d}] {s['text']}"
-        for s in segments[:300]
-    )
-    prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
+    if segments:
+        formatted = "\n".join(
+            f"[{int(s['start']//60):02d}:{int(s['start']%60):02d}] {s['text']}"
+            for s in segments[:300]
+        )
+        prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
 Vidéo : "{title}" (durée: {video_duration}s)
 Transcription :
 {formatted}
 
-Identifie exactement {n} moments viraux de 30-60 secondes chacun.
+Identifie exactement {n} moments viraux de 30-55 secondes chacun.
 Réponds UNIQUEMENT en JSON valide :
 {{"clips":[{{"start":<float>,"end":<float>,"hook":"<accroche max 10 mots>","why":"<1 phrase>","score":<1-100>}}]}}
-Contraintes : durée 30-60s, pas de chevauchement, trié par score décroissant."""
+Contraintes : durée 30-55s, pas de chevauchement, trié par score décroissant."""
+    else:
+        # Sans transcription : génère des moments plausibles basés sur le titre + durée
+        dur_min = video_duration // 60
+        prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
+Vidéo YouTube : "{title}" (durée: {dur_min} minutes = {video_duration}s)
+Sans transcription, génère {n} moments viraux probables de 30-55 secondes.
+Utilise la structure narrative habituelle : accroche forte tôt, révélation au milieu, climax et conclusion.
+Réponds UNIQUEMENT en JSON valide :
+{{"clips":[{{"start":<float>,"end":<float>,"hook":"<accroche <10 mots liée au sujet>","why":"<1 phrase>","score":<1-100>}}]}}
+Contraintes : durée 30-55s, pas de chevauchement, couvrir toute la vidéo, trié par score décroissant."""
     try:
         import requests as req_lib
         r = req_lib.post(
@@ -577,40 +588,56 @@ def _get_subtitles_fast(url: str) -> Optional[tuple[list[dict], str, int]]:
 
 
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
-    """Traitement asynchrone : sous-titres+Groq → Gemini vision → fallback."""
+    """Traitement asynchrone : sous-titres+Groq → Groq sans subs → Gemini vision → fallback."""
     sid = session_id[:8]
     try:
         video_id = _extract_video_id(url)
         title, video_duration, moments = "Vidéo YouTube", 600, []
 
+        # ── Étape 0 : métadonnées via Invidious (titre + durée) ──
+        try:
+            meta_title, meta_dur = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _get_video_meta(video_id)
+            )
+            if meta_title and meta_title != "Vidéo YouTube":
+                title = meta_title
+            if meta_dur > 0:
+                video_duration = meta_dur
+            logger.info(f"[{sid}] Méta OK : '{title}' {video_duration}s")
+        except Exception as e:
+            logger.warning(f"[{sid}] Méta indisponible: {e}")
+
         # ── Étape 1 : sous-titres YouTube → Groq (0 quota Gemini, ~3s) ──
         JOBS[session_id]["progress"] = "Récupération des sous-titres…"
+        segments = []
         try:
             sub_result = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(None, lambda: _get_subtitles_fast(url)),
                 timeout=12
             )
+            if sub_result:
+                segments, _, dur2 = sub_result
+                if dur2 > 0: video_duration = dur2
         except asyncio.TimeoutError:
-            sub_result = None
             logger.warning(f"[{sid}] Timeout sous-titres")
 
-        if sub_result:
-            segments, _, video_duration = sub_result
-            JOBS[session_id]["progress"] = "Analyse Groq…"
-            moments = await identify_moments_groq(segments, title, n, video_duration)
-            logger.info(f"[{sid}] Chemin sous-titres+Groq ✓ {len(moments)} moments")
+        # ── Étape 2 : Groq (avec ou sans transcription) ──
+        JOBS[session_id]["progress"] = "Analyse Groq…"
+        moments = await identify_moments_groq(segments, title, n, video_duration)
+        if moments:
+            logger.info(f"[{sid}] Groq ✓ {len(moments)} moments ({'avec subs' if segments else 'sans subs'})")
 
-        # ── Étape 2 : Gemini regarde la vidéo directement (si pas de subs ou Groq vide) ──
+        # ── Étape 3 : Gemini regarde la vidéo directement (si Groq vide) ──
         if not moments:
             JOBS[session_id]["progress"] = "Analyse Gemini…"
             video_result = await gemini_analyze_video(url, n)
             if video_result:
-                title          = video_result["title"]
-                video_duration = video_result["duration"]
+                title          = video_result["title"] or title
+                video_duration = video_result["duration"] or video_duration
                 moments        = video_result["clips"]
                 logger.info(f"[{sid}] Gemini ✓ {len(moments)} moments — '{title}'")
 
-        # ── Étape 3 : fallback régulier (clips distribués uniformément) ──
+        # ── Étape 4 : fallback régulier (clips distribués uniformément) ──
         if not moments:
             logger.warning(f"[{sid}] Tous les chemins ont échoué — fallback distribué")
             moments = _fallback_moments([], n, video_duration)

@@ -1184,14 +1184,17 @@ class AppCreatis {
     }
   }
 
-  _playClip(agentId, i, embedUrl) {
+  _playClip(agentId, i, videoId, startSec, endSec) {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
-    if (!prev || !iframe) return;
-    if (!prev.classList.contains('playing')) {
-      iframe.src = embedUrl + '&autoplay=1';
-      prev.classList.add('playing');
-    }
+    if (!prev || !iframe || prev.classList.contains('playing')) return;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&rel=0&enablejsapi=1&modestbranding=1`;
+    prev.classList.add('playing');
+    // Pause via postMessage à la fin du clip (YouTube ignore le param `end`)
+    const ms = Math.max((endSec - startSec) * 1000, 10000);
+    setTimeout(() => {
+      try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
+    }, ms);
   }
 
   _afficherClipsResultats(agentId, data) {
@@ -1207,19 +1210,20 @@ class AppCreatis {
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
 
     const clipsHtml = data.clips.map((clip, i) => {
-      const ytUrl = clip.youtube_url || `https://www.youtube.com/watch?v=${clip.video_id}&t=${Math.floor(clip.start)}s`;
-      const embedUrl = clip.embed_url || `https://www.youtube.com/embed/${clip.video_id}?start=${Math.floor(clip.start)}&end=${Math.floor(clip.end)}&rel=0`;
-      const thumbUrl = `https://img.youtube.com/vi/${clip.video_id}/hqdefault.jpg`;
+      const vid = clip.video_id;
+      const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
+      const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
+      const thumbUrl = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
       const caption = ((clip.caption_segments || []).slice(0, 2).map(s => s.text).join(' ') || clip.hook || '').substring(0, 70);
-      const dur = `${fmt(clip.start)} &nbsp;→&nbsp; ${fmt(clip.end)}`;
+      const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
-        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._playClip('${agentId}',${i},'${embedUrl}')">
+        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._playClip('${agentId}',${i},'${vid}',${s0},${s1})">
           <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
           <div class="clip-thumb-overlay">
             <div class="clip-timestamps">
-              <span class="clip-ts-box">00:00</span>
-              <span class="clip-ts-box">${fmt(clip.end - clip.start)}</span>
+              <span class="clip-ts-box">${fmt(clip.start)}</span>
+              <span class="clip-ts-box">${fmt(clip.end)}</span>
             </div>
             ${caption ? `<div class="clip-caption-text">${this._escapeHtml(caption)}</div>` : ''}
             <div class="clip-play-btn">
