@@ -35,6 +35,7 @@ logger = logging.getLogger("creatis-clips")
 SERVICE_SECRET       = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY         = os.environ.get("GROQ_API_KEY", "")
+COBALT_API_KEY       = os.environ.get("COBALT_API_KEY", "")
 WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "tiny")
 YOUTUBE_COOKIES_B64  = os.environ.get("YOUTUBE_COOKIES_B64", "")
 
@@ -133,12 +134,15 @@ def _get_invidious_stream(url: str) -> tuple[str, str, int]:
         raise RuntimeError("ID vidéo YouTube invalide")
 
     # 1. cobalt.tools — service de download YouTube dédié
+    cobalt_headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    if COBALT_API_KEY:
+        cobalt_headers["Authorization"] = f"Api-Key {COBALT_API_KEY}"
     for cobalt in COBALT_INSTANCES:
         try:
             r = req_lib.post(
                 f"{cobalt}/",
                 json={"url": url, "videoQuality": "360"},
-                headers={"Accept": "application/json", "Content-Type": "application/json"},
+                headers=cobalt_headers,
                 timeout=15,
             )
             logger.info(f"cobalt {cobalt} → HTTP {r.status_code}: {r.text[:200]}")
@@ -606,17 +610,23 @@ Segments de 3-8 secondes max, couvrir toute la vidéo (max 400 segments).
 Pas d'introduction, juste le JSON."""
 
         async with httpx.AsyncClient(timeout=120) as client:
-            r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [
-                        {"fileData": {"fileUri": yt_url, "mimeType": "video/mp4"}},
-                        {"text": prompt}
-                    ]}],
-                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
-                }
-            )
-            r.raise_for_status()
+            for model in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+                r = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                    json={
+                        "contents": [{"parts": [
+                            {"fileData": {"fileUri": yt_url, "mimeType": "video/mp4"}},
+                            {"text": prompt}
+                        ]}],
+                        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192}
+                    }
+                )
+                if r.status_code == 429:
+                    logger.warning(f"Gemini {model} rate limit, essai modèle suivant…")
+                    await asyncio.sleep(3)
+                    continue
+                r.raise_for_status()
+                break
             text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
             m = re.search(r'\{[\s\S]*\}', text)
             if not m:
