@@ -176,12 +176,13 @@ def get_subtitles_youtube(url: str, out_dir: str) -> Optional[tuple[list[dict], 
         return None
 
 def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: str, stem: str) -> str:
-    """Télécharge uniquement un segment vidéo via yt-dlp download_ranges."""
-    from yt_dlp.utils import download_range_func
+    """Télécharge uniquement un segment vidéo via FFmpeg external downloader."""
     opts = _yt_opts(
-        format="best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best",
+        format="bv[height<=720]+ba/b[height<=720]/bv+ba/b",
         outtmpl=f"{out_dir}/{stem}.%(ext)s",
-        download_ranges=download_range_func(None, [(dl_start, dl_end)]),
+        external_downloader="ffmpeg",
+        external_downloader_args={"ffmpeg_i": ["-ss", str(dl_start), "-to", str(dl_end)]},
+        merge_output_format="mp4",
         noplaylist=True,
     )
     with yt_dlp.YoutubeDL(opts) as ydl:
