@@ -1185,14 +1185,33 @@ class AppCreatis {
   _playClip(agentId, i, videoId, startSec, endSec) {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
+    const progFill = document.getElementById(`cprog-${agentId}-${i}`);
     if (!prev || !iframe || prev.classList.contains('playing')) return;
-    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1&cc_load_policy=1&cc_lang_pref=fr`;
     prev.classList.add('playing');
-    // Pause via postMessage à la fin du clip (YouTube ignore le param `end`)
-    const ms = Math.max((endSec - startSec) * 1000, 10000);
-    setTimeout(() => {
-      try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
-    }, ms);
+    const duration = Math.max(endSec - startSec, 5);
+    const startTime = Date.now();
+    if (prev._clipTicker) clearInterval(prev._clipTicker);
+    prev._clipTicker = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const pct = Math.min((elapsed / duration) * 100, 100);
+      if (progFill) progFill.style.width = pct + '%';
+      if (elapsed >= duration) {
+        clearInterval(prev._clipTicker);
+        try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
+      }
+    }, 250);
+  }
+
+  _togglePause(agentId, i, btn) {
+    const prev = document.getElementById(`cprev-${agentId}-${i}`);
+    const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
+    if (!iframe || !prev?.classList.contains('playing')) return;
+    const paused = prev.classList.toggle('paused');
+    try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func: paused ? 'pauseVideo' : 'playVideo',args:[]}), '*'); } catch {}
+    if (btn) btn.innerHTML = paused
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
   }
 
   _afficherClipsResultats(agentId, data) {
@@ -1232,6 +1251,12 @@ class AppCreatis {
             frameborder="0" allowfullscreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
           </iframe>
+          <div class="clip-playing-controls">
+            <div class="clip-prog-track"><div class="clip-prog-fill" id="cprog-${agentId}-${i}"></div></div>
+            <button class="clip-pause-btn" onclick="event.stopPropagation();app._togglePause('${agentId}',${i},this)" title="Pause / Play">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+          </div>
         </div>
         <div class="clip-score-row">
           <span class="clip-score-num" style="color:${scoreColor(clip.score)}">${clip.score}</span>
