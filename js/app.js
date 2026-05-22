@@ -1185,33 +1185,73 @@ class AppCreatis {
   _playClip(agentId, i, videoId, startSec, endSec) {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
-    const progFill = document.getElementById(`cprog-${agentId}-${i}`);
     if (!prev || !iframe || prev.classList.contains('playing')) return;
-    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1&cc_load_policy=1&cc_lang_pref=fr`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
     prev.classList.add('playing');
-    const duration = Math.max(endSec - startSec, 5);
-    const startTime = Date.now();
+    prev._clipStart = startSec;
+    prev._clipEnd = endSec;
+    prev._clipElapsed = 0;
+    prev._clipLastTick = Date.now();
+    prev._clipCaptions = (this._clipsData || {})[`${agentId}-${i}`] || [];
     if (prev._clipTicker) clearInterval(prev._clipTicker);
     prev._clipTicker = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const pct = Math.min((elapsed / duration) * 100, 100);
-      if (progFill) progFill.style.width = pct + '%';
-      if (elapsed >= duration) {
+      if (!prev.classList.contains('paused')) {
+        prev._clipElapsed += (Date.now() - prev._clipLastTick) / 1000;
+      }
+      prev._clipLastTick = Date.now();
+      const duration = Math.max(endSec - startSec, 5);
+      const pct = Math.min(prev._clipElapsed / duration * 100, 100);
+      const fill = document.getElementById(`cprog-${agentId}-${i}`);
+      if (fill) fill.style.width = pct + '%';
+      const ccDiv = document.getElementById(`ccc-${agentId}-${i}`);
+      if (ccDiv && prev._clipCaptions.length) {
+        const t = startSec + prev._clipElapsed;
+        const seg = prev._clipCaptions.find(s => t >= s.start && t < s.start + (s.duration || 2));
+        if (seg) { ccDiv.textContent = seg.text; ccDiv.classList.add('active'); }
+        else ccDiv.classList.remove('active');
+      }
+      if (prev._clipElapsed >= duration) {
         clearInterval(prev._clipTicker);
+        const ccDiv2 = document.getElementById(`ccc-${agentId}-${i}`);
+        if (ccDiv2) ccDiv2.classList.remove('active');
         try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
       }
     }, 250);
   }
 
-  _togglePause(agentId, i, btn) {
+  _clipClick(agentId, i, videoId, startSec, endSec) {
+    const prev = document.getElementById(`cprev-${agentId}-${i}`);
+    if (prev?.classList.contains('playing')) this._togglePause(agentId, i);
+    else this._playClip(agentId, i, videoId, startSec, endSec);
+  }
+
+  _togglePause(agentId, i) {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
     if (!iframe || !prev?.classList.contains('playing')) return;
     const paused = prev.classList.toggle('paused');
     try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func: paused ? 'pauseVideo' : 'playVideo',args:[]}), '*'); } catch {}
+    const btn = prev.querySelector('.clip-pause-btn');
     if (btn) btn.innerHTML = paused
       ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
       : '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+  }
+
+  _seekClip(agentId, i, e) {
+    const prev = document.getElementById(`cprev-${agentId}-${i}`);
+    const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
+    if (!prev?.classList.contains('playing') || !iframe) return;
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const duration = Math.max(prev._clipEnd - prev._clipStart, 5);
+    prev._clipElapsed = pct * duration;
+    prev._clipLastTick = Date.now();
+    prev.classList.remove('paused');
+    const fill = document.getElementById(`cprog-${agentId}-${i}`);
+    if (fill) fill.style.width = (pct * 100) + '%';
+    const seekTo = prev._clipStart + prev._clipElapsed;
+    try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[seekTo, true]}), '*'); } catch {}
   }
 
   _afficherClipsResultats(agentId, data) {
@@ -1226,7 +1266,9 @@ class AppCreatis {
     const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
 
+    this._clipsData = this._clipsData || {};
     const clipsHtml = data.clips.map((clip, i) => {
+      this._clipsData[`${agentId}-${i}`] = clip.caption_segments || [];
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
       const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
@@ -1235,7 +1277,7 @@ class AppCreatis {
       const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
-        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._playClip('${agentId}',${i},'${vid}',${s0},${s1})">
+        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
           <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
           <div class="clip-thumb-overlay">
             <div class="clip-timestamps">
@@ -1251,9 +1293,10 @@ class AppCreatis {
             frameborder="0" allowfullscreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
           </iframe>
+          <div class="clip-cc-overlay" id="ccc-${agentId}-${i}"></div>
           <div class="clip-playing-controls">
-            <div class="clip-prog-track"><div class="clip-prog-fill" id="cprog-${agentId}-${i}"></div></div>
-            <button class="clip-pause-btn" onclick="event.stopPropagation();app._togglePause('${agentId}',${i},this)" title="Pause / Play">
+            <div class="clip-prog-track" onclick="event.stopPropagation();app._seekClip('${agentId}',${i},event)"><div class="clip-prog-fill" id="cprog-${agentId}-${i}"></div></div>
+            <button class="clip-pause-btn" onclick="event.stopPropagation();app._togglePause('${agentId}',${i})" title="Pause / Play">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
             </button>
           </div>
