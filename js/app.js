@@ -1101,7 +1101,6 @@ class AppCreatis {
   async lancerClips(agentId) {
     const agent = AGENTS.find(a => a.id === agentId);
     if (!agent) return;
-    if (!this.verifierQuotaRepurpose()) return;
 
     const urlInput = document.getElementById(`clips-url-${agentId}`);
     const url = urlInput?.value?.trim();
@@ -1173,7 +1172,6 @@ class AppCreatis {
         stepTimer = setTimeout(poll, 4000);
       });
 
-      this.incrementerRepurpose();
       this._afficherClipsResultats(agentId, result);
     } catch (err) {
       if (err.message !== 'upgrade') this.afficherToast(`❌ ${err.message}`, 'erreur');
