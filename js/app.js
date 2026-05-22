@@ -1186,7 +1186,7 @@ class AppCreatis {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
     if (!prev || !iframe || prev.classList.contains('playing')) return;
-    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&rel=0&enablejsapi=1&modestbranding=1`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
     prev.classList.add('playing');
     // Pause via postMessage à la fin du clip (YouTube ignore le param `end`)
     const ms = Math.max((endSec - startSec) * 1000, 10000);
