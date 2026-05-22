@@ -818,11 +818,14 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             temp_file = candidates[0]
             logger.info(f"[export {job_id[:8]}] Fichier dl: {temp_file.name} ({temp_file.stat().st_size} bytes)")
 
-            # Étape 2 : scale + pad en 9:16 (robuste quelque soit le ratio source)
+            # Étape 2 : transcode en 9:16 (scale pour remplir la hauteur, crop au centre)
             cmd = [
-                "ffmpeg", "-y", "-i", str(temp_file),
-                "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
+                "ffmpeg", "-y",
+                "-fflags", "+genpts",
+                "-i", str(temp_file),
+                "-vf", "scale=-2:1920,crop=1080:1920,setsar=1",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
                 str(out_path)
@@ -830,7 +833,7 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             result = subprocess.run(cmd, capture_output=True, timeout=180)
             temp_file.unlink(missing_ok=True)
             if result.returncode != 0:
-                err_out = (result.stdout.decode() + result.stderr.decode())[-400:]
+                err_out = (result.stdout.decode() + result.stderr.decode())[-500:]
                 raise Exception(f"ffmpeg erreur: {err_out}")
 
         await asyncio.get_event_loop().run_in_executor(None, _download)
