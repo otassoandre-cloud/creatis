@@ -300,18 +300,7 @@ def transcribe_with_timestamps(audio_path: str) -> list[dict]:
         logger.info(f"Groq Whisper OK — {len(result)} segments")
         return result
 
-    # Fallback local Whisper
-    model = get_whisper()
-    segments, info = model.transcribe(
-        audio_path, beam_size=5, vad_filter=True,
-        vad_parameters={"min_silence_duration_ms": 500},
-        word_timestamps=True,
-    )
-    logger.info(f"Langue: {info.language} ({info.language_probability:.0%})")
-    result = []
-    for s in segments:
-        result.append({"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()})
-    return result
+    raise RuntimeError("GROQ_API_KEY manquant — transcription impossible sans Groq Whisper API")
 
 def segments_to_text(segs: list[dict]) -> str:
     return " ".join(s["text"] for s in segs if s["text"])
