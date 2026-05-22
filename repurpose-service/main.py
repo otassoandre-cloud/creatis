@@ -105,8 +105,10 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
     return video, title, duration
 
 COBALT_INSTANCES = [
+    "https://api.cobalt.tools",
     "https://cobalt.tools",
-    "https://cobalt.api.nadeko.net",
+    "https://cobalt.hukibarak.hu",
+    "https://co.wuk.sh",
 ]
 INVIDIOUS_INSTANCES = [
     "https://inv.nadeko.net",
@@ -134,20 +136,21 @@ def _get_invidious_stream(url: str) -> tuple[str, str, int]:
     for cobalt in COBALT_INSTANCES:
         try:
             r = req_lib.post(
-                f"{cobalt}/api/json",
-                json={"url": url, "vQuality": "360", "isAudioOnly": False},
+                f"{cobalt}/",
+                json={"url": url, "videoQuality": "360"},
                 headers={"Accept": "application/json", "Content-Type": "application/json"},
                 timeout=15,
             )
+            logger.info(f"cobalt {cobalt} → HTTP {r.status_code}: {r.text[:200]}")
             if r.status_code == 200:
                 data = r.json()
                 status = data.get("status", "")
                 stream_url = data.get("url", "")
                 if status in ("stream", "redirect", "tunnel") and stream_url:
-                    logger.info(f"cobalt.tools OK via {cobalt}")
-                    # Pas de métadonnées titre/durée depuis cobalt — on les récupère via Invidious séparément
+                    logger.info(f"cobalt OK via {cobalt} (status={status})")
                     title, duration = _get_video_meta(video_id)
                     return stream_url, title, duration
+                logger.warning(f"cobalt {cobalt} status inattendu: {status} — {data}")
         except Exception as e:
             logger.warning(f"cobalt {cobalt} échoué: {e}")
 
