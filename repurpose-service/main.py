@@ -150,17 +150,37 @@ def _get_invidious_stream(url: str) -> tuple[str, str, int]:
     raise RuntimeError("Service vidéo indisponible — réessaie dans quelques minutes")
 
 def _get_video_meta(video_id: str) -> tuple[str, int]:
-    """Récupère titre+durée via Invidious (métadonnées seulement)."""
+    """Récupère titre via YouTube oEmbed (public, jamais bloqué) + durée via Invidious."""
     import requests as req_lib
+    title = "Vidéo YouTube"
+    duration = 0
+
+    # 1. YouTube oEmbed — API publique, pas de clé, fonctionne partout
+    try:
+        r = req_lib.get(
+            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
+            timeout=8
+        )
+        if r.status_code == 200:
+            title = r.json().get("title", title)
+            logger.info(f"oEmbed OK: '{title}'")
+    except Exception as e:
+        logger.warning(f"oEmbed failed: {e}")
+
+    # 2. Invidious pour la durée
     for instance in INVIDIOUS_INSTANCES:
         try:
             r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=8)
             if r.status_code == 200:
                 d = r.json()
-                return d.get("title", "Vidéo YouTube"), int(d.get("lengthSeconds", 0))
+                if not title or title == "Vidéo YouTube":
+                    title = d.get("title", title)
+                duration = int(d.get("lengthSeconds", 0))
+                break
         except Exception:
             continue
-    return "Vidéo YouTube", 0
+
+    return title, duration
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     """Télécharge l'audio via pytubefix + ffmpeg extract audio (max 20 min pour Whisper)."""
