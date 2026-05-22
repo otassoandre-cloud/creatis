@@ -495,59 +495,30 @@ Pas d'introduction, juste le JSON."""
         return None
 
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
-    """Traitement asynchrone — 1 seul appel Gemini, retourne métadonnées YouTube."""
+    """Traitement asynchrone — Gemini vision directe, retourne métadonnées YouTube."""
     sid = session_id[:8]
     try:
         video_id = _extract_video_id(url)
-        segments = None
-        title = "Vidéo YouTube"
-        video_duration = 0
-        moments = None
 
-        # ── Voie rapide : sous-titres YouTube (si dispo) + Gemini text ──
-        JOBS[session_id]["progress"] = "Récupération des sous-titres…"
-        with tempfile.TemporaryDirectory() as tmp:
-            sub_result = get_subtitles_youtube(url, tmp)
-        if sub_result:
-            segments, title, video_duration = sub_result
-            logger.info(f"[{sid}] Sous-titres ✓ {len(segments)} segs — identification Gemini…")
-            JOBS[session_id]["progress"] = "Analyse Gemini…"
-            moments = await identify_moments_gemini(segments, title, n, video_duration)
+        # ── Gemini regarde la vidéo directement (pas de download, pas de subs requis) ──
+        JOBS[session_id]["progress"] = "Analyse Gemini…"
+        video_result = await gemini_analyze_video(url, n)
 
-        # ── Voie directe : Gemini regarde la vidéo (pas de sous-titres) ──
-        if moments is None:
-            JOBS[session_id]["progress"] = "Analyse Gemini (vision vidéo)…"
-            logger.info(f"[{sid}] Pas de sous-titres → Gemini video analyze…")
-            video_result = await gemini_analyze_video(url, n)
-            if video_result:
-                title = video_result["title"]
-                video_duration = video_result["duration"]
-                moments = video_result["clips"]
-                logger.info(f"[{sid}] Gemini video ✓ {len(moments)} moments")
-
-        # ── Fallback : découpage régulier sans IA ──
-        if not moments:
+        if video_result:
+            title         = video_result["title"]
+            video_duration = video_result["duration"]
+            moments       = video_result["clips"]
+            logger.info(f"[{sid}] Gemini ✓ {len(moments)} moments — '{title}'")
+        else:
             logger.warning(f"[{sid}] Gemini indisponible — fallback régulier")
-            moments = _fallback_moments(segments or [], n, video_duration or 600)
+            title, video_duration = "Vidéo YouTube", 600
+            moments = _fallback_moments([], n, 600)
 
         # ── Construire les clips metadata ──
         clips_result = []
-        for i, moment in enumerate(moments):
+        for moment in moments:
             clip_start = float(moment["start"])
             clip_end   = float(moment["end"])
-            if segments:
-                clip_captions = [
-                    {"start": round(s["start"] - clip_start, 2),
-                     "end":   round(s["end"]   - clip_start, 2),
-                     "text":  s["text"]}
-                    for s in segments
-                    if s["start"] >= clip_start - 0.5 and s["end"] <= clip_end + 0.5
-                ]
-                transcript_text = " ".join(s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end)[:300]
-            else:
-                clip_captions = moment.get("caption_segments", [])
-                transcript_text = moment.get("transcript", "")[:300]
-
             clips_result.append({
                 "hook":      str(moment.get("hook", ""))[:80],
                 "why":       str(moment.get("why",  ""))[:200],
@@ -555,22 +526,22 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                 "start":     clip_start,
                 "end":       clip_end,
                 "duration":  round(clip_end - clip_start, 1),
-                "transcript": transcript_text,
+                "transcript": str(moment.get("transcript", ""))[:300],
                 "video_id":   video_id,
                 "youtube_url":  f"https://www.youtube.com/watch?v={video_id}&t={int(clip_start)}s",
                 "embed_url":    f"https://www.youtube.com/embed/{video_id}?start={int(clip_start)}&end={int(clip_end)}&rel=0",
-                "caption_segments": clip_captions,
+                "caption_segments": moment.get("caption_segments", []),
             })
 
-            JOBS[session_id] = {
-                "status": "done", "progress": None, "error": None,
-                "result": {
-                    "ok": True, "title": title, "duration": video_duration,
-                    "video_id": video_id, "session_id": session_id,
-                    "clips": clips_result,
-                }
+        JOBS[session_id] = {
+            "status": "done", "progress": None, "error": None,
+            "result": {
+                "ok": True, "title": title, "duration": video_duration,
+                "video_id": video_id, "session_id": session_id,
+                "clips": clips_result,
             }
-            logger.info(f"[{sid}] Job terminé — {len(clips_result)} clips")
+        }
+        logger.info(f"[{sid}] Job terminé — {len(clips_result)} clips")
 
     except Exception as e:
         shutil.rmtree(session_dir, ignore_errors=True)
