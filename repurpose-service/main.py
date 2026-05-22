@@ -34,6 +34,7 @@ logger = logging.getLogger("creatis-clips")
 
 SERVICE_SECRET       = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY         = os.environ.get("GROQ_API_KEY", "")
 WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "tiny")
 YOUTUBE_COOKIES_B64  = os.environ.get("YOUTUBE_COOKIES_B64", "")
 
@@ -219,6 +220,27 @@ def download_video_segment(url: str, dl_start: float, dl_end: float, out_dir: st
 
 # ── Transcription avec timestamps ─────────────────────────────────────────────
 def transcribe_with_timestamps(audio_path: str) -> list[dict]:
+    """Transcription via Groq Whisper API (zéro RAM locale) ou fallback faster-whisper."""
+    if GROQ_API_KEY:
+        import requests as req_lib
+        logger.info("Transcription via Groq Whisper API…")
+        with open(audio_path, "rb") as f:
+            r = req_lib.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                files={"file": (os.path.basename(audio_path), f, "audio/mpeg")},
+                data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json", "timestamp_granularities[]": "segment"},
+                timeout=120,
+            )
+        r.raise_for_status()
+        data = r.json()
+        result = []
+        for s in data.get("segments", []):
+            result.append({"start": round(float(s["start"]), 2), "end": round(float(s["end"]), 2), "text": s["text"].strip()})
+        logger.info(f"Groq Whisper OK — {len(result)} segments")
+        return result
+
+    # Fallback local Whisper
     model = get_whisper()
     segments, info = model.transcribe(
         audio_path, beam_size=5, vad_filter=True,
