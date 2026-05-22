@@ -105,20 +105,27 @@ def download_video(url: str, out_dir: str, quality: str = "480") -> tuple[str, s
     return video, title, duration
 
 def _get_pytube_stream_url(url: str) -> tuple[str, str, int]:
-    """Récupère l'URL directe du flux vidéo via pytubefix (bypass bot detection yt-dlp)."""
+    """Récupère l'URL directe du flux vidéo — essaie plusieurs clients YouTube."""
     from pytubefix import YouTube
-    yt = YouTube(url)
-    title = yt.title or "Vidéo YouTube"
-    duration = yt.length or 0
-    # Flux progressif mp4 (vidéo+audio combiné) — le plus compatible avec ffmpeg
-    stream = (
-        yt.streams.filter(progressive=True, file_extension="mp4", res="480p").first()
-        or yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").last()
-        or yt.streams.filter(progressive=True).order_by("resolution").last()
-    )
-    if not stream:
-        raise RuntimeError("Aucun flux vidéo disponible via pytubefix")
-    return stream.url, title, duration
+    last_err = None
+    # ANDROID/IOS/MWEB = clients mobiles moins filtrés par YouTube sur IPs cloud
+    for client in ["ANDROID", "IOS", "MWEB", "WEB_EMBED", "TV_EMBED"]:
+        try:
+            yt = YouTube(url, client=client)
+            title = yt.title or "Vidéo YouTube"
+            duration = yt.length or 0
+            stream = (
+                yt.streams.filter(progressive=True, file_extension="mp4", res="480p").first()
+                or yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").last()
+                or yt.streams.filter(progressive=True).order_by("resolution").last()
+            )
+            if stream and stream.url:
+                logger.info(f"pytubefix client={client} OK")
+                return stream.url, title, duration
+        except Exception as e:
+            logger.warning(f"pytubefix client={client} échoué: {e}")
+            last_err = e
+    raise RuntimeError(f"Impossible d'accéder à la vidéo YouTube (tous les clients bloqués): {last_err}")
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
     """Télécharge l'audio via pytubefix + ffmpeg extract audio (max 20 min pour Whisper)."""
