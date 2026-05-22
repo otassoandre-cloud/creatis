@@ -810,17 +810,19 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             if not stream_url:
                 raise Exception("Impossible d'obtenir l'URL du stream")
 
-            # Étape 2 : ffmpeg découpe directement depuis l'URL (pas de download complet)
+            # Étape 2 : ffmpeg découpe + recadre en 9:16 (Short vertical)
             cmd = [
                 "ffmpeg", "-y",
                 "-ss", str(start),
                 "-to", str(end),
                 "-i", stream_url,
-                "-c", "copy",
+                "-vf", "crop=ih*9/16:ih,scale=1080:1920",
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-c:a", "aac", "-b:a", "128k",
                 "-avoid_negative_ts", "make_zero",
                 str(out_path)
             ]
-            result = subprocess.run(cmd, capture_output=True, timeout=120)
+            result = subprocess.run(cmd, capture_output=True, timeout=180)
             if result.returncode != 0:
                 raise Exception(f"ffmpeg erreur: {result.stderr.decode()[-300:]}")
 
