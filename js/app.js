@@ -1182,26 +1182,78 @@ class AppCreatis {
     }
   }
 
-  _playClip(agentId, i, videoId, startSec, endSec) {
-    // helper défini inline pour scope local (évite collision)
+  _ensureYTListener() {
+    if (window._ytMsgReady) return;
+    window._ytMsgReady = true;
+    window._ytImap = new Map(); // contentWindow → {prev, agentId, i}
     if (!window._ccHtml) window._ccHtml = t => {
       const w = t.trim().split(/\s+/);
       if (w.length < 2) return `<span class="cc-hi">${t}</span>`;
-      return w.slice(0,-1).join(' ') + ` <span class="cc-hi">${w[w.length-1]}</span>`;
+      return w.slice(0, -1).join(' ') + ` <span class="cc-hi">${w[w.length - 1]}</span>`;
     };
+    window.addEventListener('message', e => {
+      if (!e.data || typeof e.data !== 'string') return;
+      try {
+        const m = JSON.parse(e.data);
+        const c = window._ytImap.get(e.source);
+        if (!c) return;
+        const { prev, agentId, i } = c;
+        const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
+        if (!iframe) return;
+        if (m.event === 'onStateChange' && m.info === 1) {
+          if (prev.classList.contains('loading-poster')) {
+            setTimeout(() => {
+              try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
+              prev.classList.remove('loading-poster');
+              prev.classList.add('has-poster');
+            }, 150);
+          } else if (prev._waitingForPlay) {
+            prev._waitingForPlay = false;
+            prev._clipLastTick = Date.now();
+          }
+        }
+        // Sync currentTime pour captions précises
+        if (m.event === 'infoDelivery' && m.info?.currentTime != null && prev.classList.contains('playing') && !prev.classList.contains('paused')) {
+          const yt = m.info.currentTime - (prev._clipStart || 0);
+          if (Math.abs(yt - prev._clipElapsed) > 0.4) {
+            prev._clipElapsed = Math.max(0, yt);
+            prev._clipLastTick = Date.now();
+          }
+        }
+      } catch {}
+    });
+  }
+
+  _playClip(agentId, i, videoId, startSec, endSec) {
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
     if (!prev || !iframe || prev.classList.contains('playing')) return;
-    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
-    prev.classList.add('playing');
+    this._ensureYTListener();
     prev._clipStart = startSec;
     prev._clipEnd = endSec;
     prev._clipElapsed = 0;
     prev._clipLastTick = Date.now();
     prev._clipCaptions = (this._clipsData || {})[`${agentId}-${i}`] || [];
+    prev._waitingForPlay = true;
+    if (prev.classList.contains('has-poster')) {
+      // iframe déjà chargée et pausée au bon moment → unmute + play
+      try {
+        iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}), '*');
+        iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}), '*');
+      } catch {}
+      prev.classList.remove('has-poster');
+    } else {
+      prev.classList.remove('loading-poster');
+      iframe.onload = () => {
+        if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i });
+        try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
+      };
+      iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
+    }
+    prev.classList.add('playing');
     if (prev._clipTicker) clearInterval(prev._clipTicker);
     prev._clipTicker = setInterval(() => {
-      if (!prev.classList.contains('paused')) {
+      if (!prev.classList.contains('paused') && !prev._waitingForPlay) {
         prev._clipElapsed += (Date.now() - prev._clipLastTick) / 1000;
       }
       prev._clipLastTick = Date.now();
@@ -1312,7 +1364,7 @@ class AppCreatis {
       return `
       <div class="clip-opus-card">
         <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
-          <img src="https://i.ytimg.com/vi/${vid}/stills/${s0}.jpg" onerror="this.src='${thumbUrl}'" class="clip-thumb-img" loading="lazy" alt="" />
+          <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
           <div class="clip-thumb-overlay">
             <div class="clip-timestamps">
               <span class="clip-ts-box">${fmt(clip.start)}</span>
@@ -1358,6 +1410,23 @@ class AppCreatis {
         <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
       </div>
       <div class="clips-opus-grid">${clipsHtml}</div>`;
+
+    // Charger les poster frames (iframes muted+autoplay pour capturer 1er frame du clip)
+    this._ensureYTListener();
+    data.clips.forEach((clip, idx) => {
+      const iframe = document.getElementById(`ciframe-${agentId}-${idx}`);
+      const prev = document.getElementById(`cprev-${agentId}-${idx}`);
+      if (!iframe || !prev) return;
+      setTimeout(() => {
+        if (prev.classList.contains('playing')) return;
+        prev.classList.add('loading-poster');
+        iframe.onload = () => {
+          if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i: idx });
+          try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
+        };
+        iframe.src = `https://www.youtube.com/embed/${clip.video_id}?start=${Math.floor(clip.start)}&autoplay=1&mute=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
+      }, idx * 700);
+    });
   }
 
   /* ===== CHAT LIBRE ===== */
