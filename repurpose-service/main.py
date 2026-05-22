@@ -290,6 +290,55 @@ def transcribe_with_timestamps(audio_path: str) -> list[dict]:
 def segments_to_text(segs: list[dict]) -> str:
     return " ".join(s["text"] for s in segs if s["text"])
 
+def _transcribe_words_groq(audio_path: str) -> list[dict]:
+    """Groq Whisper avec timestamps mot par mot — précision OpusClip-level."""
+    import requests as req_lib
+    logger.info("Transcription Groq Whisper word-timestamps…")
+    with open(audio_path, "rb") as f:
+        r = req_lib.post(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            files={"file": (os.path.basename(audio_path), f, "audio/mpeg")},
+            data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
+                  "timestamp_granularities[]": "word"},
+            timeout=180,
+        )
+    r.raise_for_status()
+    data = r.json()
+    words = []
+    for w in data.get("words", []):
+        word = w.get("word", "").strip()
+        if word:
+            words.append({"word": word, "start": round(float(w["start"]), 3), "end": round(float(w["end"]), 3)})
+    logger.info(f"Groq Whisper word-timestamps OK — {len(words)} mots")
+    return words
+
+def _words_to_segments(words: list[dict]) -> list[dict]:
+    """Regroupe mots en segments de ~5s pour l'analyse Groq/Gemini."""
+    if not words: return []
+    segs, cur, cur_start = [], [], words[0]["start"]
+    for w in words:
+        cur.append(w["word"])
+        if len(cur) >= 8 or w["end"] - cur_start > 5:
+            segs.append({"start": cur_start, "end": w["end"], "text": " ".join(cur).strip()})
+            cur, cur_start = [], w["end"]
+    if cur:
+        segs.append({"start": cur_start, "end": words[-1]["end"], "text": " ".join(cur).strip()})
+    return segs
+
+def _words_to_caption_segs(words: list[dict], clip_start: float, clip_end: float) -> list[dict]:
+    """Chunks de 3 mots avec timestamps exacts pour un clip donné."""
+    clip_words = [w for w in words if clip_start <= w["start"] < clip_end]
+    caps = []
+    for j in range(0, len(clip_words), 3):
+        group = clip_words[j:j+3]
+        caps.append({
+            "start": round(group[0]["start"] - clip_start, 3),
+            "end":   round(group[-1]["end"]   - clip_start, 3),
+            "text":  " ".join(w["word"] for w in group).strip()
+        })
+    return caps
+
 # ── Gemini Flash : identifier moments viraux ──────────────────────────────────
 async def _gemini_call(payload: dict, timeout: int = 60) -> Optional[str]:
     """Appel Gemini avec fallback sur plusieurs modèles. Retourne le texte ou None."""
@@ -632,6 +681,7 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
         # ── Étape 1 : sous-titres YouTube → Groq (0 quota Gemini, ~3s) ──
         JOBS[session_id]["progress"] = "Récupération des sous-titres…"
         segments = []
+        word_transcript: list[dict] = []
         try:
             sub_result = await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(None, lambda: _get_subtitles_fast(url)),
@@ -642,6 +692,25 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
                 if dur2 > 0: video_duration = dur2
         except asyncio.TimeoutError:
             logger.warning(f"[{sid}] Timeout sous-titres")
+
+        # ── Fallback Whisper word-timestamps si pas de CC YouTube ──
+        if not segments and GROQ_API_KEY:
+            JOBS[session_id]["progress"] = "Transcription audio (Whisper)…"
+            try:
+                whis_tmp = tempfile.mkdtemp()
+                audio_path, _, dur2 = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: download_audio_only(url, whis_tmp)
+                )
+                if dur2 > 0: video_duration = dur2
+                word_transcript = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _transcribe_words_groq(audio_path)
+                )
+                segments = _words_to_segments(word_transcript)
+                logger.info(f"[{sid}] Whisper word-timestamps OK — {len(word_transcript)} mots")
+            except Exception as e:
+                logger.warning(f"[{sid}] Whisper fallback échoué: {e}")
+            finally:
+                shutil.rmtree(whis_tmp, ignore_errors=True)
 
         # ── Étape 2 : Groq (avec ou sans transcription) ──
         JOBS[session_id]["progress"] = "Analyse Groq…"
@@ -669,18 +738,22 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
         for moment in moments:
             clip_start = float(moment["start"])
             clip_end   = float(moment["end"])
-            # Enrichir caption_segments avec les vrais sous-titres (relatifs au clip)
-            real_caps = []
-            if segments:
+            # Priorité : word-timestamps Whisper > CC YouTube > fallback Groq
+            if word_transcript:
+                real_caps = _words_to_caption_segs(word_transcript, clip_start, clip_end)
+            elif segments:
+                real_caps = []
                 for seg in segments:
                     t = seg.get("start", 0)
-                    d = seg.get("duration", 2)
+                    d = seg.get("duration", seg.get("end", t + 2) - t)
                     if t >= clip_start and t < clip_end:
                         real_caps.append({
                             "start": round(t - clip_start, 2),
                             "end":   round(min(t + d - clip_start, clip_end - clip_start), 2),
                             "text":  seg.get("text", "").strip()
                         })
+            else:
+                real_caps = []
             caption_segs = real_caps if real_caps else moment.get("caption_segments", [])
             clips_result.append({
                 "hook":      str(moment.get("hook", ""))[:80],
