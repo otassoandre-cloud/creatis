@@ -34,7 +34,7 @@ logger = logging.getLogger("creatis-clips")
 
 SERVICE_SECRET       = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
-WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "base")
+WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "tiny")
 YOUTUBE_COOKIES_B64  = os.environ.get("YOUTUBE_COOKIES_B64", "")
 
 SESSIONS_DIR = Path(tempfile.gettempdir()) / "creatis_clips"
@@ -120,10 +120,11 @@ def _get_pytube_stream_url(url: str) -> tuple[str, str, int]:
     return stream.url, title, duration
 
 def download_audio_only(url: str, out_dir: str) -> tuple[str, str, int]:
-    """Télécharge l'audio via pytubefix + ffmpeg extract audio."""
+    """Télécharge l'audio via pytubefix + ffmpeg extract audio (max 20 min pour Whisper)."""
     stream_url, title, duration = _get_pytube_stream_url(url)
     out_path = f"{out_dir}/audio.mp3"
-    cmd = ["ffmpeg", "-i", stream_url, "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", "-y", out_path]
+    # Limite à 20 min pour éviter OOM sur Railway
+    cmd = ["ffmpeg", "-i", stream_url, "-t", "1200", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k", "-y", out_path]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg audio: {result.stderr[-300:]}")
