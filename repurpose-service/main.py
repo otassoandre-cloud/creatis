@@ -311,12 +311,19 @@ Contraintes :
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": [{"text": prompt}]}],
-                      "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}}
-            )
-            r.raise_for_status()
+            r = None
+            for model in ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]:
+                r = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                    json={"contents": [{"parts": [{"text": prompt}]}],
+                          "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}}
+                )
+                if r.status_code in (429, 404):
+                    logger.warning(f"Gemini {model} {r.status_code}, essai suivant…")
+                    await asyncio.sleep(5)
+                    continue
+                r.raise_for_status()
+                break
             text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
             m = re.search(r'\{[\s\S]*\}', text)
             if m:
@@ -391,7 +398,7 @@ Segments de 3-8 secondes max, couvrir toute la vidéo (max 400 segments).
 Pas d'introduction, juste le JSON."""
 
         async with httpx.AsyncClient(timeout=120) as client:
-            for model in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+            for model in ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]:
                 r = await client.post(
                     f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
                     json={
@@ -404,7 +411,10 @@ Pas d'introduction, juste le JSON."""
                 )
                 if r.status_code == 429:
                     logger.warning(f"Gemini {model} rate limit, essai modèle suivant…")
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(8)
+                    continue
+                if r.status_code == 404:
+                    logger.warning(f"Gemini {model} introuvable, essai modèle suivant…")
                     continue
                 r.raise_for_status()
                 break
