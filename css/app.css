@@ -2398,8 +2398,8 @@
 @media (max-width:800px)  { .clips-opus-grid { grid-template-columns:repeat(3,1fr); } }
 .clip-opus-card { display:flex; flex-direction:column; gap:5px; }
 
-/* Thumbnail 9:16 avec crop centre */
-.clip-opus-preview { position:relative; border-radius:10px; overflow:hidden; aspect-ratio:9/16; background:#111; cursor:pointer; }
+/* Thumbnail 9:16 avec crop centre — padding trick (plus fiable qu'aspect-ratio) */
+.clip-opus-preview { position:relative; border-radius:10px; overflow:hidden; background:#111; cursor:pointer; width:100%; height:0; padding-bottom:177.78%; }
 .clip-thumb-img { position:absolute; top:0; left:50%; transform:translateX(-50%); width:178%; height:100%; object-fit:cover; }
 
 /* Overlay (miniature + captions) */

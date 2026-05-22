@@ -321,8 +321,9 @@ async def _gemini_call(payload: dict, timeout: int = 60) -> Optional[str]:
 
 
 async def identify_moments_groq(segments: list[dict], title: str, n: int, video_duration: int) -> list[dict]:
-    """Identifie les moments viraux via Groq. Fonctionne avec ou sans transcription."""
+    """Identifie les moments viraux via Groq (httpx async). Avec ou sans transcription."""
     if not GROQ_API_KEY:
+        logger.warning("GROQ_API_KEY absent — identification Groq impossible")
         return []
     if segments:
         formatted = "\n".join(
@@ -334,39 +335,40 @@ Vidéo : "{title}" (durée: {video_duration}s)
 Transcription :
 {formatted}
 
-Identifie exactement {n} moments viraux de 30-55 secondes chacun.
+Identifie exactement {n} moments viraux de 45-90 secondes chacun.
 Réponds UNIQUEMENT en JSON valide :
 {{"clips":[{{"start":<float>,"end":<float>,"hook":"<accroche max 10 mots>","why":"<1 phrase>","score":<1-100>}}]}}
-Contraintes : durée 30-55s, pas de chevauchement, trié par score décroissant."""
+Contraintes : durée 45-90s, pas de chevauchement, trié par score décroissant."""
     else:
-        # Sans transcription : génère des moments plausibles basés sur le titre + durée
         dur_min = video_duration // 60
         prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
 Vidéo YouTube : "{title}" (durée: {dur_min} minutes = {video_duration}s)
-Sans transcription, génère {n} moments viraux probables de 30-55 secondes.
+Sans transcription, génère {n} moments viraux probables de 45-90 secondes.
 Utilise la structure narrative habituelle : accroche forte tôt, révélation au milieu, climax et conclusion.
 Réponds UNIQUEMENT en JSON valide :
 {{"clips":[{{"start":<float>,"end":<float>,"hook":"<accroche <10 mots liée au sujet>","why":"<1 phrase>","score":<1-100>}}]}}
-Contraintes : durée 30-55s, pas de chevauchement, couvrir toute la vidéo, trié par score décroissant."""
+Contraintes : durée 45-90s, pas de chevauchement, couvrir toute la vidéo, trié par score décroissant."""
     try:
-        import requests as req_lib
-        r = req_lib.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-            json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
-                  "temperature": 0.3, "max_tokens": 1024},
-            timeout=30,
-        )
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "llama-3.3-70b-versatile",
+                      "messages": [{"role": "user", "content": prompt}],
+                      "temperature": 0.3, "max_tokens": 1024},
+            )
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"].strip()
+        logger.info(f"Groq raw response: {text[:200]}")
         m = re.search(r'\{[\s\S]*\}', text)
         if m:
             data = json.loads(m.group())
             clips = [c for c in data.get("clips", [])
-                     if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 60]
+                     if 30 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 95]
             if clips:
                 logger.info(f"Groq identify ✓ {len(clips)} moments")
                 return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
+            logger.warning(f"Groq: {len(data.get('clips',[]))} clips reçus mais 0 dans la plage 30-95s")
     except Exception as e:
         logger.warning(f"Groq identify failed: {e}")
     return []
