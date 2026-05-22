@@ -1183,6 +1183,12 @@ class AppCreatis {
   }
 
   _playClip(agentId, i, videoId, startSec, endSec) {
+    // helper défini inline pour scope local (évite collision)
+    if (!window._ccHtml) window._ccHtml = t => {
+      const w = t.trim().split(/\s+/);
+      if (w.length < 2) return `<span class="cc-hi">${t}</span>`;
+      return w.slice(0,-1).join(' ') + ` <span class="cc-hi">${w[w.length-1]}</span>`;
+    };
     const prev = document.getElementById(`cprev-${agentId}-${i}`);
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
     if (!prev || !iframe || prev.classList.contains('playing')) return;
@@ -1205,9 +1211,9 @@ class AppCreatis {
       if (fill) fill.style.width = pct + '%';
       const ccDiv = document.getElementById(`ccc-${agentId}-${i}`);
       if (ccDiv && prev._clipCaptions.length) {
-        const t = startSec + prev._clipElapsed;
-        const seg = prev._clipCaptions.find(s => t >= s.start && t < s.start + (s.duration || 2));
-        if (seg) { ccDiv.textContent = seg.text; ccDiv.classList.add('active'); }
+        const el = prev._clipElapsed;
+        const seg = prev._clipCaptions.find(s => el >= s.start && el < (s.end ?? s.start + 2));
+        if (seg) { ccDiv.innerHTML = window._ccHtml ? window._ccHtml(seg.text) : seg.text; ccDiv.classList.add('active'); }
         else ccDiv.classList.remove('active');
       }
       if (prev._clipElapsed >= duration) {
@@ -1215,6 +1221,7 @@ class AppCreatis {
         const ccDiv2 = document.getElementById(`ccc-${agentId}-${i}`);
         if (ccDiv2) ccDiv2.classList.remove('active');
         try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
+        setTimeout(() => { prev.classList.remove('playing', 'paused'); iframe.src = ''; }, 1200);
       }
     }, 250);
   }
@@ -1268,7 +1275,34 @@ class AppCreatis {
 
     this._clipsData = this._clipsData || {};
     const clipsHtml = data.clips.map((clip, i) => {
-      this._clipsData[`${agentId}-${i}`] = clip.caption_segments || [];
+      // Découpe les segments en chunks de 3 mots max (style OpusClip)
+      const rawSegs = clip.caption_segments || [];
+      const chunks = [];
+      for (const seg of rawSegs) {
+        const words = (seg.text || '').trim().split(/\s+/).filter(w => w);
+        if (!words.length) continue;
+        const segEnd = seg.end ?? (seg.start + (seg.duration || 2));
+        const segDur = segEnd - seg.start;
+        const chunkSize = 3;
+        const n = Math.ceil(words.length / chunkSize);
+        for (let j = 0; j < n; j++) {
+          chunks.push({
+            start: seg.start + j * segDur / n,
+            end:   seg.start + (j + 1) * segDur / n,
+            text:  words.slice(j * chunkSize, (j + 1) * chunkSize).join(' ')
+          });
+        }
+      }
+      // Fallback : hook découpé sur la durée du clip
+      if (!chunks.length && clip.hook) {
+        const words = clip.hook.trim().split(/\s+/).filter(w => w);
+        const dur = clip.end - clip.start;
+        const n = Math.ceil(words.length / 3);
+        for (let j = 0; j < n; j++) {
+          chunks.push({ start: j * dur / n, end: (j + 1) * dur / n, text: words.slice(j * 3, (j + 1) * 3).join(' ') });
+        }
+      }
+      this._clipsData[`${agentId}-${i}`] = chunks;
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
       const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
@@ -1278,7 +1312,7 @@ class AppCreatis {
       return `
       <div class="clip-opus-card">
         <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
-          <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
+          <img src="https://i.ytimg.com/vi/${vid}/stills/${s0}.jpg" onerror="this.src='${thumbUrl}'" class="clip-thumb-img" loading="lazy" alt="" />
           <div class="clip-thumb-overlay">
             <div class="clip-timestamps">
               <span class="clip-ts-box">${fmt(clip.start)}</span>

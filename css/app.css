@@ -2418,6 +2418,7 @@
 /* Sous-titres style OpusClip */
 .clip-cc-overlay { position:absolute; bottom:56px; left:50%; transform:translateX(-50%); width:88%; text-align:center; z-index:11; pointer-events:none; opacity:0; transition:opacity .15s; font-size:14px; font-weight:900; text-transform:uppercase; color:#fff; background:rgba(0,0,0,.72); padding:5px 10px; border-radius:5px; letter-spacing:.4px; line-height:1.35; text-shadow:1px 1px 0 rgba(0,0,0,.9); }
 .clip-cc-overlay.active { opacity:1; }
+.cc-hi { color:#10b981; }
 
 /* Contrôles custom (timeline + pause) */
 .clip-playing-controls { display:none; position:absolute; bottom:0; left:0; right:0; z-index:10; background:linear-gradient(transparent,rgba(0,0,0,.75)); padding:22px 8px 8px; flex-direction:column; gap:6px; }
