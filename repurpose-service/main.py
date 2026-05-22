@@ -816,19 +816,22 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             if not candidates:
                 raise Exception("Fichier téléchargé introuvable")
             temp_file = candidates[0]
+            logger.info(f"[export {job_id[:8]}] Fichier dl: {temp_file.name} ({temp_file.stat().st_size} bytes)")
 
-            # Étape 2 : crop 9:16 + scale 1080x1920
+            # Étape 2 : scale + pad en 9:16 (robuste quelque soit le ratio source)
             cmd = [
                 "ffmpeg", "-y", "-i", str(temp_file),
-                "-vf", "crop=ih*9/16:ih,scale=1080:1920",
+                "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
                 str(out_path)
             ]
             result = subprocess.run(cmd, capture_output=True, timeout=180)
             temp_file.unlink(missing_ok=True)
             if result.returncode != 0:
-                raise Exception(f"ffmpeg erreur: {result.stderr.decode()[-200:]}")
+                err_out = (result.stdout.decode() + result.stderr.decode())[-400:]
+                raise Exception(f"ffmpeg erreur: {err_out}")
 
         await asyncio.get_event_loop().run_in_executor(None, _download)
 
