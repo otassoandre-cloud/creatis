@@ -271,7 +271,37 @@ def segments_to_text(segs: list[dict]) -> str:
     return " ".join(s["text"] for s in segs if s["text"])
 
 # ── Gemini Flash : identifier moments viraux ──────────────────────────────────
+async def _gemini_call(payload: dict, timeout: int = 60) -> Optional[str]:
+    """Appel Gemini avec fallback sur plusieurs modèles. Retourne le texte ou None."""
+    models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for model in models:
+            try:
+                r = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                    json=payload
+                )
+                if r.status_code == 429:
+                    logger.warning(f"Gemini {model} rate limit, essai suivant…")
+                    await asyncio.sleep(8)
+                    continue
+                if r.status_code in (404, 400):
+                    logger.warning(f"Gemini {model} {r.status_code}, essai suivant…")
+                    continue
+                r.raise_for_status()
+                data = r.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    return candidates[0]["content"]["parts"][0]["text"].strip()
+                logger.warning(f"Gemini {model} : réponse sans candidates")
+            except Exception as e:
+                logger.warning(f"Gemini {model} exception: {e}")
+    logger.warning("Tous les modèles Gemini ont échoué")
+    return None
+
+
 async def identify_moments_gemini(segments: list[dict], title: str, n: int, video_duration: int) -> list[dict]:
+    """Identifie les moments viraux depuis une transcription texte."""
     if not GEMINI_API_KEY:
         return _fallback_moments(segments, n, video_duration)
 
@@ -279,63 +309,87 @@ async def identify_moments_gemini(segments: list[dict], title: str, n: int, vide
         f"[{int(s['start']//60):02d}:{int(s['start']%60):02d}] {s['text']}"
         for s in segments[:400]
     )
-
     prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
-
 Vidéo : "{title}" (durée: {video_duration}s)
-
-Transcription (timestamps mm:ss) :
+Transcription :
 {formatted}
 
-Identifie exactement {n} moments pour créer des Shorts viraux de 30-60 secondes.
+Identifie exactement {n} moments viraux de 30-60 secondes.
+Réponds UNIQUEMENT en JSON :
+{{"clips":[{{"start":<float>,"end":<float>,"hook":"<accroche<10mots>","why":"<1phrase>","score":<1-100>}}]}}
+Contraintes : durée 30-60s, pas de chevauchement, trié par score."""
+
+    text = await _gemini_call({"contents": [{"parts": [{"text": prompt}]}],
+                               "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}})
+    if text:
+        try:
+            m = re.search(r'\{[\s\S]*\}', text)
+            if m:
+                data = json.loads(m.group())
+                clips = [c for c in data.get("clips", [])
+                         if 25 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 70]
+                if clips:
+                    return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
+        except Exception as e:
+            logger.warning(f"Parse moments Gemini: {e}")
+    return _fallback_moments(segments, n, video_duration)
+
+
+async def gemini_analyze_video(url: str, n: int) -> Optional[dict]:
+    """Gemini regarde la vidéo YouTube directement (sans sous-titres) et identifie les moments viraux."""
+    if not GEMINI_API_KEY:
+        return None
+    video_id = _extract_video_id(url)
+    yt_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
+    prompt = f"""Tu es expert en viralité TikTok/YouTube Shorts.
+Regarde cette vidéo YouTube et identifie exactement {n} moments viraux de 30-60 secondes.
 Critères : accroche forte, valeur/surprise/émotion, compréhensible sans contexte.
 
 Réponds UNIQUEMENT en JSON valide :
 {{
+  "title": "<titre>",
+  "duration": <durée totale en secondes>,
   "clips": [
     {{
       "start": <float secondes>,
       "end": <float secondes>,
       "hook": "<accroche <10 mots>",
       "why": "<raison viralité 1 phrase>",
-      "score": <1-100>
+      "score": <1-100>,
+      "transcript": "<texte dit dans ce moment>",
+      "caption_segments": [
+        {{"start": <float relatif au clip>, "end": <float relatif>, "text": "<segment 3-6s>"}}
+      ]
     }}
   ]
 }}
+Clips triés par score décroissant, pas de chevauchement."""
 
-Contraintes :
-- Durée clip : 30-60s (end-start entre 30 et 60)
-- Pas de chevauchement
-- Commence au début d'une phrase
-- Trié par score décroissant"""
+    text = await _gemini_call({
+        "contents": [{"parts": [
+            {"fileData": {"fileUri": yt_url, "mimeType": "video/mp4"}},
+            {"text": prompt}
+        ]}],
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
+    }, timeout=120)
 
+    if not text:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = None
-            for model in ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]:
-                r = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
-                    json={"contents": [{"parts": [{"text": prompt}]}],
-                          "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}}
-                )
-                if r.status_code in (429, 404):
-                    logger.warning(f"Gemini {model} {r.status_code}, essai suivant…")
-                    await asyncio.sleep(5)
-                    continue
-                r.raise_for_status()
-                break
-            text = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-            m = re.search(r'\{[\s\S]*\}', text)
-            if m:
-                data = json.loads(m.group())
-                clips = [c for c in data.get("clips", [])
-                         if 25 <= float(c.get("end",0)) - float(c.get("start",0)) <= 70]
-                if clips:
-                    return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
+        m = re.search(r'\{[\s\S]*\}', text)
+        if not m:
+            return None
+        data = json.loads(m.group())
+        clips = data.get("clips", [])
+        if not clips:
+            return None
+        title = data.get("title", "Vidéo YouTube")
+        duration = int(data.get("duration", 0))
+        logger.info(f"Gemini video analyze ✓ {len(clips)} clips, '{title}'")
+        return {"title": title, "duration": duration, "clips": clips}
     except Exception as e:
-        logger.warning(f"Gemini failed: {e}")
-
-    return _fallback_moments(segments, n, video_duration)
+        logger.warning(f"Parse Gemini video analyze: {e}")
+    return None
 
 def _fallback_moments(segments: list[dict], n: int, total: int) -> list[dict]:
     if not segments: return []
@@ -441,67 +495,72 @@ Pas d'introduction, juste le JSON."""
         return None
 
 async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path):
-    """Traitement asynchrone — transcript + identification Gemini, retourne métadonnées (pas de download vidéo)."""
+    """Traitement asynchrone — 1 seul appel Gemini, retourne métadonnées YouTube."""
     sid = session_id[:8]
     try:
+        video_id = _extract_video_id(url)
+        segments = None
+        title = "Vidéo YouTube"
+        video_duration = 0
+        moments = None
+
+        # ── Voie rapide : sous-titres YouTube (si dispo) + Gemini text ──
+        JOBS[session_id]["progress"] = "Récupération des sous-titres…"
         with tempfile.TemporaryDirectory() as tmp:
-            # ── Phase 1 : Transcript (sous-titres → Gemini) ──
-            JOBS[session_id]["progress"] = "Récupération des sous-titres…"
             sub_result = get_subtitles_youtube(url, tmp)
-            if sub_result:
-                segments, title, video_duration = sub_result
-                logger.info(f"[{sid}] Sous-titres YouTube ✓ {len(segments)} segs")
-            else:
-                JOBS[session_id]["progress"] = "Analyse vidéo via Gemini…"
-                gemini_result = await get_transcript_via_gemini(url)
-                if gemini_result:
-                    segments, title, video_duration = gemini_result
-                    logger.info(f"[{sid}] Gemini transcription ✓ {len(segments)} segs")
-                else:
-                    JOBS[session_id] = {
-                        "status": "error",
-                        "error": "Sous-titres indisponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube ou essaie une autre vidéo.",
-                        "progress": None, "result": None
-                    }
-                    return
-
-            if not segments:
-                JOBS[session_id] = {"status": "error", "error": "Transcription vide", "progress": None, "result": None}
-                return
-
-            # ── Phase 2 : Identifier les moments viraux ──
-            JOBS[session_id]["progress"] = "Analyse des moments viraux…"
+        if sub_result:
+            segments, title, video_duration = sub_result
+            logger.info(f"[{sid}] Sous-titres ✓ {len(segments)} segs — identification Gemini…")
+            JOBS[session_id]["progress"] = "Analyse Gemini…"
             moments = await identify_moments_gemini(segments, title, n, video_duration)
-            logger.info(f"[{sid}] {len(moments)} moments identifiés")
 
-            # ── Phase 3 : Construire métadonnées (embed YouTube, captions) ──
-            video_id = _extract_video_id(url)
-            clips_result = []
-            for i, moment in enumerate(moments):
-                clip_start = float(moment["start"])
-                clip_end   = float(moment["end"])
+        # ── Voie directe : Gemini regarde la vidéo (pas de sous-titres) ──
+        if moments is None:
+            JOBS[session_id]["progress"] = "Analyse Gemini (vision vidéo)…"
+            logger.info(f"[{sid}] Pas de sous-titres → Gemini video analyze…")
+            video_result = await gemini_analyze_video(url, n)
+            if video_result:
+                title = video_result["title"]
+                video_duration = video_result["duration"]
+                moments = video_result["clips"]
+                logger.info(f"[{sid}] Gemini video ✓ {len(moments)} moments")
+
+        # ── Fallback : découpage régulier sans IA ──
+        if not moments:
+            logger.warning(f"[{sid}] Gemini indisponible — fallback régulier")
+            moments = _fallback_moments(segments or [], n, video_duration or 600)
+
+        # ── Construire les clips metadata ──
+        clips_result = []
+        for i, moment in enumerate(moments):
+            clip_start = float(moment["start"])
+            clip_end   = float(moment["end"])
+            if segments:
                 clip_captions = [
-                    {
-                        "start": round(s["start"] - clip_start, 2),
-                        "end":   round(s["end"]   - clip_start, 2),
-                        "text":  s["text"]
-                    }
+                    {"start": round(s["start"] - clip_start, 2),
+                     "end":   round(s["end"]   - clip_start, 2),
+                     "text":  s["text"]}
                     for s in segments
                     if s["start"] >= clip_start - 0.5 and s["end"] <= clip_end + 0.5
                 ]
-                clips_result.append({
-                    "hook":      str(moment.get("hook", ""))[:80],
-                    "why":       str(moment.get("why",  ""))[:200],
-                    "score":     int(moment.get("score", 80)),
-                    "start":     clip_start,
-                    "end":       clip_end,
-                    "duration":  round(clip_end - clip_start, 1),
-                    "transcript": " ".join(s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end)[:300],
-                    "video_id":   video_id,
-                    "youtube_url":  f"https://www.youtube.com/watch?v={video_id}&t={int(clip_start)}s",
-                    "embed_url":    f"https://www.youtube.com/embed/{video_id}?start={int(clip_start)}&end={int(clip_end)}&rel=0",
-                    "caption_segments": clip_captions,
-                })
+                transcript_text = " ".join(s["text"] for s in segments if s["start"] >= clip_start and s["end"] <= clip_end)[:300]
+            else:
+                clip_captions = moment.get("caption_segments", [])
+                transcript_text = moment.get("transcript", "")[:300]
+
+            clips_result.append({
+                "hook":      str(moment.get("hook", ""))[:80],
+                "why":       str(moment.get("why",  ""))[:200],
+                "score":     int(moment.get("score", 80)),
+                "start":     clip_start,
+                "end":       clip_end,
+                "duration":  round(clip_end - clip_start, 1),
+                "transcript": transcript_text,
+                "video_id":   video_id,
+                "youtube_url":  f"https://www.youtube.com/watch?v={video_id}&t={int(clip_start)}s",
+                "embed_url":    f"https://www.youtube.com/embed/{video_id}?start={int(clip_start)}&end={int(clip_end)}&rel=0",
+                "caption_segments": clip_captions,
+            })
 
             JOBS[session_id] = {
                 "status": "done", "progress": None, "error": None,
