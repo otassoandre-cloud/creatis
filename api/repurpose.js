@@ -206,8 +206,10 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
   }
 
-  // Vérifier plan + crédits
-  if (authUser) {
+  const { url, mode = 'text' } = req.body || {};
+
+  // Vérifier plan + crédits (sauf pour clips qui a son propre quota)
+  if (authUser && mode === 'text') {
     const userData = await getUserPlan(authUser.id);
     const plan = userData.plan || 'gratuit';
     const maxCredits = CREDITS[plan] ?? 0;
@@ -229,8 +231,6 @@ module.exports = async (req, res) => {
       });
     }
   }
-
-  const { url, mode = 'text' } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'URL YouTube manquante' });
   }
