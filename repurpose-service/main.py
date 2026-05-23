@@ -109,23 +109,26 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         logger.info("yt-dlp: utilisation des cookies YouTube")
 
     # Cascade du plus qualitatif au plus permissif
+    # None = pas de format spécifié, yt-dlp choisit seul
     formats = [
         "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
-        "best[height<=720]/best",
         "best",
+        None,
     ]
     last_err = None
     for fmt in formats:
         try:
-            opts = {**base_opts, "format": fmt}
+            opts = {**base_opts, "check_formats": False}
+            if fmt:
+                opts["format"] = fmt
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(youtube_url, download=True)
                 path = _resolve_path(ydl, info, out_dir)
             if os.path.exists(path) and os.path.getsize(path) > 10_000:
-                logger.info(f"yt-dlp OK: {path}")
+                logger.info(f"yt-dlp OK (fmt={fmt}): {path}")
                 return path
         except Exception as e:
-            logger.warning(f"yt-dlp fmt={fmt[:40]} failed: {e}")
+            logger.warning(f"yt-dlp fmt={str(fmt)[:40]} failed: {e}")
             last_err = e
     raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
