@@ -36,6 +36,7 @@ COBALT_API_KEY       = os.environ.get("COBALT_API_KEY", "")
 WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "tiny")
 YOUTUBE_COOKIES_B64   = os.environ.get("YOUTUBE_COOKIES_B64", "")
 YOUTUBE_COOKIE_HEADER = os.environ.get("YOUTUBE_COOKIE_HEADER", "")
+logger.info(f"STARTUP: YOUTUBE_COOKIE_HEADER len={len(YOUTUBE_COOKIE_HEADER)} YOUTUBE_COOKIES_B64 len={len(YOUTUBE_COOKIES_B64)}")
 
 SESSIONS_DIR = Path(tempfile.gettempdir()) / "creatis_clips"
 SESSIONS_DIR.mkdir(exist_ok=True)
@@ -591,7 +592,7 @@ class TranscribeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "4.0", "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY)}
+    return {"status": "ok", "version": "4.1", "gemini": bool(GEMINI_API_KEY), "groq": bool(GROQ_API_KEY), "cookies": bool(_COOKIE_FILE)}
 
 @app.get("/download/{session_id}/{filename}")
 def download_clip(session_id: str, filename: str):
