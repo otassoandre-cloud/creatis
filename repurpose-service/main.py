@@ -75,16 +75,39 @@ _INNERTUBE_CLIENTS = [
         "context": {"client": {"clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "clientVersion": "2.0",
                                 "clientScreen": "EMBED", "hl": "en", "gl": "US"}},
     },
-    {   # Android — pas de PO token pour les vidéos publiques
+    {   # Android — API key officielle yt-dlp
         "name": "ANDROID",
+        "url": "https://www.youtube.com/youtubei/v1/player?key=AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w",
         "headers": {
             "Content-Type": "application/json",
-            "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12) gzip",
+            "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip",
             "X-YouTube-Client-Name": "3",
             "X-YouTube-Client-Version": "17.36.4",
         },
-        "context": {"client": {"clientName": "ANDROID", "clientVersion": "17.36.4",
-                                "androidSdkVersion": 31, "hl": "en", "gl": "US"}},
+        "context": {"client": {
+            "clientName": "ANDROID", "clientVersion": "17.36.4",
+            "platform": "MOBILE", "osName": "Android", "osVersion": "12",
+            "androidSdkVersion": 31,
+            "userAgent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip",
+            "hl": "en", "gl": "US",
+        }},
+    },
+    {   # iOS — API key officielle yt-dlp
+        "name": "IOS",
+        "url": "https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc",
+        "headers": {
+            "Content-Type": "application/json",
+            "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone14,5; U; CPU iOS 15_5 like Mac OS X)",
+            "X-YouTube-Client-Name": "5",
+            "X-YouTube-Client-Version": "19.29.1",
+        },
+        "context": {"client": {
+            "clientName": "IOS", "clientVersion": "19.29.1",
+            "deviceModel": "iPhone14,5",
+            "userAgent": "com.google.ios.youtube/19.29.1 (iPhone14,5; U; CPU iOS 15_5 like Mac OS X)",
+            "osName": "iPhone", "osVersion": "15.5.0.19F77",
+            "hl": "en", "gl": "US",
+        }},
     },
 ]
 
