@@ -64,34 +64,89 @@ class GenerateRequest(BaseModel):
     youtube_url: str
     num_clips: int = 3
 
-# ── STEP 1 : Téléchargement yt-dlp ─────────────────────────────────────────────
-def download_video(url: str, out_dir: Path) -> tuple[str, str, int]:
+# ── Innertube iOS — download direct sans bot detection ─────────────────────────
+_IOS_UA  = "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_6 like Mac OS X;)"
+_IOS_HDR = {
+    "Content-Type": "application/json",
+    "User-Agent": _IOS_UA,
+    "X-YouTube-Client-Name": "5",
+    "X-YouTube-Client-Version": "19.45.4",
+}
+
+def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
+    """Récupère l'URL de stream via Innertube iOS et télécharge directement."""
+    payload = {
+        "videoId": video_id,
+        "context": {"client": {
+            "clientName": "IOS", "clientVersion": "19.45.4",
+            "deviceModel": "iPhone16,2", "userAgent": _IOS_UA,
+            "hl": "en", "gl": "US",
+        }}
+    }
+    with httpx.Client(timeout=30) as c:
+        r = c.post("https://www.youtube.com/youtubei/v1/player",
+                   headers=_IOS_HDR, json=payload)
+        r.raise_for_status()
+        data = r.json()
+
+    title    = data.get("videoDetails", {}).get("title", "video")
+    duration = int(data.get("videoDetails", {}).get("lengthSeconds", 0))
+
+    formats = data.get("streamingData", {}).get("formats", [])
+    best = max(
+        (f for f in formats if "url" in f and 0 < f.get("height", 0) <= 720),
+        key=lambda f: f.get("height", 0),
+        default=None,
+    )
+    if not best:
+        raise RuntimeError("Innertube: aucun stream combiné trouvé")
+
+    with httpx.Client(timeout=600, follow_redirects=True) as c:
+        with c.stream("GET", best["url"], headers={"User-Agent": _IOS_UA}) as r:
+            r.raise_for_status()
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_bytes(65536):
+                    f.write(chunk)
+
+    logger.info(f"Innertube OK: {title}  {Path(out_path).stat().st_size // 1024} KB")
+    return title, duration
+
+
+def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
+    """Fallback yt-dlp si Innertube échoue."""
     ydl_opts = {
-        "format": (
-            "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]"
-            "/best[height<=720][ext=mp4]/best[height<=720]/best"
-        ),
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best",
         "outtmpl": str(out_dir / "source.%(ext)s"),
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["ios"]}},
+        "extractor_args": {"youtube": {"player_client": ["tv_embedded", "ios"]}},
     }
     if _COOKIE_FILE:
         ydl_opts["cookiefile"] = _COOKIE_FILE
-
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         title    = info.get("title", "Video")
         duration = int(info.get("duration", 0))
-
     for ext in ["mp4", "mkv", "webm"]:
         p = out_dir / f"source.{ext}"
         if p.exists() and p.stat().st_size > 10_000:
-            logger.info(f"[yt-dlp] {p.name}  {p.stat().st_size // 1024} KB")
             return str(p), title, duration
-
     raise RuntimeError("yt-dlp: aucun fichier produit")
+
+
+# ── STEP 1 : Téléchargement ─────────────────────────────────────────────────────
+def download_video(url: str, out_dir: Path) -> tuple[str, str, int]:
+    m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', url)
+    if m:
+        out_path = str(out_dir / "source.mp4")
+        try:
+            title, duration = _innertube_download(m.group(1), out_path)
+            if Path(out_path).stat().st_size > 100_000:
+                return out_path, title, duration
+        except Exception as e:
+            logger.warning(f"Innertube failed ({e}) — fallback yt-dlp")
+    return _ytdlp_download(url, out_dir)
 
 # ── STEP 2 : Transcription faster-whisper ──────────────────────────────────────
 def transcribe(video_path: str) -> tuple[list, float]:
@@ -374,6 +429,78 @@ def shorts_file(job_id: str, filename: str):
     if ".." in job_id + filename:
         raise HTTPException(400, "Chemin invalide")
     path = WORK_DIR / job_id / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+# ── Clip Export (télécharge + découpe un clip précis) ───────────────────────────
+CLIP_EXPORTS: dict = {}
+
+class ClipExportRequest(BaseModel):
+    video_id: str
+    start: float
+    end: float
+
+async def run_clip_export(job_id: str, video_id: str, start: float, end: float, out_dir: Path) -> None:
+    tmp = str(out_dir / "source.mp4")
+    try:
+        CLIP_EXPORTS[job_id]["progress"] = "Téléchargement…"
+        try:
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _innertube_download(video_id, tmp)
+            )
+        except Exception as e:
+            logger.warning(f"clip-export Innertube failed ({e}), fallback yt-dlp")
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _ytdlp_download(url, out_dir)
+            )
+            for ext in ["mp4", "mkv", "webm"]:
+                p = out_dir / f"source.{ext}"
+                if p.exists():
+                    if str(p) != tmp:
+                        p.rename(tmp)
+                    break
+
+        if not Path(tmp).exists() or Path(tmp).stat().st_size < 10_000:
+            raise RuntimeError("Téléchargement échoué")
+
+        CLIP_EXPORTS[job_id]["progress"] = "Découpe…"
+        out_path = str(out_dir / f"clip_{job_id[:8]}.mp4")
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: crop_clip(tmp, start, end, out_path)
+        )
+        Path(tmp).unlink(missing_ok=True)
+        CLIP_EXPORTS[job_id] = {
+            "status": "done",
+            "download_url": f"/clip-export-file/{job_id}/{Path(out_path).name}",
+        }
+    except Exception as e:
+        logger.error(f"clip-export {job_id[:8]} fatal: {e}")
+        Path(tmp).unlink(missing_ok=True)
+        CLIP_EXPORTS[job_id] = {"status": "error", "error": str(e)}
+
+@app.post("/clip-export")
+async def clip_export(req: ClipExportRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    job_id  = str(uuid.uuid4())[:12]
+    out_dir = WORK_DIR / f"ce_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    CLIP_EXPORTS[job_id] = {"status": "processing", "progress": "Démarrage…"}
+    tasks.add_task(run_clip_export, job_id, req.video_id, req.start, req.end, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+@app.get("/clip-export-status/{job_id}")
+def clip_export_status(job_id: str, _=Depends(auth)):
+    job = CLIP_EXPORTS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+@app.get("/clip-export-file/{job_id}/{filename}")
+def clip_export_file(job_id: str, filename: str):
+    if ".." in job_id + filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = WORK_DIR / f"ce_{job_id}" / filename
     if not path.exists():
         raise HTTPException(404, "Fichier introuvable")
     return FileResponse(str(path), media_type="video/mp4", filename=filename)
