@@ -1,6 +1,661 @@
-from fastapi import FastAPI
-app = FastAPI()
+"""
+Créatis Repurpose Service
+Based on: github.com/SamurAIGPT/AI-Youtube-Shorts-Generator (local mode)
+
+POST /generate-shorts  { youtube_url, num_clips=3 }  → { job_id }
+GET  /shorts-status/{job_id}                          → { status, clips? }
+GET  /shorts-file/{job_id}/{filename}                 → MP4
+POST /clips            { url, n_clips=5 }             → { session_id }
+GET  /status/{session_id}                             → { status, result }
+POST /clip-export      { video_id, start, end }       → { job_id }
+GET  /clip-export-status/{job_id}                     → { status, download_url? }
+GET  /clip-export-file/{job_id}/{filename}            → MP4
+GET  /health
+"""
+import os, uuid, json, re, asyncio, subprocess, tempfile, logging
+from pathlib import Path
+from typing import Optional, List, Dict
+
+import httpx
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("creatis")
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
+SERVICE_SECRET = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
+WHISPER_MODEL  = os.environ.get("WHISPER_MODEL", "base")
+
+WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
+WORK_DIR.mkdir(exist_ok=True)
+
+JOBS:         dict = {}
+CLIPS:        dict = {}
+CLIP_EXPORTS: dict = {}
+
+app = FastAPI(title="Créatis Shorts")
+security = HTTPBearer(auto_error=False)
+
+
+def auth(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    if SERVICE_SECRET and (not creds or creds.credentials != SERVICE_SECRET):
+        raise HTTPException(401, "Non autorisé")
+
+
+# ── Models ────────────────────────────────────────────────────────────────────
+
+class GenerateRequest(BaseModel):
+    youtube_url: str
+    num_clips: int = 3
+
+class ClipsRequest(BaseModel):
+    url: str
+    n_clips: int = 5
+
+class ClipExportRequest(BaseModel):
+    video_id: str
+    start: float
+    end: float
+
+
+# ── 1. DOWNLOAD ───────────────────────────────────────────────────────────────
+
+_COBALT_INSTANCES = [
+    "https://api.cobalt.tools",
+    "https://co.wuk.sh",
+    "https://cobalt.imput.net",
+]
+
+
+def _direct_download(url: str, out_path: str) -> None:
+    with httpx.Client(timeout=600, follow_redirects=True) as c:
+        with c.stream("GET", url) as r:
+            r.raise_for_status()
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_bytes(65536):
+                    f.write(chunk)
+    sz = Path(out_path).stat().st_size
+    if sz < 100_000:
+        raise RuntimeError(f"Fichier trop petit: {sz} bytes")
+    logger.info(f"Download OK: {sz // 1024} KB")
+
+
+def _cobalt_download(youtube_url: str, out_path: str) -> None:
+    last_err = None
+    for base in _COBALT_INSTANCES:
+        try:
+            with httpx.Client(timeout=30) as c:
+                r = c.post(
+                    f"{base}/",
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic"},
+                )
+                r.raise_for_status()
+                data = r.json()
+            status = data.get("status")
+            logger.info(f"Cobalt {base}: status={status}")
+            if status in ("stream", "tunnel", "redirect", "picker"):
+                dl_url = data.get("url") or (data.get("picker", [{}])[0].get("url"))
+                if not dl_url:
+                    raise RuntimeError("Cobalt: pas d'URL")
+                _direct_download(dl_url, out_path)
+                return
+            raise RuntimeError(f"Cobalt: {data.get('error', {}).get('code', status)}")
+        except Exception as e:
+            logger.warning(f"Cobalt {base} failed: {e}")
+            last_err = e
+    raise RuntimeError(f"Cobalt: tous les serveurs ont échoué: {last_err}")
+
+
+def _ytdlp_download(youtube_url: str, out_dir: Path) -> str:
+    import yt_dlp
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+        "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
+        "merge_output_format": "mp4",
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(youtube_url, download=True)
+        path = ydl.prepare_filename(info)
+        if not os.path.exists(path):
+            stem = os.path.splitext(path)[0]
+            for ext in (".mp4", ".mkv", ".webm"):
+                if os.path.exists(stem + ext):
+                    path = stem + ext
+                    break
+    logger.info(f"yt-dlp OK: {path}")
+    return path
+
+
+def download_video(youtube_url: str, out_dir: Path) -> str:
+    out_path = str(out_dir / "source.mp4")
+    try:
+        _cobalt_download(youtube_url, out_path)
+        return out_path
+    except Exception as e:
+        logger.warning(f"Cobalt failed ({e}) — fallback yt-dlp")
+    return _ytdlp_download(youtube_url, out_dir)
+
+
+# ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
+
+def transcribe(media_path: str) -> Dict:
+    from faster_whisper import WhisperModel
+    logger.info(f"[whisper] model={WHISPER_MODEL} device=cpu")
+    model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    segs_iter, info = model.transcribe(
+        media_path, beam_size=5, vad_filter=True, condition_on_previous_text=False
+    )
+    segments = [
+        {"start": float(s.start), "end": float(s.end), "text": (s.text or "").strip()}
+        for s in segs_iter
+    ]
+    duration = float(getattr(info, "duration", 0.0)) or (segments[-1]["end"] if segments else 0.0)
+    logger.info(f"[whisper] {len(segments)} segments  {duration:.0f}s")
+    return {"duration": duration, "segments": segments}
+
+
+# ── 3. HIGHLIGHT DETECTION — SamurAI prompts + Gemini ────────────────────────
+
+_VIRALITY_CRITERIA = """
+1. HOOK MOMENTS — statements that create immediate curiosity ("The secret is...", "Nobody talks about...")
+2. EMOTIONAL PEAKS — genuine surprise, laughter, anger, vulnerability, excitement
+3. OPINION BOMBS — strong, polarizing or counter-intuitive statements
+4. REVELATION MOMENTS — surprising facts, stats, or confessions that reframe thinking
+5. CONFLICT/TENSION — disagreement, pushback, or a problem being confronted head-on
+6. QUOTABLE ONE-LINERS — a sentence that works as a standalone quote card
+7. STORY PEAKS — the climax or twist of an anecdote; the payoff moment
+8. PRACTICAL VALUE — a concrete tip, hack, or insight the viewer can immediately apply
+"""
+
+_CONTENT_TYPE_PROMPT = """Analyze this transcript sample and classify the content type.
+Choose one: podcast, interview, tutorial, lecture, commentary, debate, vlog, other.
+Also estimate density: low, medium, or high.
+Respond ONLY with JSON (no markdown): {"content_type": "...", "density": "..."}"""
+
+_HIGHLIGHT_PROMPT = """You are an elite short-form video editor who has studied thousands of viral clips.
+
+Virality signals (ranked by impact):{virality_criteria}
+
+Content type: {content_type} | Density: {density}
+
+Find the most viral-worthy highlights from this transcript.
+
+Rules:
+- Every highlight must open with a strong HOOK that grabs attention within 3 seconds
+- Duration sweet spot: 45-90 seconds. Shorter (20-44s) only for a perfect one-liner
+- Never cut mid-sentence — each clip must feel complete and self-contained
+- Clips must not overlap significantly with each other
+- Score 0-100 on viral potential (not general quality)
+- Generate at least {min_clips} highlights
+- Include hook_sentence (the opening line) and virality_reason (one sentence why this is viral)
+
+Respond ONLY with valid JSON (no markdown, no explanation):
+{{"highlights":[{{"title":"string","start_time":float,"end_time":float,"score":int,"hook_sentence":"string","virality_reason":"string"}}]}}"""
+
+
+async def _gemini(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY manquant")
+    async with httpx.AsyncClient(timeout=120) as c:
+        r = await c.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
+            },
+        )
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+
+def _parse_json(raw: str) -> Dict:
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE).strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        s, e = text.find("{"), text.rfind("}")
+        if s != -1 and e != -1:
+            return json.loads(text[s : e + 1])
+        raise
+
+
+def _dedupe_highlights(highlights: List[Dict]) -> List[Dict]:
+    highlights = sorted(highlights, key=lambda h: int(h.get("score", 0)), reverse=True)
+    kept: List[Dict] = []
+    for h in highlights:
+        hs, he = float(h["start_time"]), float(h["end_time"])
+        dur = he - hs
+        if not any(
+            min(he, float(k["end_time"])) - max(hs, float(k["start_time"])) > 0.5 * dur
+            for k in kept
+        ):
+            kept.append(h)
+    return kept
+
+
+async def get_highlights(transcript: Dict, num_clips: int) -> List[Dict]:
+    segments = transcript["segments"]
+
+    # Detect content type
+    sample = " ".join(s["text"] for s in segments[:25])[:3000]
+    try:
+        raw = await _gemini(f"{_CONTENT_TYPE_PROMPT}\n\nTranscript sample:\n{sample}")
+        content_info = _parse_json(raw)
+    except Exception:
+        content_info = {"content_type": "other", "density": "medium"}
+    logger.info(f"[highlights] content={content_info.get('content_type')} density={content_info.get('density')}")
+
+    # Build transcript text (limit to 12k chars)
+    transcript_text = "\n".join(
+        f"[{s['start']:.1f}s] {s['text'].strip()}" for s in segments
+    )[:12000]
+
+    prompt = (
+        _HIGHLIGHT_PROMPT.format(
+            virality_criteria=_VIRALITY_CRITERIA,
+            content_type=content_info.get("content_type", "other"),
+            density=content_info.get("density", "medium"),
+            min_clips=max(num_clips * 2, 5),
+        )
+        + f"\n\nTranscript:\n{transcript_text}"
+    )
+
+    raw = await _gemini(prompt)
+    data = _parse_json(raw)
+    highlights = _dedupe_highlights(data.get("highlights", []))
+    logger.info(f"[highlights] {len(highlights)} moments after dedup")
+    return highlights
+
+
+# ── 4. CLIP CROP — SamurAI exact (ffmpeg + OpenCV face tracking) ──────────────
+
+def _cut_subclip(source: str, start: float, end: float, out: str) -> None:
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-i", source,
+        "-ss", f"{start:.3f}", "-to", f"{end:.3f}",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "128k",
+        out,
+    ]
+    r = subprocess.run(cmd, capture_output=True, timeout=120)
+    if r.returncode != 0:
+        raise RuntimeError(f"ffmpeg cut: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
+
+
+def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -> None:
+    import cv2
+
+    tw, th = (float(x) for x in aspect_ratio.split(":"))
+    target_ratio = tw / th
+
+    cap = cv2.VideoCapture(in_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"Impossible d'ouvrir: {in_path}")
+
+    src_w  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    src_h  = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps    = cap.get(cv2.CAP_PROP_FPS) or 30.0
+
+    if target_ratio < src_w / src_h:
+        crop_h, crop_w = src_h, int(src_h * target_ratio)
+    else:
+        crop_w, crop_h = src_w, int(src_w / target_ratio)
+    crop_w = max(2, crop_w - crop_w % 2)
+    crop_h = max(2, crop_h - crop_h % 2)
+
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
+    silent_path = out_path + ".silent.mp4"
+    writer = cv2.VideoWriter(silent_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (crop_w, crop_h))
+
+    last_center = None
+    smoothing = 0.15
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
+        if len(faces) > 0:
+            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+            cx, cy = x + w // 2, y + h // 2
+            if last_center is None:
+                last_center = (cx, cy)
+            else:
+                lx, ly = last_center
+                last_center = (
+                    int(lx + (cx - lx) * smoothing),
+                    int(ly + (cy - ly) * smoothing),
+                )
+        if last_center is None:
+            last_center = (src_w // 2, src_h // 2)
+
+        cx, cy = last_center
+        x0 = max(0, min(src_w - crop_w, cx - crop_w // 2))
+        y0 = max(0, min(src_h - crop_h, cy - crop_h // 2))
+        writer.write(frame[y0 : y0 + crop_h, x0 : x0 + crop_w])
+
+    cap.release()
+    writer.release()
+
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-i", silent_path, "-i", in_path,
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+        "-map", "0:v:0", "-map", "1:a:0?", "-shortest",
+        out_path,
+    ]
+    r = subprocess.run(cmd, capture_output=True, timeout=120)
+    try:
+        os.remove(silent_path)
+    except OSError:
+        pass
+    if r.returncode != 0:
+        raise RuntimeError(f"ffmpeg remux: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
+
+
+def crop_clip(source: str, start: float, end: float, out: str) -> None:
+    cut_tmp = out + ".cut.mp4"
+    try:
+        _cut_subclip(source, start, end, cut_tmp)
+        _reframe_vertical(cut_tmp, out)
+    finally:
+        if os.path.exists(cut_tmp):
+            os.remove(cut_tmp)
+
+
+# ── 5. JOBS ────────────────────────────────────────────────────────────────────
+
+async def run_generate_shorts(job_id: str, url: str, num_clips: int, out_dir: Path) -> None:
+    source = None
+
+    def upd(msg: str) -> None:
+        JOBS[job_id]["progress"] = msg
+        logger.info(f"[{job_id[:8]}] {msg}")
+
+    try:
+        upd("Téléchargement…")
+        source = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: download_video(url, out_dir)
+        )
+
+        upd("Transcription Whisper…")
+        transcript = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: transcribe(source)
+        )
+        if not transcript["segments"]:
+            raise RuntimeError("Aucun segment Whisper — vidéo sans parole ?")
+
+        upd("Analyse Gemini…")
+        highlights = await get_highlights(transcript, num_clips)
+        if not highlights:
+            raise RuntimeError("Aucun moment viral identifié")
+
+        top = sorted(highlights, key=lambda h: int(h.get("score", 0)), reverse=True)[:num_clips]
+
+        clips = []
+        for i, h in enumerate(top):
+            upd(f"Short {i + 1}/{len(top)}…")
+            out_path = str(out_dir / f"short_{i + 1:02d}_{job_id[:8]}.mp4")
+            try:
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda st=float(h["start_time"]), en=float(h["end_time"]), o=out_path:
+                        crop_clip(source, st, en, o),
+                )
+                size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
+                clips.append({
+                    "title":           h.get("title", f"Short {i + 1}"),
+                    "hook":            h.get("hook_sentence", ""),
+                    "virality_reason": h.get("virality_reason", ""),
+                    "score":           int(h.get("score", 80)),
+                    "start":           round(float(h["start_time"]), 1),
+                    "end":             round(float(h["end_time"]), 1),
+                    "duration":        round(float(h["end_time"]) - float(h["start_time"]), 1),
+                    "download_url":    f"/shorts-file/{job_id}/{Path(out_path).name}",
+                    "filename":        Path(out_path).name,
+                    "size_mb":         size_mb,
+                })
+                logger.info(f"Short {i + 1} OK  {size_mb} MB")
+            except Exception as e:
+                logger.error(f"Short {i + 1} FAILED: {e}")
+
+        if source:
+            Path(source).unlink(missing_ok=True)
+
+        if not clips:
+            raise RuntimeError("Tous les shorts ont échoué")
+
+        JOBS[job_id] = {"status": "done", "clips": clips}
+
+    except Exception as e:
+        logger.error(f"Job {job_id[:8]} fatal: {e}")
+        if source:
+            Path(source).unlink(missing_ok=True)
+        JOBS[job_id] = {"status": "error", "error": str(e)}
+
+
+# ── /clips — identify viral moments (transcript + Gemini, no video render) ────
+
+def _get_video_id(url: str) -> Optional[str]:
+    m = re.search(r"(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})", url)
+    return m.group(1) if m else None
+
+
+async def _get_subtitles(video_id: str) -> Optional[Dict]:
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        transcript_list = api.list(video_id)
+        transcript = transcript_list.find_transcript(["fr", "en"])
+        data = transcript.fetch()
+        segments = [{"start": s["start"], "end": s["start"] + s["duration"], "text": s["text"]} for s in data]
+        duration = segments[-1]["end"] if segments else 0.0
+        return {"duration": duration, "segments": segments}
+    except Exception as e:
+        logger.warning(f"Subtitles failed: {e}")
+        return None
+
+
+async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
+    if GROQ_API_KEY:
+        transcript_text = "\n".join(
+            f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in transcript["segments"]
+        )
+        prompt = f"""Tu es un expert YouTube Shorts. Analyse cette transcription et identifie les {n} meilleurs moments pour en faire des Shorts viraux.
+
+Pour chaque moment :
+- start_time : timestamp début (secondes)
+- end_time : timestamp fin (secondes, max 90s après start)
+- title : titre accrocheur (max 8 mots)
+- hook : première phrase d'accroche
+- score : score viralité 0-100
+
+Réponds UNIQUEMENT en JSON valide :
+{{"clips":[{{"start_time":12.5,"end_time":67.0,"title":"...","hook":"...","score":88}}]}}
+
+Transcription :
+{transcript_text[:8000]}"""
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                      "temperature": 0.7, "max_tokens": 2048},
+            )
+            r.raise_for_status()
+            raw = r.json()["choices"][0]["message"]["content"].strip()
+        data = _parse_json(raw)
+        return data.get("clips", [])
+
+    # fallback Gemini
+    highlights = await get_highlights(transcript, n)
+    return [
+        {"start_time": h["start_time"], "end_time": h["end_time"],
+         "title": h.get("title", ""), "hook": h.get("hook_sentence", ""),
+         "score": h.get("score", 80)}
+        for h in highlights[:n]
+    ]
+
+
+async def run_clips(session_id: str, url: str, n_clips: int) -> None:
+    try:
+        video_id = _get_video_id(url)
+        if not video_id:
+            raise RuntimeError("URL YouTube invalide")
+
+        transcript = await _get_subtitles(video_id)
+
+        if not transcript:
+            out_dir = WORK_DIR / f"cl_{session_id}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            source = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: download_video(url, out_dir)
+            )
+            transcript = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: transcribe(source)
+            )
+            Path(source).unlink(missing_ok=True)
+
+        if not transcript or not transcript["segments"]:
+            raise RuntimeError("Impossible d'obtenir la transcription")
+
+        clips = await _identify_clips(transcript, n_clips)
+        CLIPS[session_id] = {"status": "done", "result": clips}
+
+    except Exception as e:
+        logger.error(f"Clips {session_id[:8]} fatal: {e}")
+        CLIPS[session_id] = {"status": "error", "error": str(e)}
+
+
+# ── /clip-export — download + cut + crop a specific moment ────────────────────
+
+async def run_clip_export(job_id: str, video_id: str, start: float, end: float, out_dir: Path) -> None:
+    source = str(out_dir / "source.mp4")
+    yt_url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        CLIP_EXPORTS[job_id]["progress"] = "Téléchargement…"
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: download_video(yt_url, out_dir)
+        )
+        if not Path(source).exists() or Path(source).stat().st_size < 10_000:
+            # yt-dlp may have written with video id in filename
+            for p in out_dir.glob("source_*.mp4"):
+                p.rename(source)
+                break
+
+        if not Path(source).exists() or Path(source).stat().st_size < 10_000:
+            raise RuntimeError("Téléchargement échoué")
+
+        CLIP_EXPORTS[job_id]["progress"] = "Découpe…"
+        out_path = str(out_dir / f"clip_{job_id[:8]}.mp4")
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: crop_clip(source, start, end, out_path)
+        )
+        Path(source).unlink(missing_ok=True)
+        CLIP_EXPORTS[job_id] = {
+            "status": "done",
+            "download_url": f"/clip-export-file/{job_id}/{Path(out_path).name}",
+        }
+    except Exception as e:
+        logger.error(f"clip-export {job_id[:8]} fatal: {e}")
+        try:
+            Path(source).unlink(missing_ok=True)
+        except Exception:
+            pass
+        CLIP_EXPORTS[job_id] = {"status": "error", "error": str(e)}
+
+
+# ── ENDPOINTS ──────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
+
+
+@app.post("/generate-shorts")
+async def generate_shorts(req: GenerateRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    if "youtube.com" not in req.youtube_url and "youtu.be" not in req.youtube_url:
+        raise HTTPException(400, "URL YouTube invalide")
+    job_id  = str(uuid.uuid4())[:12]
+    out_dir = WORK_DIR / job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
+    tasks.add_task(run_generate_shorts, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir)
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/shorts-status/{job_id}")
+def shorts_status(job_id: str, _=Depends(auth)):
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+
+@app.get("/shorts-file/{job_id}/{filename}")
+def shorts_file(job_id: str, filename: str):
+    if ".." in job_id + filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = WORK_DIR / job_id / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+
+@app.post("/clips")
+async def clips(req: ClipsRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    session_id = str(uuid.uuid4())[:12]
+    CLIPS[session_id] = {"status": "processing"}
+    tasks.add_task(run_clips, session_id, req.url, min(max(1, req.n_clips), 10))
+    return {"session_id": session_id}
+
+
+@app.get("/status/{session_id}")
+def clips_status(session_id: str, _=Depends(auth)):
+    job = CLIPS.get(session_id)
+    if not job:
+        raise HTTPException(404, "Session introuvable")
+    return job
+
+
+@app.post("/clip-export")
+async def clip_export(req: ClipExportRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    job_id  = str(uuid.uuid4())[:12]
+    out_dir = WORK_DIR / f"ce_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    CLIP_EXPORTS[job_id] = {"status": "processing", "progress": "Démarrage…"}
+    tasks.add_task(run_clip_export, job_id, req.video_id, req.start, req.end, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/clip-export-status/{job_id}")
+def clip_export_status(job_id: str, _=Depends(auth)):
+    job = CLIP_EXPORTS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+
+@app.get("/clip-export-file/{job_id}/{filename}")
+def clip_export_file(job_id: str, filename: str):
+    if ".." in job_id + filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = WORK_DIR / f"ce_{job_id}" / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
