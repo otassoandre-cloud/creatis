@@ -65,27 +65,28 @@ class GenerateRequest(BaseModel):
     num_clips: int = 3
 
 # ── Innertube iOS — download direct sans bot detection ─────────────────────────
-_IOS_UA  = "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 17_6 like Mac OS X;)"
+_IOS_VER = "19.09.4"
+_IOS_UA  = f"com.google.ios.youtube/{_IOS_VER} (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)"
 _IOS_HDR = {
     "Content-Type": "application/json",
     "User-Agent": _IOS_UA,
     "X-YouTube-Client-Name": "5",
-    "X-YouTube-Client-Version": "19.45.4",
+    "X-YouTube-Client-Version": _IOS_VER,
 }
+_INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc&prettyPrint=false"
 
 def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
     """Récupère l'URL de stream via Innertube iOS et télécharge directement."""
     payload = {
         "videoId": video_id,
         "context": {"client": {
-            "clientName": "IOS", "clientVersion": "19.45.4",
-            "deviceModel": "iPhone16,2", "userAgent": _IOS_UA,
+            "clientName": "IOS", "clientVersion": _IOS_VER,
+            "deviceModel": "iPhone14,3", "userAgent": _IOS_UA,
             "hl": "en", "gl": "US",
         }}
     }
     with httpx.Client(timeout=30) as c:
-        r = c.post("https://www.youtube.com/youtubei/v1/player",
-                   headers=_IOS_HDR, json=payload)
+        r = c.post(_INNERTUBE_URL, headers=_IOS_HDR, json=payload)
         r.raise_for_status()
         data = r.json()
 
