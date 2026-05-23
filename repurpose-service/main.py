@@ -52,6 +52,8 @@ def auth(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
 class GenerateRequest(BaseModel):
     youtube_url: str
     num_clips: int = 3
+    video_url: Optional[str] = None   # stream URL pré-résolu par Vercel (Innertube)
+    audio_url: Optional[str] = None
 
 class ClipsRequest(BaseModel):
     url: str
@@ -98,6 +100,36 @@ def _resolve_path(ydl: "yt_dlp.YoutubeDL", info: dict, out_dir: Path) -> str:
     return path
 
 
+def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: Path) -> str:
+    """Télécharge via URL signée (Innertube). Pas de bot detection."""
+    out_path = str(out_dir / "source.mp4")
+    if audio_url:
+        # Flux séparés → ffmpeg merge
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", video_url, "-i", audio_url,
+            "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+            "-map", "0:v:0", "-map", "1:a:0",
+            out_path,
+        ]
+    else:
+        # Flux combiné → téléchargement direct
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", video_url,
+            "-c", "copy",
+            out_path,
+        ]
+    r = subprocess.run(cmd, capture_output=True, timeout=300)
+    if r.returncode != 0:
+        raise RuntimeError(f"ffmpeg download: {(r.stdout + r.stderr).decode(errors='replace')[:300]}")
+    if not os.path.exists(out_path) or os.path.getsize(out_path) < 10_000:
+        raise RuntimeError("Fichier téléchargé vide ou manquant")
+    size_mb = os.path.getsize(out_path) / 1_048_576
+    logger.info(f"Direct download OK: {size_mb:.1f} MB")
+    return out_path
+
+
 def download_video(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
     base_opts = {
@@ -111,17 +143,6 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         base_opts["cookiefile"] = cookies_file
         logger.info("yt-dlp: utilisation des cookies YouTube")
 
-    # Diagnostic : liste les formats disponibles
-    try:
-        with yt_dlp.YoutubeDL({**base_opts, "quiet": True}) as ydl:
-            info = ydl.extract_info(youtube_url, download=False)
-            fmts = info.get("formats", []) if info else []
-            ids = [f"{f.get('format_id')}({f.get('height','?')}p)" for f in fmts[-10:]]
-            logger.info(f"Formats dispo: {ids}")
-    except Exception as e:
-        logger.warning(f"Diagnostic formats failed: {e}")
-
-    # Cascade du plus qualitatif au plus permissif
     formats = [
         "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
         "best",
@@ -346,77 +367,75 @@ def _cut_subclip(source: str, start: float, end: float, out: str) -> None:
         raise RuntimeError(f"ffmpeg cut: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
 
 
-def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -> None:
-    import cv2
+def _get_video_dimensions(in_path: str):
+    r = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", in_path],
+        capture_output=True, text=True, timeout=30,
+    )
+    streams = json.loads(r.stdout).get("streams", []) if r.returncode == 0 else []
+    v = next((s for s in streams if s.get("codec_type") == "video"), {})
+    return int(v.get("width", 1920)), int(v.get("height", 1080))
 
+
+def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -> None:
     tw, th = (float(x) for x in aspect_ratio.split(":"))
     target_ratio = tw / th
 
-    cap = cv2.VideoCapture(in_path)
-    if not cap.isOpened():
-        raise RuntimeError(f"Impossible d'ouvrir: {in_path}")
+    src_w, src_h = _get_video_dimensions(in_path)
 
-    src_w  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    src_h  = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps    = cap.get(cv2.CAP_PROP_FPS) or 30.0
-
+    # Calcule le crop 9:16 centré
     if target_ratio < src_w / src_h:
-        crop_h, crop_w = src_h, int(src_h * target_ratio)
+        crop_w = int(src_h * target_ratio)
+        crop_h = src_h
     else:
-        crop_w, crop_h = src_w, int(src_w / target_ratio)
+        crop_w = src_w
+        crop_h = int(src_w / target_ratio)
     crop_w = max(2, crop_w - crop_w % 2)
     crop_h = max(2, crop_h - crop_h % 2)
 
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
-    silent_path = out_path + ".silent.mp4"
-    writer = cv2.VideoWriter(silent_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (crop_w, crop_h))
+    x0 = (src_w - crop_w) // 2
+    y0 = (src_h - crop_h) // 2
 
-    last_center = None
-    smoothing = 0.15
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
-        if len(faces) > 0:
-            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-            cx, cy = x + w // 2, y + h // 2
-            if last_center is None:
-                last_center = (cx, cy)
-            else:
-                lx, ly = last_center
-                last_center = (
-                    int(lx + (cx - lx) * smoothing),
-                    int(ly + (cy - ly) * smoothing),
-                )
-        if last_center is None:
-            last_center = (src_w // 2, src_h // 2)
-
-        cx, cy = last_center
-        x0 = max(0, min(src_w - crop_w, cx - crop_w // 2))
-        y0 = max(0, min(src_h - crop_h, cy - crop_h // 2))
-        writer.write(frame[y0 : y0 + crop_h, x0 : x0 + crop_w])
-
-    cap.release()
-    writer.release()
+    # Tente le face-tracking OpenCV en bonus — sinon centre
+    try:
+        import cv2
+        cap = cv2.VideoCapture(in_path)
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        centers = []
+        frame_step = max(1, int((cap.get(cv2.CAP_PROP_FRAME_COUNT) or 300) // 30))
+        fi = 0
+        while len(centers) < 30:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
+            if len(faces) > 0:
+                fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+                centers.append(fx + fw // 2)
+            fi += frame_step
+        cap.release()
+        if centers:
+            avg_cx = int(sum(centers) / len(centers))
+            x0 = max(0, min(src_w - crop_w, avg_cx - crop_w // 2))
+            logger.info(f"Face tracking: cx={avg_cx} → crop x={x0}")
+    except Exception as e:
+        logger.info(f"Face tracking skipped ({e}) — centre")
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
-        "-i", silent_path, "-i", in_path,
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
-        "-map", "0:v:0", "-map", "1:a:0?", "-shortest",
+        "-i", in_path,
+        "-vf", f"crop={crop_w}:{crop_h}:{x0}:{y0}",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+        "-c:a", "aac", "-b:a", "128k",
         out_path,
     ]
-    r = subprocess.run(cmd, capture_output=True, timeout=120)
-    try:
-        os.remove(silent_path)
-    except OSError:
-        pass
+    r = subprocess.run(cmd, capture_output=True, timeout=300)
     if r.returncode != 0:
-        raise RuntimeError(f"ffmpeg remux: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
+        raise RuntimeError(f"ffmpeg crop: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
 
 
 def crop_clip(source: str, start: float, end: float, out: str) -> None:
@@ -431,7 +450,10 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
 
 # ── 5. JOBS ────────────────────────────────────────────────────────────────────
 
-async def run_generate_shorts(job_id: str, url: str, num_clips: int, out_dir: Path) -> None:
+async def run_generate_shorts(
+    job_id: str, url: str, num_clips: int, out_dir: Path,
+    video_url: Optional[str] = None, audio_url: Optional[str] = None,
+) -> None:
     source = None
 
     def upd(msg: str) -> None:
@@ -440,9 +462,15 @@ async def run_generate_shorts(job_id: str, url: str, num_clips: int, out_dir: Pa
 
     try:
         upd("Téléchargement…")
-        source = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video(url, out_dir)
-        )
+        if video_url:
+            logger.info("Direct URL download (Innertube)")
+            source = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: download_from_direct_url(video_url, audio_url, out_dir)
+            )
+        else:
+            source = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: download_video(url, out_dir)
+            )
 
         upd("Transcription Whisper…")
         transcript = await transcribe(source)
@@ -663,7 +691,7 @@ async def generate_shorts(req: GenerateRequest, tasks: BackgroundTasks, _=Depend
     out_dir = WORK_DIR / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
-    tasks.add_task(run_generate_shorts, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir)
+    tasks.add_task(run_generate_shorts, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url, req.audio_url)
     return {"ok": True, "job_id": job_id}
 
 
