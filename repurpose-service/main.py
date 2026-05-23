@@ -98,12 +98,8 @@ if not _COOKIE_FILE and YOUTUBE_COOKIES_B64:
 def _yt_opts(**extra) -> dict:
     """Options yt-dlp de base avec cookies si disponibles."""
     opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["tv_embedded", "ios"]}},
-        "http_headers": {
-            "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)",
-        },
+        "quiet": False,
+        "no_warnings": False,
         **extra,
     }
     if _COOKIE_FILE:
@@ -848,8 +844,7 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         def _export():
             # Étape 1 : extraire URLs via yt-dlp (avec cookies si disponibles)
             opts = _yt_opts(
-                format="bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best",
-                skip_download=True,
+                format="best",
             )
             logger.info(f"[export {job_id[:8]}] yt-dlp extract {video_id}…")
             with yt_dlp.YoutubeDL(opts) as ydl:
