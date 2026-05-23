@@ -237,20 +237,63 @@ def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
 
 
 # ── STEP 1 : Téléchargement ─────────────────────────────────────────────────────
+# ── Cobalt API — téléchargement via service tiers (IPs résidentielles) ──────────
+_COBALT_INSTANCES = [
+    "https://api.cobalt.tools",
+    "https://co.wuk.sh",
+    "https://cobalt.imput.net",
+]
+
+def _cobalt_download(youtube_url: str, out_path: str) -> None:
+    """Télécharge via Cobalt API — contourne bot detection YouTube."""
+    last_err = None
+    for base in _COBALT_INSTANCES:
+        try:
+            with httpx.Client(timeout=30) as c:
+                r = c.post(f"{base}/",
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic"}
+                )
+                r.raise_for_status()
+                data = r.json()
+            status = data.get("status")
+            logger.info(f"Cobalt {base}: status={status}")
+            if status in ("stream", "tunnel", "redirect", "picker"):
+                dl_url = data.get("url") or (data.get("picker", [{}])[0].get("url"))
+                if not dl_url:
+                    raise RuntimeError(f"Cobalt: pas d'URL dans la réponse")
+                _direct_download(dl_url, out_path)
+                return
+            else:
+                raise RuntimeError(f"Cobalt: {data.get('error', {}).get('code', status)}")
+        except Exception as e:
+            logger.warning(f"Cobalt {base} failed: {e}")
+            last_err = e
+            continue
+    raise RuntimeError(f"Tous les serveurs Cobalt ont échoué: {last_err}")
+
+
 def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None, audio_url: Optional[str] = None) -> tuple[str, str, int]:
-    # Priorité 1 : URL CDN pré-fetchée par Vercel (pas de bot detection)
+    out_path = str(out_dir / "source.mp4")
+
+    # Priorité 1 : URL CDN pré-fetchée par Vercel
     if direct_url:
-        out_path = str(out_dir / "source.mp4")
         if audio_url:
             _direct_download_adaptive(direct_url, audio_url, out_path)
         else:
             _direct_download(direct_url, out_path)
         return out_path, "Video", 0
 
-    # Priorité 2 : Innertube depuis Railway (fonctionne si IP non bloquée)
+    # Priorité 2 : Cobalt API (IPs résidentielles, pas de bot detection)
+    try:
+        _cobalt_download(url, out_path)
+        return out_path, "Video", 0
+    except Exception as e:
+        logger.warning(f"Cobalt failed ({e}) — fallback Innertube")
+
+    # Priorité 3 : Innertube direct
     m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', url)
     if m:
-        out_path = str(out_dir / "source.mp4")
         try:
             title, duration = _innertube_download(m.group(1), out_path)
             if Path(out_path).stat().st_size > 100_000:
@@ -258,7 +301,7 @@ def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None, au
         except Exception as e:
             logger.warning(f"Innertube failed ({e}) — fallback yt-dlp")
 
-    # Priorité 3 : yt-dlp fallback
+    # Priorité 4 : yt-dlp last resort
     return _ytdlp_download(url, out_dir)
 
 # ── STEP 2 : Transcription faster-whisper ──────────────────────────────────────
