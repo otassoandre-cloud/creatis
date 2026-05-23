@@ -110,8 +110,9 @@ def _yt_opts(**extra) -> dict:
 
 
 async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Optional[str]]:
-    """Lance Chromium headless, joue la vidéo et intercepte les URLs CDN googlevideo.com.
-    Ces URLs sont valides depuis n'importe quelle IP — seule leur génération nécessite un vrai Chrome.
+    """Lance Chromium headless, charge la page YouTube et intercepte les URLs CDN.
+    Stratégie 1 : intercept réseau (googlevideo.com).
+    Stratégie 2 : extraction depuis ytInitialPlayerResponse (JS objet intégré).
     """
     try:
         from playwright.async_api import async_playwright
@@ -126,17 +127,15 @@ async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Opti
         browser = await p.chromium.launch(
             headless=True,
             args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-extensions",
-                "--disable-sync",
-                "--mute-audio",
+                "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+                "--disable-extensions", "--disable-sync",
                 "--autoplay-policy=no-user-gesture-required",
             ]
         )
         context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 720},
         )
 
         # Charger les cookies YouTube dans le contexte browser
@@ -157,12 +156,9 @@ async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Opti
                         except (ValueError, OverflowError):
                             exp = -1
                         cookie: dict = {
-                            "name": name,
-                            "value": value,
-                            "domain": domain,
-                            "path": path,
-                            "secure": secure == "TRUE",
-                            "httpOnly": False,
+                            "name": name, "value": value,
+                            "domain": domain, "path": path,
+                            "secure": secure == "TRUE", "httpOnly": False,
                         }
                         if exp > 0:
                             cookie["expires"] = exp
@@ -175,40 +171,93 @@ async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Opti
 
         page = await context.new_page()
 
+        # Stratégie 1 : intercepter les requêtes réseau vers googlevideo.com
         async def on_request(req):
             url = req.url
             if "googlevideo.com" in url and "videoplayback" in url:
-                # Supprimer range= pour accès au stream complet
                 clean_url = re.sub(r'[&?]range=\d+-\d*', '', url)
                 if "mime=video" in url and not stream_urls["video"]:
                     stream_urls["video"] = clean_url
-                    logger.info(f"[playwright] URL vidéo interceptée ✓")
+                    logger.info("[playwright] URL vidéo interceptée via réseau ✓")
                 elif "mime=audio" in url and not stream_urls["audio"]:
                     stream_urls["audio"] = clean_url
-                    logger.info(f"[playwright] URL audio interceptée ✓")
+                    logger.info("[playwright] URL audio interceptée via réseau ✓")
 
         page.on("request", on_request)
 
         try:
-            # Utiliser l'embed player : moins de gates, autoplay plus fiable
+            # Page watch standard (plus robuste que l'embed face au GDPR)
             await page.goto(
-                f"https://www.youtube.com/embed/{video_id}?autoplay=1&controls=0",
+                f"https://www.youtube.com/watch?v={video_id}",
                 wait_until="domcontentloaded",
                 timeout=30000
             )
-            # Attendre jusqu'à 20s pour intercepter les deux URLs
-            for _ in range(40):
+
+            # Accepter le popup GDPR/cookies si présent (EU)
+            for sel in [
+                'button[aria-label*="Accept all"]',
+                'button[aria-label*="Tout accepter"]',
+                'button[aria-label*="Accepter tout"]',
+                '.eom-button-row button:first-child',
+                'form[action*="consent.youtube.com"] button',
+                '#yDmH0d button.VfPpkd-LgbsSe',
+            ]:
+                try:
+                    await page.click(sel, timeout=1500)
+                    logger.info(f"[playwright] Consent accepté ({sel})")
+                    await asyncio.sleep(1)
+                    break
+                except Exception:
+                    pass
+
+            # Forcer la lecture via JS
+            try:
+                await page.evaluate("""
+                    () => { const v = document.querySelector('video'); if (v) { v.muted = true; v.play(); } }
+                """)
+            except Exception:
+                pass
+
+            # Attendre jusqu'à 15s les URLs réseau
+            for _ in range(30):
                 if stream_urls["video"] and stream_urls["audio"]:
                     break
                 await asyncio.sleep(0.5)
-            if stream_urls["video"] and not stream_urls["audio"]:
-                logger.info("[playwright] Seule URL vidéo trouvée (possible stream combiné)")
+
+            # Stratégie 2 : extraire depuis ytInitialPlayerResponse si réseau muet
+            if not stream_urls["video"]:
+                logger.info("[playwright] Tentative ytInitialPlayerResponse…")
+                try:
+                    urls = await page.evaluate("""
+                        () => {
+                            const pr = window.ytInitialPlayerResponse;
+                            if (!pr) return null;
+                            const fmts = (pr.streamingData?.adaptiveFormats || [])
+                                         .concat(pr.streamingData?.formats || []);
+                            const vFmt = fmts.find(f => f.mimeType?.includes('video/mp4') && f.height <= 720 && f.url)
+                                      || fmts.find(f => f.mimeType?.includes('video/') && f.url);
+                            const aFmt = fmts.find(f => f.mimeType?.includes('audio/mp4') && f.url)
+                                      || fmts.find(f => f.mimeType?.includes('audio/') && f.url);
+                            return { video: vFmt?.url || null, audio: aFmt?.url || null };
+                        }
+                    """)
+                    if urls:
+                        if urls.get("video"):
+                            stream_urls["video"] = urls["video"]
+                            logger.info("[playwright] URL vidéo via ytInitialPlayerResponse ✓")
+                        if urls.get("audio"):
+                            stream_urls["audio"] = urls["audio"]
+                            logger.info("[playwright] URL audio via ytInitialPlayerResponse ✓")
+                except Exception as e:
+                    logger.warning(f"[playwright] ytInitialPlayerResponse: {e}")
+
         except Exception as e:
             logger.warning(f"[playwright] Erreur navigation: {e}")
         finally:
             await browser.close()
 
-    logger.info(f"[playwright] Résultat: video={'OK' if stream_urls['video'] else 'MANQUANT'} audio={'OK' if stream_urls['audio'] else 'MANQUANT'}")
+    logger.info(f"[playwright] Résultat: video={'OK' if stream_urls['video'] else 'MANQUANT'} "
+                f"audio={'OK' if stream_urls['audio'] else 'MANQUANT'}")
     return stream_urls["video"], stream_urls["audio"]
 
 
