@@ -65,52 +65,78 @@ class GenerateRequest(BaseModel):
     num_clips: int = 3
 
 # ── Innertube iOS — download direct sans bot detection ─────────────────────────
-_IOS_VER = "19.09.4"
-_IOS_UA  = f"com.google.ios.youtube/{_IOS_VER} (iPhone14,3; U; CPU iOS 15_6 like Mac OS X)"
-_IOS_HDR = {
-    "Content-Type": "application/json",
-    "User-Agent": _IOS_UA,
-    "X-YouTube-Client-Name": "5",
-    "X-YouTube-Client-Version": _IOS_VER,
-}
-_INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc&prettyPrint=false"
+_INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player"
+
+# Clients à essayer dans l'ordre — TV embedded ne requiert pas de PO token
+_INNERTUBE_CLIENTS = [
+    {   # TVHTML5 Simply Embedded — le moins restrictif, pas de PO token requis
+        "name": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+        "headers": {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+        "context": {"client": {"clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "clientVersion": "2.0",
+                                "clientScreen": "EMBED", "hl": "en", "gl": "US"}},
+    },
+    {   # Android — pas de PO token pour les vidéos publiques
+        "name": "ANDROID",
+        "headers": {
+            "Content-Type": "application/json",
+            "User-Agent": "com.google.android.youtube/17.36.4 (Linux; U; Android 12) gzip",
+            "X-YouTube-Client-Name": "3",
+            "X-YouTube-Client-Version": "17.36.4",
+        },
+        "context": {"client": {"clientName": "ANDROID", "clientVersion": "17.36.4",
+                                "androidSdkVersion": 31, "hl": "en", "gl": "US"}},
+    },
+]
 
 def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
-    """Récupère l'URL de stream via Innertube iOS et télécharge directement."""
-    payload = {
-        "videoId": video_id,
-        "context": {"client": {
-            "clientName": "IOS", "clientVersion": _IOS_VER,
-            "deviceModel": "iPhone14,3", "userAgent": _IOS_UA,
-            "hl": "en", "gl": "US",
-        }}
-    }
-    with httpx.Client(timeout=30) as c:
-        r = c.post(_INNERTUBE_URL, headers=_IOS_HDR, json=payload)
-        r.raise_for_status()
-        data = r.json()
+    """Essaie plusieurs clients Innertube jusqu'à obtenir un stream."""
+    last_err = None
+    for client in _INNERTUBE_CLIENTS:
+        try:
+            payload = {"videoId": video_id, "context": client["context"]}
+            with httpx.Client(timeout=30) as c:
+                r = c.post(_INNERTUBE_URL, headers=client["headers"], json=payload)
+                r.raise_for_status()
+                data = r.json()
 
-    title    = data.get("videoDetails", {}).get("title", "video")
-    duration = int(data.get("videoDetails", {}).get("lengthSeconds", 0))
+            # Vérifier que la vidéo est accessible
+            status = data.get("playabilityStatus", {})
+            if status.get("status") not in ("OK", None):
+                raise RuntimeError(f"Innertube {client['name']}: {status.get('reason', status.get('status'))}")
 
-    formats = data.get("streamingData", {}).get("formats", [])
-    best = max(
-        (f for f in formats if "url" in f and 0 < f.get("height", 0) <= 720),
-        key=lambda f: f.get("height", 0),
-        default=None,
-    )
-    if not best:
-        raise RuntimeError("Innertube: aucun stream combiné trouvé")
+            title    = data.get("videoDetails", {}).get("title", "video")
+            duration = int(data.get("videoDetails", {}).get("lengthSeconds", 0))
 
-    with httpx.Client(timeout=600, follow_redirects=True) as c:
-        with c.stream("GET", best["url"], headers={"User-Agent": _IOS_UA}) as r:
-            r.raise_for_status()
-            with open(out_path, "wb") as f:
-                for chunk in r.iter_bytes(65536):
-                    f.write(chunk)
+            formats = data.get("streamingData", {}).get("formats", [])
+            best = max(
+                (f for f in formats if "url" in f and 0 < f.get("height", 0) <= 720),
+                key=lambda f: f.get("height", 0),
+                default=None,
+            )
+            if not best:
+                raise RuntimeError(f"Innertube {client['name']}: aucun stream combiné")
 
-    logger.info(f"Innertube OK: {title}  {Path(out_path).stat().st_size // 1024} KB")
-    return title, duration
+            dl_ua = client["headers"].get("User-Agent", "Mozilla/5.0")
+            with httpx.Client(timeout=600, follow_redirects=True) as c:
+                with c.stream("GET", best["url"], headers={"User-Agent": dl_ua}) as r:
+                    r.raise_for_status()
+                    with open(out_path, "wb") as f:
+                        for chunk in r.iter_bytes(65536):
+                            f.write(chunk)
+
+            sz = Path(out_path).stat().st_size
+            if sz < 100_000:
+                raise RuntimeError(f"Fichier trop petit ({sz} bytes)")
+
+            logger.info(f"Innertube {client['name']} OK: {title}  {sz // 1024} KB")
+            return title, duration
+
+        except Exception as e:
+            logger.warning(f"Innertube {client['name']} failed: {e}")
+            last_err = e
+            continue
+
+    raise RuntimeError(f"Tous les clients Innertube ont échoué: {last_err}")
 
 
 def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
