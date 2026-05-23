@@ -63,7 +63,8 @@ class ClipsRequest(BaseModel):
 class GenerateRequest(BaseModel):
     youtube_url: str
     num_clips: int = 3
-    video_url: Optional[str] = None   # URL CDN directe pré-fetchée par Vercel
+    video_url: Optional[str] = None   # URL CDN stream combiné (Vercel→Railway)
+    audio_url: Optional[str] = None   # URL CDN audio séparé (si adaptatif)
 
 # ── Innertube iOS — download direct sans bot detection ─────────────────────────
 _INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player"
@@ -119,7 +120,7 @@ def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
         try:
             payload = {"videoId": video_id, "context": client["context"]}
             with httpx.Client(timeout=30) as c:
-                r = c.post(_INNERTUBE_URL, headers=client["headers"], json=payload)
+                r = c.post(client.get("url", _INNERTUBE_URL), headers=client["headers"], json=payload)
                 r.raise_for_status()
                 data = r.json()
 
@@ -177,6 +178,26 @@ def _direct_download(stream_url: str, out_path: str) -> None:
     logger.info(f"Direct CDN download OK: {sz // 1024} KB")
 
 
+def _direct_download_adaptive(video_url: str, audio_url: str, out_path: str) -> None:
+    """Télécharge streams vidéo+audio séparés et les merge avec ffmpeg."""
+    vid_tmp = out_path + ".vid.mp4"
+    aud_tmp = out_path + ".aud.mp4"
+    try:
+        _direct_download(video_url, vid_tmp)
+        _direct_download(audio_url, aud_tmp)
+        cmd = ["ffmpeg", "-y", "-loglevel", "error",
+               "-i", vid_tmp, "-i", aud_tmp,
+               "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+               "-shortest", out_path]
+        r = subprocess.run(cmd, capture_output=True, timeout=120)
+        if r.returncode != 0:
+            raise RuntimeError(f"ffmpeg merge: {(r.stdout+r.stderr).decode(errors='replace')[:500]}")
+        logger.info(f"Adaptive merge OK: {Path(out_path).stat().st_size // 1024} KB")
+    finally:
+        for p in [vid_tmp, aud_tmp]:
+            if os.path.exists(p): os.remove(p)
+
+
 def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
     """Fallback yt-dlp si Innertube échoue."""
     # D'abord lister les formats disponibles pour diagnostic
@@ -216,11 +237,14 @@ def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
 
 
 # ── STEP 1 : Téléchargement ─────────────────────────────────────────────────────
-def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None) -> tuple[str, str, int]:
-    # Priorité 1 : URL CDN directe pré-fetchée par Vercel (pas de bot detection)
+def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None, audio_url: Optional[str] = None) -> tuple[str, str, int]:
+    # Priorité 1 : URL CDN pré-fetchée par Vercel (pas de bot detection)
     if direct_url:
         out_path = str(out_dir / "source.mp4")
-        _direct_download(direct_url, out_path)
+        if audio_url:
+            _direct_download_adaptive(direct_url, audio_url, out_path)
+        else:
+            _direct_download(direct_url, out_path)
         return out_path, "Video", 0
 
     # Priorité 2 : Innertube depuis Railway (fonctionne si IP non bloquée)
@@ -425,7 +449,7 @@ def crop_clip(source: str, start: float, end: float, out: str) -> str:
     return out
 
 # ── Job runner ──────────────────────────────────────────────────────────────────
-async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_url: Optional[str] = None) -> None:
+async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_url: Optional[str] = None, audio_url: Optional[str] = None) -> None:
     source: Optional[str] = None
 
     def upd(msg: str) -> None:
@@ -435,7 +459,7 @@ async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_u
     try:
         upd("Téléchargement…")
         source, title, _ = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video(url, out_dir, direct_url)
+            None, lambda: download_video(url, out_dir, direct_url, audio_url)
         )
 
         upd("Transcription Whisper…")
@@ -503,7 +527,7 @@ async def generate_shorts(req: GenerateRequest, tasks: BackgroundTasks, _=Depend
     out_dir = WORK_DIR / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
-    tasks.add_task(run_job, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url)
+    tasks.add_task(run_job, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url, req.audio_url)
     return {"ok": True, "job_id": job_id}
 
 @app.get("/shorts-status/{job_id}")

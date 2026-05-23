@@ -92,11 +92,29 @@ async function getInnertubeStreamUrl(videoId) {
     }
   );
   const data = await r.json();
-  if (data.playabilityStatus?.status !== 'OK') throw new Error(data.playabilityStatus?.reason || 'unavailable');
-  const formats = (data.streamingData?.formats || []).filter(f => f.url && f.height <= 720);
-  if (!formats.length) throw new Error('No direct stream URL found');
-  formats.sort((a, b) => b.height - a.height);
-  return formats[0].url;
+  console.log(`[Innertube] videoId=${videoId} status=${data.playabilityStatus?.status} formats=${data.streamingData?.formats?.length||0} adaptive=${data.streamingData?.adaptiveFormats?.length||0}`);
+  if (!data.streamingData) throw new Error(data.playabilityStatus?.reason || 'No streaming data');
+
+  // Cherche un stream combiné (vidéo+audio) d'abord
+  const combined = (data.streamingData.formats || []).filter(f => f.url);
+  if (combined.length) {
+    combined.sort((a, b) => (b.height||0) - (a.height||0));
+    const best = combined.find(f => (f.height||999) <= 720) || combined[combined.length - 1];
+    console.log(`[Innertube] Combined stream: itag=${best.itag} height=${best.height}`);
+    return { video_url: best.url };
+  }
+
+  // Fallback : streams adaptatifs séparés (vidéo-only + audio-only)
+  const adaptive = data.streamingData.adaptiveFormats || [];
+  const videoStream = adaptive.filter(f => f.url && f.mimeType?.startsWith('video/mp4') && (f.height||0) <= 720)
+    .sort((a, b) => (b.height||0) - (a.height||0))[0];
+  const audioStream = adaptive.filter(f => f.url && f.mimeType?.startsWith('audio/mp4'))
+    .sort((a, b) => (b.bitrate||0) - (a.bitrate||0))[0];
+  if (videoStream && audioStream) {
+    console.log(`[Innertube] Adaptive streams: video ${videoStream.height}p + audio ${audioStream.bitrate}bps`);
+    return { video_url: videoStream.url, audio_url: audioStream.url };
+  }
+  throw new Error('No usable stream URL found');
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -287,11 +305,13 @@ module.exports = async (req, res) => {
     try {
       // Récupère l'URL de stream depuis Vercel (IP non bloquée) pour éviter bot detection sur Railway
       const videoId = extractVideoId(url);
-      let video_url = null;
+      let video_url = null, audio_url = null;
       if (videoId) {
         try {
-          video_url = await getInnertubeStreamUrl(videoId);
-          console.log('[shorts_start] Innertube stream URL OK:', video_url?.substring(0, 80));
+          const streams = await getInnertubeStreamUrl(videoId);
+          video_url = streams.video_url;
+          audio_url = streams.audio_url || null;
+          console.log('[shorts_start] Innertube OK video_url:', video_url?.substring(0, 60), 'audio_url:', !!audio_url);
         } catch (e) {
           console.warn('[shorts_start] Innertube échoué, Railway tentera yt-dlp:', e.message);
         }
@@ -299,7 +319,7 @@ module.exports = async (req, res) => {
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3, video_url }),
+        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3, video_url, audio_url }),
         signal: AbortSignal.timeout(20000)
       });
       const data = await r.json();
