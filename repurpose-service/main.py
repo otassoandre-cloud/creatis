@@ -142,7 +142,8 @@ def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
 def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
     """Fallback yt-dlp si Innertube échoue."""
     ydl_opts = {
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best",
+        # tv_embedded ne fournit que des streams combinés → pas de +bestaudio
+        "format": "best[height<=720]/best[height<=480]/best",
         "outtmpl": str(out_dir / "source.%(ext)s"),
         "merge_output_format": "mp4",
         "quiet": True,
