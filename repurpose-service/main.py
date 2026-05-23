@@ -75,6 +75,7 @@ def download_video(url: str, out_dir: Path) -> tuple[str, str, int]:
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["ios"]}},
     }
     if _COOKIE_FILE:
         ydl_opts["cookiefile"] = _COOKIE_FILE
