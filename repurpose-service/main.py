@@ -100,7 +100,6 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     base_opts = {
         "quiet": True,
         "no_warnings": True,
-        "format": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
@@ -109,13 +108,16 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         base_opts["cookiefile"] = cookies_file
         logger.info("yt-dlp: utilisation des cookies YouTube")
 
-    attempts = [
-        {"extractor_args": {"youtube": {"player_client": ["tv_embedded", "web_creator"]}}},
-        {},
+    # Cascade du plus qualitatif au plus permissif
+    formats = [
+        "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+        "best[height<=720]/best",
+        "best",
     ]
-    for extra in attempts:
+    last_err = None
+    for fmt in formats:
         try:
-            opts = {**base_opts, **extra}
+            opts = {**base_opts, "format": fmt}
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(youtube_url, download=True)
                 path = _resolve_path(ydl, info, out_dir)
@@ -123,8 +125,9 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
                 logger.info(f"yt-dlp OK: {path}")
                 return path
         except Exception as e:
-            logger.warning(f"yt-dlp attempt failed ({e})")
-    raise RuntimeError("Téléchargement YouTube échoué — ajoute YOUTUBE_COOKIES dans Railway")
+            logger.warning(f"yt-dlp fmt={fmt[:40]} failed: {e}")
+            last_err = e
+    raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
 
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
