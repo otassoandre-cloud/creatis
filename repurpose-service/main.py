@@ -64,112 +64,28 @@ class ClipExportRequest(BaseModel):
 
 # ── 1. DOWNLOAD ───────────────────────────────────────────────────────────────
 
-_COBALT_INSTANCES = [
-    "https://api.cobalt.tools",
-    "https://cobalt.imput.net",
-    "https://co.wuk.sh",
-]
-
-_COBALT_HEADERS = {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Origin": "https://cobalt.tools",
-    "Referer": "https://cobalt.tools/",
-}
-
-
-def _direct_download(url: str, out_path: str) -> None:
-    with httpx.Client(timeout=600, follow_redirects=True) as c:
-        with c.stream("GET", url) as r:
-            r.raise_for_status()
-            with open(out_path, "wb") as f:
-                for chunk in r.iter_bytes(65536):
-                    f.write(chunk)
-    sz = Path(out_path).stat().st_size
-    if sz < 100_000:
-        raise RuntimeError(f"Fichier trop petit: {sz} bytes")
-    logger.info(f"Download OK: {sz // 1024} KB")
-
-
-def _cobalt_download(youtube_url: str, out_path: str) -> None:
-    last_err = None
-    for base in _COBALT_INSTANCES:
-        try:
-            with httpx.Client(timeout=30) as c:
-                r = c.post(
-                    f"{base}/",
-                    headers=_COBALT_HEADERS,
-                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic", "downloadMode": "auto"},
-                )
-                if r.status_code == 400:
-                    logger.warning(f"Cobalt {base}: 400 — body: {r.text[:200]}")
-                    raise RuntimeError(f"Cobalt 400: {r.text[:200]}")
-                r.raise_for_status()
-                data = r.json()
-            status = data.get("status")
-            logger.info(f"Cobalt {base}: status={status}")
-            if status in ("stream", "tunnel", "redirect", "picker"):
-                dl_url = data.get("url") or (data.get("picker", [{}])[0].get("url"))
-                if not dl_url:
-                    raise RuntimeError("Cobalt: pas d'URL")
-                _direct_download(dl_url, out_path)
-                return
-            raise RuntimeError(f"Cobalt: {data.get('error', {}).get('code', status)}")
-        except Exception as e:
-            logger.warning(f"Cobalt {base} failed: {e}")
-            last_err = e
-    raise RuntimeError(f"Cobalt: tous les serveurs ont échoué: {last_err}")
-
-
-def _ytdlp_download(youtube_url: str, out_dir: Path) -> str:
+def download_video(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
-    base_opts = {
+    opts = {
         "quiet": True,
         "no_warnings": True,
         "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
-    # Essai 1 : impersonate Chrome (TLS fingerprint réel, bypass bot detection)
-    try:
-        opts = {**base_opts, "impersonate": "chrome"}
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-            path = ydl.prepare_filename(info)
-            if not os.path.exists(path):
-                stem = os.path.splitext(path)[0]
-                for ext in (".mp4", ".mkv", ".webm"):
-                    if os.path.exists(stem + ext):
-                        path = stem + ext
-                        break
-            if os.path.exists(path) and os.path.getsize(path) > 10_000:
-                logger.info(f"yt-dlp impersonate OK: {path}")
-                return path
-    except Exception as e:
-        logger.warning(f"yt-dlp impersonate failed ({e}) — fallback standard")
-    # Essai 2 : yt-dlp standard
-    with yt_dlp.YoutubeDL(base_opts) as ydl:
+    with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(youtube_url, download=True)
         path = ydl.prepare_filename(info)
-        if not os.path.exists(path):
-            stem = os.path.splitext(path)[0]
-            for ext in (".mp4", ".mkv", ".webm"):
-                if os.path.exists(stem + ext):
-                    path = stem + ext
-                    break
+    if not os.path.exists(path):
+        stem = os.path.splitext(path)[0]
+        for ext in (".mp4", ".mkv", ".webm"):
+            if os.path.exists(stem + ext):
+                path = stem + ext
+                break
+    if not os.path.exists(path) or os.path.getsize(path) < 10_000:
+        raise RuntimeError(f"Téléchargement échoué: {path}")
     logger.info(f"yt-dlp OK: {path}")
     return path
-
-
-def download_video(youtube_url: str, out_dir: Path) -> str:
-    out_path = str(out_dir / "source.mp4")
-    try:
-        _cobalt_download(youtube_url, out_path)
-        return out_path
-    except Exception as e:
-        logger.warning(f"Cobalt failed ({e}) — fallback yt-dlp")
-    return _ytdlp_download(youtube_url, out_dir)
 
 
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
@@ -486,8 +402,13 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
         api = YouTubeTranscriptApi()
         transcript_list = api.list(video_id)
         transcript = transcript_list.find_transcript(["fr", "en"])
-        data = transcript.fetch()
-        segments = [{"start": s["start"], "end": s["start"] + s["duration"], "text": s["text"]} for s in data]
+        fetched = transcript.fetch()
+        # 0.6.x returns FetchedTranscript with attribute access; older returns dicts
+        raw = fetched.to_raw_data() if hasattr(fetched, "to_raw_data") else list(fetched)
+        segments = [
+            {"start": s["start"], "end": s["start"] + s["duration"], "text": s["text"]}
+            for s in raw
+        ]
         duration = segments[-1]["end"] if segments else 0.0
         return {"duration": duration, "segments": segments}
     except Exception as e:
