@@ -74,11 +74,14 @@ def _get_cookies_file() -> Optional[str]:
     if not YOUTUBE_COOKIES:
         return None
     import tempfile as _tf
+    # Railway peut stocker les \n comme littéraux — normalise
+    content = YOUTUBE_COOKIES.replace("\\n", "\n")
     f = _tf.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, prefix="yt_cookies_")
-    f.write(YOUTUBE_COOKIES)
+    f.write(content)
     f.close()
     _COOKIES_FILE = f.name
-    logger.info(f"Cookies écrits → {_COOKIES_FILE}")
+    lines = [l for l in content.splitlines() if l and not l.startswith("#")]
+    logger.info(f"Cookies écrits → {_COOKIES_FILE} ({len(lines)} cookies)")
     return _COOKIES_FILE
 
 
@@ -108,8 +111,17 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         base_opts["cookiefile"] = cookies_file
         logger.info("yt-dlp: utilisation des cookies YouTube")
 
+    # Diagnostic : liste les formats disponibles
+    try:
+        with yt_dlp.YoutubeDL({**base_opts, "quiet": True}) as ydl:
+            info = ydl.extract_info(youtube_url, download=False)
+            fmts = info.get("formats", []) if info else []
+            ids = [f"{f.get('format_id')}({f.get('height','?')}p)" for f in fmts[-10:]]
+            logger.info(f"Formats dispo: {ids}")
+    except Exception as e:
+        logger.warning(f"Diagnostic formats failed: {e}")
+
     # Cascade du plus qualitatif au plus permissif
-    # None = pas de format spécifié, yt-dlp choisit seul
     formats = [
         "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
         "best",
