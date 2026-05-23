@@ -1196,16 +1196,13 @@ class AppCreatis {
         const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
         if (!iframe) return;
         if (m.event === 'onStateChange' && m.info === 1) {
-          if (prev.classList.contains('loading-poster')) {
-            setTimeout(() => {
-              try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
-              prev.classList.remove('loading-poster');
-              prev.classList.add('has-poster');
-            }, 150);
-          } else if (prev.classList.contains('playing') && prev._clipElapsed < 1.5) {
-            prev._clipElapsed = 0;
-            prev._clipLastTick = Date.now();
+          if (prev.classList.contains('playing')) {
+            prev._clipPlayStart = Date.now();
+            prev._clipPausedMs = 0;
           }
+        }
+        if (m.event === 'onStateChange' && m.info === 2 && prev.classList.contains('playing')) {
+          prev._clipPauseStamp = Date.now();
         }
       } catch {}
     });
@@ -1218,43 +1215,37 @@ class AppCreatis {
     this._ensureYTListener();
     prev._clipStart = startSec;
     prev._clipEnd = endSec;
-    prev._clipElapsed = 0;
-    prev._clipLastTick = Date.now();
-    if (prev.classList.contains('has-poster')) {
-      // iframe déjà chargée et pausée au bon moment → unmute + play
-      try {
-        iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'unMute',args:[]}), '*');
-        iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'playVideo',args:[]}), '*');
-      } catch {}
-      prev.classList.remove('has-poster');
-    } else {
-      prev.classList.remove('loading-poster');
-      iframe.onload = () => {
-        if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i });
-        // Envoyer listening après un court délai pour laisser le player s'initialiser
-        setTimeout(() => {
-          try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
-        }, 300);
-      };
-      iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1&cc_load_policy=1&cc_lang_pref=fr`;
-    }
+    prev._clipPlayStart = null;
+    prev._clipPausedMs = 0;
+    prev._clipPauseStamp = null;
+    iframe.onload = () => {
+      if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i });
+      setTimeout(() => {
+        try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
+      }, 300);
+    };
+    iframe.src = `https://www.youtube.com/embed/${videoId}?start=${Math.floor(startSec)}&end=${Math.ceil(endSec)}&autoplay=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1&cc_load_policy=0`;
     prev.classList.add('playing');
     if (prev._clipTicker) clearInterval(prev._clipTicker);
     prev._clipTicker = setInterval(() => {
-      if (!prev.classList.contains('paused')) {
-        prev._clipElapsed += (Date.now() - prev._clipLastTick) / 1000;
+      // Elapsed = temps réel depuis démarrage effectif de la vidéo (onStateChange=1)
+      let elapsed = 0;
+      if (prev._clipPlayStart) {
+        const raw = (Date.now() - prev._clipPlayStart - prev._clipPausedMs) / 1000;
+        elapsed = Math.max(0, raw);
       }
-      prev._clipLastTick = Date.now();
+      prev._clipElapsed = elapsed;
       const duration = Math.max(endSec - startSec, 5);
       const pct = Math.min(prev._clipElapsed / duration * 100, 100);
       const fill = document.getElementById(`cprog-${agentId}-${i}`);
       if (fill) fill.style.width = pct + '%';
+
       if (prev._clipElapsed >= duration) {
         clearInterval(prev._clipTicker);
         try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*'); } catch {}
         setTimeout(() => { prev.classList.remove('playing', 'paused'); iframe.src = ''; }, 1200);
       }
-    }, 250);
+    }, 100);
   }
 
   _clipClick(agentId, i, videoId, startSec, endSec) {
@@ -1268,6 +1259,12 @@ class AppCreatis {
     const iframe = document.getElementById(`ciframe-${agentId}-${i}`);
     if (!iframe || !prev?.classList.contains('playing')) return;
     const paused = prev.classList.toggle('paused');
+    if (paused) {
+      prev._clipPauseStamp = Date.now();
+    } else if (prev._clipPauseStamp) {
+      prev._clipPausedMs = (prev._clipPausedMs || 0) + (Date.now() - prev._clipPauseStamp);
+      prev._clipPauseStamp = null;
+    }
     try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func: paused ? 'pauseVideo' : 'playVideo',args:[]}), '*'); } catch {}
     const btn = prev.querySelector('.clip-pause-btn');
     if (btn) btn.innerHTML = paused
@@ -1283,8 +1280,11 @@ class AppCreatis {
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const duration = Math.max(prev._clipEnd - prev._clipStart, 5);
-    prev._clipElapsed = pct * duration;
-    prev._clipLastTick = Date.now();
+    const seekedTo = pct * duration;
+    // Recaler _clipPlayStart pour que elapsed = seekedTo maintenant
+    prev._clipPlayStart = Date.now() - seekedTo * 1000;
+    prev._clipPausedMs = 0;
+    prev._clipPauseStamp = null;
     prev.classList.remove('paused');
     const fill = document.getElementById(`cprog-${agentId}-${i}`);
     if (fill) fill.style.width = (pct * 100) + '%';
@@ -1292,7 +1292,53 @@ class AppCreatis {
     try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[seekTo, true]}), '*'); } catch {}
   }
 
-  _afficherClipsResultats(agentId, data) {
+  async _downloadClip(agentId, i, videoId, startSec, endSec) {
+    const btn = document.getElementById(`cdl-${agentId}-${i}`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'; }
+    this.afficherToast('⏳ Préparation du clip…', 'info', 60000);
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const startRes = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ mode: 'clip_export', video_id: videoId, start: startSec, end: endSec })
+      });
+      const startData = await startRes.json();
+      if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage export');
+      const { job_id } = startData;
+
+      const dlIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      let done = false;
+      for (let poll = 0; poll < 60 && !done; poll++) {
+        await sleep(3000);
+        if (btn) btn.title = `Préparation… ${Math.round((poll + 1) * 3)}s`;
+        const r = await fetch('/api/repurpose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ mode: 'clip_export_status', job_id })
+        });
+        const d = await r.json();
+        if (d.status === 'done' && d.download_url) {
+          done = true;
+          this.afficherToast('✅ Clip prêt — téléchargement en cours !', 'succes', 4000);
+          // window.location.href fonctionne cross-origin sans blocage de geste ni attribut download ignoré
+          window.location.href = d.download_url;
+          if (btn) { btn.disabled = false; btn.title = 'Télécharger le clip'; btn.innerHTML = dlIcon; }
+        } else if (d.status === 'error') {
+          throw new Error(d.error || 'Erreur export');
+        } else if (!r.ok) {
+          throw new Error(d.error || `Erreur serveur (${r.status})`);
+        }
+      }
+      if (!done) throw new Error('Délai dépassé (3 min) — réessaie dans quelques minutes');
+    } catch (err) {
+      this.afficherToast(`❌ ${err.message}`, 'erreur', 5000);
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'; }
+    }
+  }
+
+_afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`clips-results-${agentId}`);
     if (!zone) return;
 
@@ -1308,18 +1354,13 @@ class AppCreatis {
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
       const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
-      const thumbUrl = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
       const title = (clip.hook || '').substring(0, 80);
       const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
         <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
-          <img src="${thumbUrl}" class="clip-thumb-img" loading="lazy" alt="" />
-          <div class="clip-thumb-overlay">
-            ${title ? `<div class="clip-caption-text">${this._escapeHtml(title)}</div>` : ''}
-            <div class="clip-play-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            </div>
+          <div class="clip-play-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           </div>
           <iframe class="clip-opus-iframe" id="ciframe-${agentId}-${i}"
             frameborder="0" allowfullscreen
@@ -1335,10 +1376,10 @@ class AppCreatis {
         <div class="clip-score-row">
           <span class="clip-score-num" style="color:${scoreColor(clip.score)}">${clip.score}</span>
           <div class="clip-action-btns">
-            <a href="${ytUrl}" target="_blank" class="clip-action-btn" title="Voir sur YouTube">
+            <button class="clip-action-btn" title="Voir sur YouTube" onclick="event.stopPropagation();window.open('${ytUrl}','_blank','noopener')">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
-            </a>
-            <button class="clip-action-btn" title="Copier URL + ouvrir cobalt.tools" onclick="navigator.clipboard.writeText('${ytUrl}').then(()=>{ window.open('https://cobalt.tools/','_blank'); app.afficherToast('URL copiée — colle dans cobalt.tools','succes'); })">
+            </button>
+            <button class="clip-action-btn" id="cdl-${agentId}-${i}" title="⬇ Télécharger le clip MP4" onclick="event.stopPropagation();app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
             <button class="clip-action-btn clip-action-del" title="Supprimer" onclick="this.closest('.clip-opus-card').remove()">✕</button>
@@ -1356,22 +1397,7 @@ class AppCreatis {
       </div>
       <div class="clips-opus-grid">${clipsHtml}</div>`;
 
-    // Charger les poster frames (iframes muted+autoplay pour capturer 1er frame du clip)
     this._ensureYTListener();
-    data.clips.forEach((clip, idx) => {
-      const iframe = document.getElementById(`ciframe-${agentId}-${idx}`);
-      const prev = document.getElementById(`cprev-${agentId}-${idx}`);
-      if (!iframe || !prev) return;
-      setTimeout(() => {
-        if (prev.classList.contains('playing')) return;
-        prev.classList.add('loading-poster');
-        iframe.onload = () => {
-          if (window._ytImap) window._ytImap.set(iframe.contentWindow, { prev, agentId, i: idx });
-          try { iframe.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}), '*'); } catch {}
-        };
-        iframe.src = `https://www.youtube.com/embed/${clip.video_id}?start=${Math.floor(clip.start)}&autoplay=1&mute=1&controls=0&rel=0&enablejsapi=1&modestbranding=1&iv_load_policy=3&disablekb=1`;
-      }, idx * 700);
-    });
   }
 
   /* ===== CHAT LIBRE ===== */
