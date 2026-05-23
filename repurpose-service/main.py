@@ -100,6 +100,7 @@ def _yt_opts(**extra) -> dict:
     opts = {
         "quiet": False,
         "no_warnings": False,
+        "extractor_args": {"youtube": {"player_client": ["web"]}},
         **extra,
     }
     if _COOKIE_FILE:
