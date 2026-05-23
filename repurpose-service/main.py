@@ -100,7 +100,7 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     base_opts = {
         "quiet": True,
         "no_warnings": True,
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+        "format": "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
