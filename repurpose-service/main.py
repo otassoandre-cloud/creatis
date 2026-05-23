@@ -63,6 +63,7 @@ class ClipsRequest(BaseModel):
 class GenerateRequest(BaseModel):
     youtube_url: str
     num_clips: int = 3
+    video_url: Optional[str] = None   # URL CDN directe pré-fetchée par Vercel
 
 # ── Innertube iOS — download direct sans bot detection ─────────────────────────
 _INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player"
@@ -162,6 +163,20 @@ def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
     raise RuntimeError(f"Tous les clients Innertube ont échoué: {last_err}")
 
 
+def _direct_download(stream_url: str, out_path: str) -> None:
+    """Télécharge une URL CDN directe (googlevideo.com) — pas de bot detection."""
+    with httpx.Client(timeout=600, follow_redirects=True) as c:
+        with c.stream("GET", stream_url) as r:
+            r.raise_for_status()
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_bytes(65536):
+                    f.write(chunk)
+    sz = Path(out_path).stat().st_size
+    if sz < 100_000:
+        raise RuntimeError(f"Fichier trop petit ({sz} bytes)")
+    logger.info(f"Direct CDN download OK: {sz // 1024} KB")
+
+
 def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
     """Fallback yt-dlp si Innertube échoue."""
     # D'abord lister les formats disponibles pour diagnostic
@@ -201,7 +216,14 @@ def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
 
 
 # ── STEP 1 : Téléchargement ─────────────────────────────────────────────────────
-def download_video(url: str, out_dir: Path) -> tuple[str, str, int]:
+def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None) -> tuple[str, str, int]:
+    # Priorité 1 : URL CDN directe pré-fetchée par Vercel (pas de bot detection)
+    if direct_url:
+        out_path = str(out_dir / "source.mp4")
+        _direct_download(direct_url, out_path)
+        return out_path, "Video", 0
+
+    # Priorité 2 : Innertube depuis Railway (fonctionne si IP non bloquée)
     m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', url)
     if m:
         out_path = str(out_dir / "source.mp4")
@@ -211,6 +233,8 @@ def download_video(url: str, out_dir: Path) -> tuple[str, str, int]:
                 return out_path, title, duration
         except Exception as e:
             logger.warning(f"Innertube failed ({e}) — fallback yt-dlp")
+
+    # Priorité 3 : yt-dlp fallback
     return _ytdlp_download(url, out_dir)
 
 # ── STEP 2 : Transcription faster-whisper ──────────────────────────────────────
@@ -401,7 +425,7 @@ def crop_clip(source: str, start: float, end: float, out: str) -> str:
     return out
 
 # ── Job runner ──────────────────────────────────────────────────────────────────
-async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path) -> None:
+async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_url: Optional[str] = None) -> None:
     source: Optional[str] = None
 
     def upd(msg: str) -> None:
@@ -411,7 +435,7 @@ async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path) -> None:
     try:
         upd("Téléchargement…")
         source, title, _ = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video(url, out_dir)
+            None, lambda: download_video(url, out_dir, direct_url)
         )
 
         upd("Transcription Whisper…")
@@ -479,7 +503,7 @@ async def generate_shorts(req: GenerateRequest, tasks: BackgroundTasks, _=Depend
     out_dir = WORK_DIR / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
-    tasks.add_task(run_job, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir)
+    tasks.add_task(run_job, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url)
     return {"ok": True, "job_id": job_id}
 
 @app.get("/shorts-status/{job_id}")

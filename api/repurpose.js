@@ -73,6 +73,32 @@ function extractVideoId(url) {
   return null;
 }
 
+async function getInnertubeStreamUrl(videoId) {
+  const VER = '19.29.1';
+  const UA  = `com.google.ios.youtube/${VER} (iPhone14,5; U; CPU iOS 15_5 like Mac OS X)`;
+  const r = await fetch(
+    `https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': UA,
+                 'X-YouTube-Client-Name': '5', 'X-YouTube-Client-Version': VER },
+      body: JSON.stringify({
+        videoId,
+        context: { client: { clientName: 'IOS', clientVersion: VER,
+          deviceModel: 'iPhone14,5', userAgent: UA,
+          osName: 'iPhone', osVersion: '15.5.0.19F77', hl: 'en', gl: 'US' } }
+      }),
+      signal: AbortSignal.timeout(15000)
+    }
+  );
+  const data = await r.json();
+  if (data.playabilityStatus?.status !== 'OK') throw new Error(data.playabilityStatus?.reason || 'unavailable');
+  const formats = (data.streamingData?.formats || []).filter(f => f.url && f.height <= 720);
+  if (!formats.length) throw new Error('No direct stream URL found');
+  formats.sort((a, b) => b.height - a.height);
+  return formats[0].url;
+}
+
 async function getYouTubeTranscript(videoId) {
   const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
@@ -259,10 +285,21 @@ module.exports = async (req, res) => {
     if (!url) return res.status(400).json({ error: 'url manquante' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
+      // Récupère l'URL de stream depuis Vercel (IP non bloquée) pour éviter bot detection sur Railway
+      const videoId = extractVideoId(url);
+      let video_url = null;
+      if (videoId) {
+        try {
+          video_url = await getInnertubeStreamUrl(videoId);
+          console.log('[shorts_start] Innertube stream URL OK:', video_url?.substring(0, 80));
+        } catch (e) {
+          console.warn('[shorts_start] Innertube échoué, Railway tentera yt-dlp:', e.message);
+        }
+      }
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3 }),
+        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3, video_url }),
         signal: AbortSignal.timeout(20000)
       });
       const data = await r.json();
