@@ -141,16 +141,31 @@ def _innertube_download(video_id: str, out_path: str) -> tuple[str, int]:
 
 def _ytdlp_download(url: str, out_dir: Path) -> tuple[str, str, int]:
     """Fallback yt-dlp si Innertube échoue."""
-    ydl_opts = {
-        "format": "best",
-        "outtmpl": str(out_dir / "source.%(ext)s"),
-        "merge_output_format": "mp4",
+    # D'abord lister les formats disponibles pour diagnostic
+    ydl_base = {
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["tv_embedded", "ios"]}},
+        "extractor_args": {"youtube": {"player_client": ["tv_embedded", "web", "ios"]}},
     }
     if _COOKIE_FILE:
-        ydl_opts["cookiefile"] = _COOKIE_FILE
+        ydl_base["cookiefile"] = _COOKIE_FILE
+
+    try:
+        with yt_dlp.YoutubeDL({**ydl_base}) as ydl:
+            info = ydl.extract_info(url, download=False)
+            fmts = info.get("formats", []) if info else []
+            fmt_ids = [(f.get("format_id"), f.get("height"), f.get("vcodec","?")[:4], f.get("acodec","?")[:4]) for f in fmts]
+            logger.info(f"Formats disponibles ({len(fmt_ids)}): {fmt_ids[:15]}")
+    except Exception as e:
+        logger.warning(f"Liste formats échouée: {e}")
+
+    ydl_opts = {
+        **ydl_base,
+        # bestvideo+bestaudio couvre les formats adaptatifs (séparés), /best couvre les combinés
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best/worst",
+        "outtmpl": str(out_dir / "source.%(ext)s"),
+        "merge_output_format": "mp4",
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         title    = info.get("title", "Video")
