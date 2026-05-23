@@ -848,7 +848,7 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         def _export():
             # Étape 1 : extraire URLs via yt-dlp (avec cookies si disponibles)
             opts = _yt_opts(
-                format="bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
+                format="bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best",
                 skip_download=True,
             )
             logger.info(f"[export {job_id[:8]}] yt-dlp extract {video_id}…")
