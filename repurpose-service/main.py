@@ -1066,11 +1066,19 @@ def _build_9_16_vf(src_w: int, src_h: int, face_x: int, srt_path: Optional[str] 
     if face_x < 0:
         face_x = src_w // 2
     x_off = max(0, min(face_x - crop_w // 2, src_w - crop_w))
-    vf = f"crop={crop_w}:{src_h}:{x_off}:0,scale=1080:1920,setsar=1"
+
+    # Si la vidéo est déjà 9:16 (ou très proche), skip le crop
+    if crop_w >= src_w:
+        vf = "scale=1080:1920:flags=lanczos,setsar=1"
+    else:
+        vf = f"crop={crop_w}:{src_h}:{x_off}:0,scale=1080:1920:flags=lanczos,setsar=1"
+
     if srt_path and Path(srt_path).exists() and Path(srt_path).stat().st_size > 10:
         escaped = srt_path.replace("\\", "/").replace("'", "\\'").replace(":", "\\:")
         style = "FontSize=20,Bold=1,Alignment=2,MarginV=60,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Shadow=1"
         vf += f",subtitles='{escaped}':force_style='{style}'"
+
+    logger.info(f"[vf] src={src_w}x{src_h} face_x={face_x} crop_w={crop_w} → {vf[:120]}")
     return vf
 
 
@@ -1143,10 +1151,11 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
                    "-c:a", "aac", "-b:a", "128k",
                    "-movflags", "+faststart",
                    str(out_path)]
-            logger.info(f"[export {job_id[:8]}] ffmpeg crop 9:16 face_x={face_x}")
+            logger.info(f"[export {job_id[:8]}] ffmpeg crop cmd: {' '.join(cmd)}")
             r = subprocess.run(cmd, capture_output=True, timeout=300)
             if r.returncode != 0:
-                raise Exception(f"ffmpeg crop: {(r.stdout.decode()+r.stderr.decode())[-800:]}")
+                out = (r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace"))
+                raise Exception(f"ffmpeg crop: {out[:2000]}")
             raw_path.unlink(missing_ok=True)
             if not out_path.exists() or out_path.stat().st_size < 1000:
                 raise Exception("ffmpeg n'a pas produit de fichier valide")
@@ -1323,9 +1332,11 @@ async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Pa
                     cmd = ["ffmpeg", "-y", "-ss", str(ss), "-i", src, "-t", str(dur),
                            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
                            "-c:a", "aac", "-b:a", "128k", raw]
+                    logger.info(f"[repurpose {jid}] extract cmd: {' '.join(cmd)}")
                     r = subprocess.run(cmd, capture_output=True, timeout=120)
                     if r.returncode != 0:
-                        raise Exception(f"Extract: {(r.stdout.decode()+r.stderr.decode())[-300:]}")
+                        out = (r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace"))
+                        raise Exception(f"Extract: {out[:1500]}")
 
                 await asyncio.get_event_loop().run_in_executor(None, _extract)
                 if not raw_path.exists() or raw_path.stat().st_size < 1000:
@@ -1341,10 +1352,12 @@ async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Pa
                            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
                            "-movflags", "+faststart", out]
+                    logger.info(f"[repurpose {jid}] crop cmd: {' '.join(cmd)}")
                     r = subprocess.run(cmd, capture_output=True, timeout=300)
                     raw_path.unlink(missing_ok=True)
                     if r.returncode != 0:
-                        raise Exception(f"Crop: {(r.stdout.decode()+r.stderr.decode())[-300:]}")
+                        out_log = (r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace"))
+                        raise Exception(f"Crop: {out_log[:1500]}")
 
                 await asyncio.get_event_loop().run_in_executor(None, _crop)
                 if not short_path.exists() or short_path.stat().st_size < 1000:
