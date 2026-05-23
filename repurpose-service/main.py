@@ -1,13 +1,15 @@
 """
-Créatis Shorts Generator
+Créatis Service
 Basé sur github.com/SamurAIGPT/AI-Youtube-Shorts-Generator (local mode)
 
-POST /generate-shorts  { youtube_url, num_clips=3 }  → { job_id }
-GET  /shorts-status/{job_id}                          → { status, progress, clips? }
+POST /clips             { url, n_clips=5 }            → { session_id }  ← identification
+GET  /status/{sid}                                    → { status, result }
+POST /generate-shorts  { youtube_url, num_clips=3 }  → { job_id }       ← génération
+GET  /shorts-status/{job_id}                          → { status, clips? }
 GET  /shorts-file/{job_id}/{filename}                 → MP4
 GET  /health
 """
-import os, uuid, json, re, asyncio, subprocess, tempfile, logging, base64
+import os, uuid, json, re, asyncio, subprocess, tempfile, logging, base64, shutil
 from pathlib import Path
 from typing import Optional
 
@@ -31,7 +33,8 @@ YOUTUBE_COOKIES_B64 = os.environ.get("YOUTUBE_COOKIES_B64", "")
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
 
-JOBS: dict = {}
+JOBS: dict  = {}   # shorts jobs
+CLIPS: dict = {}   # clips identification jobs
 
 # Cookies YouTube
 _COOKIE_FILE: Optional[str] = None
@@ -52,6 +55,10 @@ security = HTTPBearer(auto_error=False)
 def auth(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
     if SERVICE_SECRET and (not creds or creds.credentials != SERVICE_SECRET):
         raise HTTPException(401, "Non autorisé")
+
+class ClipsRequest(BaseModel):
+    url: str
+    n_clips: int = 5
 
 class GenerateRequest(BaseModel):
     youtube_url: str
@@ -369,6 +376,176 @@ def shorts_file(job_id: str, filename: str):
     if not path.exists():
         raise HTTPException(404, "Fichier introuvable")
     return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CLIPS IDENTIFICATION (no video download — subtitles + LLM only)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _extract_video_id(url: str) -> Optional[str]:
+    for pat in [r"[?&]v=([a-zA-Z0-9_-]{11})", r"youtu\.be/([a-zA-Z0-9_-]{11})", r"shorts/([a-zA-Z0-9_-]{11})"]:
+        m = re.search(pat, url)
+        if m:
+            return m.group(1)
+    return None
+
+def _get_subtitles(url: str) -> Optional[tuple]:
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
+    except ImportError:
+        return None
+    try:
+        vid = _extract_video_id(url)
+        if not vid:
+            return None
+        tlist = YouTubeTranscriptApi.list_transcripts(vid)
+        t = None
+        try:
+            t = tlist.find_generated_transcript(["fr", "fr-FR", "en", "en-US"])
+        except NoTranscriptFound:
+            try:
+                t = tlist.find_manually_created_transcript(["fr", "fr-FR", "en", "en-US"])
+            except NoTranscriptFound:
+                for tr in tlist:
+                    t = tr; break
+        if not t:
+            return None
+        data = t.fetch()
+        segs, dur = [], 0
+        for item in data:
+            start = round(float(item.get("start", 0)), 2)
+            end   = round(start + float(item.get("duration", 2.0)), 2)
+            text  = str(item.get("text", "")).replace("\n", " ").strip()
+            if text:
+                segs.append({"start": start, "end": end, "text": text})
+            dur = max(dur, int(end))
+        if len(segs) < 10:
+            return None
+        logger.info(f"Sous-titres OK — {len(segs)} segments")
+        return segs, dur
+    except Exception as e:
+        logger.warning(f"Sous-titres: {e}")
+        return None
+
+def _get_video_meta(vid: str) -> tuple:
+    import requests as rq
+    title, dur = "Vidéo YouTube", 0
+    try:
+        r = rq.get(f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={vid}&format=json", timeout=8)
+        if r.status_code == 200:
+            title = r.json().get("title", title)
+    except Exception:
+        pass
+    for inst in ["https://inv.nadeko.net", "https://invidious.nerdvpn.de"]:
+        try:
+            r = rq.get(f"{inst}/api/v1/videos/{vid}", timeout=8)
+            if r.status_code == 200:
+                d = r.json()
+                title = d.get("title", title)
+                dur   = int(d.get("lengthSeconds", 0))
+                break
+        except Exception:
+            continue
+    return title, dur
+
+async def _identify_groq(segs: list, title: str, n: int, dur: int) -> list:
+    if not GROQ_API_KEY:
+        return []
+    if segs:
+        formatted = "\n".join(f"[{int(s['start']//60):02d}:{int(s['start']%60):02d}] {s['text']}" for s in segs[:300])
+        prompt = f'Vidéo "{title}" ({dur}s). Transcription:\n{formatted}\nTrouve {n} moments viraux 45-90s. JSON:\n{{"clips":[{{"start":<float>,"end":<float>,"hook":"<10 mots>","why":"<phrase>","score":<100>}}]}}'
+    else:
+        prompt = f'Vidéo "{title}" ({dur}s). Sans transcription, génère {n} moments probables 45-90s. JSON:\n{{"clips":[{{"start":<float>,"end":<float>,"hook":"<10 mots>","why":"<phrase>","score":<100>}}]}}'
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                      "temperature": 0.3, "max_tokens": 1024},
+            )
+        r.raise_for_status()
+        text = r.json()["choices"][0]["message"]["content"]
+        m = re.search(r'\{[\s\S]*\}', text)
+        if m:
+            clips = json.loads(m.group()).get("clips", [])
+            clips = [c for c in clips if 30 <= float(c.get("end", 0)) - float(c.get("start", 0)) <= 95]
+            if clips:
+                return sorted(clips, key=lambda x: x.get("score", 0), reverse=True)[:n]
+    except Exception as e:
+        logger.warning(f"Groq: {e}")
+    return []
+
+async def _process_clips(sid: str, url: str, n: int) -> None:
+    try:
+        vid = _extract_video_id(url)
+        CLIPS[sid]["progress"] = "Métadonnées…"
+        title, dur = await asyncio.get_event_loop().run_in_executor(None, lambda: _get_video_meta(vid))
+
+        CLIPS[sid]["progress"] = "Sous-titres…"
+        sub = None
+        try:
+            sub = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, lambda: _get_subtitles(url)), timeout=12
+            )
+        except asyncio.TimeoutError:
+            pass
+        segs = sub[0] if sub else []
+        if sub and sub[1] > 0:
+            dur = sub[1]
+
+        CLIPS[sid]["progress"] = "Analyse Groq…"
+        moments = await _identify_groq(segs, title, n, dur)
+
+        if not moments:
+            moments = [
+                {"start": max(30.0, dur//(n+1)*i), "end": max(30.0, dur//(n+1)*i) + 55,
+                 "hook": f"Moment clé {i+1}", "why": "Sélection auto", "score": 80 - i*5}
+                for i in range(n)
+            ]
+
+        clips_result = []
+        for m in moments:
+            cs, ce = float(m["start"]), float(m["end"])
+            if segs:
+                caps = [{"start": round(s["start"]-cs,2), "end": round(s["end"]-cs,2), "text": s["text"]}
+                        for s in segs if cs <= s["start"] < ce]
+            else:
+                caps = m.get("caption_segments", [])
+            clips_result.append({
+                "hook": str(m.get("hook",""))[:80], "why": str(m.get("why",""))[:200],
+                "score": int(m.get("score", 80)), "start": cs, "end": ce,
+                "duration": round(ce-cs, 1), "transcript": "",
+                "video_id": vid,
+                "youtube_url": f"https://www.youtube.com/watch?v={vid}&t={int(cs)}s",
+                "embed_url": f"https://www.youtube.com/embed/{vid}?start={int(cs)}&end={int(ce)}&rel=0",
+                "caption_segments": caps,
+            })
+
+        CLIPS[sid] = {"status": "done", "progress": None, "error": None,
+                      "result": {"ok": True, "title": title, "duration": dur,
+                                 "video_id": vid, "session_id": sid, "clips": clips_result}}
+    except Exception as e:
+        logger.error(f"clips {sid[:8]}: {e}")
+        CLIPS[sid] = {"status": "error", "error": str(e), "progress": None, "result": None}
+
+@app.post("/clips")
+async def create_clips(req: ClipsRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    url = req.url.strip()
+    if "youtube.com" not in url and "youtu.be" not in url:
+        raise HTTPException(400, "URL YouTube invalide")
+    sid = str(uuid.uuid4())
+    CLIPS[sid] = {"status": "processing", "progress": "Démarrage…", "result": None, "error": None}
+    tasks.add_task(_process_clips, sid, url, min(max(1, req.n_clips), 7))
+    return {"ok": True, "session_id": sid, "status": "processing"}
+
+@app.get("/status/{session_id}")
+async def clips_status(session_id: str, _=Depends(auth)):
+    job = CLIPS.get(session_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     import uvicorn
