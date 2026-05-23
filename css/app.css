@@ -2388,33 +2388,44 @@
 .clips-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
 
 /* Résultats OpusClip style */
-.clips-opus-header { display:flex; align-items:center; gap:10px; padding:16px 0 12px; flex-wrap:wrap; font-size:13px; }
+.clips-opus-header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 0 12px; flex-wrap:wrap; font-size:13px; }
+.clips-opus-header > div { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .clips-opus-header strong { font-size:16px; }
 .clips-opus-header span { color:var(--texte-secondaire); }
 .clips-expire { margin-left:auto; background:rgba(245,158,11,.1); color:#f59e0b; border-radius:20px; padding:2px 10px; font-size:12px; }
+.btn-shorts-gen { display:flex; align-items:center; gap:6px; background:#10b981; color:#fff; border:none; border-radius:8px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; white-space:nowrap; }
+.btn-shorts-gen:hover { background:#059669; }
+.btn-shorts-gen:disabled { background:#1d4d3a; color:#6b9e8a; cursor:not-allowed; }
+.shorts-progress { display:flex; align-items:center; gap:12px; background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.2); border-radius:10px; padding:14px 18px; margin-bottom:14px; font-size:13px; color:var(--texte-secondaire); }
+.shorts-prog-bar { flex:1; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
+.shorts-prog-fill { height:100%; background:#10b981; border-radius:2px; width:5%; transition:width 1s ease; }
+.shorts-error { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.2); border-radius:10px; padding:12px 16px; font-size:13px; color:#ef4444; margin-bottom:14px; }
+.shorts-resultats { margin-bottom:20px; }
+.shorts-resultats-titre { font-size:15px; font-weight:700; padding:14px 0 12px; color:var(--texte-principal); }
+.shorts-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+@media (max-width:700px) { .shorts-grid { grid-template-columns:1fr; } }
+.short-card { background:rgba(16,185,129,.07); border:1px solid rgba(16,185,129,.2); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:8px; }
+.short-card-num { font-size:11px; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:.05em; }
+.short-card-score { font-size:28px; font-weight:900; color:#10b981; line-height:1; }
+.short-card-hook { font-size:14px; font-weight:600; color:var(--texte-principal); }
+.short-card-dur { font-size:12px; color:var(--texte-secondaire); }
+.btn-dl-short { display:flex; align-items:center; justify-content:center; gap:6px; background:#10b981; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:600; text-decoration:none; margin-top:4px; transition:background .15s; }
+.btn-dl-short:hover { background:#059669; }
 /* ── Clips Viraux — style OpusClip ── */
 .clips-opus-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
 @media (max-width:1100px) { .clips-opus-grid { grid-template-columns:repeat(4,1fr); } }
 @media (max-width:800px)  { .clips-opus-grid { grid-template-columns:repeat(3,1fr); } }
 .clip-opus-card { display:flex; flex-direction:column; gap:5px; }
 
-/* Thumbnail 9:16 avec crop centre — padding trick (plus fiable qu'aspect-ratio) */
+/* Preview 9:16 */
 .clip-opus-preview { position:relative; border-radius:10px; overflow:hidden; background:#111; cursor:pointer; width:100%; height:0; padding-bottom:177.78%; }
-.clip-thumb-img { position:absolute; top:0; left:50%; transform:translateX(-50%); width:178%; height:100%; object-fit:cover; }
+.clip-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; width:42px; height:42px; background:rgba(255,255,255,.88); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; transition:background .15s,transform .15s; }
+.clip-opus-preview:hover .clip-play-btn { background:#10b981; color:#fff; transform:translate(-50%,-50%) scale(1.1); }
+.clip-opus-preview.playing .clip-play-btn { display:none; }
 
-/* Overlay poster style OpusClip — titre en bas, play au centre */
-.clip-thumb-overlay { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; justify-content:flex-end; background:linear-gradient(to bottom,rgba(0,0,0,.3) 0%,transparent 25%,transparent 55%,rgba(0,0,0,.65) 100%); }
-.clip-timestamps { position:absolute; top:8px; left:0; right:0; display:flex; justify-content:space-between; padding:0 8px; }
-.clip-ts-box { background:rgba(0,0,0,.72); color:#fff; font-size:10px; font-weight:700; padding:2px 5px; border-radius:4px; letter-spacing:.3px; }
-.clip-caption-text { color:#fff; font-size:12px; font-weight:800; text-align:center; padding:8px 10px 14px; line-height:1.4; text-transform:uppercase; letter-spacing:.3px; text-shadow:0 1px 4px rgba(0,0,0,.9); }
-.clip-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:42px; height:42px; background:rgba(255,255,255,.88); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; transition:background .15s,transform .15s; }
-.clip-thumb-overlay:hover .clip-play-btn { background:#10b981; color:#fff; transform:translate(-50%,-50%) scale(1.1); }
-
-/* Iframe sans contrôles — remplit le 9:16 comme un vrai Short */
+/* Iframe — seulement quand on joue */
 .clip-opus-iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:316%; height:100%; border:none; display:none; pointer-events:none; }
-.clip-opus-preview.playing .clip-thumb-overlay { display:none; }
-.clip-opus-preview.playing .clip-opus-iframe,
-.clip-opus-preview.has-poster .clip-opus-iframe { display:block; }
+.clip-opus-preview.playing .clip-opus-iframe { display:block; }
 
 
 /* Contrôles custom (timeline + pause) */
@@ -2423,7 +2434,7 @@
 .clip-prog-track { height:4px; background:rgba(255,255,255,.3); border-radius:2px; cursor:pointer; position:relative; }
 .clip-prog-track:hover { height:6px; }
 .clip-prog-fill { height:100%; background:#fff; border-radius:2px; width:0%; transition:width .25s linear; }
-.clip-pause-btn { align-self:flex-start; width:28px; height:28px; background:rgba(255,255,255,.15); border:none; border-radius:50%; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.clip-pause-btn { width:28px; height:28px; background:rgba(255,255,255,.15); border:none; border-radius:50%; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .clip-pause-btn:hover { background:rgba(255,255,255,.3); }
 
 /* Score + actions */
@@ -2433,6 +2444,7 @@
 .clip-action-btn { display:flex; align-items:center; justify-content:center; width:28px; height:28px; background:rgba(255,255,255,.07); border:none; border-radius:6px; color:var(--texte-secondaire); cursor:pointer; text-decoration:none; transition:background .15s,color .15s; font-size:12px; }
 .clip-action-btn:hover { background:rgba(255,255,255,.15); color:var(--texte-principal); }
 .clip-action-del:hover { background:rgba(239,68,68,.2); color:#ef4444; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
 /* Texte sous la carte */
 .clip-opus-title { font-size:12px; font-weight:600; color:var(--texte-principal); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }

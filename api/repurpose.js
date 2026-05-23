@@ -254,6 +254,48 @@ module.exports = async (req, res) => {
     }
   }
 
+  if (mode === 'shorts_start') {
+    const { url, n_clips } = body;
+    if (!url) return res.status(400).json({ error: 'url manquante' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/repurpose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ url, n_clips: n_clips || 3 }),
+        signal: AbortSignal.timeout(20000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
+      return res.status(200).json({ ok: true, job_id: data.job_id });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'shorts_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id manquant' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/repurpose-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || `Erreur statut (${r.status})`);
+      if (data.status === 'done' && data.clips) {
+        data.clips = data.clips.map(c => ({
+          ...c,
+          download_url: `${REPURPOSE_SERVICE_URL}${c.download_url}`
+        }));
+      }
+      return res.status(200).json({ ok: true, ...data });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clips_status') {
     const { session_id } = body;
     if (!session_id) return res.status(400).json({ error: 'session_id manquant' });

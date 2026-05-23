@@ -1390,14 +1390,104 @@ _afficherClipsResultats(agentId, data) {
       </div>`;
     }).join('');
 
+    const urlEncoded = encodeURIComponent(data.youtube_url || data.clips[0]?.youtube_url?.split('&t=')[0] || '');
+
     zone.innerHTML = `
       <div class="clips-opus-header">
-        <strong>${data.clips.length} moments viraux identifiés</strong>
-        <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
+        <div>
+          <strong>${data.clips.length} moments viraux identifiés</strong>
+          <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
+        </div>
+        <button class="btn-shorts-gen" id="btn-shorts-${agentId}"
+          onclick="app._genererShorts('${agentId}', '${urlEncoded}')"
+          title="Génère 3 Shorts 9:16 avec face tracking et captions">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Générer 3 Shorts
+        </button>
       </div>
+      <div id="shorts-zone-${agentId}"></div>
       <div class="clips-opus-grid">${clipsHtml}</div>`;
 
     this._ensureYTListener();
+  }
+
+  async _genererShorts(agentId, urlEncoded) {
+    const url = decodeURIComponent(urlEncoded);
+    const btn = document.getElementById(`btn-shorts-${agentId}`);
+    const zone = document.getElementById(`shorts-zone-${agentId}`);
+    if (!url || !zone) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours…'; }
+    zone.innerHTML = `<div class="shorts-progress" id="sp-${agentId}">
+      <div class="shorts-prog-bar"><div class="shorts-prog-fill" id="spf-${agentId}"></div></div>
+      <span id="spt-${agentId}">Connexion au stream YouTube…</span>
+    </div>`;
+
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      const startRes = await fetch('/api/repurpose', {
+        method: 'POST', headers,
+        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 3 })
+      });
+      const startData = await startRes.json();
+      if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage');
+      const jobId = startData.job_id;
+
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      const steps = ['Récupération des sous-titres…','Transcription audio…','Analyse IA…','Connexion au stream…','Génération Short 1/3…','Génération Short 2/3…','Génération Short 3/3…'];
+      let stepIdx = 0;
+      const fillEl = document.getElementById(`spf-${agentId}`);
+      const textEl = document.getElementById(`spt-${agentId}`);
+
+      for (let poll = 0; poll < 120; poll++) {
+        await sleep(5000);
+
+        const r = await fetch('/api/repurpose', {
+          method: 'POST', headers,
+          body: JSON.stringify({ mode: 'shorts_status', job_id: jobId })
+        });
+        const d = await r.json();
+
+        if (d.progress && textEl) textEl.textContent = d.progress;
+        stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+        if (fillEl) fillEl.style.width = `${Math.min(10 + stepIdx * 13, 95)}%`;
+
+        if (d.status === 'done' && d.clips?.length) {
+          this._afficherShorts(agentId, d.clips, d.title);
+          if (btn) { btn.disabled = false; btn.innerHTML = '✅ Shorts générés'; }
+          return;
+        }
+        if (d.status === 'error') throw new Error(d.error || 'Erreur génération');
+      }
+      throw new Error('Timeout — génération trop longue, réessaie');
+    } catch (err) {
+      if (zone) zone.innerHTML = `<div class="shorts-error">❌ ${this._escapeHtml(err.message)}</div>`;
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Réessayer'; }
+    }
+  }
+
+  _afficherShorts(agentId, clips, title) {
+    const zone = document.getElementById(`shorts-zone-${agentId}`);
+    if (!zone) return;
+    const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    const cardsHtml = clips.map((c, i) => `
+      <div class="short-card">
+        <div class="short-card-num">Short ${i+1}</div>
+        <div class="short-card-score">${c.score}/100</div>
+        <div class="short-card-hook">${this._escapeHtml(c.hook || '')}</div>
+        <div class="short-card-dur">${fmt(c.start)} → ${fmt(c.end)} · ${c.duration}s</div>
+        <a class="btn-dl-short" href="${c.download_url}" download="${c.filename}" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger MP4
+        </a>
+      </div>`).join('');
+    zone.innerHTML = `
+      <div class="shorts-resultats">
+        <div class="shorts-resultats-titre">🎬 ${clips.length} Shorts 9:16 prêts — ${this._escapeHtml((title||'').substring(0,50))}</div>
+        <div class="shorts-grid">${cardsHtml}</div>
+      </div>`;
   }
 
   /* ===== CHAT LIBRE ===== */

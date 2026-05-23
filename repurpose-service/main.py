@@ -44,6 +44,7 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 # Job store en mémoire (session_id → état)
 JOBS: dict = {}
 EXPORT_JOBS: dict = {}
+REPURPOSE_JOBS: dict = {}
 
 def _persist_export_job(job_id: str, state: dict):
     try:
@@ -939,6 +940,95 @@ class ClipExportRequest(BaseModel):
     start: float
     end: float
 
+def _detect_face_x(video_path: str) -> int:
+    """Détecte la position X moyenne du visage dans la vidéo (10 échantillons).
+    Retourne src_w//2 si aucun visage détecté ou OpenCV indisponible.
+    """
+    try:
+        import cv2
+    except ImportError:
+        logger.warning("[face] opencv non disponible — crop centré")
+        return -1
+
+    cap = cv2.VideoCapture(video_path)
+    src_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25
+    total = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    duration = total / fps if fps else 30
+
+    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    face_cascade = cv2.CascadeClassifier(cascade_path)
+
+    n_samples = min(10, max(3, int(duration)))
+    face_xs = []
+    for i in range(n_samples):
+        t = (duration / n_samples) * i
+        cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
+        if len(faces) > 0:
+            largest = max(faces, key=lambda f: f[2] * f[3])
+            face_xs.append(largest[0] + largest[2] // 2)
+    cap.release()
+
+    if face_xs:
+        avg_x = int(sum(face_xs) / len(face_xs))
+        logger.info(f"[face] Visage à x={avg_x} ({len(face_xs)}/{n_samples} frames)")
+        return avg_x
+    logger.info(f"[face] Aucun visage — centre x={src_w//2}")
+    return src_w // 2
+
+
+def _get_video_dimensions(video_path: str) -> tuple[int, int]:
+    """Retourne (width, height) de la vidéo via ffprobe."""
+    try:
+        cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0",
+               "-show_entries", "stream=width,height", "-of", "csv=p=0", video_path]
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout.strip()
+        parts = out.split(",")
+        return int(parts[0]), int(parts[1])
+    except Exception:
+        return 1920, 1080
+
+
+def _make_srt(captions: list[dict]) -> str:
+    """Génère un fichier SRT depuis des caption_segments (timestamps relatifs au clip)."""
+    def ts(s: float) -> str:
+        s = max(0.0, float(s))
+        ms = int((s % 1) * 1000)
+        si = int(s)
+        return f"{si//3600:02d}:{(si%3600)//60:02d}:{si%60:02d},{ms:03d}"
+    lines = []
+    idx = 1
+    for cap in captions:
+        text = str(cap.get("text", "")).strip()
+        if not text:
+            continue
+        t0 = float(cap.get("start", 0))
+        t1 = float(cap.get("end", t0 + 2))
+        lines.append(f"{idx}\n{ts(t0)} --> {ts(t1)}\n{text}\n")
+        idx += 1
+    return "\n".join(lines)
+
+
+def _build_9_16_vf(src_w: int, src_h: int, face_x: int, srt_path: Optional[str] = None) -> str:
+    """Construit le filtre ffmpeg pour recadrage 9:16 centré sur le visage."""
+    crop_w = int(src_h * 9 / 16)
+    crop_w = min(crop_w, src_w)
+    if face_x < 0:
+        face_x = src_w // 2
+    x_off = max(0, min(face_x - crop_w // 2, src_w - crop_w))
+    vf = f"crop={crop_w}:{src_h}:{x_off}:0,scale=1080:1920,setsar=1"
+    if srt_path and Path(srt_path).exists() and Path(srt_path).stat().st_size > 10:
+        escaped = srt_path.replace("\\", "/").replace("'", "\\'").replace(":", "\\:")
+        style = "FontSize=20,Bold=1,Alignment=2,MarginV=60,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Shadow=1"
+        vf += f",subtitles='{escaped}':force_style='{style}'"
+    return vf
+
+
 async def process_export_job(job_id: str, video_id: str, start: float, end: float, out_dir: Path):
     try:
         filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
@@ -969,45 +1059,54 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         has_separate = bool(audio_url)
         logger.info(f"[export {job_id[:8]}] URLs OK, separate={has_separate}")
 
-        # Étape 2 : ffmpeg découpe + recadrage 9:16
-        def _run_ffmpeg():
-            vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
+        # Étape 2 : télécharger le clip brut pour face detection
+        raw_path = out_dir / f"raw_{job_id[:8]}.mp4"
+
+        def _dl_raw():
             if has_separate:
-                cmd = [
-                    "ffmpeg", "-y",
-                    "-ss", str(start), "-i", video_url,
-                    "-ss", str(start), "-i", audio_url,
-                    "-t", str(duration),
-                    "-map", "0:v:0", "-map", "1:a:0",
-                    "-vf", vf,
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "128k",
-                    "-movflags", "+faststart",
-                    str(out_path)
-                ]
+                cmd = ["ffmpeg", "-y",
+                       "-ss", str(start), "-i", video_url,
+                       "-ss", str(start), "-i", audio_url,
+                       "-t", str(duration),
+                       "-map", "0:v:0", "-map", "1:a:0",
+                       "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+                       "-c:a", "aac", "-b:a", "128k", str(raw_path)]
             else:
-                cmd = [
-                    "ffmpeg", "-y",
-                    "-ss", str(start),
-                    "-i", video_url,
-                    "-t", str(duration),
-                    "-vf", vf,
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "128k",
-                    "-movflags", "+faststart",
-                    str(out_path)
-                ]
-            logger.info(f"[export {job_id[:8]}] ffmpeg start={start:.1f}s dur={duration:.1f}s")
-            result = subprocess.run(cmd, capture_output=True, timeout=300)
-            if result.returncode != 0:
-                err = (result.stdout.decode() + result.stderr.decode())[-800:]
-                raise Exception(f"ffmpeg: {err}")
+                cmd = ["ffmpeg", "-y",
+                       "-ss", str(start), "-i", video_url,
+                       "-t", str(duration),
+                       "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+                       "-c:a", "aac", "-b:a", "128k", str(raw_path)]
+            r = subprocess.run(cmd, capture_output=True, timeout=240)
+            if r.returncode != 0:
+                raise Exception(f"ffmpeg dl raw: {(r.stdout.decode()+r.stderr.decode())[-500:]}")
+
+        await asyncio.get_event_loop().run_in_executor(None, _dl_raw)
+
+        if not raw_path.exists() or raw_path.stat().st_size < 1000:
+            raise Exception("Clip brut vide après téléchargement")
+
+        # Étape 3 : face tracking + recadrage 9:16 + captions
+        def _crop_final():
+            face_x = _detect_face_x(str(raw_path))
+            src_w, src_h = _get_video_dimensions(str(raw_path))
+            vf = _build_9_16_vf(src_w, src_h, face_x)
+            cmd = ["ffmpeg", "-y", "-i", str(raw_path),
+                   "-vf", vf,
+                   "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                   "-pix_fmt", "yuv420p",
+                   "-c:a", "aac", "-b:a", "128k",
+                   "-movflags", "+faststart",
+                   str(out_path)]
+            logger.info(f"[export {job_id[:8]}] ffmpeg crop 9:16 face_x={face_x}")
+            r = subprocess.run(cmd, capture_output=True, timeout=300)
+            if r.returncode != 0:
+                raise Exception(f"ffmpeg crop: {(r.stdout.decode()+r.stderr.decode())[-800:]}")
+            raw_path.unlink(missing_ok=True)
             if not out_path.exists() or out_path.stat().st_size < 1000:
                 raise Exception("ffmpeg n'a pas produit de fichier valide")
 
-        await asyncio.get_event_loop().run_in_executor(None, _run_ffmpeg)
+        await asyncio.get_event_loop().run_in_executor(None, _crop_final)
 
         state = {
             "status": "done",
@@ -1047,6 +1146,229 @@ def clip_export_file(job_id: str, filename: str):
     if ".." in job_id or ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Chemin invalide")
     path = SESSIONS_DIR / f"export_{job_id}" / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier expiré ou introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+
+class RepurposeRequest(BaseModel):
+    url: str
+    n_clips: int = 3
+
+
+async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Path):
+    """Pipeline complet : YouTube → transcription → moments viraux → 9:16 face-tracked + captions."""
+    jid = job_id[:8]
+
+    def _upd(progress: str):
+        REPURPOSE_JOBS[job_id]["progress"] = progress
+        logger.info(f"[repurpose {jid}] {progress}")
+
+    try:
+        video_id = _extract_video_id(url)
+        if not video_id:
+            raise Exception("URL YouTube invalide")
+
+        title, video_duration = "Vidéo YouTube", 600
+        segments: list[dict] = []
+        word_transcript: list[dict] = []
+
+        # ── 1. Sous-titres + métadonnées ──────────────────────────────────────
+        _upd("Récupération des sous-titres…")
+        sub_result = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _get_subtitles_fast(url)
+        )
+        if sub_result:
+            segments, _, dur2 = sub_result
+            if dur2 > 0:
+                video_duration = dur2
+
+        try:
+            meta_title, meta_dur = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _get_video_meta(video_id)
+            )
+            if meta_title and meta_title != "Vidéo YouTube":
+                title = meta_title
+            if meta_dur > 0:
+                video_duration = meta_dur
+        except Exception:
+            pass
+
+        # Fallback Groq Whisper si pas de CC
+        if not segments and GROQ_API_KEY:
+            _upd("Transcription audio (Whisper)…")
+            whis_tmp = tempfile.mkdtemp()
+            try:
+                audio_path, _, dur2 = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: download_audio_only(url, whis_tmp)
+                )
+                if dur2 > 0:
+                    video_duration = dur2
+                word_transcript = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _transcribe_words_groq(audio_path)
+                )
+                segments = _words_to_segments(word_transcript)
+            except Exception as e:
+                logger.warning(f"[repurpose {jid}] Whisper: {e}")
+            finally:
+                shutil.rmtree(whis_tmp, ignore_errors=True)
+
+        # ── 2. Identification des moments viraux ──────────────────────────────
+        _upd("Analyse IA — moments viraux…")
+        moments = await identify_moments_groq(segments, title, n_clips, video_duration)
+        if not moments:
+            video_result = await gemini_analyze_video(url, n_clips)
+            if video_result:
+                title = video_result.get("title") or title
+                video_duration = video_result.get("duration") or video_duration
+                moments = video_result.get("clips", [])
+        if not moments:
+            moments = _fallback_moments([], n_clips, video_duration)
+
+        moments = moments[:n_clips]
+        logger.info(f"[repurpose {jid}] {len(moments)} moments identifiés")
+
+        # ── 3. Playwright → URLs CDN YouTube (une seule fois pour tout le job) ─
+        _upd("Connexion au stream YouTube…")
+        video_url, audio_url = await _get_stream_via_playwright(video_id)
+        if not video_url:
+            raise Exception("Stream YouTube inaccessible — réessaie dans quelques minutes")
+
+        has_separate = bool(audio_url)
+
+        # ── 4. Pour chaque moment : raw download → face detect → crop 9:16 ───
+        result_clips = []
+        for i, moment in enumerate(moments):
+            clip_start = float(moment.get("start", 0))
+            clip_end   = float(moment.get("end", clip_start + 60))
+            duration   = clip_end - clip_start
+            clip_num   = i + 1
+
+            _upd(f"Génération Short {clip_num}/{len(moments)}…")
+
+            try:
+                raw_path   = out_dir / f"raw_{clip_num}.mp4"
+                short_path = out_dir / f"short_{clip_num}_{video_id}.mp4"
+                srt_path   = out_dir / f"caps_{clip_num}.srt"
+
+                # Captions pour ce clip
+                if word_transcript:
+                    caps = _words_to_caption_segs(word_transcript, clip_start, clip_end)
+                elif segments:
+                    caps = [
+                        {"start": round(s["start"] - clip_start, 2),
+                         "end":   round(s["end"]   - clip_start, 2),
+                         "text":  s["text"]}
+                        for s in segments if clip_start <= s["start"] < clip_end
+                    ]
+                else:
+                    caps = moment.get("caption_segments", [])
+
+                if caps:
+                    srt_path.write_text(_make_srt(caps), encoding="utf-8")
+
+                # 4a. Télécharger clip brut (pleine résolution, sans crop)
+                def _dl(raw=str(raw_path), vs=video_url, aus=audio_url,
+                        ss=clip_start, dur=duration, sep=has_separate):
+                    if sep:
+                        cmd = ["ffmpeg", "-y",
+                               "-ss", str(ss), "-i", vs,
+                               "-ss", str(ss), "-i", aus,
+                               "-t", str(dur),
+                               "-map", "0:v:0", "-map", "1:a:0",
+                               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+                               "-c:a", "aac", "-b:a", "128k", raw]
+                    else:
+                        cmd = ["ffmpeg", "-y",
+                               "-ss", str(ss), "-i", vs,
+                               "-t", str(dur),
+                               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+                               "-c:a", "aac", "-b:a", "128k", raw]
+                    r = subprocess.run(cmd, capture_output=True, timeout=240)
+                    if r.returncode != 0:
+                        raise Exception(f"ffmpeg dl: {(r.stdout.decode()+r.stderr.decode())[-400:]}")
+
+                await asyncio.get_event_loop().run_in_executor(None, _dl)
+
+                if not raw_path.exists() or raw_path.stat().st_size < 1000:
+                    raise Exception("Clip brut vide")
+
+                # 4b. Face tracking → crop 9:16 → captions
+                def _crop(raw=str(raw_path), out=str(short_path),
+                          srt=str(srt_path) if (caps and srt_path.exists()) else None):
+                    face_x = _detect_face_x(raw)
+                    src_w, src_h = _get_video_dimensions(raw)
+                    vf = _build_9_16_vf(src_w, src_h, face_x, srt)
+                    cmd = ["ffmpeg", "-y", "-i", raw,
+                           "-vf", vf,
+                           "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                           "-pix_fmt", "yuv420p",
+                           "-c:a", "aac", "-b:a", "128k",
+                           "-movflags", "+faststart", out]
+                    r = subprocess.run(cmd, capture_output=True, timeout=300)
+                    raw_path.unlink(missing_ok=True)
+                    if r.returncode != 0:
+                        raise Exception(f"ffmpeg crop: {(r.stdout.decode()+r.stderr.decode())[-400:]}")
+
+                await asyncio.get_event_loop().run_in_executor(None, _crop)
+
+                if not short_path.exists() or short_path.stat().st_size < 1000:
+                    raise Exception("Short vide après traitement")
+
+                result_clips.append({
+                    "hook":          str(moment.get("hook", f"Clip {clip_num}"))[:80],
+                    "why":           str(moment.get("why",  ""))[:200],
+                    "score":         int(moment.get("score", 80)),
+                    "start":         clip_start,
+                    "end":           clip_end,
+                    "duration":      round(duration, 1),
+                    "download_url":  f"/repurpose-file/{job_id}/{short_path.name}",
+                    "filename":      short_path.name,
+                })
+                logger.info(f"[repurpose {jid}] Short {clip_num} OK")
+
+            except Exception as e:
+                logger.error(f"[repurpose {jid}] Short {clip_num} erreur: {e}")
+
+        if not result_clips:
+            raise Exception("Aucun Short produit — tous les clips ont échoué")
+
+        REPURPOSE_JOBS[job_id] = {
+            "status": "done",
+            "title": title,
+            "clips": result_clips,
+        }
+        logger.info(f"[repurpose {jid}] Terminé — {len(result_clips)} shorts prêts")
+
+    except Exception as e:
+        logger.error(f"[repurpose {jid}] Erreur fatale: {e}")
+        REPURPOSE_JOBS[job_id] = {"status": "error", "error": str(e)}
+
+
+@app.post("/repurpose")
+async def start_repurpose(req: RepurposeRequest, background_tasks: BackgroundTasks, _: None = Depends(verify_secret)):
+    job_id = str(uuid.uuid4())[:12]
+    out_dir = SESSIONS_DIR / f"repurpose_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    n = min(max(1, req.n_clips), 5)
+    REPURPOSE_JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
+    background_tasks.add_task(process_repurpose_job, job_id, req.url, n, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/repurpose-status/{job_id}")
+async def repurpose_status(job_id: str, _: None = Depends(verify_secret)):
+    job = REPURPOSE_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+
+@app.get("/repurpose-file/{job_id}/{filename}")
+def repurpose_file(job_id: str, filename: str):
+    if ".." in job_id or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = SESSIONS_DIR / f"repurpose_{job_id}" / filename
     if not path.exists():
         raise HTTPException(404, "Fichier expiré ou introuvable")
     return FileResponse(str(path), media_type="video/mp4", filename=filename)
