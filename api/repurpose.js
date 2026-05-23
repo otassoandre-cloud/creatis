@@ -259,10 +259,10 @@ module.exports = async (req, res) => {
     if (!url) return res.status(400).json({ error: 'url manquante' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/repurpose`, {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ url, n_clips: n_clips || 3 }),
+        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3 }),
         signal: AbortSignal.timeout(20000)
       });
       const data = await r.json();
@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
     if (!job_id) return res.status(400).json({ error: 'job_id manquant' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/repurpose-status/${job_id}`, {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/shorts-status/${job_id}`, {
         headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
         signal: AbortSignal.timeout(10000)
       });
