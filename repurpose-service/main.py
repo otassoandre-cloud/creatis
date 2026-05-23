@@ -66,9 +66,17 @@ class ClipExportRequest(BaseModel):
 
 _COBALT_INSTANCES = [
     "https://api.cobalt.tools",
-    "https://co.wuk.sh",
     "https://cobalt.imput.net",
+    "https://co.wuk.sh",
 ]
+
+_COBALT_HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Origin": "https://cobalt.tools",
+    "Referer": "https://cobalt.tools/",
+}
 
 
 def _direct_download(url: str, out_path: str) -> None:
@@ -91,9 +99,12 @@ def _cobalt_download(youtube_url: str, out_path: str) -> None:
             with httpx.Client(timeout=30) as c:
                 r = c.post(
                     f"{base}/",
-                    headers={"Accept": "application/json", "Content-Type": "application/json"},
-                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic"},
+                    headers=_COBALT_HEADERS,
+                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic", "downloadMode": "auto"},
                 )
+                if r.status_code == 400:
+                    logger.warning(f"Cobalt {base}: 400 — body: {r.text[:200]}")
+                    raise RuntimeError(f"Cobalt 400: {r.text[:200]}")
                 r.raise_for_status()
                 data = r.json()
             status = data.get("status")
@@ -113,14 +124,32 @@ def _cobalt_download(youtube_url: str, out_path: str) -> None:
 
 def _ytdlp_download(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
-    ydl_opts = {
+    base_opts = {
         "quiet": True,
         "no_warnings": True,
         "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    # Essai 1 : impersonate Chrome (TLS fingerprint réel, bypass bot detection)
+    try:
+        opts = {**base_opts, "impersonate": "chrome"}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=True)
+            path = ydl.prepare_filename(info)
+            if not os.path.exists(path):
+                stem = os.path.splitext(path)[0]
+                for ext in (".mp4", ".mkv", ".webm"):
+                    if os.path.exists(stem + ext):
+                        path = stem + ext
+                        break
+            if os.path.exists(path) and os.path.getsize(path) > 10_000:
+                logger.info(f"yt-dlp impersonate OK: {path}")
+                return path
+    except Exception as e:
+        logger.warning(f"yt-dlp impersonate failed ({e}) — fallback standard")
+    # Essai 2 : yt-dlp standard
+    with yt_dlp.YoutubeDL(base_opts) as ydl:
         info = ydl.extract_info(youtube_url, download=True)
         path = ydl.prepare_filename(info)
         if not os.path.exists(path):
