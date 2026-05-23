@@ -64,20 +64,9 @@ def _load_export_job(job_id: str) -> Optional[dict]:
         pass
     return None
 
-# Fichier cookies YouTube (écrit une fois au démarrage)
+# Fichier cookies YouTube — YOUTUBE_COOKIE_HEADER prioritaire sur YOUTUBE_COOKIES_B64
 _COOKIE_FILE: Optional[str] = None
-if YOUTUBE_COOKIES_B64:
-    try:
-        import base64 as _b64
-        _cookie_path = str(SESSIONS_DIR / "yt_cookies.txt")
-        with open(_cookie_path, "w") as _f:
-            _f.write(_b64.b64decode(YOUTUBE_COOKIES_B64).decode("utf-8"))
-        _COOKIE_FILE = _cookie_path
-        logger.info("Cookies YouTube (B64) chargés ✓")
-    except Exception as _e:
-        logger.warning(f"Erreur chargement cookies B64: {_e}")
-
-if not _COOKIE_FILE and YOUTUBE_COOKIE_HEADER:
+if YOUTUBE_COOKIE_HEADER:
     try:
         _cookie_path = str(SESSIONS_DIR / "yt_cookies.txt")
         with open(_cookie_path, "w") as _f:
@@ -94,6 +83,17 @@ if not _COOKIE_FILE and YOUTUBE_COOKIE_HEADER:
         logger.info("Cookies YouTube (header) chargés ✓")
     except Exception as _e:
         logger.warning(f"Erreur chargement cookies header: {_e}")
+
+if not _COOKIE_FILE and YOUTUBE_COOKIES_B64:
+    try:
+        import base64 as _b64
+        _cookie_path = str(SESSIONS_DIR / "yt_cookies.txt")
+        with open(_cookie_path, "w") as _f:
+            _f.write(_b64.b64decode(YOUTUBE_COOKIES_B64).decode("utf-8"))
+        _COOKIE_FILE = _cookie_path
+        logger.info("Cookies YouTube (B64) chargés ✓")
+    except Exception as _e:
+        logger.warning(f"Erreur chargement cookies B64: {_e}")
 
 def _yt_opts(**extra) -> dict:
     """Options yt-dlp de base avec cookies si disponibles."""
