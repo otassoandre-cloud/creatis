@@ -806,30 +806,72 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         def _export():
             import requests as req_lib
 
-            # Récupérer l'URL stream via Invidious (contourne bot detection YouTube)
-            # Invidious retourne des URLs directes YouTube CDN via son API publique
+            # Appel direct à l'API Innertube de YouTube (API interne Android/TV)
+            # Ces clients mobile/TV ne déclenchent pas la bot detection des IPs datacenter
+            INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+            CLIENTS = [
+                ("ANDROID_EMBEDDED_PLAYER", "55", "19.29.37",
+                 "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"),
+                ("TVHTML5_SIMPLY_EMBEDDED_PLAYER", "85", "2.0",
+                 "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/2.1 Chrome/56.0.2924.0 TV Safari/537.36"),
+                ("ANDROID", "3", "19.29.37",
+                 "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"),
+                ("IOS", "5", "19.29.1",
+                 "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)"),
+            ]
+
             video_url = None
-            for instance in INVIDIOUS_INSTANCES:
+            for client_name, client_id, client_ver, ua in CLIENTS:
                 try:
-                    r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=12)
+                    ctx = {"client": {"clientName": client_name, "clientVersion": client_ver, "hl": "fr", "gl": "FR"}}
+                    if "EMBEDDED" in client_name or "SIMPLY" in client_name:
+                        ctx["thirdParty"] = {"embedUrl": f"https://www.youtube.com/watch?v={video_id}"}
+                    r = req_lib.post(
+                        f"https://www.youtube.com/youtubei/v1/player?key={INNERTUBE_KEY}",
+                        json={"context": ctx, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+                        headers={"Content-Type": "application/json", "User-Agent": ua,
+                                 "X-Youtube-Client-Name": client_id, "X-Youtube-Client-Version": client_ver},
+                        timeout=15,
+                    )
                     if r.status_code != 200:
-                        logger.warning(f"[export {job_id[:8]}] Invidious {instance}: HTTP {r.status_code}")
                         continue
-                    fmts = r.json().get("formatStreams", [])
-                    # Préférer 720p (itag 22) puis 360p (itag 18) — formats pré-fusionnés h264+aac
-                    itag = None
-                    for target in ["22", "18"]:
-                        if any(str(f.get("itag")) == target for f in fmts):
-                            itag = target
-                            break
-                    if not itag and fmts:
-                        itag = str(fmts[-1].get("itag", "18"))
-                    if itag:
-                        video_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
-                        logger.info(f"[export {job_id[:8]}] Invidious OK {instance} itag={itag}")
-                        break
+                    data = r.json()
+                    if data.get("playabilityStatus", {}).get("status") not in ("OK", "CONTENT_CHECK_REQUIRED"):
+                        logger.warning(f"[export {job_id[:8]}] innertube {client_name}: {data.get('playabilityStatus',{}).get('status')}")
+                        continue
+                    # Formats pré-fusionnés (video+audio) → URLs directes
+                    fmts = data.get("streamingData", {}).get("formats", [])
+                    direct = [f for f in fmts if f.get("url") and "video/mp4" in f.get("mimeType", "")]
+                    if not direct:
+                        # Fallback : formats adaptatifs avec video+audio
+                        adaptive = data.get("streamingData", {}).get("adaptiveFormats", [])
+                        direct = [f for f in adaptive if f.get("url") and "video/mp4" in f.get("mimeType", "") and f.get("audioQuality")]
+                    if not direct:
+                        logger.warning(f"[export {job_id[:8]}] innertube {client_name}: aucune URL directe MP4")
+                        continue
+                    direct.sort(key=lambda f: f.get("height", 0), reverse=True)
+                    best = next((f for f in direct if f.get("height", 0) <= 720), direct[0])
+                    video_url = best["url"]
+                    logger.info(f"[export {job_id[:8]}] innertube OK {client_name}: {best.get('qualityLabel')} h={best.get('height')}")
+                    break
                 except Exception as exc:
-                    logger.warning(f"[export {job_id[:8]}] Invidious {instance}: {exc}")
+                    logger.warning(f"[export {job_id[:8]}] innertube {client_name}: {exc}")
+
+            # Fallback Invidious si Innertube échoue
+            if not video_url:
+                for instance in INVIDIOUS_INSTANCES:
+                    try:
+                        r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=10)
+                        if r.status_code != 200:
+                            continue
+                        fmts = r.json().get("formatStreams", [])
+                        itag = next((t for t in ["22", "18"] if any(str(f.get("itag")) == t for f in fmts)), None)
+                        if itag:
+                            video_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
+                            logger.info(f"[export {job_id[:8]}] invidious OK {instance} itag={itag}")
+                            break
+                    except Exception as exc:
+                        logger.warning(f"[export {job_id[:8]}] invidious {instance}: {exc}")
 
             if not video_url:
                 raise Exception("Service indisponible — réessaie dans quelques minutes")
