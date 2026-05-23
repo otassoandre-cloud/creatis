@@ -147,9 +147,52 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
 
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
 
-def transcribe(media_path: str) -> Dict:
+def _extract_audio(media_path: str, out_path: str) -> float:
+    """Extrait audio en mp3 mono 16kHz 64kbps. Retourne la taille en MB."""
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-i", media_path,
+        "-ar", "16000", "-ac", "1", "-b:a", "64k",
+        out_path,
+    ]
+    r = subprocess.run(cmd, capture_output=True, timeout=120)
+    if r.returncode != 0:
+        raise RuntimeError(f"ffmpeg audio: {(r.stdout + r.stderr).decode(errors='replace')[:300]}")
+    return Path(out_path).stat().st_size / 1_048_576
+
+
+async def _transcribe_groq(media_path: str) -> Dict:
+    """Transcription via Groq Whisper API — beaucoup plus rapide que local."""
+    audio_path = media_path + ".audio.mp3"
+    try:
+        size_mb = _extract_audio(media_path, audio_path)
+        logger.info(f"[groq-whisper] audio extrait: {size_mb:.1f} MB")
+        if size_mb > 24:
+            raise RuntimeError(f"Audio trop grand pour Groq: {size_mb:.1f} MB")
+        async with httpx.AsyncClient(timeout=180) as c:
+            with open(audio_path, "rb") as f:
+                r = await c.post(
+                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    data={"model": "whisper-large-v3", "response_format": "verbose_json"},
+                    files={"file": ("audio.mp3", f, "audio/mpeg")},
+                )
+        r.raise_for_status()
+        data = r.json()
+        segments = [
+            {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+            for s in data.get("segments", [])
+        ]
+        duration = float(data.get("duration", 0)) or (segments[-1]["end"] if segments else 0.0)
+        logger.info(f"[groq-whisper] {len(segments)} segments {duration:.0f}s")
+        return {"duration": duration, "segments": segments}
+    finally:
+        Path(audio_path).unlink(missing_ok=True)
+
+
+def _transcribe_local(media_path: str) -> Dict:
     from faster_whisper import WhisperModel
-    logger.info(f"[whisper] model={WHISPER_MODEL} device=cpu")
+    logger.info(f"[whisper-local] model={WHISPER_MODEL} device=cpu")
     model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
     segs_iter, info = model.transcribe(
         media_path, beam_size=5, vad_filter=True, condition_on_previous_text=False
@@ -159,8 +202,19 @@ def transcribe(media_path: str) -> Dict:
         for s in segs_iter
     ]
     duration = float(getattr(info, "duration", 0.0)) or (segments[-1]["end"] if segments else 0.0)
-    logger.info(f"[whisper] {len(segments)} segments  {duration:.0f}s")
+    logger.info(f"[whisper-local] {len(segments)} segments {duration:.0f}s")
     return {"duration": duration, "segments": segments}
+
+
+async def transcribe(media_path: str) -> Dict:
+    """Groq Whisper en priorité (rapide), local en fallback."""
+    if GROQ_API_KEY:
+        try:
+            return await _transcribe_groq(media_path)
+        except Exception as e:
+            logger.warning(f"Groq Whisper failed ({e}) — fallback local")
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: _transcribe_local(media_path))
 
 
 # ── 3. HIGHLIGHT DETECTION — SamurAI prompts + Gemini ────────────────────────
@@ -391,9 +445,7 @@ async def run_generate_shorts(job_id: str, url: str, num_clips: int, out_dir: Pa
         )
 
         upd("Transcription Whisper…")
-        transcript = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: transcribe(source)
-        )
+        transcript = await transcribe(source)
         if not transcript["segments"]:
             raise RuntimeError("Aucun segment Whisper — vidéo sans parole ?")
 
@@ -531,9 +583,7 @@ async def run_clips(session_id: str, url: str, n_clips: int) -> None:
             source = await asyncio.get_event_loop().run_in_executor(
                 None, lambda: download_video(url, out_dir)
             )
-            transcript = await asyncio.get_event_loop().run_in_executor(
-                None, lambda: transcribe(source)
-            )
+            transcript = await transcribe(source)
             Path(source).unlink(missing_ok=True)
 
         if not transcript or not transcript["segments"]:
