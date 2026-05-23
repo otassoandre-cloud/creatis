@@ -5,3 +5,4 @@ yt-dlp>=2024.12.13
 httpx==0.28.1
 pydantic==2.10.3
 youtube-transcript-api==0.6.3
+playwright>=1.49.0

@@ -107,6 +107,110 @@ def _yt_opts(**extra) -> dict:
         opts["cookiefile"] = _COOKIE_FILE
     return opts
 
+
+async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Optional[str]]:
+    """Lance Chromium headless, joue la vidéo et intercepte les URLs CDN googlevideo.com.
+    Ces URLs sont valides depuis n'importe quelle IP — seule leur génération nécessite un vrai Chrome.
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        logger.error("[playwright] Module non installé")
+        return None, None
+
+    stream_urls: dict = {"video": None, "audio": None}
+    logger.info(f"[playwright] Lancement Chromium pour {video_id}…")
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-extensions",
+                "--disable-sync",
+                "--mute-audio",
+                "--autoplay-policy=no-user-gesture-required",
+            ]
+        )
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        )
+
+        # Charger les cookies YouTube dans le contexte browser
+        if _COOKIE_FILE:
+            try:
+                cookies_to_set = []
+                with open(_COOKIE_FILE) as cf:
+                    for line in cf:
+                        line = line.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        parts = line.split("\t")
+                        if len(parts) < 7:
+                            continue
+                        domain, _, path, secure, expires_str, name, value = parts[:7]
+                        try:
+                            exp = int(float(expires_str))
+                        except (ValueError, OverflowError):
+                            exp = -1
+                        cookie: dict = {
+                            "name": name,
+                            "value": value,
+                            "domain": domain,
+                            "path": path,
+                            "secure": secure == "TRUE",
+                            "httpOnly": False,
+                        }
+                        if exp > 0:
+                            cookie["expires"] = exp
+                        cookies_to_set.append(cookie)
+                if cookies_to_set:
+                    await context.add_cookies(cookies_to_set)
+                    logger.info(f"[playwright] {len(cookies_to_set)} cookies YouTube chargés")
+            except Exception as e:
+                logger.warning(f"[playwright] Erreur cookies: {e}")
+
+        page = await context.new_page()
+
+        async def on_request(req):
+            url = req.url
+            if "googlevideo.com" in url and "videoplayback" in url:
+                # Supprimer range= pour accès au stream complet
+                clean_url = re.sub(r'[&?]range=\d+-\d*', '', url)
+                if "mime=video" in url and not stream_urls["video"]:
+                    stream_urls["video"] = clean_url
+                    logger.info(f"[playwright] URL vidéo interceptée ✓")
+                elif "mime=audio" in url and not stream_urls["audio"]:
+                    stream_urls["audio"] = clean_url
+                    logger.info(f"[playwright] URL audio interceptée ✓")
+
+        page.on("request", on_request)
+
+        try:
+            # Utiliser l'embed player : moins de gates, autoplay plus fiable
+            await page.goto(
+                f"https://www.youtube.com/embed/{video_id}?autoplay=1&controls=0",
+                wait_until="domcontentloaded",
+                timeout=30000
+            )
+            # Attendre jusqu'à 20s pour intercepter les deux URLs
+            for _ in range(40):
+                if stream_urls["video"] and stream_urls["audio"]:
+                    break
+                await asyncio.sleep(0.5)
+            if stream_urls["video"] and not stream_urls["audio"]:
+                logger.info("[playwright] Seule URL vidéo trouvée (possible stream combiné)")
+        except Exception as e:
+            logger.warning(f"[playwright] Erreur navigation: {e}")
+        finally:
+            await browser.close()
+
+    logger.info(f"[playwright] Résultat: video={'OK' if stream_urls['video'] else 'MANQUANT'} audio={'OK' if stream_urls['audio'] else 'MANQUANT'}")
+    return stream_urls["video"], stream_urls["audio"]
+
+
 app = FastAPI(title="Créatis Clips Service", version="3.0.0")
 security = HTTPBearer(auto_error=False)
 
@@ -840,34 +944,34 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
         filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
         out_path = out_dir / filename
         duration = end - start
-        yt_url = f"https://www.youtube.com/watch?v={video_id}"
 
-        def _export():
-            # Étape 1 : extraire URLs via yt-dlp (avec cookies si disponibles)
-            opts = _yt_opts(
-                format="best",
-            )
-            logger.info(f"[export {job_id[:8]}] yt-dlp extract {video_id}…")
+        # Étape 1 : Playwright intercepte les vraies URLs CDN (PO token généré par Chrome)
+        video_url, audio_url = await _get_stream_via_playwright(video_id)
+
+        # Fallback yt-dlp si Playwright échoue (ex: Chromium crash)
+        if not video_url:
+            logger.warning(f"[export {job_id[:8]}] Playwright sans résultat, fallback yt-dlp…")
+            yt_url = f"https://www.youtube.com/watch?v={video_id}"
+            opts = _yt_opts(format="best")
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(yt_url, download=False)
-
             requested = info.get("requested_formats") or []
             if len(requested) >= 2:
                 video_url = requested[0].get("url") or requested[0].get("manifest_url")
                 audio_url = requested[1].get("url") or requested[1].get("manifest_url")
-                has_separate = bool(video_url and audio_url)
             else:
                 video_url = info.get("url") or info.get("manifest_url")
                 audio_url = None
-                has_separate = False
 
-            if not video_url:
-                raise Exception("yt-dlp: URL vidéo introuvable dans les formats")
+        if not video_url:
+            raise Exception("Impossible d'extraire l'URL vidéo (Playwright + yt-dlp échoués)")
 
-            logger.info(f"[export {job_id[:8]}] yt-dlp OK, separate={has_separate}")
+        has_separate = bool(audio_url)
+        logger.info(f"[export {job_id[:8]}] URLs OK, separate={has_separate}")
 
+        # Étape 2 : ffmpeg découpe + recadrage 9:16
+        def _run_ffmpeg():
             vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
-
             if has_separate:
                 cmd = [
                     "ffmpeg", "-y",
@@ -895,7 +999,6 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
                     "-movflags", "+faststart",
                     str(out_path)
                 ]
-
             logger.info(f"[export {job_id[:8]}] ffmpeg start={start:.1f}s dur={duration:.1f}s")
             result = subprocess.run(cmd, capture_output=True, timeout=300)
             if result.returncode != 0:
@@ -904,7 +1007,7 @@ async def process_export_job(job_id: str, video_id: str, start: float, end: floa
             if not out_path.exists() or out_path.stat().st_size < 1000:
                 raise Exception("ffmpeg n'a pas produit de fichier valide")
 
-        await asyncio.get_event_loop().run_in_executor(None, _export)
+        await asyncio.get_event_loop().run_in_executor(None, _run_ffmpeg)
 
         state = {
             "status": "done",
