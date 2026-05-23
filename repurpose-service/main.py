@@ -304,46 +304,31 @@ def download_video(url: str, out_dir: Path, direct_url: Optional[str] = None, au
     # Priorité 4 : yt-dlp last resort
     return _ytdlp_download(url, out_dir)
 
-# ── STEP 2 : Transcription faster-whisper ──────────────────────────────────────
-def transcribe(video_path: str) -> tuple[list, float]:
-    from faster_whisper import WhisperModel
-    model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
-    segs_iter, info = model.transcribe(video_path, beam_size=1)
-    segments = [
-        {"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
-        for s in segs_iter
-    ]
-    duration = segments[-1]["end"] if segments else 0.0
-    logger.info(f"[whisper] {len(segments)} segments  {duration:.0f}s  lang={info.language}")
-    return segments, duration
-
-# ── STEP 3 : Moments viraux — Gemini Flash ──────────────────────────────────────
-async def find_moments(segments: list, duration: float, n: int) -> list:
+# ── STEP 2 : Analyse Gemini direct sur URL YouTube ─────────────────────────────
+async def _gemini_analyze_youtube(youtube_url: str, n: int) -> list[dict]:
+    """Gemini analyse la vidéo YouTube directement — pas de téléchargement ni Whisper."""
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY manquant")
 
-    transcript = "\n".join(
-        f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in segments
-    )
-    prompt = f"""You are a viral YouTube Shorts expert.
-Analyze this transcript and find the {n} best moments for Shorts.
+    prompt = f"""Tu es un expert YouTube Shorts viral.
+Analyse cette vidéo YouTube et identifie les {n} meilleurs moments pour créer des Shorts viraux.
 
-Rules:
-- Each clip: 45-60 seconds
-- Must start with a strong hook
-- Self-contained, no prior context needed
-- Score virality 0-100
+Règles :
+- Chaque clip : 45-60 secondes
+- Commence par un hook fort (accroche immédiate)
+- Auto-suffisant (pas besoin de contexte avant)
+- Score viralité 0-100
 
-Return ONLY valid JSON, no markdown:
-{{"moments":[{{"start_time":12.5,"end_time":67.0,"title":"Short title","hook_sentence":"Opening hook","score":88}}]}}
+Réponds UNIQUEMENT en JSON valide, sans markdown :
+{{"moments":[{{"start_time":12.5,"end_time":67.0,"title":"Titre court","hook_sentence":"Phrase d'accroche","score":88}}]}}"""
 
-Transcript (total: {duration:.0f}s):
-{transcript[:8000]}"""
-
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=90) as client:
         r = await client.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}",
-            json={"contents": [{"parts": [{"text": prompt}]}]},
+            json={"contents": [{"parts": [
+                {"fileData": {"fileUri": youtube_url}},
+                {"text": prompt},
+            ]}]},
         )
         r.raise_for_status()
         raw = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -355,7 +340,7 @@ Transcript (total: {duration:.0f}s):
     for m in data["moments"][:n]:
         s = max(0.0, float(m["start_time"]))
         e = float(m["end_time"])
-        e = min(max(e, s + 20), s + 90, duration)
+        e = min(max(e, s + 20), s + 90)
         result.append({
             "start_time":    s,
             "end_time":      e,
@@ -364,8 +349,50 @@ Transcript (total: {duration:.0f}s):
             "score":         int(m.get("score", 80)),
         })
 
-    logger.info(f"[gemini] {len(result)} moments")
+    logger.info(f"[gemini-yt] {len(result)} moments identifiés")
     return result
+
+
+def _cobalt_get_stream_url(youtube_url: str) -> str:
+    """Retourne l'URL de stream Cobalt sans télécharger le fichier."""
+    last_err = None
+    for base in _COBALT_INSTANCES:
+        try:
+            with httpx.Client(timeout=30) as c:
+                r = c.post(f"{base}/",
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    json={"url": youtube_url, "videoQuality": "720", "filenameStyle": "basic"}
+                )
+                r.raise_for_status()
+                data = r.json()
+            status = data.get("status")
+            if status in ("stream", "tunnel", "redirect", "picker"):
+                dl_url = data.get("url") or (data.get("picker", [{}])[0].get("url"))
+                if dl_url:
+                    logger.info(f"Cobalt stream URL OK ({base}): {dl_url[:60]}")
+                    return dl_url
+            raise RuntimeError(f"Cobalt: {data.get('error', {}).get('code', status)}")
+        except Exception as e:
+            logger.warning(f"Cobalt {base} stream URL failed: {e}")
+            last_err = e
+    raise RuntimeError(f"Cobalt get URL: tous les serveurs ont échoué: {last_err}")
+
+
+def _ffmpeg_cut_from_url(stream_url: str, start: float, end: float, out: str) -> None:
+    """ffmpeg coupe un segment depuis une URL HTTP — pas de téléchargement complet."""
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-ss", f"{start:.3f}",
+        "-to", f"{end:.3f}",
+        "-i", stream_url,
+        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "128k",
+        out,
+    ]
+    r = subprocess.run(cmd, capture_output=True, timeout=180)
+    if r.returncode != 0:
+        err = (r.stdout + r.stderr).decode(errors="replace")[:1500]
+        raise RuntimeError(f"ffmpeg cut URL (rc={r.returncode}): {err}")
 
 # ── STEP 4 : Cut + face-aware crop (SamurAI exact implementation) ───────────────
 
@@ -500,48 +527,117 @@ async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_u
         logger.info(f"[{job_id[:8]}] {msg}")
 
     try:
-        upd("Téléchargement…")
-        source, title, _ = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video(url, out_dir, direct_url, audio_url)
-        )
-
-        upd("Transcription Whisper…")
-        segments, duration = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: transcribe(source)
-        )
-        if not segments:
-            raise RuntimeError("Transcription vide — vidéo sans parole ?")
-
-        upd("Analyse Gemini…")
-        moments = await find_moments(segments, duration, num_clips)
+        # STEP 1 : Gemini analyse la vidéo YouTube directement (pas de téléchargement)
+        upd("Analyse Gemini de la vidéo…")
+        moments = await _gemini_analyze_youtube(url, num_clips)
         if not moments:
-            raise RuntimeError("Aucun moment viral identifié")
+            raise RuntimeError("Aucun moment viral identifié par Gemini")
 
+        # STEP 2 : Essai mode URL (Cobalt → ffmpeg coupe segments sans télécharger le tout)
         clips = []
-        for i, m in enumerate(moments):
-            upd(f"Short {i+1}/{len(moments)}…")
-            out_path = str(out_dir / f"short_{i+1:02d}_{job_id[:8]}.mp4")
-            try:
-                await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda st=m["start_time"], en=m["end_time"], o=out_path:
-                        crop_clip(source, st, en, o),
+        stream_url: Optional[str] = None
+        try:
+            stream_url = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _cobalt_get_stream_url(url)
+            )
+        except Exception as e:
+            logger.warning(f"Cobalt URL failed ({e}) — fallback téléchargement complet")
+
+        if stream_url:
+            upd("Découpe segments via stream…")
+            failed_moments = []
+            for i, m in enumerate(moments):
+                upd(f"Short {i+1}/{len(moments)}…")
+                cut_tmp  = str(out_dir / f"cut_{i+1}_{job_id[:8]}.mp4")
+                out_path = str(out_dir / f"short_{i+1:02d}_{job_id[:8]}.mp4")
+                try:
+                    await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda st=m["start_time"], en=m["end_time"], o=cut_tmp:
+                            _ffmpeg_cut_from_url(stream_url, st, en, o),
+                    )
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, lambda c=cut_tmp, o=out_path: _reframe_vertical(c, o)
+                    )
+                    try:
+                        os.remove(cut_tmp)
+                    except OSError:
+                        pass
+                    size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
+                    clips.append({
+                        "title":        m["title"],
+                        "hook":         m["hook_sentence"],
+                        "score":        m["score"],
+                        "start":        round(m["start_time"], 1),
+                        "end":          round(m["end_time"], 1),
+                        "duration":     round(m["end_time"] - m["start_time"], 1),
+                        "download_url": f"/shorts-file/{job_id}/{Path(out_path).name}",
+                        "filename":     Path(out_path).name,
+                        "size_mb":      size_mb,
+                    })
+                    logger.info(f"Short {i+1} via stream OK  {size_mb} MB")
+                except Exception as e:
+                    logger.warning(f"Short {i+1} stream cut failed ({e}) — marqué pour fallback")
+                    failed_moments.append((i, m))
+
+            # Fallback fichier pour les segments qui ont échoué
+            if failed_moments:
+                upd("Téléchargement complet (fallback)…")
+                source, title, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: download_video(url, out_dir, direct_url, audio_url)
                 )
-                size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
-                clips.append({
-                    "title":        m["title"],
-                    "hook":         m["hook_sentence"],
-                    "score":        m["score"],
-                    "start":        round(m["start_time"], 1),
-                    "end":          round(m["end_time"], 1),
-                    "duration":     round(m["end_time"] - m["start_time"], 1),
-                    "download_url": f"/shorts-file/{job_id}/{Path(out_path).name}",
-                    "filename":     Path(out_path).name,
-                    "size_mb":      size_mb,
-                })
-                logger.info(f"Short {i+1} OK  {size_mb} MB")
-            except Exception as e:
-                logger.error(f"Short {i+1} FAILED: {e}")
+                for i, m in failed_moments:
+                    out_path = str(out_dir / f"short_{i+1:02d}_{job_id[:8]}.mp4")
+                    try:
+                        await asyncio.get_event_loop().run_in_executor(
+                            None,
+                            lambda st=m["start_time"], en=m["end_time"], o=out_path:
+                                crop_clip(source, st, en, o),
+                        )
+                        size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
+                        clips.append({
+                            "title":        m["title"],
+                            "hook":         m["hook_sentence"],
+                            "score":        m["score"],
+                            "start":        round(m["start_time"], 1),
+                            "end":          round(m["end_time"], 1),
+                            "duration":     round(m["end_time"] - m["start_time"], 1),
+                            "download_url": f"/shorts-file/{job_id}/{Path(out_path).name}",
+                            "filename":     Path(out_path).name,
+                            "size_mb":      size_mb,
+                        })
+                    except Exception as e:
+                        logger.error(f"Short {i+1} fallback FAILED: {e}")
+        else:
+            # Pas de stream URL — téléchargement complet direct
+            upd("Téléchargement…")
+            source, title, _ = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: download_video(url, out_dir, direct_url, audio_url)
+            )
+            for i, m in enumerate(moments):
+                upd(f"Short {i+1}/{len(moments)}…")
+                out_path = str(out_dir / f"short_{i+1:02d}_{job_id[:8]}.mp4")
+                try:
+                    await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda st=m["start_time"], en=m["end_time"], o=out_path:
+                            crop_clip(source, st, en, o),
+                    )
+                    size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
+                    clips.append({
+                        "title":        m["title"],
+                        "hook":         m["hook_sentence"],
+                        "score":        m["score"],
+                        "start":        round(m["start_time"], 1),
+                        "end":          round(m["end_time"], 1),
+                        "duration":     round(m["end_time"] - m["start_time"], 1),
+                        "download_url": f"/shorts-file/{job_id}/{Path(out_path).name}",
+                        "filename":     Path(out_path).name,
+                        "size_mb":      size_mb,
+                    })
+                    logger.info(f"Short {i+1} OK  {size_mb} MB")
+                except Exception as e:
+                    logger.error(f"Short {i+1} FAILED: {e}")
 
         if source:
             Path(source).unlink(missing_ok=True)
@@ -549,6 +645,7 @@ async def run_job(job_id: str, url: str, num_clips: int, out_dir: Path, direct_u
         if not clips:
             raise RuntimeError("Tous les shorts ont échoué")
 
+        title = title if source else "Video"
         JOBS[job_id] = {"status": "done", "title": title, "clips": clips}
 
     except Exception as e:
