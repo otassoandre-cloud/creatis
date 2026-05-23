@@ -324,7 +324,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
 
     async with httpx.AsyncClient(timeout=90) as client:
         r = await client.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
             json={"contents": [{"parts": [
                 {"fileData": {"fileUri": youtube_url}},
                 {"text": prompt},
@@ -696,17 +696,45 @@ class ClipExportRequest(BaseModel):
 
 async def run_clip_export(job_id: str, video_id: str, start: float, end: float, out_dir: Path) -> None:
     tmp = str(out_dir / "source.mp4")
+    yt_url = f"https://www.youtube.com/watch?v={video_id}"
     try:
         CLIP_EXPORTS[job_id]["progress"] = "Téléchargement…"
+
+        # Priorité 1 : Cobalt stream URL → ffmpeg cut direct (pas de téléchargement complet)
+        try:
+            stream_url = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _cobalt_get_stream_url(yt_url)
+            )
+            CLIP_EXPORTS[job_id]["progress"] = "Découpe…"
+            out_path = str(out_dir / f"clip_{job_id[:8]}.mp4")
+            cut_tmp = out_path + ".cut.mp4"
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _ffmpeg_cut_from_url(stream_url, start, end, cut_tmp)
+            )
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _reframe_vertical(cut_tmp, out_path)
+            )
+            try:
+                os.remove(cut_tmp)
+            except OSError:
+                pass
+            CLIP_EXPORTS[job_id] = {
+                "status": "done",
+                "download_url": f"/clip-export-file/{job_id}/{Path(out_path).name}",
+            }
+            return
+        except Exception as e:
+            logger.warning(f"clip-export Cobalt stream failed ({e}), fallback téléchargement complet")
+
+        # Priorité 2 : Cobalt téléchargement complet
         try:
             await asyncio.get_event_loop().run_in_executor(
-                None, lambda: _innertube_download(video_id, tmp)
+                None, lambda: _cobalt_download(yt_url, tmp)
             )
         except Exception as e:
-            logger.warning(f"clip-export Innertube failed ({e}), fallback yt-dlp")
-            url = f"https://www.youtube.com/watch?v={video_id}"
+            logger.warning(f"clip-export Cobalt download failed ({e}), fallback yt-dlp")
             await asyncio.get_event_loop().run_in_executor(
-                None, lambda: _ytdlp_download(url, out_dir)
+                None, lambda: _ytdlp_download(yt_url, out_dir)
             )
             for ext in ["mp4", "mkv", "webm"]:
                 p = out_dir / f"source.{ext}"
