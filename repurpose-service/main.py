@@ -43,6 +43,25 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 JOBS: dict = {}
 EXPORT_JOBS: dict = {}
 
+def _persist_export_job(job_id: str, state: dict):
+    try:
+        path = SESSIONS_DIR / f"export_{job_id}" / "state.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(state, f)
+    except Exception as e:
+        logger.warning(f"persist_export_job: {e}")
+
+def _load_export_job(job_id: str) -> Optional[dict]:
+    try:
+        path = SESSIONS_DIR / f"export_{job_id}" / "state.json"
+        if path.exists():
+            with open(path) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+
 # Fichier cookies YouTube (écrit une fois au démarrage)
 _COOKIE_FILE: Optional[str] = None
 if YOUTUBE_COOKIES_B64:
@@ -537,7 +556,10 @@ def cleanup_old_sessions():
     import time
     now = time.time()
     for d in SESSIONS_DIR.iterdir():
-        if d.is_dir() and now - d.stat().st_mtime > 3600:
+        if not d.is_dir():
+            continue
+        ttl = 7200 if d.name.startswith("export_") else 3600
+        if now - d.stat().st_mtime > ttl:
             shutil.rmtree(d, ignore_errors=True)
 
 # ── API ───────────────────────────────────────────────────────────────────────
@@ -827,15 +849,19 @@ async def process_export_job(job_id: str, video_url: str, start: float, end: flo
 
         await asyncio.get_event_loop().run_in_executor(None, _export)
 
-        EXPORT_JOBS[job_id] = {
+        state = {
             "status": "done",
             "download_url": f"/clip-export-file/{job_id}/{filename}",
             "filename": filename,
         }
+        EXPORT_JOBS[job_id] = state
+        _persist_export_job(job_id, state)
         logger.info(f"[export {job_id[:8]}] OK → {filename}")
     except Exception as e:
         logger.error(f"[export {job_id[:8]}] Erreur: {e}")
-        EXPORT_JOBS[job_id] = {"status": "error", "error": str(e)}
+        state = {"status": "error", "error": str(e)}
+        EXPORT_JOBS[job_id] = state
+        _persist_export_job(job_id, state)
         shutil.rmtree(out_dir, ignore_errors=True)
 
 @app.post("/clip-export")
@@ -849,9 +875,11 @@ async def start_clip_export(req: ClipExportRequest, background_tasks: Background
 
 @app.get("/clip-export-status/{job_id}")
 async def clip_export_status(job_id: str, _: None = Depends(verify_secret)):
-    job = EXPORT_JOBS.get(job_id)
+    job = EXPORT_JOBS.get(job_id) or _load_export_job(job_id)
     if not job:
         raise HTTPException(404, "Job introuvable")
+    if job_id not in EXPORT_JOBS:
+        EXPORT_JOBS[job_id] = job  # réhydrater depuis disque
     return job
 
 @app.get("/clip-export-file/{job_id}/{filename}")
