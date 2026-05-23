@@ -25,10 +25,11 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("creatis")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GROQ_API_KEY   = os.environ.get("GROQ_API_KEY", "")
-SERVICE_SECRET = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
-WHISPER_MODEL  = os.environ.get("WHISPER_MODEL", "base")
+GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY     = os.environ.get("GROQ_API_KEY", "")
+SERVICE_SECRET   = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
+WHISPER_MODEL    = os.environ.get("WHISPER_MODEL", "base")
+YOUTUBE_COOKIES  = os.environ.get("YOUTUBE_COOKIES", "")  # Netscape cookie format
 
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
@@ -64,6 +65,36 @@ class ClipExportRequest(BaseModel):
 
 # ── 1. DOWNLOAD ───────────────────────────────────────────────────────────────
 
+_COOKIES_FILE: Optional[str] = None
+
+def _get_cookies_file() -> Optional[str]:
+    global _COOKIES_FILE
+    if _COOKIES_FILE and os.path.exists(_COOKIES_FILE):
+        return _COOKIES_FILE
+    if not YOUTUBE_COOKIES:
+        return None
+    import tempfile as _tf
+    f = _tf.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, prefix="yt_cookies_")
+    f.write(YOUTUBE_COOKIES)
+    f.close()
+    _COOKIES_FILE = f.name
+    logger.info(f"Cookies écrits → {_COOKIES_FILE}")
+    return _COOKIES_FILE
+
+
+def _resolve_path(ydl: "yt_dlp.YoutubeDL", info: dict, out_dir: Path) -> str:
+    path = ydl.prepare_filename(info)
+    if not os.path.exists(path):
+        stem = os.path.splitext(path)[0]
+        for ext in (".mp4", ".mkv", ".webm"):
+            if os.path.exists(stem + ext):
+                return stem + ext
+        # search any mp4 in dir
+        for p in out_dir.glob("*.mp4"):
+            return str(p)
+    return path
+
+
 def download_video(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
     base_opts = {
@@ -73,28 +104,27 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
-    # tv_embedded + web_creator bypass YouTube bot detection from server IPs
-    for extra in [
+    cookies_file = _get_cookies_file()
+    if cookies_file:
+        base_opts["cookiefile"] = cookies_file
+        logger.info("yt-dlp: utilisation des cookies YouTube")
+
+    attempts = [
         {"extractor_args": {"youtube": {"player_client": ["tv_embedded", "web_creator"]}}},
         {},
-    ]:
+    ]
+    for extra in attempts:
         try:
             opts = {**base_opts, **extra}
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(youtube_url, download=True)
-                path = ydl.prepare_filename(info)
-            if not os.path.exists(path):
-                stem = os.path.splitext(path)[0]
-                for ext in (".mp4", ".mkv", ".webm"):
-                    if os.path.exists(stem + ext):
-                        path = stem + ext
-                        break
+                path = _resolve_path(ydl, info, out_dir)
             if os.path.exists(path) and os.path.getsize(path) > 10_000:
-                logger.info(f"yt-dlp OK ({list(extra.keys()) or 'standard'}): {path}")
+                logger.info(f"yt-dlp OK: {path}")
                 return path
         except Exception as e:
             logger.warning(f"yt-dlp attempt failed ({e})")
-    raise RuntimeError("Téléchargement YouTube échoué — bot detection")
+    raise RuntimeError("Téléchargement YouTube échoué — ajoute YOUTUBE_COOKIES dans Railway")
 
 
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
