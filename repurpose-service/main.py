@@ -509,12 +509,24 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         api = YouTubeTranscriptApi()
-        # 0.6.x uses instance .list(); older versions use class .list_transcripts()
         if hasattr(api, "list"):
             transcript_list = api.list(video_id)
         else:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = transcript_list.find_transcript(["fr", "en"])
+
+        # Essaie fr/en d'abord, puis n'importe quelle langue dispo
+        transcript = None
+        try:
+            transcript = transcript_list.find_transcript(["fr", "en"])
+        except Exception:
+            all_transcripts = list(transcript_list)
+            if all_transcripts:
+                transcript = all_transcripts[0]
+                logger.info(f"Subtitles: langue fallback → {getattr(transcript, 'language_code', '?')}")
+
+        if transcript is None:
+            raise RuntimeError("Aucune piste de sous-titres disponible")
+
         fetched = transcript.fetch()
         raw = fetched.to_raw_data() if hasattr(fetched, "to_raw_data") else list(fetched)
         segments = [
@@ -522,6 +534,7 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
             for s in raw
         ]
         duration = segments[-1]["end"] if segments else 0.0
+        logger.info(f"Subtitles OK: {len(segments)} segments")
         return {"duration": duration, "segments": segments}
     except Exception as e:
         logger.warning(f"Subtitles failed: {e}")
