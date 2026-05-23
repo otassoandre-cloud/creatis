@@ -15,7 +15,7 @@ GET  /download/{session}/{file}    →  FileResponse mp4
 GET  /health                       →  { status }
 """
 
-import os, uuid, json, tempfile, logging, asyncio, shutil, re, subprocess
+import os, uuid, json, tempfile, logging, asyncio, shutil, re, subprocess, hashlib
 from pathlib import Path
 from typing import Optional
 
@@ -792,92 +792,18 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
 
 
 class ClipExportRequest(BaseModel):
-    video_id: str
+    video_url: str  # URL directe fournie par Vercel (Innertube depuis IPs AWS)
     start: float
     end: float
 
-async def process_export_job(job_id: str, video_id: str, start: float, end: float, out_dir: Path):
+async def process_export_job(job_id: str, video_url: str, start: float, end: float, out_dir: Path):
     try:
-        yt_url = f"https://www.youtube.com/watch?v={video_id}"
-        filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
+        url_hash = hashlib.md5(video_url.encode()).hexdigest()[:8]
+        filename = f"clip_{url_hash}_{int(start)}_{int(end)}.mp4"
         out_path = out_dir / filename
         duration = end - start
 
         def _export():
-            import requests as req_lib
-
-            # Appel direct à l'API Innertube de YouTube (API interne Android/TV)
-            # Ces clients mobile/TV ne déclenchent pas la bot detection des IPs datacenter
-            INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
-            CLIENTS = [
-                ("ANDROID_EMBEDDED_PLAYER", "55", "19.29.37",
-                 "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"),
-                ("TVHTML5_SIMPLY_EMBEDDED_PLAYER", "85", "2.0",
-                 "Mozilla/5.0 (SMART-TV; LINUX; Tizen 5.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/2.1 Chrome/56.0.2924.0 TV Safari/537.36"),
-                ("ANDROID", "3", "19.29.37",
-                 "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"),
-                ("IOS", "5", "19.29.1",
-                 "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)"),
-            ]
-
-            video_url = None
-            for client_name, client_id, client_ver, ua in CLIENTS:
-                try:
-                    ctx = {"client": {"clientName": client_name, "clientVersion": client_ver, "hl": "fr", "gl": "FR"}}
-                    if "EMBEDDED" in client_name or "SIMPLY" in client_name:
-                        ctx["thirdParty"] = {"embedUrl": f"https://www.youtube.com/watch?v={video_id}"}
-                    r = req_lib.post(
-                        f"https://www.youtube.com/youtubei/v1/player?key={INNERTUBE_KEY}",
-                        json={"context": ctx, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
-                        headers={"Content-Type": "application/json", "User-Agent": ua,
-                                 "X-Youtube-Client-Name": client_id, "X-Youtube-Client-Version": client_ver},
-                        timeout=15,
-                    )
-                    if r.status_code != 200:
-                        continue
-                    data = r.json()
-                    if data.get("playabilityStatus", {}).get("status") not in ("OK", "CONTENT_CHECK_REQUIRED"):
-                        logger.warning(f"[export {job_id[:8]}] innertube {client_name}: {data.get('playabilityStatus',{}).get('status')}")
-                        continue
-                    # Formats pré-fusionnés (video+audio) → URLs directes
-                    fmts = data.get("streamingData", {}).get("formats", [])
-                    direct = [f for f in fmts if f.get("url") and "video/mp4" in f.get("mimeType", "")]
-                    if not direct:
-                        # Fallback : formats adaptatifs avec video+audio
-                        adaptive = data.get("streamingData", {}).get("adaptiveFormats", [])
-                        direct = [f for f in adaptive if f.get("url") and "video/mp4" in f.get("mimeType", "") and f.get("audioQuality")]
-                    if not direct:
-                        logger.warning(f"[export {job_id[:8]}] innertube {client_name}: aucune URL directe MP4")
-                        continue
-                    direct.sort(key=lambda f: f.get("height", 0), reverse=True)
-                    best = next((f for f in direct if f.get("height", 0) <= 720), direct[0])
-                    video_url = best["url"]
-                    logger.info(f"[export {job_id[:8]}] innertube OK {client_name}: {best.get('qualityLabel')} h={best.get('height')}")
-                    break
-                except Exception as exc:
-                    logger.warning(f"[export {job_id[:8]}] innertube {client_name}: {exc}")
-
-            # Fallback Invidious si Innertube échoue
-            if not video_url:
-                for instance in INVIDIOUS_INSTANCES:
-                    try:
-                        r = req_lib.get(f"{instance}/api/v1/videos/{video_id}", timeout=10)
-                        if r.status_code != 200:
-                            continue
-                        fmts = r.json().get("formatStreams", [])
-                        itag = next((t for t in ["22", "18"] if any(str(f.get("itag")) == t for f in fmts)), None)
-                        if itag:
-                            video_url = f"{instance}/latest_version?id={video_id}&itag={itag}&local=true"
-                            logger.info(f"[export {job_id[:8]}] invidious OK {instance} itag={itag}")
-                            break
-                    except Exception as exc:
-                        logger.warning(f"[export {job_id[:8]}] invidious {instance}: {exc}")
-
-            if not video_url:
-                raise Exception("Service indisponible — réessaie dans quelques minutes")
-
-            # Étape 2 : ffmpeg — HTTP range seek + extraction + 9:16
-            # -ss avant -i = fast seek via HTTP range (ne télécharge pas tout le fichier)
             vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
             cmd = [
                 "ffmpeg", "-y",
@@ -918,7 +844,7 @@ async def start_clip_export(req: ClipExportRequest, background_tasks: Background
     out_dir = SESSIONS_DIR / f"export_{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
     EXPORT_JOBS[job_id] = {"status": "processing"}
-    background_tasks.add_task(process_export_job, job_id, req.video_id, req.start, req.end, out_dir)
+    background_tasks.add_task(process_export_job, job_id, req.video_url, req.start, req.end, out_dir)
     return {"ok": True, "job_id": job_id}
 
 @app.get("/clip-export-status/{job_id}")
