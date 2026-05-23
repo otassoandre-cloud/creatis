@@ -66,26 +66,35 @@ class ClipExportRequest(BaseModel):
 
 def download_video(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
-    opts = {
+    base_opts = {
         "quiet": True,
         "no_warnings": True,
         "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
         "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
         "merge_output_format": "mp4",
     }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(youtube_url, download=True)
-        path = ydl.prepare_filename(info)
-    if not os.path.exists(path):
-        stem = os.path.splitext(path)[0]
-        for ext in (".mp4", ".mkv", ".webm"):
-            if os.path.exists(stem + ext):
-                path = stem + ext
-                break
-    if not os.path.exists(path) or os.path.getsize(path) < 10_000:
-        raise RuntimeError(f"Téléchargement échoué: {path}")
-    logger.info(f"yt-dlp OK: {path}")
-    return path
+    # tv_embedded + web_creator bypass YouTube bot detection from server IPs
+    for extra in [
+        {"extractor_args": {"youtube": {"player_client": ["tv_embedded", "web_creator"]}}},
+        {},
+    ]:
+        try:
+            opts = {**base_opts, **extra}
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(youtube_url, download=True)
+                path = ydl.prepare_filename(info)
+            if not os.path.exists(path):
+                stem = os.path.splitext(path)[0]
+                for ext in (".mp4", ".mkv", ".webm"):
+                    if os.path.exists(stem + ext):
+                        path = stem + ext
+                        break
+            if os.path.exists(path) and os.path.getsize(path) > 10_000:
+                logger.info(f"yt-dlp OK ({list(extra.keys()) or 'standard'}): {path}")
+                return path
+        except Exception as e:
+            logger.warning(f"yt-dlp attempt failed ({e})")
+    raise RuntimeError("Téléchargement YouTube échoué — bot detection")
 
 
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
@@ -400,10 +409,13 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         api = YouTubeTranscriptApi()
-        transcript_list = api.list(video_id)
+        # 0.6.x uses instance .list(); older versions use class .list_transcripts()
+        if hasattr(api, "list"):
+            transcript_list = api.list(video_id)
+        else:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         transcript = transcript_list.find_transcript(["fr", "en"])
         fetched = transcript.fetch()
-        # 0.6.x returns FetchedTranscript with attribute access; older returns dicts
         raw = fetched.to_raw_data() if hasattr(fetched, "to_raw_data") else list(fetched)
         segments = [
             {"start": s["start"], "end": s["start"] + s["duration"], "text": s["text"]}
