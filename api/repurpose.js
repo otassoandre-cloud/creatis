@@ -206,7 +206,80 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
   }
 
-  const { url, mode = 'text' } = req.body || {};
+  let body = req.body || {};
+  // Fallback : Vercel peut livrer le body en string brut
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { body = {}; }
+  }
+  const mode = body.mode || 'text';
+  const url = body.url || '';
+
+  // ── Modes sans URL — traiter immédiatement avant tout autre check ──
+  if (mode === 'clip_export') {
+    const { video_id, start, end } = body;
+    if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id, start, end }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
+      return res.status(200).json({ ok: true, job_id: data.job_id });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'clip_export_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id manquant' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || `Erreur statut (${r.status})`);
+      if (data.status === 'done' && data.download_url) {
+        data.download_url = `${REPURPOSE_SERVICE_URL}${data.download_url}`;
+      }
+      return res.status(200).json({ ok: true, ...data });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'clips_status') {
+    const { session_id } = body;
+    if (!session_id) return res.status(400).json({ error: 'session_id manquant' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/status/${session_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `Erreur statut (${r.status})`);
+      }
+      const job = await r.json();
+      if (job.status === 'done' && job.result?.clips) {
+        job.result.clips = job.result.clips.map(clip => ({
+          ...clip,
+          download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
+        }));
+        if (authUser) await incrementRepurposeCount(authUser.id);
+      }
+      return res.status(200).json({ ok: true, mode: 'clips_status', ...job });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
 
   // Vérifier plan + crédits (sauf pour clips qui a son propre quota)
   if (authUser && mode === 'text') {
@@ -264,36 +337,6 @@ module.exports = async (req, res) => {
     }
   }
 
-  // ── Mode CLIPS_STATUS : vérifie l'état d'un job async ──
-  if (mode === 'clips_status') {
-    const { session_id } = req.body || {};
-    if (!session_id) return res.status(400).json({ error: 'session_id manquant' });
-    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
-    try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/status/${session_id}`, {
-        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        signal: AbortSignal.timeout(10000)
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || `Erreur statut (${r.status})`);
-      }
-      const job = await r.json();
-
-      // Si terminé, réécrire les URLs de download et créditer
-      if (job.status === 'done' && job.result?.clips) {
-        job.result.clips = job.result.clips.map(clip => ({
-          ...clip,
-          download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
-        }));
-        if (authUser) await incrementRepurposeCount(authUser.id);
-      }
-      return res.status(200).json({ ok: true, mode: 'clips_status', ...job });
-    } catch (err) {
-      console.error('[Clips Status] Erreur:', err.message);
-      return res.status(502).json({ error: err.message });
-    }
-  }
 
   if (!GROQ_KEY) {
     return res.status(500).json({ error: 'Clé Groq non configurée' });

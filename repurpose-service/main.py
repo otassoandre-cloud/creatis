@@ -34,7 +34,8 @@ GEMINI_API_KEY       = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY         = os.environ.get("GROQ_API_KEY", "")
 COBALT_API_KEY       = os.environ.get("COBALT_API_KEY", "")
 WHISPER_MODEL        = os.environ.get("WHISPER_MODEL", "tiny")
-YOUTUBE_COOKIES_B64  = os.environ.get("YOUTUBE_COOKIES_B64", "")
+YOUTUBE_COOKIES_B64   = os.environ.get("YOUTUBE_COOKIES_B64", "")
+YOUTUBE_COOKIE_HEADER = os.environ.get("YOUTUBE_COOKIE_HEADER", "")
 
 SESSIONS_DIR = Path(tempfile.gettempdir()) / "creatis_clips"
 SESSIONS_DIR.mkdir(exist_ok=True)
@@ -71,9 +72,27 @@ if YOUTUBE_COOKIES_B64:
         with open(_cookie_path, "w") as _f:
             _f.write(_b64.b64decode(YOUTUBE_COOKIES_B64).decode("utf-8"))
         _COOKIE_FILE = _cookie_path
-        logger.info("Cookies YouTube chargés ✓")
+        logger.info("Cookies YouTube (B64) chargés ✓")
     except Exception as _e:
-        logger.warning(f"Erreur chargement cookies: {_e}")
+        logger.warning(f"Erreur chargement cookies B64: {_e}")
+
+if not _COOKIE_FILE and YOUTUBE_COOKIE_HEADER:
+    try:
+        _cookie_path = str(SESSIONS_DIR / "yt_cookies.txt")
+        with open(_cookie_path, "w") as _f:
+            _f.write("# Netscape HTTP Cookie File\n")
+            for pair in YOUTUBE_COOKIE_HEADER.split(";"):
+                pair = pair.strip()
+                if "=" not in pair:
+                    continue
+                name, _, value = pair.partition("=")
+                name = name.strip()
+                value = value.strip()
+                _f.write(f".youtube.com\tTRUE\t/\tFALSE\t2147483647\t{name}\t{value}\n")
+        _COOKIE_FILE = _cookie_path
+        logger.info("Cookies YouTube (header) chargés ✓")
+    except Exception as _e:
+        logger.warning(f"Erreur chargement cookies header: {_e}")
 
 def _yt_opts(**extra) -> dict:
     """Options yt-dlp de base avec cookies si disponibles."""
@@ -814,31 +833,72 @@ async def process_clips_job(session_id: str, url: str, n: int, session_dir: Path
 
 
 class ClipExportRequest(BaseModel):
-    video_url: str  # URL directe fournie par Vercel (Innertube depuis IPs AWS)
+    video_id: str
     start: float
     end: float
 
-async def process_export_job(job_id: str, video_url: str, start: float, end: float, out_dir: Path):
+async def process_export_job(job_id: str, video_id: str, start: float, end: float, out_dir: Path):
     try:
-        url_hash = hashlib.md5(video_url.encode()).hexdigest()[:8]
-        filename = f"clip_{url_hash}_{int(start)}_{int(end)}.mp4"
+        filename = f"clip_{video_id}_{int(start)}_{int(end)}.mp4"
         out_path = out_dir / filename
         duration = end - start
+        yt_url = f"https://www.youtube.com/watch?v={video_id}"
 
         def _export():
+            # Étape 1 : extraire URLs via yt-dlp (avec cookies si disponibles)
+            opts = _yt_opts(
+                format="bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best",
+                skip_download=True,
+            )
+            logger.info(f"[export {job_id[:8]}] yt-dlp extract {video_id}…")
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(yt_url, download=False)
+
+            requested = info.get("requested_formats") or []
+            if len(requested) >= 2:
+                video_url = requested[0].get("url") or requested[0].get("manifest_url")
+                audio_url = requested[1].get("url") or requested[1].get("manifest_url")
+                has_separate = bool(video_url and audio_url)
+            else:
+                video_url = info.get("url") or info.get("manifest_url")
+                audio_url = None
+                has_separate = False
+
+            if not video_url:
+                raise Exception("yt-dlp: URL vidéo introuvable dans les formats")
+
+            logger.info(f"[export {job_id[:8]}] yt-dlp OK, separate={has_separate}")
+
             vf = "scale='if(gt(iw/ih,9/16),1920*iw/ih,-2)':'if(gt(iw/ih,9/16),-2,1920)',crop=1080:1920,setsar=1"
-            cmd = [
-                "ffmpeg", "-y",
-                "-ss", str(start),
-                "-i", video_url,
-                "-t", str(duration),
-                "-vf", vf,
-                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "128k",
-                "-movflags", "+faststart",
-                str(out_path)
-            ]
+
+            if has_separate:
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-ss", str(start), "-i", video_url,
+                    "-ss", str(start), "-i", audio_url,
+                    "-t", str(duration),
+                    "-map", "0:v:0", "-map", "1:a:0",
+                    "-vf", vf,
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                    "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "128k",
+                    "-movflags", "+faststart",
+                    str(out_path)
+                ]
+            else:
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-ss", str(start),
+                    "-i", video_url,
+                    "-t", str(duration),
+                    "-vf", vf,
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                    "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "128k",
+                    "-movflags", "+faststart",
+                    str(out_path)
+                ]
+
             logger.info(f"[export {job_id[:8]}] ffmpeg start={start:.1f}s dur={duration:.1f}s")
             result = subprocess.run(cmd, capture_output=True, timeout=300)
             if result.returncode != 0:
@@ -870,7 +930,7 @@ async def start_clip_export(req: ClipExportRequest, background_tasks: Background
     out_dir = SESSIONS_DIR / f"export_{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
     EXPORT_JOBS[job_id] = {"status": "processing"}
-    background_tasks.add_task(process_export_job, job_id, req.video_url, req.start, req.end, out_dir)
+    background_tasks.add_task(process_export_job, job_id, req.video_id, req.start, req.end, out_dir)
     return {"ok": True, "job_id": job_id}
 
 @app.get("/clip-export-status/{job_id}")
