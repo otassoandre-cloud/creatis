@@ -97,22 +97,48 @@ if not _COOKIE_FILE and YOUTUBE_COOKIES_B64:
         logger.warning(f"Erreur chargement cookies B64: {_e}")
 
 def _yt_opts(**extra) -> dict:
-    """Options yt-dlp de base avec cookies si disponibles."""
-    opts = {
-        "quiet": False,
-        "no_warnings": False,
-        "extractor_args": {"youtube": {"player_client": ["web"]}},
-        **extra,
-    }
+    """Options yt-dlp de base avec cookies si disponibles. Pas de player_client override."""
+    opts = {"quiet": False, "no_warnings": False, **extra}
     if _COOKIE_FILE:
         opts["cookiefile"] = _COOKIE_FILE
     return opts
 
 
+def _yt_download_full(url: str, out_dir: Path) -> tuple[str, str, int]:
+    """Télécharge la vidéo YouTube complète via yt-dlp (approche SamurAI).
+    Format : best 720p MP4 — retourne (chemin_fichier, titre, durée_sec).
+    """
+    video_id = _extract_video_id(url) or "video"
+    out_tpl = str(out_dir / f"source_{video_id}.%(ext)s")
+    ydl_opts = _yt_opts(
+        format=(
+            "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]"
+            "/best[height<=720][ext=mp4]"
+            "/best[height<=720]"
+            "/best"
+        ),
+        outtmpl=out_tpl,
+        merge_output_format="mp4",
+        noprogress=True,
+    )
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        title = info.get("title", "Vidéo YouTube")
+        duration = int(info.get("duration", 0))
+
+    # Chercher le fichier produit
+    for ext in ["mp4", "mkv", "webm"]:
+        p = out_dir / f"source_{video_id}.{ext}"
+        if p.exists() and p.stat().st_size > 10000:
+            logger.info(f"[yt-dlp] Téléchargé : {p.name} ({p.stat().st_size//1024}Ko)")
+            return str(p), title, duration
+    raise RuntimeError("yt-dlp n'a pas produit de fichier vidéo")
+
+
 async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Optional[str]]:
-    """Lance Chromium headless, charge la page YouTube et intercepte les URLs CDN.
-    Stratégie 1 : intercept réseau (googlevideo.com).
-    Stratégie 2 : extraction depuis ytInitialPlayerResponse (JS objet intégré).
+    """Intercepte la réponse de l'API innertube YouTube (/youtubei/v1/player).
+    Contrairement à ytInitialPlayerResponse, la réponse innertube contient des URLs
+    directes (pas signatureCipher) quand le browser est authentifié avec des cookies valides.
     """
     try:
         from playwright.async_api import async_playwright
@@ -171,88 +197,58 @@ async def _get_stream_via_playwright(video_id: str) -> tuple[Optional[str], Opti
 
         page = await context.new_page()
 
-        # Stratégie 1 : intercepter les requêtes réseau vers googlevideo.com
-        async def on_request(req):
-            url = req.url
-            if "googlevideo.com" in url and "videoplayback" in url:
-                clean_url = re.sub(r'[&?]range=\d+-\d*', '', url)
-                if "mime=video" in url and not stream_urls["video"]:
-                    stream_urls["video"] = clean_url
-                    logger.info("[playwright] URL vidéo interceptée via réseau ✓")
-                elif "mime=audio" in url and not stream_urls["audio"]:
-                    stream_urls["audio"] = clean_url
-                    logger.info("[playwright] URL audio interceptée via réseau ✓")
+        # Intercepter les RÉPONSES de l'API innertube player (URLs directes, pas signatureCipher)
+        async def on_response(resp):
+            if "/youtubei/v1/player" not in resp.url or resp.status != 200:
+                return
+            try:
+                data = await resp.json()
+                fmts = (data.get("streamingData", {}).get("adaptiveFormats", []) +
+                        data.get("streamingData", {}).get("formats", []))
+                for f in fmts:
+                    fmt_url = f.get("url")
+                    if not fmt_url:
+                        continue  # signatureCipher → ignorer
+                    mime = f.get("mimeType", "")
+                    height = f.get("height", 9999)
+                    if "video/mp4" in mime and height <= 720 and not stream_urls["video"]:
+                        stream_urls["video"] = fmt_url
+                        logger.info(f"[playwright] URL vidéo innertube ({height}p) ✓")
+                    elif "audio/mp4" in mime and not stream_urls["audio"]:
+                        stream_urls["audio"] = fmt_url
+                        logger.info("[playwright] URL audio innertube ✓")
+            except Exception as e:
+                logger.warning(f"[playwright] innertube parse: {e}")
 
-        page.on("request", on_request)
+        page.on("response", on_response)
 
         try:
-            # Page watch standard (plus robuste que l'embed face au GDPR)
             await page.goto(
                 f"https://www.youtube.com/watch?v={video_id}",
                 wait_until="domcontentloaded",
                 timeout=30000
             )
-
-            # Accepter le popup GDPR/cookies si présent (EU)
+            # Dismiss GDPR popup si présent
             for sel in [
                 'button[aria-label*="Accept all"]',
                 'button[aria-label*="Tout accepter"]',
                 'button[aria-label*="Accepter tout"]',
-                '.eom-button-row button:first-child',
-                'form[action*="consent.youtube.com"] button',
-                '#yDmH0d button.VfPpkd-LgbsSe',
             ]:
                 try:
                     await page.click(sel, timeout=1500)
-                    logger.info(f"[playwright] Consent accepté ({sel})")
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.8)
                     break
                 except Exception:
                     pass
 
-            # Forcer la lecture via JS
-            try:
-                await page.evaluate("""
-                    () => { const v = document.querySelector('video'); if (v) { v.muted = true; v.play(); } }
-                """)
-            except Exception:
-                pass
-
-            # Attendre jusqu'à 15s les URLs réseau
-            for _ in range(30):
+            # Attendre jusqu'à 20s la réponse innertube
+            for _ in range(40):
                 if stream_urls["video"] and stream_urls["audio"]:
                     break
                 await asyncio.sleep(0.5)
 
-            # Stratégie 2 : extraire depuis ytInitialPlayerResponse si réseau muet
-            if not stream_urls["video"]:
-                logger.info("[playwright] Tentative ytInitialPlayerResponse…")
-                try:
-                    urls = await page.evaluate("""
-                        () => {
-                            const pr = window.ytInitialPlayerResponse;
-                            if (!pr) return null;
-                            const fmts = (pr.streamingData?.adaptiveFormats || [])
-                                         .concat(pr.streamingData?.formats || []);
-                            const vFmt = fmts.find(f => f.mimeType?.includes('video/mp4') && f.height <= 720 && f.url)
-                                      || fmts.find(f => f.mimeType?.includes('video/') && f.url);
-                            const aFmt = fmts.find(f => f.mimeType?.includes('audio/mp4') && f.url)
-                                      || fmts.find(f => f.mimeType?.includes('audio/') && f.url);
-                            return { video: vFmt?.url || null, audio: aFmt?.url || null };
-                        }
-                    """)
-                    if urls:
-                        if urls.get("video"):
-                            stream_urls["video"] = urls["video"]
-                            logger.info("[playwright] URL vidéo via ytInitialPlayerResponse ✓")
-                        if urls.get("audio"):
-                            stream_urls["audio"] = urls["audio"]
-                            logger.info("[playwright] URL audio via ytInitialPlayerResponse ✓")
-                except Exception as e:
-                    logger.warning(f"[playwright] ytInitialPlayerResponse: {e}")
-
         except Exception as e:
-            logger.warning(f"[playwright] Erreur navigation: {e}")
+            logger.warning(f"[playwright] navigation: {e}")
         finally:
             await browser.close()
 
@@ -1277,15 +1273,22 @@ async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Pa
         moments = moments[:n_clips]
         logger.info(f"[repurpose {jid}] {len(moments)} moments identifiés")
 
-        # ── 3. Playwright → URLs CDN YouTube (une seule fois pour tout le job) ─
-        _upd("Connexion au stream YouTube…")
-        video_url, audio_url = await _get_stream_via_playwright(video_id)
-        if not video_url:
-            raise Exception("Stream YouTube inaccessible — réessaie dans quelques minutes")
+        # ── 3. Téléchargement vidéo complète via yt-dlp (approche SamurAI) ──────
+        _upd("Téléchargement de la vidéo…")
+        source_path: Optional[str] = None
+        try:
+            source_path, dl_title, dl_dur = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _yt_download_full(url, out_dir)
+            )
+            if dl_title and dl_title != "Vidéo YouTube":
+                title = dl_title
+            if dl_dur > 0:
+                video_duration = dl_dur
+            logger.info(f"[repurpose {jid}] Source téléchargée : {source_path}")
+        except Exception as e:
+            raise Exception(f"Téléchargement YouTube échoué : {e}")
 
-        has_separate = bool(audio_url)
-
-        # ── 4. Pour chaque moment : raw download → face detect → crop 9:16 ───
+        # ── 4. Pour chaque moment : extract → face detect → crop 9:16 ─────────
         result_clips = []
         for i, moment in enumerate(moments):
             clip_start = float(moment.get("start", 0))
@@ -1300,7 +1303,7 @@ async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Pa
                 short_path = out_dir / f"short_{clip_num}_{video_id}.mp4"
                 srt_path   = out_dir / f"caps_{clip_num}.srt"
 
-                # Captions pour ce clip
+                # Captions
                 if word_transcript:
                     caps = _words_to_caption_segs(word_transcript, clip_start, clip_end)
                 elif segments:
@@ -1312,72 +1315,59 @@ async def process_repurpose_job(job_id: str, url: str, n_clips: int, out_dir: Pa
                     ]
                 else:
                     caps = moment.get("caption_segments", [])
-
                 if caps:
                     srt_path.write_text(_make_srt(caps), encoding="utf-8")
 
-                # 4a. Télécharger clip brut (pleine résolution, sans crop)
-                def _dl(raw=str(raw_path), vs=video_url, aus=audio_url,
-                        ss=clip_start, dur=duration, sep=has_separate):
-                    if sep:
-                        cmd = ["ffmpeg", "-y",
-                               "-ss", str(ss), "-i", vs,
-                               "-ss", str(ss), "-i", aus,
-                               "-t", str(dur),
-                               "-map", "0:v:0", "-map", "1:a:0",
-                               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
-                               "-c:a", "aac", "-b:a", "128k", raw]
-                    else:
-                        cmd = ["ffmpeg", "-y",
-                               "-ss", str(ss), "-i", vs,
-                               "-t", str(dur),
-                               "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
-                               "-c:a", "aac", "-b:a", "128k", raw]
-                    r = subprocess.run(cmd, capture_output=True, timeout=240)
+                # 4a. Extraire le segment brut depuis la vidéo source
+                def _extract(raw=str(raw_path), src=source_path, ss=clip_start, dur=duration):
+                    cmd = ["ffmpeg", "-y", "-ss", str(ss), "-i", src, "-t", str(dur),
+                           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
+                           "-c:a", "aac", "-b:a", "128k", raw]
+                    r = subprocess.run(cmd, capture_output=True, timeout=120)
                     if r.returncode != 0:
-                        raise Exception(f"ffmpeg dl: {(r.stdout.decode()+r.stderr.decode())[-400:]}")
+                        raise Exception(f"Extract: {(r.stdout.decode()+r.stderr.decode())[-300:]}")
 
-                await asyncio.get_event_loop().run_in_executor(None, _dl)
-
+                await asyncio.get_event_loop().run_in_executor(None, _extract)
                 if not raw_path.exists() or raw_path.stat().st_size < 1000:
-                    raise Exception("Clip brut vide")
+                    raise Exception("Segment extrait vide")
 
-                # 4b. Face tracking → crop 9:16 → captions
+                # 4b. Face tracking + crop 9:16 + captions
                 def _crop(raw=str(raw_path), out=str(short_path),
                           srt=str(srt_path) if (caps and srt_path.exists()) else None):
                     face_x = _detect_face_x(raw)
                     src_w, src_h = _get_video_dimensions(raw)
                     vf = _build_9_16_vf(src_w, src_h, face_x, srt)
-                    cmd = ["ffmpeg", "-y", "-i", raw,
-                           "-vf", vf,
+                    cmd = ["ffmpeg", "-y", "-i", raw, "-vf", vf,
                            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                           "-pix_fmt", "yuv420p",
-                           "-c:a", "aac", "-b:a", "128k",
+                           "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
                            "-movflags", "+faststart", out]
                     r = subprocess.run(cmd, capture_output=True, timeout=300)
                     raw_path.unlink(missing_ok=True)
                     if r.returncode != 0:
-                        raise Exception(f"ffmpeg crop: {(r.stdout.decode()+r.stderr.decode())[-400:]}")
+                        raise Exception(f"Crop: {(r.stdout.decode()+r.stderr.decode())[-300:]}")
 
                 await asyncio.get_event_loop().run_in_executor(None, _crop)
-
                 if not short_path.exists() or short_path.stat().st_size < 1000:
                     raise Exception("Short vide après traitement")
 
                 result_clips.append({
-                    "hook":          str(moment.get("hook", f"Clip {clip_num}"))[:80],
-                    "why":           str(moment.get("why",  ""))[:200],
-                    "score":         int(moment.get("score", 80)),
-                    "start":         clip_start,
-                    "end":           clip_end,
-                    "duration":      round(duration, 1),
-                    "download_url":  f"/repurpose-file/{job_id}/{short_path.name}",
-                    "filename":      short_path.name,
+                    "hook":         str(moment.get("hook", f"Clip {clip_num}"))[:80],
+                    "why":          str(moment.get("why",  ""))[:200],
+                    "score":        int(moment.get("score", 80)),
+                    "start":        clip_start,
+                    "end":          clip_end,
+                    "duration":     round(duration, 1),
+                    "download_url": f"/repurpose-file/{job_id}/{short_path.name}",
+                    "filename":     short_path.name,
                 })
                 logger.info(f"[repurpose {jid}] Short {clip_num} OK")
 
             except Exception as e:
                 logger.error(f"[repurpose {jid}] Short {clip_num} erreur: {e}")
+
+        # Nettoyer la source (lourde)
+        if source_path:
+            Path(source_path).unlink(missing_ok=True)
 
         if not result_clips:
             raise Exception("Aucun Short produit — tous les clips ont échoué")
