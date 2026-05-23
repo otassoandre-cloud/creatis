@@ -313,7 +313,7 @@ module.exports = async (req, res) => {
           audio_url = streams.audio_url || null;
           console.log('[shorts_start] Innertube OK video_url:', video_url?.substring(0, 60), 'audio_url:', !!audio_url);
         } catch (e) {
-          console.warn('[shorts_start] Innertube échoué, Railway tentera yt-dlp:', e.message);
+          console.warn('[shorts_start] Innertube échoué, Railway tentera Cobalt:', e.message);
         }
       }
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
