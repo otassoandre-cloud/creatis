@@ -194,13 +194,35 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
 
 
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
-    """Télécharge audio via yt-dlp. Essaie proxy d'abord, fallback sans proxy (cookies)."""
+    """Télécharge audio via yt-dlp.
+    Stratégie 1 : IP Railway + bgutil PoToken (session cohérente, pas de mismatch IP).
+    Stratégie 2 : IP résidentielle Webshare + client android/ios (pas de bgutil → pas de mismatch).
+    Stratégie 3 : cookies YouTube si configurés (bypass total).
+    NE JAMAIS combiner proxy résidentiel + bgutil : le PoToken est lié à l'IP Railway,
+    pas à l'IP Webshare → YouTube voit une incohérence et retourne une liste vide.
+    """
     import yt_dlp
     cookies_file = _get_cookies_file()
-    proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
-    audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
+
+    # Stratégies séparées — ordre de priorité
+    attempts = [
+        # 1. Railway IP + bgutil (PoToken cohérent avec l'IP de la requête)
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
+        # 2. Webshare IP + android/ios (pas de PoToken nécessaire, IP résidentielle)
+        *(
+            [{"proxy": RESIDENTIAL_PROXY_URL,
+              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
+              "label": "webshare+android"}]
+            if RESIDENTIAL_PROXY_URL else []
+        ),
+        # 3. Railway IP sans bgutil, android/ios seulement
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
+    ]
+
+    audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best"]
     last_err = None
-    for proxy in proxies:
+
+    for attempt in attempts:
         for fmt in audio_formats:
             try:
                 opts = {
@@ -208,86 +230,88 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     "outtmpl": str(out_dir / "audio.%(ext)s"),
                     "check_formats": False,
                     "no_playlist": True,
-                    "extractor_args": _yt_extractor_args(),
+                    "extractor_args": attempt["extractor_args"],
                 }
                 if fmt:
                     opts["format"] = fmt
                 if cookies_file:
                     opts["cookiefile"] = cookies_file
-                if proxy:
-                    opts["proxy"] = proxy
-                    logger.info(f"yt-dlp audio: proxy actif fmt={fmt}")
-                else:
-                    logger.info(f"yt-dlp audio: sans proxy fmt={fmt}")
+                if attempt["proxy"]:
+                    opts["proxy"] = attempt["proxy"]
+                logger.info(f"yt-dlp audio: {attempt['label']} fmt={fmt}")
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(youtube_url, download=True)
                     title = (info or {}).get("title", "")
                 for p in out_dir.glob("audio.*"):
                     if p.stat().st_size > 1000:
-                        logger.info(f"Audio OK: {p.name} ({p.stat().st_size // 1024} KB)")
+                        logger.info(f"Audio OK [{attempt['label']}]: {p.name} ({p.stat().st_size // 1024} KB)")
                         return str(p), title
             except Exception as e:
                 err_str = str(e)
-                logger.warning(f"yt-dlp audio proxy={bool(proxy)} fmt={fmt} failed: {err_str[:150]}")
+                logger.warning(f"yt-dlp [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
                 last_err = e
                 for p in out_dir.glob("audio.*"):
                     p.unlink(missing_ok=True)
-                if "proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower():
-                    break  # proxy cassé — passe au fallback sans proxy
+                # Si le proxy résidentiel est cassé, inutile de continuer les formats
+                if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
+                    break
+
     raise RuntimeError(f"Téléchargement audio échoué: {last_err}")
 
 
 def download_video(youtube_url: str, out_dir: Path) -> str:
+    """Même logique que _download_audio : sépare les stratégies pour éviter mismatch IP/PoToken."""
     import yt_dlp
     cookies_file = _get_cookies_file()
     if cookies_file:
-        logger.info("yt-dlp: cookies YouTube actifs")
-    proxies_to_try = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
-    last_err = None
-    for proxy in proxies_to_try:
-        base_opts = {
-            "quiet": True,
-            "no_warnings": True,
-            "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
-            "merge_output_format": "mp4",
-            "extractor_args": _yt_extractor_args(),
-        }
-        if cookies_file:
-            base_opts["cookiefile"] = cookies_file
-        if proxy:
-            base_opts["proxy"] = proxy
-            logger.info("yt-dlp: proxy résidentiel actif")
-        else:
-            logger.info("yt-dlp: sans proxy (cookies)")
+        logger.info("yt-dlp video: cookies actifs")
 
-        formats = [
-            "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
-            "best",
-            None,
-        ]
-        proxy_failed = False
+    attempts = [
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
+        *(
+            [{"proxy": RESIDENTIAL_PROXY_URL,
+              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
+              "label": "webshare+android"}]
+            if RESIDENTIAL_PROXY_URL else []
+        ),
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
+    ]
+
+    formats = [
+        "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+        "best",
+        None,
+    ]
+    last_err = None
+
+    for attempt in attempts:
         for fmt in formats:
             try:
-                opts = {**base_opts, "check_formats": False}
-                if fmt:
-                    opts["format"] = fmt
+                opts = {
+                    "quiet": True, "no_warnings": True,
+                    "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
+                    "merge_output_format": "mp4",
+                    "check_formats": False,
+                    "extractor_args": attempt["extractor_args"],
+                }
+                if cookies_file:
+                    opts["cookiefile"] = cookies_file
+                if attempt["proxy"]:
+                    opts["proxy"] = attempt["proxy"]
+                logger.info(f"yt-dlp video: {attempt['label']} fmt={fmt}")
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(youtube_url, download=True)
                     path = _resolve_path(ydl, info, out_dir)
                 if os.path.exists(path) and os.path.getsize(path) > 10_000:
-                    logger.info(f"yt-dlp OK proxy={bool(proxy)} fmt={fmt}: {path}")
+                    logger.info(f"yt-dlp video OK [{attempt['label']}]: {path}")
                     return path
             except Exception as e:
                 err_str = str(e)
-                logger.warning(f"yt-dlp fmt={str(fmt)[:40]} proxy={bool(proxy)} failed: {err_str[:150]}")
+                logger.warning(f"yt-dlp video [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
                 last_err = e
-                if "proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower():
-                    proxy_failed = True
-                    break  # proxy cassé — passe directement au fallback sans proxy
-        if proxy_failed:
-            continue  # retry sans proxy
-        if last_err:
-            raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
+                if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
+                    break
+
     raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
 
