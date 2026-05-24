@@ -141,34 +141,42 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     import yt_dlp
     cookies_file = _get_cookies_file()
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
+    audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best", None]
     last_err = None
     for proxy in proxies:
-        try:
-            opts = {
-                "quiet": True, "no_warnings": True,
-                "outtmpl": str(out_dir / "audio.%(ext)s"),
-                "format": "bestaudio/best",
-            }
-            if cookies_file:
-                opts["cookiefile"] = cookies_file
-            if proxy:
-                opts["proxy"] = proxy
-                logger.info("yt-dlp audio: proxy actif")
-            else:
-                logger.info("yt-dlp audio: sans proxy (cookies)")
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(youtube_url, download=True)
-                title = (info or {}).get("title", "")
-            for p in out_dir.glob("audio.*"):
-                if p.stat().st_size > 1000:
-                    logger.info(f"Audio OK: {p.name} ({p.stat().st_size // 1024} KB)")
-                    return str(p), title
-        except Exception as e:
-            logger.warning(f"yt-dlp audio proxy={bool(proxy)} failed: {str(e)[:200]}")
-            last_err = e
-            # Clean partiels avant retry
-            for p in out_dir.glob("audio.*"):
-                p.unlink(missing_ok=True)
+        for fmt in audio_formats:
+            try:
+                opts = {
+                    "quiet": True, "no_warnings": True,
+                    "outtmpl": str(out_dir / "audio.%(ext)s"),
+                    "check_formats": False,
+                    "no_playlist": True,
+                    "extractor_args": {"youtube": {"player_client": ["mweb", "web", "ios"]}},
+                }
+                if fmt:
+                    opts["format"] = fmt
+                if cookies_file:
+                    opts["cookiefile"] = cookies_file
+                if proxy:
+                    opts["proxy"] = proxy
+                    logger.info(f"yt-dlp audio: proxy actif fmt={fmt}")
+                else:
+                    logger.info(f"yt-dlp audio: sans proxy fmt={fmt}")
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(youtube_url, download=True)
+                    title = (info or {}).get("title", "")
+                for p in out_dir.glob("audio.*"):
+                    if p.stat().st_size > 1000:
+                        logger.info(f"Audio OK: {p.name} ({p.stat().st_size // 1024} KB)")
+                        return str(p), title
+            except Exception as e:
+                err_str = str(e)
+                logger.warning(f"yt-dlp audio proxy={bool(proxy)} fmt={fmt} failed: {err_str[:150]}")
+                last_err = e
+                for p in out_dir.glob("audio.*"):
+                    p.unlink(missing_ok=True)
+                if "proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower():
+                    break  # proxy cassé — passe au fallback sans proxy
     raise RuntimeError(f"Téléchargement audio échoué: {last_err}")
 
 
