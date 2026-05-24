@@ -41,14 +41,62 @@ CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 
 
-def _yt_extractor_args() -> dict:
-    args: dict = {"player_client": ["mweb", "web", "ios"]}
+_bgutil_ok: bool = False
+
+
+async def _check_bgutil() -> bool:
+    if not BGUTIL_URL:
+        return False
+    for path in ["/health", "/get_pot", "/"]:
+        try:
+            async with httpx.AsyncClient(timeout=5) as c:
+                r = await c.get(f"{BGUTIL_URL}{path}")
+                logger.info(f"[bgutil] {path} → {r.status_code} ✓ réseau OK")
+                return True
+        except Exception as e:
+            logger.warning(f"[bgutil] {path} → {e}")
+    logger.error("[bgutil] INJOIGNABLE — vérifier réseau Railway interne")
+    return False
+
+
+async def _fetch_po_token(visitor_data: str = "") -> str:
+    """Appelle bgutil directement pour obtenir un PoToken."""
+    if not BGUTIL_URL:
+        return ""
+    try:
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.post(f"{BGUTIL_URL}/get_pot",
+                             json={"visitorData": visitor_data, "identifier": visitor_data})
+            if r.status_code == 200:
+                data = r.json()
+                token = data.get("poToken") or data.get("po_token") or ""
+                if token:
+                    logger.info(f"[bgutil] PoToken obtenu ({len(token)} chars)")
+                    return token
+    except Exception as e:
+        logger.warning(f"[bgutil] fetch_po_token failed: {e}")
+    return ""
+
+
+def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
+    args: dict = {"player_client": ["web", "mweb", "ios"]}
     if BGUTIL_URL:
         args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
-        logger.info(f"[bgutil] PoToken provider actif: {BGUTIL_URL}")
+    if po_token and visitor_data:
+        args["po_token"] = [f"{visitor_data}+{po_token}"]
+        logger.info("[bgutil] PoToken injecté dans yt-dlp")
     return {"youtube": args}
 
+
 app = FastAPI(title="Créatis Shorts")
+
+
+@app.on_event("startup")
+async def startup():
+    global _bgutil_ok
+    if BGUTIL_URL:
+        _bgutil_ok = await _check_bgutil()
+        logger.info(f"[bgutil] URL={BGUTIL_URL} joignable={_bgutil_ok}")
 security = HTTPBearer(auto_error=False)
 
 
@@ -147,8 +195,16 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
 
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     """Télécharge audio via yt-dlp. Essaie proxy d'abord, fallback sans proxy (cookies)."""
-    import yt_dlp
+    import yt_dlp, asyncio
     cookies_file = _get_cookies_file()
+    # Récupère PoToken depuis bgutil (appel direct, indépendant du plugin)
+    try:
+        loop = asyncio.get_event_loop()
+        po_token = loop.run_until_complete(_fetch_po_token())
+        visitor_data = ""
+    except Exception:
+        po_token = ""
+        visitor_data = ""
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
     last_err = None
@@ -160,7 +216,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     "outtmpl": str(out_dir / "audio.%(ext)s"),
                     "check_formats": False,
                     "no_playlist": True,
-                    "extractor_args": _yt_extractor_args(),
+                    "extractor_args": _yt_extractor_args(po_token, visitor_data),
                 }
                 if fmt:
                     opts["format"] = fmt
