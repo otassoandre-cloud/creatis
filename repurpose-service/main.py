@@ -80,9 +80,9 @@ def _fetch_po_token_sync() -> tuple:
 
 
 def _yt_extractor_args() -> dict:
-    args = {"youtube": {"player_client": ["web"]}}
+    # web = prioritaire (PoToken bgutil), android/ios = fallback si web sans formats
+    args = {"youtube": {"player_client": ["web", "android", "ios"]}}
     if BGUTIL_URL:
-        # Nouvelle API bgutil-ytdlp-pot-provider >= 1.3.x
         args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_URL]}
         logger.info(f"[bgutil] plugin configuré: {BGUTIL_URL}")
     return args
