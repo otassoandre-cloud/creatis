@@ -79,19 +79,13 @@ def _fetch_po_token_sync() -> tuple:
     return "", ""
 
 
-def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
-    args: dict = {"player_client": ["web"]}
+def _yt_extractor_args() -> dict:
+    args = {"youtube": {"player_client": ["web"]}}
     if BGUTIL_URL:
-        args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
-    if po_token and visitor_data:
-        # Format yt-dlp : visitor_data+poToken (session liée)
-        args["po_token"] = [f"{visitor_data}+{po_token}"]
-        args["visitor_data"] = [visitor_data]
-        logger.info(f"[bgutil] po_token injecté: contentBinding+poToken format")
-    elif po_token:
-        args["po_token"] = [po_token]
-        logger.info(f"[bgutil] po_token injecté: raw format")
-    return {"youtube": args}
+        # Nouvelle API bgutil-ytdlp-pot-provider >= 1.3.x
+        args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_URL]}
+        logger.info(f"[bgutil] plugin configuré: {BGUTIL_URL}")
+    return args
 
 
 app = FastAPI(title="Créatis Shorts")
@@ -201,10 +195,8 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
 
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     """Télécharge audio via yt-dlp. Essaie proxy d'abord, fallback sans proxy (cookies)."""
-    import yt_dlp, asyncio
+    import yt_dlp
     cookies_file = _get_cookies_file()
-    # Récupère PoToken depuis bgutil (appel direct sync)
-    visitor_data, po_token = _fetch_po_token_sync()
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
     last_err = None
@@ -216,7 +208,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     "outtmpl": str(out_dir / "audio.%(ext)s"),
                     "check_formats": False,
                     "no_playlist": True,
-                    "extractor_args": _yt_extractor_args(po_token, visitor_data),
+                    "extractor_args": _yt_extractor_args(),
                 }
                 if fmt:
                     opts["format"] = fmt
