@@ -188,6 +188,26 @@ function _parseCaptionTracks(html) {
 
 // Retourne les segments avec timestamps (pour l'identification de clips)
 async function getYouTubeTranscriptSegments(videoId) {
+  // Méthode 1 : youtube-transcript npm (plus robuste que fetch brut)
+  try {
+    const { YoutubeTranscript } = require('youtube-transcript');
+    const raw = await YoutubeTranscript.fetchTranscript(videoId);
+    if (raw?.length) {
+      const segments = raw.map(s => ({
+        start: s.offset / 1000,
+        end: (s.offset + s.duration) / 1000,
+        text: (s.text || '').replace(/\n/g, ' ').trim(),
+      })).filter(s => s.text);
+      if (segments.length) {
+        console.log(`[captions/npm] ${segments.length} segments lang=${raw[0]?.lang}`);
+        return { segments, title: '', duration: segments[segments.length - 1].end };
+      }
+    }
+  } catch (e) {
+    console.warn('[captions/npm] failed:', e.message);
+  }
+
+  // Méthode 2 : fetch page + extraction caption tracks
   const html = await _fetchYouTubePage(videoId);
   const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
   const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
@@ -216,7 +236,7 @@ async function getYouTubeTranscriptSegments(videoId) {
     .filter(s => s.text);
 
   if (!segments.length) throw new Error('Sous-titres vides');
-  console.log(`[captions] ${segments.length} segments, lang=${track.languageCode}, title="${title}"`);
+  console.log(`[captions/fetch] ${segments.length} segments, lang=${track.languageCode}, title="${title}"`);
   return { segments, title, duration: segments[segments.length - 1].end };
 }
 
@@ -569,9 +589,16 @@ module.exports = async (req, res) => {
       let segments, title = '', duration = 0;
 
       // 1. Sous-titres YouTube depuis Vercel (IP propre, rapide, gratuit)
+      // On récupère aussi le titre via la page YouTube en parallèle
+      let pageTitle = '';
+      _fetchYouTubePage(videoId).then(html => {
+        const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+        if (m) pageTitle = m[1].replace(' - YouTube', '');
+      }).catch(() => {});
+
       try {
         const r = await getYouTubeTranscriptSegments(videoId);
-        segments = r.segments; title = r.title; duration = r.duration;
+        segments = r.segments; title = r.title || pageTitle; duration = r.duration;
       } catch (e) {
         console.warn('[clips] captions failed:', e.message);
 
