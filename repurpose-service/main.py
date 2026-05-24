@@ -174,40 +174,54 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
 
 def download_video(youtube_url: str, out_dir: Path) -> str:
     import yt_dlp
-    base_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
-        "merge_output_format": "mp4",
-    }
     cookies_file = _get_cookies_file()
     if cookies_file:
-        base_opts["cookiefile"] = cookies_file
-        logger.info("yt-dlp: utilisation des cookies YouTube")
-    if RESIDENTIAL_PROXY_URL:
-        base_opts["proxy"] = RESIDENTIAL_PROXY_URL
-        logger.info("yt-dlp: proxy résidentiel actif")
-
-    formats = [
-        "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
-        "best",
-        None,
-    ]
+        logger.info("yt-dlp: cookies YouTube actifs")
+    proxies_to_try = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
     last_err = None
-    for fmt in formats:
-        try:
-            opts = {**base_opts, "check_formats": False}
-            if fmt:
-                opts["format"] = fmt
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(youtube_url, download=True)
-                path = _resolve_path(ydl, info, out_dir)
-            if os.path.exists(path) and os.path.getsize(path) > 10_000:
-                logger.info(f"yt-dlp OK (fmt={fmt}): {path}")
-                return path
-        except Exception as e:
-            logger.warning(f"yt-dlp fmt={str(fmt)[:40]} failed: {e}")
-            last_err = e
+    for proxy in proxies_to_try:
+        base_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
+            "merge_output_format": "mp4",
+        }
+        if cookies_file:
+            base_opts["cookiefile"] = cookies_file
+        if proxy:
+            base_opts["proxy"] = proxy
+            logger.info("yt-dlp: proxy résidentiel actif")
+        else:
+            logger.info("yt-dlp: sans proxy (cookies)")
+
+        formats = [
+            "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+            "best",
+            None,
+        ]
+        proxy_failed = False
+        for fmt in formats:
+            try:
+                opts = {**base_opts, "check_formats": False}
+                if fmt:
+                    opts["format"] = fmt
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(youtube_url, download=True)
+                    path = _resolve_path(ydl, info, out_dir)
+                if os.path.exists(path) and os.path.getsize(path) > 10_000:
+                    logger.info(f"yt-dlp OK proxy={bool(proxy)} fmt={fmt}: {path}")
+                    return path
+            except Exception as e:
+                err_str = str(e)
+                logger.warning(f"yt-dlp fmt={str(fmt)[:40]} proxy={bool(proxy)} failed: {err_str[:150]}")
+                last_err = e
+                if "proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower():
+                    proxy_failed = True
+                    break  # proxy cassé — passe directement au fallback sans proxy
+        if proxy_failed:
+            continue  # retry sans proxy
+        if last_err:
+            raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
     raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
 
