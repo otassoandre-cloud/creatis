@@ -31,6 +31,7 @@ SERVICE_SECRET        = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
 YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
 RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
+BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
 
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
@@ -38,6 +39,14 @@ WORK_DIR.mkdir(exist_ok=True)
 JOBS:         dict = {}
 CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
+
+
+def _yt_extractor_args() -> dict:
+    args: dict = {"player_client": ["mweb", "web", "ios"]}
+    if BGUTIL_URL:
+        args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
+        logger.info(f"[bgutil] PoToken provider actif: {BGUTIL_URL}")
+    return {"youtube": args}
 
 app = FastAPI(title="Créatis Shorts")
 security = HTTPBearer(auto_error=False)
@@ -141,7 +150,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     import yt_dlp
     cookies_file = _get_cookies_file()
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
-    audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best", None]
+    audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
     last_err = None
     for proxy in proxies:
         for fmt in audio_formats:
@@ -151,7 +160,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     "outtmpl": str(out_dir / "audio.%(ext)s"),
                     "check_formats": False,
                     "no_playlist": True,
-                    "extractor_args": {"youtube": {"player_client": ["mweb", "web", "ios"]}},
+                    "extractor_args": _yt_extractor_args(),
                 }
                 if fmt:
                     opts["format"] = fmt
@@ -193,6 +202,7 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
             "no_warnings": True,
             "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
             "merge_output_format": "mp4",
+            "extractor_args": _yt_extractor_args(),
         }
         if cookies_file:
             base_opts["cookiefile"] = cookies_file
