@@ -821,8 +821,7 @@ def health():
 @app.get("/test-formats")
 def test_formats(video_id: str = "NwlPz4RaZ8s"):
     """Debug: liste les formats yt-dlp disponibles avec PoToken."""
-    import yt_dlp, io, sys
-    visitor_data, po_token = _fetch_po_token_sync()
+    import yt_dlp
     output = []
     class LogCollector:
         def debug(self, msg): output.append(msg)
@@ -831,7 +830,7 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     opts = {
         "quiet": False, "no_warnings": False,
         "listformats": True,
-        "extractor_args": _yt_extractor_args(po_token, visitor_data),
+        "extractor_args": _yt_extractor_args(),
         "logger": LogCollector(),
     }
     cookies_file = _get_cookies_file()
@@ -844,7 +843,7 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
             ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
     except Exception as e:
         output.append(f"EXCEPTION: {e}")
-    return {"po_token_len": len(po_token), "visitor_data_len": len(visitor_data), "logs": output[:80]}
+    return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
 @app.post("/transcribe-segments")
