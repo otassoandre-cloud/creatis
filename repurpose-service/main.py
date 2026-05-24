@@ -57,25 +57,22 @@ async def _check_bgutil() -> bool:
         return False
 
 
-async def _fetch_po_token(visitor_data: str = "") -> str:
-    """Appelle bgutil directement pour obtenir un PoToken."""
+def _fetch_po_token_sync(visitor_data: str = "") -> str:
+    """Appelle bgutil (sync) pour obtenir un PoToken. Essaie plusieurs endpoints."""
     if not BGUTIL_URL:
         return ""
-    # Essaie les endpoints connus de bgutil v1.x
     endpoints = [
-        ("POST", "/get_pot", {"visitorData": visitor_data}),
-        ("POST", "/get_pot", {"visitor_data": visitor_data}),
+        ("POST", "/get_pot",    {"visitorData": visitor_data}),
+        ("POST", "/get_pot",    {"visitor_data": visitor_data, "identifier": ""}),
         ("POST", "/v1/get_pot", {"visitorData": visitor_data}),
-        ("GET",  "/get_pot", None),
+        ("GET",  "/get_pot",    None),
     ]
-    async with httpx.AsyncClient(timeout=20) as c:
+    with httpx.Client(timeout=20) as c:
         for method, path, body in endpoints:
             try:
-                if method == "POST":
-                    r = await c.post(f"{BGUTIL_URL}{path}", json=body)
-                else:
-                    r = await c.get(f"{BGUTIL_URL}{path}")
-                logger.info(f"[bgutil] {method} {path} → {r.status_code} body={r.text[:300]}")
+                r = c.post(f"{BGUTIL_URL}{path}", json=body) if method == "POST" \
+                    else c.get(f"{BGUTIL_URL}{path}")
+                logger.info(f"[bgutil] {method} {path} → {r.status_code} | {r.text[:300]}")
                 if r.status_code == 200:
                     data = r.json()
                     token = data.get("poToken") or data.get("po_token") or ""
@@ -206,14 +203,9 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     """Télécharge audio via yt-dlp. Essaie proxy d'abord, fallback sans proxy (cookies)."""
     import yt_dlp, asyncio
     cookies_file = _get_cookies_file()
-    # Récupère PoToken depuis bgutil (appel direct, indépendant du plugin)
-    try:
-        loop = asyncio.get_event_loop()
-        po_token = loop.run_until_complete(_fetch_po_token())
-        visitor_data = ""
-    except Exception:
-        po_token = ""
-        visitor_data = ""
+    # Récupère PoToken depuis bgutil (appel direct sync)
+    po_token = _fetch_po_token_sync()
+    visitor_data = ""
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
     last_err = None
