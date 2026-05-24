@@ -58,6 +58,8 @@ class GenerateRequest(BaseModel):
 class ClipsRequest(BaseModel):
     url: str
     n_clips: int = 5
+    video_url: Optional[str] = None
+    audio_url: Optional[str] = None
 
 class ClipExportRequest(BaseModel):
     video_id: str
@@ -610,7 +612,10 @@ Transcription :
     ]
 
 
-async def run_clips(session_id: str, url: str, n_clips: int) -> None:
+async def run_clips(
+    session_id: str, url: str, n_clips: int,
+    video_url: Optional[str] = None, audio_url: Optional[str] = None,
+) -> None:
     try:
         video_id = _get_video_id(url)
         if not video_id:
@@ -621,9 +626,15 @@ async def run_clips(session_id: str, url: str, n_clips: int) -> None:
         if not transcript:
             out_dir = WORK_DIR / f"cl_{session_id}"
             out_dir.mkdir(parents=True, exist_ok=True)
-            source = await asyncio.get_event_loop().run_in_executor(
-                None, lambda: download_video(url, out_dir)
-            )
+            if video_url:
+                logger.info("Clips: direct URL download (Innertube)")
+                source = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: download_from_direct_url(video_url, audio_url, out_dir)
+                )
+            else:
+                source = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: download_video(url, out_dir)
+                )
             transcript = await transcribe(source)
             Path(source).unlink(missing_ok=True)
 
@@ -717,7 +728,7 @@ def shorts_file(job_id: str, filename: str):
 async def clips(req: ClipsRequest, tasks: BackgroundTasks, _=Depends(auth)):
     session_id = str(uuid.uuid4())[:12]
     CLIPS[session_id] = {"status": "processing"}
-    tasks.add_task(run_clips, session_id, req.url, min(max(1, req.n_clips), 10))
+    tasks.add_task(run_clips, session_id, req.url, min(max(1, req.n_clips), 10), req.video_url, req.audio_url)
     return {"session_id": session_id}
 
 

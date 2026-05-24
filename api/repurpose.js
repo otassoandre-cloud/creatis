@@ -421,10 +421,23 @@ module.exports = async (req, res) => {
       });
     }
     try {
+      // Pré-résolution du stream depuis Vercel (IP non bloquée) pour contourner bot detection Railway
+      const videoId = extractVideoId(url);
+      let video_url = null, audio_url = null;
+      if (videoId) {
+        try {
+          const streams = await getInnertubeStreamUrl(videoId);
+          video_url = streams.video_url;
+          audio_url = streams.audio_url || null;
+          console.log('[clips] Innertube OK video_url:', video_url?.substring(0, 60));
+        } catch (e) {
+          console.warn('[clips] Innertube failed (Railway utilisera yt-dlp):', e.message);
+        }
+      }
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ url, n_clips: 5 }),
+        body: JSON.stringify({ url, n_clips: 5, video_url, audio_url }),
         signal: AbortSignal.timeout(30000)
       });
       const data = await r.json();
