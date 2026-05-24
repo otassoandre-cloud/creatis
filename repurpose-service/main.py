@@ -84,13 +84,13 @@ def _fetch_po_token_sync() -> tuple:
 
 
 def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
-    args: dict = {"player_client": ["web", "mweb", "ios"]}
+    # web client requis pour PoToken bgutil
+    args: dict = {"player_client": ["web"]}
     if BGUTIL_URL:
         args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
     if po_token:
-        pot_str = f"{visitor_data}+{po_token}" if visitor_data else po_token
-        args["po_token"] = [pot_str]
-        logger.info(f"[bgutil] PoToken injecté (visitor={'oui' if visitor_data else 'non'})")
+        args["po_token"] = [f"web+{po_token}"]
+        logger.info(f"[bgutil] PoToken web injecté ({len(po_token)}c)")
     return {"youtube": args}
 
 
