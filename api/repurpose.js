@@ -166,35 +166,131 @@ async function getInnertubeStreamUrl(videoId) {
   throw lastErr || new Error('All Innertube clients failed');
 }
 
-async function getYouTubeTranscript(videoId) {
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+async function _fetchYouTubePage(videoId) {
+  const r = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
+      'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
     },
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(15000),
   });
-  if (!pageRes.ok) throw new Error('Impossible d\'accéder à la vidéo YouTube');
-  const html = await pageRes.text();
+  if (!r.ok) throw new Error(`YouTube inaccessible (${r.status})`);
+  return r.text();
+}
 
-  // Extract video title
+function _parseCaptionTracks(html) {
+  const m = html.match(/"captionTracks":\s*(\[.*?\])/s);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[1].replace(/\\u0026/g, '&').replace(/\\\\/g, '\\').replace(/\\"/g, '"'));
+  } catch { return null; }
+}
+
+// Retourne les segments avec timestamps (pour l'identification de clips)
+async function getYouTubeTranscriptSegments(videoId) {
+  const html = await _fetchYouTubePage(videoId);
   const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
   const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
 
-  // Find caption tracks (auto-generated or manual)
-  const captionsMatch = html.match(/"captionTracks":\s*(\[.*?\])/s);
-  if (!captionsMatch) {
+  const tracks = _parseCaptionTracks(html);
+  if (!tracks?.length) throw new Error('Pas de sous-titres disponibles pour cette vidéo');
+
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
+    || tracks.find(t => t.languageCode === 'fr')
+    || tracks.find(t => t.kind === 'asr')
+    || tracks[0];
+  if (!track?.baseUrl) throw new Error('Aucune piste de sous-titres trouvable');
+
+  const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
+  const cr = await fetch(captionsUrl, { signal: AbortSignal.timeout(10000) });
+  if (!cr.ok) throw new Error('Impossible de récupérer les sous-titres');
+
+  const data = await cr.json();
+  const segments = (data.events || [])
+    .filter(e => e.segs && e.tStartMs != null)
+    .map(e => ({
+      start: e.tStartMs / 1000,
+      end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
+      text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
+    }))
+    .filter(s => s.text);
+
+  if (!segments.length) throw new Error('Sous-titres vides');
+  console.log(`[captions] ${segments.length} segments, lang=${track.languageCode}, title="${title}"`);
+  return { segments, title, duration: segments[segments.length - 1].end };
+}
+
+// Transcription via Groq Whisper à partir d'une URL audio directe (Innertube CDN)
+async function transcribeAudioUrl(audioUrl) {
+  console.log('[whisper] downloading audio from CDN...');
+  const audioRes = await fetch(audioUrl, { signal: AbortSignal.timeout(60000) });
+  if (!audioRes.ok) throw new Error(`Audio CDN ${audioRes.status}`);
+  const buf = Buffer.from(await audioRes.arrayBuffer());
+  const sizeMb = buf.length / 1_048_576;
+  console.log(`[whisper] ${sizeMb.toFixed(1)} MB → Groq`);
+  if (sizeMb > 24) throw new Error(`Audio trop grand: ${sizeMb.toFixed(1)} MB`);
+
+  const form = new FormData();
+  form.append('file', new Blob([buf], { type: 'audio/mp4' }), 'audio.mp4');
+  form.append('model', 'whisper-large-v3');
+  form.append('response_format', 'verbose_json');
+
+  const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${GROQ_KEY}` },
+    body: form,
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(`Groq Whisper: ${e.error?.message || r.status}`); }
+  const d = await r.json();
+  const segments = (d.segments || []).map(s => ({ start: parseFloat(s.start), end: parseFloat(s.end), text: s.text.trim() }));
+  console.log(`[whisper] ${segments.length} segments`);
+  return { segments, duration: d.duration || 0 };
+}
+
+// Identification des clips viraux via Groq LLM
+async function identifyViralClips(segments, videoId, title, nClips) {
+  const transcript = segments
+    .map(s => `[${s.start.toFixed(1)}s] ${s.text}`)
+    .join('\n')
+    .substring(0, 8000);
+
+  const prompt = `Tu es un expert YouTube Shorts. Identifie les ${nClips} meilleurs moments viraux dans cette transcription.
+
+Réponds UNIQUEMENT en JSON :
+{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre court","hook":"phrase accroche","score":88}]}
+
+Règles : durée 30-90s, score 0-100, ne coupe pas au milieu d'une phrase.
+
+Transcription "${title}" :
+${transcript}`;
+
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048 }),
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!r.ok) throw new Error('Groq LLM error');
+  const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
+  const json = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
+  let clips = [];
+  try { clips = JSON.parse(json).clips || []; }
+  catch { const s = json.indexOf('{'), e = json.lastIndexOf('}'); if (s !== -1 && e !== -1) clips = JSON.parse(json.slice(s, e+1)).clips || []; }
+  return clips.map(c => ({ video_id: videoId, start: parseFloat(c.start_time), end: parseFloat(c.end_time), title: c.title, hook: c.hook, score: parseInt(c.score) || 80 }));
+}
+
+async function getYouTubeTranscript(videoId) {
+  const html = await _fetchYouTubePage(videoId);
+
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+  const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+
+  const tracks = _parseCaptionTracks(html);
+  if (!tracks?.length) {
     throw new Error('Pas de sous-titres disponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube, ou utilise une vidéo avec des sous-titres.');
   }
 
-  let tracks;
-  try {
-    tracks = JSON.parse(captionsMatch[1].replace(/\\u0026/g, '&').replace(/\\\\/g, '\\').replace(/\\"/g, '"'));
-  } catch {
-    throw new Error('Impossible de lire les sous-titres de cette vidéo');
-  }
-
-  // Prefer French, then original auto-generated, then any
   const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
     || tracks.find(t => t.languageCode === 'fr')
     || tracks.find(t => t.kind === 'asr')
@@ -464,44 +560,40 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'URL invalide — entre une URL YouTube (youtube.com ou youtu.be)' });
   }
 
-  // ── Mode CLIPS : lance le job async sur Railway ──
+  // ── Mode CLIPS : traitement synchrone sur Vercel (pas de Railway pour éviter bot detection) ──
   if (mode === 'clips') {
-    if (!REPURPOSE_SERVICE_URL) {
-      return res.status(503).json({
-        error: 'Le service de clips vidéo n\'est pas encore configuré.',
-        setup_required: true
-      });
-    }
+    if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const videoId = extractVideoId(url);
+    if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
     try {
-      // Pré-résolution du stream depuis Vercel (IP non bloquée) pour contourner bot detection Railway
-      const videoId = extractVideoId(url);
-      let video_url = null, audio_url = null;
-      if (videoId) {
-        try {
-          const streams = await getInnertubeStreamUrl(videoId);
-          video_url = streams.video_url;
-          audio_url = streams.audio_url || null;
-          console.log('[clips] Innertube OK video_url:', video_url?.substring(0, 60));
-        } catch (e) {
-          console.error('[clips] Innertube failed:', e.message);
-          return res.status(502).json({
-            error: 'Impossible d\'accéder à cette vidéo YouTube. Vérifie que la vidéo est publique et réessaie.'
-          });
-        }
-      } else {
-        return res.status(400).json({ error: 'URL YouTube invalide' });
+      let segments, title = '', duration = 0;
+
+      // 1. Sous-titres YouTube depuis Vercel (IP propre, rapide, gratuit)
+      try {
+        const r = await getYouTubeTranscriptSegments(videoId);
+        segments = r.segments; title = r.title; duration = r.duration;
+      } catch (e) {
+        console.warn('[clips] captions failed:', e.message);
+
+        // 2. Fallback : Innertube audio URL → Groq Whisper
+        const streams = await getInnertubeStreamUrl(videoId);
+        const audioUrl = streams.audio_url || streams.video_url;
+        const r = await transcribeAudioUrl(audioUrl);
+        segments = r.segments; duration = r.duration;
       }
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ url, n_clips: 5, video_url, audio_url }),
-        signal: AbortSignal.timeout(30000)
+
+      if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
+
+      // 3. Identification clips via Groq LLM
+      const clips = await identifyViralClips(segments, videoId, title, 5);
+      console.log(`[clips] ${clips.length} clips identifiés pour ${videoId}`);
+
+      return res.status(200).json({
+        ok: true, mode: 'clips', status: 'done',
+        result: { clips, title, duration, youtube_url: url }
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
-      return res.status(200).json({ ok: true, mode: 'clips', session_id: data.session_id, status: 'processing' });
     } catch (err) {
-      console.error('[Clips] Erreur démarrage:', err.message);
+      console.error('[clips] fatal:', err.message);
       return res.status(502).json({ error: err.message });
     }
   }

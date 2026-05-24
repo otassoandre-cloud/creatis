@@ -1131,6 +1131,11 @@ class AppCreatis {
     try {
       // Lancer le job async
       const start = await this._appelRepurpose(url, 'clips');
+      // Réponse synchrone (Vercel traite tout directement)
+      if (start.status === 'done' && start.result) {
+        this._afficherClipsResultats(agentId, start.result);
+        return;
+      }
       const sessionId = start.session_id;
       if (!sessionId) throw new Error('Pas de session_id reçu');
 
