@@ -57,40 +57,40 @@ async def _check_bgutil() -> bool:
         return False
 
 
-def _fetch_po_token_sync(visitor_data: str = "") -> str:
-    """Appelle bgutil (sync) pour obtenir un PoToken. Essaie plusieurs endpoints."""
+def _fetch_po_token_sync() -> tuple:
+    """Appelle bgutil (sync). Retourne (visitor_data, po_token)."""
     if not BGUTIL_URL:
-        return ""
+        return "", ""
     endpoints = [
-        ("POST", "/get_pot",    {"visitorData": visitor_data}),
-        ("POST", "/get_pot",    {"visitor_data": visitor_data, "identifier": ""}),
-        ("POST", "/v1/get_pot", {"visitorData": visitor_data}),
-        ("GET",  "/get_pot",    None),
+        ("POST", "/get_pot",    {}),
+        ("POST", "/v1/get_pot", {}),
     ]
     with httpx.Client(timeout=20) as c:
         for method, path, body in endpoints:
             try:
-                r = c.post(f"{BGUTIL_URL}{path}", json=body) if method == "POST" \
-                    else c.get(f"{BGUTIL_URL}{path}")
-                logger.info(f"[bgutil] {method} {path} → {r.status_code} | {r.text[:300]}")
+                r = c.post(f"{BGUTIL_URL}{path}", json=body)
+                logger.info(f"[bgutil] {method} {path} → {r.status_code} | {r.text[:400]}")
                 if r.status_code == 200:
                     data = r.json()
-                    token = data.get("poToken") or data.get("po_token") or ""
+                    token   = data.get("poToken") or data.get("po_token") or ""
+                    visitor = (data.get("visitorData") or data.get("visitor_data")
+                               or data.get("contentBinding") or "")
                     if token:
-                        logger.info(f"[bgutil] PoToken obtenu ({len(token)} chars)")
-                        return token
+                        logger.info(f"[bgutil] PoToken={len(token)}c visitor={len(visitor)}c")
+                        return visitor, token
             except Exception as e:
                 logger.warning(f"[bgutil] {method} {path} failed: {e}")
-    return ""
+    return "", ""
 
 
 def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
     args: dict = {"player_client": ["web", "mweb", "ios"]}
     if BGUTIL_URL:
         args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
-    if po_token and visitor_data:
-        args["po_token"] = [f"{visitor_data}+{po_token}"]
-        logger.info("[bgutil] PoToken injecté dans yt-dlp")
+    if po_token:
+        pot_str = f"{visitor_data}+{po_token}" if visitor_data else po_token
+        args["po_token"] = [pot_str]
+        logger.info(f"[bgutil] PoToken injecté (visitor={'oui' if visitor_data else 'non'})")
     return {"youtube": args}
 
 
@@ -204,8 +204,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     import yt_dlp, asyncio
     cookies_file = _get_cookies_file()
     # Récupère PoToken depuis bgutil (appel direct sync)
-    po_token = _fetch_po_token_sync()
-    visitor_data = ""
+    visitor_data, po_token = _fetch_po_token_sync()
     proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "18", "best", None]
     last_err = None
