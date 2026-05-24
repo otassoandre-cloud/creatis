@@ -14,11 +14,15 @@ const RESIDENTIAL_PROXY_URL = (process.env.RESIDENTIAL_PROXY_URL || '').trim();
 
 // Fetch proxy pour les appels YouTube (contourne le bot detection sur IPs datacenter)
 let _proxyAgent = null;
-function _getProxyAgent() {
+let _proxyAgentReady = false;
+
+async function _getProxyAgent() {
   if (!RESIDENTIAL_PROXY_URL) return null;
-  if (_proxyAgent) return _proxyAgent;
+  if (_proxyAgentReady) return _proxyAgent;
+  _proxyAgentReady = true;
   try {
-    const { HttpsProxyAgent } = require('https-proxy-agent');
+    // import() dynamique requis — https-proxy-agent@9 est ESM
+    const { HttpsProxyAgent } = await import('https-proxy-agent');
     _proxyAgent = new HttpsProxyAgent(RESIDENTIAL_PROXY_URL);
     console.log('[proxy] Residential proxy actif');
   } catch (e) {
@@ -29,7 +33,7 @@ function _getProxyAgent() {
 
 // Fetch YouTube avec proxy résidentiel si configuré
 async function _fetchYT(url, opts = {}) {
-  const agent = _getProxyAgent();
+  const agent = await _getProxyAgent();
   if (agent) {
     const nodeFetch = require('node-fetch');
     return nodeFetch(url, { ...opts, agent });
@@ -101,7 +105,9 @@ function extractVideoId(url) {
 
 function _parseInnertubeStreams(data, videoId, clientName) {
   if (!data.streamingData) {
-    const reason = data.playabilityStatus?.reason || data.playabilityStatus?.status || 'no streamingData';
+    const status = data.playabilityStatus?.status || '?';
+    const reason = data.playabilityStatus?.reason || data.playabilityStatus?.messages?.[0] || status;
+    console.warn(`[Innertube/${clientName}] no streamingData status=${status} reason="${reason}"`);
     throw new Error(reason);
   }
   console.log(`[Innertube/${clientName}] status=${data.playabilityStatus?.status} formats=${data.streamingData.formats?.length||0} adaptive=${data.streamingData.adaptiveFormats?.length||0}`);
@@ -155,11 +161,40 @@ async function getInnertubeStreamUrl(videoId) {
       ua: 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1',
       extra: {},
     },
+    {
+      name: 'TVHTML5_SIMPLY_EMBEDDED_PLAYER',
+      clientName: '85',
+      version: '2.0',
+      ua: 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1',
+      extra: {},
+      embedUrl: 'https://www.youtube.com',
+    },
+    {
+      name: 'WEB_EMBEDDED_PLAYER',
+      clientName: '56',
+      version: '1.20231201.01.00',
+      ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      extra: {},
+      embedUrl: 'https://www.youtube.com',
+    },
   ];
 
   let lastErr = null;
   for (const client of CLIENTS) {
     try {
+      console.log(`[Innertube] trying ${client.name}...`);
+      const body = {
+        videoId,
+        context: {
+          client: {
+            clientName: client.name,
+            clientVersion: client.version,
+            hl: 'en', gl: 'US',
+            ...client.extra,
+          },
+          ...(client.embedUrl ? { thirdParty: { embedUrl: client.embedUrl } } : {}),
+        },
+      };
       const r = await _fetchYT('https://www.youtube.com/youtubei/v1/player', {
         method: 'POST',
         headers: {
@@ -168,20 +203,10 @@ async function getInnertubeStreamUrl(videoId) {
           'X-YouTube-Client-Name': client.clientName,
           'X-YouTube-Client-Version': client.version,
         },
-        body: JSON.stringify({
-          videoId,
-          context: {
-            client: {
-              clientName: client.name,
-              clientVersion: client.version,
-              hl: 'en', gl: 'US',
-              ...client.extra,
-            },
-          },
-        }),
+        body: JSON.stringify(body),
         timeout: 15000,
       });
-      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}`); continue; }
+      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}`); console.warn(`[Innertube/${client.name}] HTTP ${r.status}`); continue; }
       const data = await r.json();
       return _parseInnertubeStreams(data, videoId, client.name);
     } catch (e) {
@@ -364,6 +389,23 @@ async function getYouTubeTranscript(videoId) {
   const duration = durationSec > 0 ? `${Math.floor(durationSec / 60)}m${durationSec % 60}s` : '';
 
   return { transcript, title, duration, r2_url: null };
+}
+
+// Fallback Railway: yt-dlp + proxy + Groq Whisper → segments horodatés
+async function transcribeViaRailway(youtubeUrl) {
+  if (!REPURPOSE_SERVICE_URL) throw new Error('Service Railway non configuré');
+  console.log('[clips] fallback Railway transcription...');
+  const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcribe-segments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+    body: JSON.stringify({ youtube_url: youtubeUrl }),
+    signal: AbortSignal.timeout(240000),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.detail || `Railway transcription (${r.status})`);
+  }
+  return r.json();
 }
 
 async function transcribeWithCloudRun(url) {
@@ -622,6 +664,7 @@ module.exports = async (req, res) => {
         if (m) pageTitle = m[1].replace(' - YouTube', '');
       }).catch(() => {});
 
+      console.log('[clips] PROXY_URL set:', !!RESIDENTIAL_PROXY_URL);
       try {
         const r = await getYouTubeTranscriptSegments(videoId);
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
@@ -629,10 +672,21 @@ module.exports = async (req, res) => {
         console.warn('[clips] captions failed:', e.message);
 
         // 2. Fallback : Innertube audio URL → Groq Whisper
-        const streams = await getInnertubeStreamUrl(videoId);
-        const audioUrl = streams.audio_url || streams.video_url;
-        const r = await transcribeAudioUrl(audioUrl);
-        segments = r.segments; duration = r.duration;
+        let innertubeOk = false;
+        try {
+          const streams = await getInnertubeStreamUrl(videoId);
+          const audioUrl = streams.audio_url || streams.video_url;
+          const r = await transcribeAudioUrl(audioUrl);
+          segments = r.segments; duration = r.duration;
+          innertubeOk = true;
+        } catch (innerErr) {
+          console.warn('[clips] Innertube+Whisper failed:', innerErr.message);
+
+          // 3. Dernier recours : Railway yt-dlp + proxy + Whisper
+          const r = await transcribeViaRailway(url);
+          segments = r.segments; duration = r.duration;
+          if (!title) title = r.title || '';
+        }
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });

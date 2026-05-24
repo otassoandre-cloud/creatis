@@ -67,6 +67,9 @@ class ClipExportRequest(BaseModel):
     start: float
     end: float
 
+class TranscribeRequest(BaseModel):
+    youtube_url: str
+
 
 # ── 1. DOWNLOAD ───────────────────────────────────────────────────────────────
 
@@ -131,6 +134,33 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
     size_mb = os.path.getsize(out_path) / 1_048_576
     logger.info(f"Direct download OK: {size_mb:.1f} MB")
     return out_path
+
+
+def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
+    """Télécharge audio uniquement via yt-dlp (avec proxy). Retourne (path, title)."""
+    import yt_dlp
+    opts = {
+        "quiet": True, "no_warnings": True,
+        "outtmpl": str(out_dir / "audio.%(ext)s"),
+        "format": "bestaudio/best",
+    }
+    cookies_file = _get_cookies_file()
+    if cookies_file:
+        opts["cookiefile"] = cookies_file
+    if RESIDENTIAL_PROXY_URL:
+        opts["proxy"] = RESIDENTIAL_PROXY_URL
+        logger.info("yt-dlp audio: proxy résidentiel actif")
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=True)
+            title = (info or {}).get("title", "")
+    except Exception as e:
+        raise RuntimeError(f"Téléchargement audio: {e}")
+    for p in out_dir.glob("audio.*"):
+        if p.stat().st_size > 1000:
+            logger.info(f"Audio téléchargé: {p.name} ({p.stat().st_size // 1024} KB)")
+            return str(p), title
+    raise RuntimeError("Fichier audio introuvable après téléchargement")
 
 
 def download_video(youtube_url: str, out_dir: Path) -> str:
@@ -697,6 +727,34 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
 @app.get("/health")
 def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
+
+
+@app.post("/transcribe-segments")
+async def transcribe_segments_endpoint(req: TranscribeRequest, _=Depends(auth)):
+    """yt-dlp (proxy) + Groq Whisper → segments horodatés. Fallback quand sous-titres YouTube indispos."""
+    if "youtube.com" not in req.youtube_url and "youtu.be" not in req.youtube_url:
+        raise HTTPException(400, "URL YouTube invalide")
+    job_dir = WORK_DIR / f"ts_{uuid.uuid4().hex[:8]}"
+    job_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        logger.info(f"[transcribe-segments] download {req.youtube_url}")
+        source, title = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _download_audio_for_transcription(req.youtube_url, job_dir)
+        )
+        logger.info(f"[transcribe-segments] transcription '{title}'")
+        transcript = await transcribe(source)
+        if not transcript["segments"]:
+            raise HTTPException(502, "Aucun segment — vidéo sans paroles")
+        logger.info(f"[transcribe-segments] {len(transcript['segments'])} segments, {transcript['duration']:.0f}s")
+        return {"ok": True, "segments": transcript["segments"], "duration": transcript["duration"], "title": title}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[transcribe-segments] erreur: {e}")
+        raise HTTPException(502, str(e))
+    finally:
+        import shutil
+        shutil.rmtree(str(job_dir), ignore_errors=True)
 
 
 @app.post("/generate-shorts")
