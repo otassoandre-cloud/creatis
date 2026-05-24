@@ -61,36 +61,32 @@ def _fetch_po_token_sync() -> tuple:
     """Appelle bgutil (sync). Retourne (visitor_data, po_token)."""
     if not BGUTIL_URL:
         return "", ""
-    endpoints = [
-        ("POST", "/get_pot",    {}),
-        ("POST", "/v1/get_pot", {}),
-    ]
     with httpx.Client(timeout=20) as c:
-        for method, path, body in endpoints:
-            try:
-                r = c.post(f"{BGUTIL_URL}{path}", json=body)
-                logger.info(f"[bgutil] {method} {path} → {r.status_code} | {r.text[:400]}")
-                if r.status_code == 200:
-                    data = r.json()
-                    token   = data.get("poToken") or data.get("po_token") or ""
-                    visitor = (data.get("visitorData") or data.get("visitor_data")
-                               or data.get("contentBinding") or "")
-                    if token:
-                        logger.info(f"[bgutil] PoToken={len(token)}c visitor={len(visitor)}c")
-                        return visitor, token
-            except Exception as e:
-                logger.warning(f"[bgutil] {method} {path} failed: {e}")
+        try:
+            r = c.post(f"{BGUTIL_URL}/get_pot", json={})
+            logger.info(f"[bgutil] réponse complète: {r.text}")  # log sans troncature
+            if r.status_code == 200:
+                data = r.json()
+                logger.info(f"[bgutil] clés disponibles: {list(data.keys())}")
+                token   = data.get("poToken") or data.get("po_token") or ""
+                visitor = (data.get("visitorData") or data.get("visitor_data") or "")
+                if token:
+                    logger.info(f"[bgutil] PoToken={len(token)}c visitorData={len(visitor)}c")
+                    return visitor, token
+        except Exception as e:
+            logger.warning(f"[bgutil] /get_pot failed: {e}")
     return "", ""
 
 
 def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
-    # web client requis pour PoToken bgutil
     args: dict = {"player_client": ["web"]}
     if BGUTIL_URL:
         args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
     if po_token:
         args["po_token"] = [f"web+{po_token}"]
-        logger.info(f"[bgutil] PoToken web injecté ({len(po_token)}c)")
+        if visitor_data:
+            args["visitor_data"] = [visitor_data]
+        logger.info(f"[bgutil] po_token={len(po_token)}c visitor_data={len(visitor_data)}c")
     return {"youtube": args}
 
 
