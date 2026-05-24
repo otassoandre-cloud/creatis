@@ -137,30 +137,39 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
 
 
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
-    """Télécharge audio uniquement via yt-dlp (avec proxy). Retourne (path, title)."""
+    """Télécharge audio via yt-dlp. Essaie proxy d'abord, fallback sans proxy (cookies)."""
     import yt_dlp
-    opts = {
-        "quiet": True, "no_warnings": True,
-        "outtmpl": str(out_dir / "audio.%(ext)s"),
-        "format": "bestaudio/best",
-    }
     cookies_file = _get_cookies_file()
-    if cookies_file:
-        opts["cookiefile"] = cookies_file
-    if RESIDENTIAL_PROXY_URL:
-        opts["proxy"] = RESIDENTIAL_PROXY_URL
-        logger.info("yt-dlp audio: proxy résidentiel actif")
-    try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-            title = (info or {}).get("title", "")
-    except Exception as e:
-        raise RuntimeError(f"Téléchargement audio: {e}")
-    for p in out_dir.glob("audio.*"):
-        if p.stat().st_size > 1000:
-            logger.info(f"Audio téléchargé: {p.name} ({p.stat().st_size // 1024} KB)")
-            return str(p), title
-    raise RuntimeError("Fichier audio introuvable après téléchargement")
+    proxies = [RESIDENTIAL_PROXY_URL, None] if RESIDENTIAL_PROXY_URL else [None]
+    last_err = None
+    for proxy in proxies:
+        try:
+            opts = {
+                "quiet": True, "no_warnings": True,
+                "outtmpl": str(out_dir / "audio.%(ext)s"),
+                "format": "bestaudio/best",
+            }
+            if cookies_file:
+                opts["cookiefile"] = cookies_file
+            if proxy:
+                opts["proxy"] = proxy
+                logger.info("yt-dlp audio: proxy actif")
+            else:
+                logger.info("yt-dlp audio: sans proxy (cookies)")
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(youtube_url, download=True)
+                title = (info or {}).get("title", "")
+            for p in out_dir.glob("audio.*"):
+                if p.stat().st_size > 1000:
+                    logger.info(f"Audio OK: {p.name} ({p.stat().st_size // 1024} KB)")
+                    return str(p), title
+        except Exception as e:
+            logger.warning(f"yt-dlp audio proxy={bool(proxy)} failed: {str(e)[:200]}")
+            last_err = e
+            # Clean partiels avant retry
+            for p in out_dir.glob("audio.*"):
+                p.unlink(missing_ok=True)
+    raise RuntimeError(f"Téléchargement audio échoué: {last_err}")
 
 
 def download_video(youtube_url: str, out_dir: Path) -> str:

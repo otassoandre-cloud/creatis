@@ -31,12 +31,18 @@ async function _getProxyAgent() {
   return _proxyAgent;
 }
 
-// Fetch YouTube avec proxy résidentiel si configuré
+// Fetch YouTube avec proxy résidentiel si configuré — fallback direct si proxy 502
 async function _fetchYT(url, opts = {}) {
   const agent = await _getProxyAgent();
   if (agent) {
     const nodeFetch = require('node-fetch');
-    return nodeFetch(url, { ...opts, agent });
+    try {
+      const r = await nodeFetch(url, { ...opts, agent });
+      if (r.status !== 502) return r;
+      console.warn('[proxy] 502 — retry direct');
+    } catch (e) {
+      console.warn('[proxy] erreur réseau — retry direct:', e.message);
+    }
   }
   return fetch(url, { ...opts });
 }
