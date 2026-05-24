@@ -73,48 +73,97 @@ function extractVideoId(url) {
   return null;
 }
 
-async function getInnertubeStreamUrl(videoId) {
-  const VER = '19.29.1';
-  const UA  = `com.google.ios.youtube/${VER} (iPhone14,5; U; CPU iOS 15_5 like Mac OS X)`;
-  const r = await fetch(
-    `https://www.youtube.com/youtubei/v1/player?key=AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': UA,
-                 'X-YouTube-Client-Name': '5', 'X-YouTube-Client-Version': VER },
-      body: JSON.stringify({
-        videoId,
-        context: { client: { clientName: 'IOS', clientVersion: VER,
-          deviceModel: 'iPhone14,5', userAgent: UA,
-          osName: 'iPhone', osVersion: '15.5.0.19F77', hl: 'en', gl: 'US' } }
-      }),
-      signal: AbortSignal.timeout(15000)
-    }
-  );
-  const data = await r.json();
-  console.log(`[Innertube] videoId=${videoId} status=${data.playabilityStatus?.status} formats=${data.streamingData?.formats?.length||0} adaptive=${data.streamingData?.adaptiveFormats?.length||0}`);
-  if (!data.streamingData) throw new Error(data.playabilityStatus?.reason || 'No streaming data');
+function _parseInnertubeStreams(data, videoId, clientName) {
+  if (!data.streamingData) {
+    const reason = data.playabilityStatus?.reason || data.playabilityStatus?.status || 'no streamingData';
+    throw new Error(reason);
+  }
+  console.log(`[Innertube/${clientName}] status=${data.playabilityStatus?.status} formats=${data.streamingData.formats?.length||0} adaptive=${data.streamingData.adaptiveFormats?.length||0}`);
 
-  // Cherche un stream combiné (vidéo+audio) d'abord
   const combined = (data.streamingData.formats || []).filter(f => f.url);
   if (combined.length) {
     combined.sort((a, b) => (b.height||0) - (a.height||0));
     const best = combined.find(f => (f.height||999) <= 720) || combined[combined.length - 1];
-    console.log(`[Innertube] Combined stream: itag=${best.itag} height=${best.height}`);
+    console.log(`[Innertube/${clientName}] combined itag=${best.itag} height=${best.height}`);
     return { video_url: best.url };
   }
 
-  // Fallback : streams adaptatifs séparés (vidéo-only + audio-only)
   const adaptive = data.streamingData.adaptiveFormats || [];
   const videoStream = adaptive.filter(f => f.url && f.mimeType?.startsWith('video/mp4') && (f.height||0) <= 720)
     .sort((a, b) => (b.height||0) - (a.height||0))[0];
   const audioStream = adaptive.filter(f => f.url && f.mimeType?.startsWith('audio/mp4'))
     .sort((a, b) => (b.bitrate||0) - (a.bitrate||0))[0];
   if (videoStream && audioStream) {
-    console.log(`[Innertube] Adaptive streams: video ${videoStream.height}p + audio ${audioStream.bitrate}bps`);
+    console.log(`[Innertube/${clientName}] adaptive video=${videoStream.height}p audio=${audioStream.bitrate}bps`);
     return { video_url: videoStream.url, audio_url: audioStream.url };
   }
-  throw new Error('No usable stream URL found');
+  // audio-only fallback (pour transcription seule)
+  if (audioStream) {
+    console.log(`[Innertube/${clientName}] audio-only ${audioStream.bitrate}bps`);
+    return { video_url: audioStream.url };
+  }
+  throw new Error('No usable stream URL');
+}
+
+async function getInnertubeStreamUrl(videoId) {
+  // Clients par ordre de fiabilité — sans API key (dépréciée)
+  const CLIENTS = [
+    {
+      name: 'IOS',
+      clientName: '5',
+      version: '19.45.4',
+      ua: 'com.google.ios.youtube/19.45.4 (iPhone14,5; U; CPU iOS 16_0 like Mac OS X)',
+      extra: { deviceModel: 'iPhone14,5', osName: 'iPhone', osVersion: '16.0.0.20A362' },
+    },
+    {
+      name: 'ANDROID',
+      clientName: '3',
+      version: '19.44.38',
+      ua: 'com.google.android.youtube/19.44.38 (Linux; U; Android 13; en_US) gzip',
+      extra: { androidSdkVersion: 33, osName: 'Android', osVersion: '13' },
+    },
+    {
+      name: 'TVHTML5',
+      clientName: '7',
+      version: '7.20241201.19.00',
+      ua: 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1',
+      extra: {},
+    },
+  ];
+
+  let lastErr = null;
+  for (const client of CLIENTS) {
+    try {
+      const r = await fetch('https://www.youtube.com/youtubei/v1/player', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': client.ua,
+          'X-YouTube-Client-Name': client.clientName,
+          'X-YouTube-Client-Version': client.version,
+        },
+        body: JSON.stringify({
+          videoId,
+          context: {
+            client: {
+              clientName: client.name,
+              clientVersion: client.version,
+              hl: 'en', gl: 'US',
+              ...client.extra,
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}`); continue; }
+      const data = await r.json();
+      return _parseInnertubeStreams(data, videoId, client.name);
+    } catch (e) {
+      console.warn(`[Innertube/${client.name}] failed: ${e.message}`);
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('All Innertube clients failed');
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -313,7 +362,10 @@ module.exports = async (req, res) => {
           audio_url = streams.audio_url || null;
           console.log('[shorts_start] Innertube OK video_url:', video_url?.substring(0, 60), 'audio_url:', !!audio_url);
         } catch (e) {
-          console.warn('[shorts_start] Innertube échoué, Railway tentera Cobalt:', e.message);
+          console.error('[shorts_start] Innertube failed:', e.message);
+          return res.status(502).json({
+            error: 'Impossible d\'accéder à cette vidéo YouTube. Vérifie que la vidéo est publique et réessaie.'
+          });
         }
       }
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
@@ -431,8 +483,13 @@ module.exports = async (req, res) => {
           audio_url = streams.audio_url || null;
           console.log('[clips] Innertube OK video_url:', video_url?.substring(0, 60));
         } catch (e) {
-          console.warn('[clips] Innertube failed (Railway utilisera yt-dlp):', e.message);
+          console.error('[clips] Innertube failed:', e.message);
+          return res.status(502).json({
+            error: 'Impossible d\'accéder à cette vidéo YouTube. Vérifie que la vidéo est publique et réessaie.'
+          });
         }
+      } else {
+        return res.status(400).json({ error: 'URL YouTube invalide' });
       }
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
         method: 'POST',
