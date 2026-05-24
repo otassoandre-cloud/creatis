@@ -826,6 +826,35 @@ def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
 
 
+@app.get("/test-formats")
+def test_formats(video_id: str = "NwlPz4RaZ8s"):
+    """Debug: liste les formats yt-dlp disponibles avec PoToken."""
+    import yt_dlp, io, sys
+    visitor_data, po_token = _fetch_po_token_sync()
+    output = []
+    class LogCollector:
+        def debug(self, msg): output.append(msg)
+        def warning(self, msg): output.append(f"WARN: {msg}")
+        def error(self, msg): output.append(f"ERR: {msg}")
+    opts = {
+        "quiet": False, "no_warnings": False,
+        "listformats": True,
+        "extractor_args": _yt_extractor_args(po_token, visitor_data),
+        "logger": LogCollector(),
+    }
+    cookies_file = _get_cookies_file()
+    if cookies_file:
+        opts["cookiefile"] = cookies_file
+    if RESIDENTIAL_PROXY_URL:
+        opts["proxy"] = RESIDENTIAL_PROXY_URL
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+    except Exception as e:
+        output.append(f"EXCEPTION: {e}")
+    return {"po_token_len": len(po_token), "visitor_data_len": len(visitor_data), "logs": output[:80]}
+
+
 @app.post("/transcribe-segments")
 async def transcribe_segments_endpoint(req: TranscribeRequest, _=Depends(auth)):
     """yt-dlp (proxy) + Groq Whisper → segments horodatés. Fallback quand sous-titres YouTube indispos."""
