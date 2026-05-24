@@ -69,9 +69,10 @@ def _fetch_po_token_sync() -> tuple:
                 data = r.json()
                 logger.info(f"[bgutil] clés disponibles: {list(data.keys())}")
                 token   = data.get("poToken") or data.get("po_token") or ""
-                visitor = (data.get("visitorData") or data.get("visitor_data") or "")
+                visitor = (data.get("visitorData") or data.get("visitor_data")
+                           or data.get("contentBinding") or "")
                 if token:
-                    logger.info(f"[bgutil] PoToken={len(token)}c visitorData={len(visitor)}c")
+                    logger.info(f"[bgutil] PoToken={len(token)}c contentBinding={len(visitor)}c")
                     return visitor, token
         except Exception as e:
             logger.warning(f"[bgutil] /get_pot failed: {e}")
@@ -82,11 +83,14 @@ def _yt_extractor_args(po_token: str = "", visitor_data: str = "") -> dict:
     args: dict = {"player_client": ["web"]}
     if BGUTIL_URL:
         args["getpot_bgutil_baseurl"] = [BGUTIL_URL]
-    if po_token:
-        args["po_token"] = [f"web+{po_token}"]
-        if visitor_data:
-            args["visitor_data"] = [visitor_data]
-        logger.info(f"[bgutil] po_token={len(po_token)}c visitor_data={len(visitor_data)}c")
+    if po_token and visitor_data:
+        # Format yt-dlp : visitor_data+poToken (session liée)
+        args["po_token"] = [f"{visitor_data}+{po_token}"]
+        args["visitor_data"] = [visitor_data]
+        logger.info(f"[bgutil] po_token injecté: contentBinding+poToken format")
+    elif po_token:
+        args["po_token"] = [po_token]
+        logger.info(f"[bgutil] po_token injecté: raw format")
     return {"youtube": args}
 
 
