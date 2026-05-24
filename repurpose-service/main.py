@@ -25,11 +25,12 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("creatis")
 
-GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY", "")
-GROQ_API_KEY     = os.environ.get("GROQ_API_KEY", "")
-SERVICE_SECRET   = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
-WHISPER_MODEL    = os.environ.get("WHISPER_MODEL", "base")
-YOUTUBE_COOKIES  = os.environ.get("YOUTUBE_COOKIES", "")  # Netscape cookie format
+GEMINI_API_KEY        = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
+SERVICE_SECRET        = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
+WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
+YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
+RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
 
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
@@ -144,6 +145,9 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     if cookies_file:
         base_opts["cookiefile"] = cookies_file
         logger.info("yt-dlp: utilisation des cookies YouTube")
+    if RESIDENTIAL_PROXY_URL:
+        base_opts["proxy"] = RESIDENTIAL_PROXY_URL
+        logger.info("yt-dlp: proxy résidentiel actif")
 
     formats = [
         "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
@@ -538,7 +542,8 @@ def _get_video_id(url: str) -> Optional[str]:
 async def _get_subtitles(video_id: str) -> Optional[Dict]:
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        api = YouTubeTranscriptApi()
+        proxies = {"http": RESIDENTIAL_PROXY_URL, "https": RESIDENTIAL_PROXY_URL} if RESIDENTIAL_PROXY_URL else None
+        api = YouTubeTranscriptApi(proxies=proxies) if proxies else YouTubeTranscriptApi()
         if hasattr(api, "list"):
             transcript_list = api.list(video_id)
         else:

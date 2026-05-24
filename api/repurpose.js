@@ -10,6 +10,32 @@ const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
+const RESIDENTIAL_PROXY_URL = (process.env.RESIDENTIAL_PROXY_URL || '').trim();
+
+// Fetch proxy pour les appels YouTube (contourne le bot detection sur IPs datacenter)
+let _proxyAgent = null;
+function _getProxyAgent() {
+  if (!RESIDENTIAL_PROXY_URL) return null;
+  if (_proxyAgent) return _proxyAgent;
+  try {
+    const { HttpsProxyAgent } = require('https-proxy-agent');
+    _proxyAgent = new HttpsProxyAgent(RESIDENTIAL_PROXY_URL);
+    console.log('[proxy] Residential proxy actif');
+  } catch (e) {
+    console.warn('[proxy] https-proxy-agent indispo:', e.message);
+  }
+  return _proxyAgent;
+}
+
+// Fetch YouTube avec proxy résidentiel si configuré
+async function _fetchYT(url, opts = {}) {
+  const agent = _getProxyAgent();
+  if (agent) {
+    const nodeFetch = require('node-fetch');
+    return nodeFetch(url, { ...opts, agent });
+  }
+  return fetch(url, { ...opts });
+}
 
 // Credits par plan
 const CREDITS = { gratuit: 0, pro: 5, studio: 20 };
@@ -134,7 +160,7 @@ async function getInnertubeStreamUrl(videoId) {
   let lastErr = null;
   for (const client of CLIENTS) {
     try {
-      const r = await fetch('https://www.youtube.com/youtubei/v1/player', {
+      const r = await _fetchYT('https://www.youtube.com/youtubei/v1/player', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +179,7 @@ async function getInnertubeStreamUrl(videoId) {
             },
           },
         }),
-        signal: AbortSignal.timeout(15000),
+        timeout: 15000,
       });
       if (!r.ok) { lastErr = new Error(`HTTP ${r.status}`); continue; }
       const data = await r.json();
@@ -167,12 +193,12 @@ async function getInnertubeStreamUrl(videoId) {
 }
 
 async function _fetchYouTubePage(videoId) {
-  const r = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+  const r = await _fetchYT(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
     },
-    signal: AbortSignal.timeout(15000),
+    timeout: 15000,
   });
   if (!r.ok) throw new Error(`YouTube inaccessible (${r.status})`);
   return r.text();
