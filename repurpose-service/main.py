@@ -47,34 +47,43 @@ _bgutil_ok: bool = False
 async def _check_bgutil() -> bool:
     if not BGUTIL_URL:
         return False
-    for path in ["/health", "/get_pot", "/"]:
-        try:
-            async with httpx.AsyncClient(timeout=5) as c:
-                r = await c.get(f"{BGUTIL_URL}{path}")
-                logger.info(f"[bgutil] {path} → {r.status_code} ✓ réseau OK")
-                return True
-        except Exception as e:
-            logger.warning(f"[bgutil] {path} → {e}")
-    logger.error("[bgutil] INJOIGNABLE — vérifier réseau Railway interne")
-    return False
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            r = await c.get(f"{BGUTIL_URL}/")
+            logger.info(f"[bgutil] GET / → {r.status_code} body={r.text[:200]}")
+            return True
+    except Exception as e:
+        logger.error(f"[bgutil] INJOIGNABLE: {e}")
+        return False
 
 
 async def _fetch_po_token(visitor_data: str = "") -> str:
     """Appelle bgutil directement pour obtenir un PoToken."""
     if not BGUTIL_URL:
         return ""
-    try:
-        async with httpx.AsyncClient(timeout=15) as c:
-            r = await c.post(f"{BGUTIL_URL}/get_pot",
-                             json={"visitorData": visitor_data, "identifier": visitor_data})
-            if r.status_code == 200:
-                data = r.json()
-                token = data.get("poToken") or data.get("po_token") or ""
-                if token:
-                    logger.info(f"[bgutil] PoToken obtenu ({len(token)} chars)")
-                    return token
-    except Exception as e:
-        logger.warning(f"[bgutil] fetch_po_token failed: {e}")
+    # Essaie les endpoints connus de bgutil v1.x
+    endpoints = [
+        ("POST", "/get_pot", {"visitorData": visitor_data}),
+        ("POST", "/get_pot", {"visitor_data": visitor_data}),
+        ("POST", "/v1/get_pot", {"visitorData": visitor_data}),
+        ("GET",  "/get_pot", None),
+    ]
+    async with httpx.AsyncClient(timeout=20) as c:
+        for method, path, body in endpoints:
+            try:
+                if method == "POST":
+                    r = await c.post(f"{BGUTIL_URL}{path}", json=body)
+                else:
+                    r = await c.get(f"{BGUTIL_URL}{path}")
+                logger.info(f"[bgutil] {method} {path} → {r.status_code} body={r.text[:300]}")
+                if r.status_code == 200:
+                    data = r.json()
+                    token = data.get("poToken") or data.get("po_token") or ""
+                    if token:
+                        logger.info(f"[bgutil] PoToken obtenu ({len(token)} chars)")
+                        return token
+            except Exception as e:
+                logger.warning(f"[bgutil] {method} {path} failed: {e}")
     return ""
 
 
