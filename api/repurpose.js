@@ -794,7 +794,7 @@ module.exports = async (req, res) => {
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
 
       // 3. Identification clips via Groq LLM
-      const clips = await identifyViralClips(segments, videoId, title, 5);
+      const clips = await identifyViralClips(segments, videoId, title, 15);
       console.log(`[clips] ${clips.length} clips identifiés pour ${videoId}`);
 
       return res.status(200).json({

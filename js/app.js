@@ -1405,19 +1405,19 @@ _afficherClipsResultats(agentId, data) {
       <div class="clips-opus-header">
         <div>
           <strong>${data.clips.length} moments viraux identifiés</strong>
-          <span>"${this._escapeHtml((data.title || '').substring(0, 60))}"</span>
+          <span>${this._escapeHtml((data.title || '').substring(0, 60))}</span>
         </div>
-        <button class="btn-shorts-gen" id="btn-shorts-${agentId}"
-          onclick="app._genererShorts('${agentId}', '${urlEncoded}')"
-          title="Génère 3 Shorts 9:16 avec face tracking et captions">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-          Générer 3 Shorts
+        <button class="btn-shorts-gen btn-shorts-gen--auto" id="btn-shorts-${agentId}" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Shorts générés
         </button>
       </div>
       <div id="shorts-zone-${agentId}"></div>
       <div class="clips-opus-grid">${clipsHtml}</div>`;
 
     this._ensureYTListener();
+    // Auto-génère les shorts sans clic supplémentaire
+    setTimeout(() => this._genererShorts(agentId, urlEncoded), 100);
   }
 
   async _genererShorts(agentId, urlEncoded) {
@@ -1442,7 +1442,7 @@ _afficherClipsResultats(agentId, data) {
 
       const startRes = await fetch('/api/repurpose', {
         method: 'POST', headers,
-        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 3, clips: preClips })
+        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 15, clips: preClips })
       });
       const startData = await startRes.json();
       if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage');
