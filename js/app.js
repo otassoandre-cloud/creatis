@@ -1067,7 +1067,7 @@ class AppCreatis {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </button>
             </div>
-            <p class="clips-hint">Formats supportés : YouTube · Vidéo longue → 5 Shorts viraux en 9:16 avec sous-titres</p>
+            <p class="clips-hint">Formats supportés : YouTube · Vidéo longue → jusqu'à 15 Shorts viraux en 9:16 avec sous-titres</p>
           </div>
         </div>
 
@@ -1412,8 +1412,7 @@ _afficherClipsResultats(agentId, data) {
           Shorts générés
         </button>
       </div>
-      <div id="shorts-zone-${agentId}"></div>
-      <div class="clips-opus-grid">${clipsHtml}</div>`;
+      <div id="shorts-zone-${agentId}"></div>`;
 
     this._ensureYTListener();
     // Auto-génère les shorts sans clic supplémentaire
