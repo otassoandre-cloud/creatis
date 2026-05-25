@@ -901,6 +901,36 @@ def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
 
 
+@app.get("/transcript/{video_id}")
+async def get_transcript(video_id: str, _=Depends(auth)):
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        t = None
+        for lang in ['fr', 'en']:
+            try: t = transcript_list.find_transcript([lang]); break
+            except: pass
+        if not t:
+            try: t = transcript_list.find_generated_transcript(['fr', 'en'])
+            except:
+                all_codes = list(transcript_list._manually_created_transcripts) + list(transcript_list._generated_transcripts)
+                t = transcript_list.find_transcript(all_codes[:1]) if all_codes else None
+        if not t:
+            raise HTTPException(status_code=404, detail="Aucun sous-titre disponible")
+        fetched = t.fetch()
+        segments = [
+            {"start": s["start"], "end": s["start"] + s.get("duration", 2), "text": s["text"].replace("\n", " ").strip()}
+            for s in fetched if s.get("text", "").strip()
+        ]
+        logger.info(f"[transcript] {video_id} — {len(segments)} segments lang={t.language_code}")
+        return {"ok": True, "segments": segments, "language": t.language_code}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"[transcript] {video_id} error: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @app.get("/test-formats")
 def test_formats(video_id: str = "NwlPz4RaZ8s"):
     """Debug: liste les formats yt-dlp disponibles avec PoToken."""
