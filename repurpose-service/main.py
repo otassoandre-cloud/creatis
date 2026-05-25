@@ -626,34 +626,11 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
         cap.release()
 
         if raw:
-            # Interpolation : remplit les secondes sans visage avec la dernière valeur connue
-            filled = []
-            last = raw.get(0, x_default + crop_w // 2)
-            for s in range(duration_sec):
-                if s in raw:
-                    last = raw[s]
-                filled.append(last)
-
-            # Lissage : moyenne glissante sur 3 secondes pour éviter les sauts brusques
-            window = 3
-            smoothed = []
-            for i in range(len(filled)):
-                start, end = max(0, i - window), min(len(filled), i + window + 1)
-                cx = int(sum(filled[start:end]) / (end - start))
-                smoothed.append(max(0, min(src_w - crop_w, cx - crop_w // 2)))
-
-            # Construit l'expression ffmpeg : gte(t\,N)*delta
-            # La virgule escapée \, passe le parser filtergraph, l'évaluateur voit gte(t,N)
-            step = max(1, len(smoothed) // 60)
-            keypoints = [(i, smoothed[i]) for i in range(0, len(smoothed), step)]
-            expr = str(keypoints[0][1])
-            for i in range(1, len(keypoints)):
-                t_sec, x_val = keypoints[i]
-                delta = x_val - keypoints[i-1][1]
-                if delta != 0:
-                    expr += f"+gte(t\\,{t_sec})*{delta}"
-            x_expr = expr
-            logger.info(f"Face tracking dynamique OK: {len(raw)}/{duration_sec}s détectés, {len(keypoints)} keypoints")
+            # Position médiane : évite les freeze/sauts — 1 crop stable pour tout le clip
+            values = sorted(raw.values())
+            median_face_cx = values[len(values) // 2]
+            x_expr = str(max(0, min(src_w - crop_w, median_face_cx - crop_w // 2)))
+            logger.info(f"Face tracking statique OK: médiane={median_face_cx}px sur {len(raw)} frames")
         else:
             logger.info("Face tracking: aucun visage détecté — crop centré")
     except Exception as e:
