@@ -598,21 +598,23 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     crop_w = max(2, crop_w - crop_w % 2)
     crop_h = max(2, crop_h - crop_h % 2)
 
-    x0 = (src_w - crop_w) // 2
+    x_default = (src_w - crop_w) // 2
     y0 = (src_h - crop_h) // 2
 
-    # Tente le face-tracking OpenCV en bonus — sinon centre
+    # Face tracking dynamique : 1 position par seconde + lissage + expression ffmpeg
+    x_expr = str(x_default)
     try:
         import cv2
         cap = cv2.VideoCapture(in_path)
-        face_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        )
-        centers = []
-        frame_step = max(1, int((cap.get(cv2.CAP_PROP_FRAME_COUNT) or 300) // 30))
-        fi = 0
-        while len(centers) < 30:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        duration_sec = max(1, int(total_frames / fps) + 1)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+        # Détecte le centre du visage à chaque seconde
+        raw = {}
+        for sec in range(duration_sec):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(sec * fps))
             ret, frame = cap.read()
             if not ret:
                 break
@@ -620,20 +622,44 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
             faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
             if len(faces) > 0:
                 fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-                centers.append(fx + fw // 2)
-            fi += frame_step
+                raw[sec] = fx + fw // 2
         cap.release()
-        if centers:
-            avg_cx = int(sum(centers) / len(centers))
-            x0 = max(0, min(src_w - crop_w, avg_cx - crop_w // 2))
-            logger.info(f"Face tracking: cx={avg_cx} → crop x={x0}")
+
+        if raw:
+            # Interpolation : remplit les secondes sans visage avec la dernière valeur connue
+            filled = []
+            last = raw.get(0, x_default + crop_w // 2)
+            for s in range(duration_sec):
+                if s in raw:
+                    last = raw[s]
+                filled.append(last)
+
+            # Lissage : moyenne glissante sur 3 secondes pour éviter les sauts brusques
+            window = 3
+            smoothed = []
+            for i in range(len(filled)):
+                start, end = max(0, i - window), min(len(filled), i + window + 1)
+                cx = int(sum(filled[start:end]) / (end - start))
+                smoothed.append(max(0, min(src_w - crop_w, cx - crop_w // 2)))
+
+            # Construit l'expression ffmpeg : if(gte(t,N),xN,...,x0)
+            # Réduit à 1 point toutes les 2s pour limiter la longueur de l'expression
+            step = max(1, len(smoothed) // 60)
+            keypoints = [(i, smoothed[i]) for i in range(0, len(smoothed), step)]
+            expr = str(keypoints[0][1])
+            for t_sec, x_val in keypoints[1:]:
+                expr = f"if(gte(t,{t_sec}),{x_val},{expr})"
+            x_expr = expr
+            logger.info(f"Face tracking dynamique OK: {len(raw)}/{duration_sec}s détectés, {len(keypoints)} keypoints")
+        else:
+            logger.info("Face tracking: aucun visage détecté — crop centré")
     except Exception as e:
-        logger.info(f"Face tracking skipped ({e}) — centre")
+        logger.info(f"Face tracking skipped ({e}) — crop centré")
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", in_path,
-        "-vf", f"crop={crop_w}:{crop_h}:{x0}:{y0}",
+        "-vf", f"crop={crop_w}:{crop_h}:{x_expr}:{y0}:eval=frame",
         "-c:v", "libx264", "-preset", "fast", "-crf", "22",
         "-c:a", "aac", "-b:a", "128k",
         out_path,
