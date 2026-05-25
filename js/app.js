@@ -1347,6 +1347,10 @@ _afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`clips-results-${agentId}`);
     if (!zone) return;
 
+    // Cache clips pour les passer à _genererShorts sans refaire Gemini
+    this._clipsCache = this._clipsCache || {};
+    this._clipsCache[agentId] = { clips: data.clips, url: data.youtube_url };
+
     if (!data.clips?.length) {
       zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip identifié.</p>`;
       return;
@@ -1432,17 +1436,22 @@ _afficherClipsResultats(agentId, data) {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
+      // Passe les clips déjà identifiés → évite Gemini dans Cloud Run
+      const cached = this._clipsCache?.[agentId];
+      const preClips = cached?.clips || null;
+
       const startRes = await fetch('/api/repurpose', {
         method: 'POST', headers,
-        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 3 })
+        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 3, clips: preClips })
       });
       const startData = await startRes.json();
       if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage');
-      const jobId = startData.job_id;
+
+      // Nouveau: job_ids[] (clip-export parallèle) ou legacy job_id
+      const jobIds = startData.job_ids || (startData.job_id ? [{ job_id: startData.job_id }] : null);
+      if (!jobIds?.length) throw new Error('Pas de jobs retournés');
 
       const sleep = ms => new Promise(r => setTimeout(r, ms));
-      const steps = ['Récupération des sous-titres…','Transcription audio…','Analyse IA…','Connexion au stream…','Génération Short 1/3…','Génération Short 2/3…','Génération Short 3/3…'];
-      let stepIdx = 0;
       const fillEl = document.getElementById(`spf-${agentId}`);
       const textEl = document.getElementById(`spt-${agentId}`);
 
@@ -1451,13 +1460,12 @@ _afficherClipsResultats(agentId, data) {
 
         const r = await fetch('/api/repurpose', {
           method: 'POST', headers,
-          body: JSON.stringify({ mode: 'shorts_status', job_id: jobId })
+          body: JSON.stringify({ mode: 'shorts_status', job_ids: jobIds })
         });
         const d = await r.json();
 
         if (d.progress && textEl) textEl.textContent = d.progress;
-        stepIdx = Math.min(stepIdx + 1, steps.length - 1);
-        if (fillEl) fillEl.style.width = `${Math.min(10 + stepIdx * 13, 95)}%`;
+        if (fillEl) fillEl.style.width = `${Math.min(10 + poll * 5, 95)}%`;
 
         if (d.status === 'done' && d.clips?.length) {
           this._afficherShorts(agentId, d.clips, d.title);

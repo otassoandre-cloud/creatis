@@ -567,57 +567,85 @@ module.exports = async (req, res) => {
   }
 
   if (mode === 'shorts_start') {
-    const { url, n_clips } = body;
+    // Nouvelle architecture : /clip-export × N (pas de Gemini dans Cloud Run)
+    // Les clips sont identifiés dans Vercel (Groq) et passés directement
+    const { url, n_clips, clips: preClips } = body;
     if (!url) return res.status(400).json({ error: 'url manquante' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      // Récupère l'URL Innertube via proxy résidentiel Vercel
-      // + passe ce même proxy à Cloud Run pour que ffmpeg télécharge depuis la même IP (URL signée par IP)
       const videoId = extractVideoId(url);
-      let video_url = null, audio_url = null, proxy_url = null;
-      if (videoId && RESIDENTIAL_PROXY_URL) {
-        try {
-          const streams = await getInnertubeStreamUrl(videoId);
-          video_url = streams.video_url;
-          audio_url = streams.audio_url || null;
-          proxy_url = RESIDENTIAL_PROXY_URL;
-          console.log('[shorts_start] Innertube OK via proxy');
-        } catch (e) {
-          console.warn('[shorts_start] Innertube failed, Cloud Run uses yt-dlp:', e.message);
-        }
+      if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
+
+      // Utilise les clips pré-identifiés par le mode clips (Groq) ou les identifie maintenant
+      let clips = preClips;
+      if (!clips?.length) {
+        console.log('[shorts_start] pas de clips pré-identifiés, identification via Groq...');
+        if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
+        const transcript = await getYouTubeTranscriptSegments(videoId);
+        clips = await identifyViralClips(transcript.segments, videoId, transcript.title, n_clips || 3);
       }
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/generate-shorts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ youtube_url: url, num_clips: n_clips || 3, video_url, audio_url, proxy_url }),
-        signal: AbortSignal.timeout(20000)
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || `Erreur service (${r.status})`);
-      return res.status(200).json({ ok: true, job_id: data.job_id });
+
+      const maxClips = Math.min(clips.length, n_clips || 3);
+      const selected = clips.slice(0, maxClips);
+
+      // Lance les exports en parallèle sur Cloud Run (endpoint /clip-export, sans Gemini)
+      const exportResults = await Promise.all(selected.map(clip =>
+        fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+          body: JSON.stringify({ video_id: videoId, start: clip.start_time ?? clip.start, end: clip.end_time ?? clip.end }),
+          signal: AbortSignal.timeout(15000)
+        }).then(r => r.json())
+      ));
+
+      const job_ids = exportResults.map((r, i) => ({
+        job_id: r.job_id,
+        meta: { title: selected[i].title, hook: selected[i].hook_sentence || selected[i].hook, score: selected[i].score, start: selected[i].start_time ?? selected[i].start, end: selected[i].end_time ?? selected[i].end }
+      }));
+
+      console.log(`[shorts_start] ${job_ids.length} clip-export jobs lancés`);
+      return res.status(200).json({ ok: true, job_ids });
     } catch (err) {
+      console.error('[shorts_start]', err.message);
       return res.status(502).json({ error: err.message });
     }
   }
 
   if (mode === 'shorts_status') {
-    const { job_id } = body;
-    if (!job_id) return res.status(400).json({ error: 'job_id manquant' });
+    const { job_ids } = body;
+    if (!job_ids?.length) return res.status(400).json({ error: 'job_ids manquant' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/shorts-status/${job_id}`, {
-        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        signal: AbortSignal.timeout(10000)
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.detail || `Erreur statut (${r.status})`);
-      if (data.status === 'done' && data.clips) {
-        data.clips = data.clips.map(c => ({
-          ...c,
-          download_url: `${REPURPOSE_SERVICE_URL}${c.download_url}`
-        }));
+      const statuses = await Promise.all(job_ids.map(({ job_id }) =>
+        fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${job_id}`, {
+          headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+          signal: AbortSignal.timeout(10000)
+        }).then(r => r.json())
+      ));
+
+      const done = statuses.filter(s => s.status === 'done').length;
+      const errors = statuses.filter(s => s.status === 'error');
+      const total = job_ids.length;
+
+      if (errors.length === total) {
+        throw new Error(errors[0].error || 'Tous les exports ont échoué');
       }
-      return res.status(200).json({ ok: true, ...data });
+
+      if (done + errors.length === total) {
+        const clips = statuses.map((s, i) => s.status === 'done' ? {
+          ...job_ids[i].meta,
+          download_url: `${REPURPOSE_SERVICE_URL}${s.download_url}`,
+          filename: s.download_url?.split('/').pop() || `short_${i + 1}.mp4`,
+          size_mb: s.size_mb || null,
+          duration: (job_ids[i].meta?.end || 0) - (job_ids[i].meta?.start || 0),
+        } : null).filter(Boolean);
+        return res.status(200).json({ ok: true, status: 'done', clips });
+      }
+
+      return res.status(200).json({
+        ok: true, status: 'processing',
+        progress: `${done}/${total} shorts prêts…`
+      });
     } catch (err) {
       return res.status(502).json({ error: err.message });
     }
