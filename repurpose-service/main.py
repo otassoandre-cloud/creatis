@@ -642,8 +642,8 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
                 cx = int(sum(filled[start:end]) / (end - start))
                 smoothed.append(max(0, min(src_w - crop_w, cx - crop_w // 2)))
 
-            # Construit l'expression ffmpeg sans virgules (virgules = séparateurs de filtres)
-            # Utilise (t>=N)*delta au lieu de if(gte(t,N),x,prev) pour éviter les virgules
+            # Construit l'expression ffmpeg : gte(t\,N)*delta
+            # La virgule escapée \, passe le parser filtergraph, l'évaluateur voit gte(t,N)
             step = max(1, len(smoothed) // 60)
             keypoints = [(i, smoothed[i]) for i in range(0, len(smoothed), step)]
             expr = str(keypoints[0][1])
@@ -651,7 +651,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
                 t_sec, x_val = keypoints[i]
                 delta = x_val - keypoints[i-1][1]
                 if delta != 0:
-                    expr += f"+(t>={t_sec})*{delta}"
+                    expr += f"+gte(t\\,{t_sec})*{delta}"
             x_expr = expr
             logger.info(f"Face tracking dynamique OK: {len(raw)}/{duration_sec}s détectés, {len(keypoints)} keypoints")
         else:
