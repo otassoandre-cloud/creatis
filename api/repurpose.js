@@ -567,8 +567,7 @@ module.exports = async (req, res) => {
   }
 
   if (mode === 'shorts_start') {
-    // Nouvelle architecture : /clip-export × N (pas de Gemini dans Cloud Run)
-    // Les clips sont identifiés dans Vercel (Groq) et passés directement
+    // Architecture séquentielle : 1 clip-export à la fois pour éviter OOM Cloud Run
     const { url, n_clips, clips: preClips } = body;
     if (!url) return res.status(400).json({ error: 'url manquante' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
@@ -576,35 +575,39 @@ module.exports = async (req, res) => {
       const videoId = extractVideoId(url);
       if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
 
-      // Utilise les clips pré-identifiés par le mode clips (Groq) ou les identifie maintenant
       let clips = preClips;
       if (!clips?.length) {
-        console.log('[shorts_start] pas de clips pré-identifiés, identification via Groq...');
         if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
         const transcript = await getYouTubeTranscriptSegments(videoId);
         clips = await identifyViralClips(transcript.segments, videoId, transcript.title, n_clips || 3);
       }
 
       const maxClips = Math.min(clips.length, n_clips || 3);
-      const selected = clips.slice(0, maxClips);
-
-      // Lance les exports en parallèle sur Cloud Run (endpoint /clip-export, sans Gemini)
-      const exportResults = await Promise.all(selected.map(clip =>
-        fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-          body: JSON.stringify({ video_id: videoId, start: clip.start_time ?? clip.start, end: clip.end_time ?? clip.end }),
-          signal: AbortSignal.timeout(15000)
-        }).then(r => r.json())
-      ));
-
-      const job_ids = exportResults.map((r, i) => ({
-        job_id: r.job_id,
-        meta: { title: selected[i].title, hook: selected[i].hook_sentence || selected[i].hook, score: selected[i].score, start: selected[i].start_time ?? selected[i].start, end: selected[i].end_time ?? selected[i].end }
+      const selected = clips.slice(0, maxClips).map(clip => ({
+        video_id: videoId,
+        start: clip.start_time ?? clip.start,
+        end: clip.end_time ?? clip.end,
+        meta: { title: clip.title, hook: clip.hook_sentence || clip.hook, score: clip.score,
+                start: clip.start_time ?? clip.start, end: clip.end_time ?? clip.end }
       }));
 
-      console.log(`[shorts_start] ${job_ids.length} clip-export jobs lancés`);
-      return res.status(200).json({ ok: true, job_ids });
+      // Lance SEULEMENT le premier clip (séquentiel pour éviter OOM)
+      const first = selected[0];
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id: first.video_id, start: first.start, end: first.end }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await r.json();
+      if (!r.ok || !data.job_id) throw new Error(data.detail || 'Erreur démarrage export');
+
+      console.log(`[shorts_start] job 1/${selected.length} lancé: ${data.job_id}`);
+      return res.status(200).json({
+        ok: true,
+        job_ids: [{ job_id: data.job_id, meta: first.meta }],
+        pending_clips: selected.slice(1)   // les 2 clips restants à lancer après
+      });
     } catch (err) {
       console.error('[shorts_start]', err.message);
       return res.status(502).json({ error: err.message });
@@ -612,10 +615,11 @@ module.exports = async (req, res) => {
   }
 
   if (mode === 'shorts_status') {
-    const { job_ids } = body;
+    const { job_ids, pending_clips = [] } = body;
     if (!job_ids?.length) return res.status(400).json({ error: 'job_ids manquant' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
+      // Vérifie le statut des jobs actifs
       const statuses = await Promise.all(job_ids.map(({ job_id }) =>
         fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${job_id}`, {
           headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
@@ -629,33 +633,58 @@ module.exports = async (req, res) => {
 
       const done = statuses.filter(s => s.status === 'done').length;
       const errors = statuses.filter(s => s.status === 'error');
-      const total = job_ids.length;
+      const total = job_ids.length + pending_clips.length; // total global incluant pending
 
-      // Logs pour debug
-      console.log(`[shorts_status] done=${done} errors=${errors.length} total=${total}`, statuses.map(s => s.status + (s.error ? ':'+s.error : '') + (s.progress ? ':'+s.progress : '')));
+      console.log(`[shorts_status] active=${job_ids.length} done=${done} errors=${errors.length} pending=${pending_clips.length}`,
+        statuses.map(s => `${s.status}${s.progress ? ':'+s.progress : ''}${s.error ? ':'+s.error : ''}`).join(' | '));
 
-      if (errors.length === total) {
-        throw new Error(errors[0].error || 'Tous les exports ont échoué');
+      // Si tous les actifs sont terminés (done ou error) et il reste des clips en attente → lance le suivant
+      const allActiveDone = (done + errors.length) === job_ids.length;
+      let newJobIds = [...job_ids];
+      let newPending = [...pending_clips];
+
+      if (allActiveDone && pending_clips.length > 0) {
+        const next = pending_clips[0];
+        newPending = pending_clips.slice(1);
+        try {
+          const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+            body: JSON.stringify({ video_id: next.video_id, start: next.start, end: next.end }),
+            signal: AbortSignal.timeout(15000)
+          });
+          const data = await r.json();
+          if (data.job_id) {
+            console.log(`[shorts_status] job suivant lancé: ${data.job_id} (${newPending.length} restants)`);
+            newJobIds = [...job_ids, { job_id: data.job_id, meta: next.meta }];
+          }
+        } catch (e) {
+          console.warn('[shorts_status] erreur lancement suivant:', e.message);
+        }
       }
 
-      if (done + errors.length === total) {
+      // Résultats finaux si plus rien en attente ET tout terminé
+      const finalDone = (done + errors.length) === newJobIds.length && newPending.length === 0;
+      if (finalDone) {
+        if (errors.length === newJobIds.length) throw new Error(errors[0].error || 'Tous les exports ont échoué');
         const clips = statuses.map((s, i) => s.status === 'done' ? {
           ...job_ids[i].meta,
           download_url: `${REPURPOSE_SERVICE_URL}${s.download_url}`,
           filename: s.download_url?.split('/').pop() || `short_${i + 1}.mp4`,
-          size_mb: s.size_mb || null,
           duration: Math.round((job_ids[i].meta?.end || 0) - (job_ids[i].meta?.start || 0)),
         } : null).filter(Boolean);
         if (!clips.length) throw new Error(errors[0]?.error || 'Exports échoués');
         return res.status(200).json({ ok: true, status: 'done', clips });
       }
 
-      // Récupère le message de progression du premier job en cours
+      const doneTotal = done;
       const processing = statuses.find(s => s.status === 'processing');
-      const progressMsg = processing?.progress || `${done}/${total} shorts prêts…`;
+      const progressMsg = processing?.progress || 'téléchargement…';
       return res.status(200).json({
         ok: true, status: 'processing',
-        progress: `Short ${done + 1}/${total} — ${progressMsg}`
+        progress: `Short ${doneTotal + 1}/${total} — ${progressMsg}`,
+        job_ids: newJobIds,
+        pending_clips: newPending
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });

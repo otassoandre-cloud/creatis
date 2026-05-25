@@ -1447,25 +1447,32 @@ _afficherClipsResultats(agentId, data) {
       const startData = await startRes.json();
       if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage');
 
-      // Nouveau: job_ids[] (clip-export parallèle) ou legacy job_id
-      const jobIds = startData.job_ids || (startData.job_id ? [{ job_id: startData.job_id }] : null);
+      // Architecture séquentielle : job_ids actifs + pending_clips à venir
+      let jobIds = startData.job_ids || [];
+      let pendingClips = startData.pending_clips || [];
+      const totalClips = jobIds.length + pendingClips.length;
       if (!jobIds?.length) throw new Error('Pas de jobs retournés');
 
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       const fillEl = document.getElementById(`spf-${agentId}`);
       const textEl = document.getElementById(`spt-${agentId}`);
 
-      for (let poll = 0; poll < 120; poll++) {
+      for (let poll = 0; poll < 180; poll++) {
         await sleep(5000);
 
         const r = await fetch('/api/repurpose', {
           method: 'POST', headers,
-          body: JSON.stringify({ mode: 'shorts_status', job_ids: jobIds })
+          body: JSON.stringify({ mode: 'shorts_status', job_ids: jobIds, pending_clips: pendingClips })
         });
         const d = await r.json();
 
+        // Met à jour l'état des jobs (Vercel peut avoir lancé le suivant)
+        if (d.job_ids) jobIds = d.job_ids;
+        if (d.pending_clips !== undefined) pendingClips = d.pending_clips;
+
         if (d.progress && textEl) textEl.textContent = d.progress;
-        if (fillEl) fillEl.style.width = `${Math.min(5 + poll * 3, 90)}%`;
+        const pct = Math.min(5 + Math.round((jobIds.filter ? 0 : 0) + poll * 2), 90);
+        if (fillEl) fillEl.style.width = `${Math.min(5 + poll * 2, 90)}%`;
 
         if (d.status === 'done' && d.clips?.length) {
           this._afficherShorts(agentId, d.clips, d.title);
@@ -1474,7 +1481,7 @@ _afficherClipsResultats(agentId, data) {
         }
         if (d.status === 'error') throw new Error(d.error || 'Erreur génération');
       }
-      throw new Error('Timeout — génération trop longue, réessaie');
+      throw new Error('Timeout — génération trop longue (15 min dépassées), réessaie');
     } catch (err) {
       if (zone) zone.innerHTML = `<div class="shorts-error">❌ ${this._escapeHtml(err.message)}</div>`;
       if (btn) { btn.disabled = false; btn.textContent = '🔄 Réessayer'; }
