@@ -620,12 +620,19 @@ module.exports = async (req, res) => {
         fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${job_id}`, {
           headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
           signal: AbortSignal.timeout(10000)
-        }).then(r => r.json())
+        }).then(async r => {
+          const data = await r.json();
+          if (!r.ok) return { status: 'error', error: data.detail || `HTTP ${r.status}` };
+          return data;
+        }).catch(e => ({ status: 'error', error: e.message }))
       ));
 
       const done = statuses.filter(s => s.status === 'done').length;
       const errors = statuses.filter(s => s.status === 'error');
       const total = job_ids.length;
+
+      // Logs pour debug
+      console.log(`[shorts_status] done=${done} errors=${errors.length} total=${total}`, statuses.map(s => s.status + (s.error ? ':'+s.error : '') + (s.progress ? ':'+s.progress : '')));
 
       if (errors.length === total) {
         throw new Error(errors[0].error || 'Tous les exports ont échoué');
@@ -637,14 +644,18 @@ module.exports = async (req, res) => {
           download_url: `${REPURPOSE_SERVICE_URL}${s.download_url}`,
           filename: s.download_url?.split('/').pop() || `short_${i + 1}.mp4`,
           size_mb: s.size_mb || null,
-          duration: (job_ids[i].meta?.end || 0) - (job_ids[i].meta?.start || 0),
+          duration: Math.round((job_ids[i].meta?.end || 0) - (job_ids[i].meta?.start || 0)),
         } : null).filter(Boolean);
+        if (!clips.length) throw new Error(errors[0]?.error || 'Exports échoués');
         return res.status(200).json({ ok: true, status: 'done', clips });
       }
 
+      // Récupère le message de progression du premier job en cours
+      const processing = statuses.find(s => s.status === 'processing');
+      const progressMsg = processing?.progress || `${done}/${total} shorts prêts…`;
       return res.status(200).json({
         ok: true, status: 'processing',
-        progress: `${done}/${total} shorts prêts…`
+        progress: `Short ${done + 1}/${total} — ${progressMsg}`
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });

@@ -1465,7 +1465,7 @@ _afficherClipsResultats(agentId, data) {
         const d = await r.json();
 
         if (d.progress && textEl) textEl.textContent = d.progress;
-        if (fillEl) fillEl.style.width = `${Math.min(10 + poll * 5, 95)}%`;
+        if (fillEl) fillEl.style.width = `${Math.min(5 + poll * 3, 90)}%`;
 
         if (d.status === 'done' && d.clips?.length) {
           this._afficherShorts(agentId, d.clips, d.title);
