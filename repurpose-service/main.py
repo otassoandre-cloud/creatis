@@ -318,6 +318,59 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
 
+def download_video_section(youtube_url: str, out_dir: Path, start: float, end: float) -> str:
+    """Télécharge uniquement la section [start, end] — ~50x plus rapide qu'un téléchargement complet.
+    Les timestamps du fichier résultant sont les timestamps originaux de la vidéo.
+    crop_clip(path, start, end, out) fonctionne sans modification.
+    Fallback vers download_video complet en cas d'échec."""
+    import yt_dlp
+    cookies_file = _get_cookies_file()
+
+    attempts = [
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil+section"},
+        *(
+            [{"proxy": RESIDENTIAL_PROXY_URL,
+              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
+              "label": "webshare+android+section"}]
+            if RESIDENTIAL_PROXY_URL else []
+        ),
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android+section"},
+    ]
+
+    last_err = None
+    for attempt in attempts:
+        try:
+            opts = {
+                "quiet": True, "no_warnings": True,
+                "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
+                "merge_output_format": "mp4",
+                "check_formats": False,
+                "extractor_args": attempt["extractor_args"],
+                "download_ranges": yt_dlp.utils.download_range_func(None, [(start, end)]),
+            }
+            if cookies_file:
+                opts["cookiefile"] = cookies_file
+            if attempt["proxy"]:
+                opts["proxy"] = attempt["proxy"]
+            logger.info(f"yt-dlp section {start:.0f}s-{end:.0f}s [{attempt['label']}]")
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(youtube_url, download=True)
+                path = _resolve_path(ydl, info, out_dir)
+            if os.path.exists(path) and os.path.getsize(path) > 10_000:
+                size_mb = os.path.getsize(path) / 1_048_576
+                logger.info(f"yt-dlp section OK [{attempt['label']}] {size_mb:.1f}MB: {path}")
+                return path
+        except Exception as e:
+            err_str = str(e)
+            logger.warning(f"yt-dlp section [{attempt['label']}] failed: {err_str[:200]}")
+            last_err = e
+            if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
+                break
+
+    logger.warning(f"Section download failed ({last_err}), fallback vers téléchargement complet")
+    return download_video(youtube_url, out_dir)
+
+
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
 
 def _extract_audio(media_path: str, out_path: str) -> float:
@@ -807,15 +860,13 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
     source = str(out_dir / "source.mp4")
     yt_url = f"https://www.youtube.com/watch?v={video_id}"
     try:
-        CLIP_EXPORTS[job_id]["progress"] = "Téléchargement…"
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video(yt_url, out_dir)
+        CLIP_EXPORTS[job_id]["progress"] = "Téléchargement section…"
+        section_path = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: download_video_section(yt_url, out_dir, start, end)
         )
-        if not Path(source).exists() or Path(source).stat().st_size < 10_000:
-            # yt-dlp may have written with video id in filename
-            for p in out_dir.glob("source_*.mp4"):
-                p.rename(source)
-                break
+        # Normalize to source.mp4
+        if section_path != source and os.path.exists(section_path):
+            Path(section_path).rename(source)
 
         if not Path(source).exists() or Path(source).stat().st_size < 10_000:
             raise RuntimeError("Téléchargement échoué")
