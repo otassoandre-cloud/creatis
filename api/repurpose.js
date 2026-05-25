@@ -359,12 +359,12 @@ async function identifyViralClips(segments, videoId, title, nClips) {
     .join('\n')
     .substring(0, 8000);
 
-  const prompt = `Tu es un expert YouTube Shorts. Identifie les ${nClips} meilleurs moments viraux dans cette transcription.
+  const prompt = `Tu es un expert YouTube Shorts. Identifie ${nClips} moments viraux VARIÉS dans cette transcription — explore toute la vidéo du début à la fin, pas seulement le début.
 
 Réponds UNIQUEMENT en JSON :
 {"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre court","hook":"phrase accroche","score":88}]}
 
-Règles : durée 30-90s, score 0-100, ne coupe pas au milieu d'une phrase.
+Règles : durée 30-90s, score 0-100, répartis les clips sur toute la durée, ne coupe pas au milieu d'une phrase.
 
 Transcription "${title}" :
 ${transcript}`;
@@ -372,7 +372,7 @@ ${transcript}`;
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048 }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 1.0, max_tokens: 2048 }),
     signal: AbortSignal.timeout(60000),
   });
   if (!r.ok) throw new Error('Groq LLM error');
