@@ -601,20 +601,21 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     x_default = (src_w - crop_w) // 2
     y0 = (src_h - crop_h) // 2
 
-    # Face tracking dynamique : 1 position par seconde + lissage + expression ffmpeg
-    x_expr = str(x_default)
+    # Face tracking : détection par seconde + interpolation linéaire frame-by-frame
+    x_positions = None  # liste de positions x par frame (None = crop statique)
+    x_static = x_default
+
     try:
         import cv2
         cap = cv2.VideoCapture(in_path)
-        fps = cap.get(cv2.CAP_PROP_FPS) or 25
+        fps_src = cap.get(cv2.CAP_PROP_FPS) or 25
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        duration_sec = max(1, int(total_frames / fps) + 1)
+        duration_sec = max(1, int(total_frames / fps_src) + 1)
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-        # Détecte le centre du visage à chaque seconde
         raw = {}
         for sec in range(duration_sec):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(sec * fps))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(sec * fps_src))
             ret, frame = cap.read()
             if not ret:
                 break
@@ -626,27 +627,75 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
         cap.release()
 
         if raw:
-            # Position médiane : évite les freeze/sauts — 1 crop stable pour tout le clip
-            values = sorted(raw.values())
-            median_face_cx = values[len(values) // 2]
-            x_expr = str(max(0, min(src_w - crop_w, median_face_cx - crop_w // 2)))
-            logger.info(f"Face tracking statique OK: médiane={median_face_cx}px sur {len(raw)} frames")
+            sorted_t = sorted(raw.keys())
+            def interp_cx(t):
+                if t <= sorted_t[0]: return raw[sorted_t[0]]
+                if t >= sorted_t[-1]: return raw[sorted_t[-1]]
+                for i in range(len(sorted_t) - 1):
+                    t0, t1 = sorted_t[i], sorted_t[i + 1]
+                    if t0 <= t <= t1:
+                        return raw[t0] + (raw[t1] - raw[t0]) * (t - t0) / (t1 - t0)
+                return raw[sorted_t[-1]]
+
+            x_positions = [
+                max(0, min(src_w - crop_w, int(interp_cx(fi / fps_src) - crop_w // 2)))
+                for fi in range(total_frames)
+            ]
+            logger.info(f"Face tracking smooth OK: {len(raw)}/{duration_sec}s détectés")
         else:
-            logger.info("Face tracking: aucun visage détecté — crop centré")
+            logger.info("Face tracking: aucun visage — crop centré")
     except Exception as e:
         logger.info(f"Face tracking skipped ({e}) — crop centré")
 
-    cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-i", in_path,
-        "-vf", f"crop={crop_w}:{crop_h}:{x_expr}:{y0}",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "22",
-        "-c:a", "aac", "-b:a", "128k",
-        out_path,
-    ]
-    r = subprocess.run(cmd, capture_output=True, timeout=300)
-    if r.returncode != 0:
-        raise RuntimeError(f"ffmpeg crop: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
+    if x_positions:
+        # Encodage frame-by-frame via pipe ffmpeg — interpolation smooth garantie
+        ffmpeg_enc = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "rawvideo", "-vcodec", "rawvideo",
+            "-s", f"{crop_w}x{crop_h}", "-pix_fmt", "bgr24",
+            "-r", str(fps_src),
+            "-i", "pipe:0",
+            "-i", in_path,
+            "-map", "0:v", "-map", "1:a?",
+            "-vf", "scale=1080:1920",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "128k",
+            "-shortest", out_path,
+        ]
+        proc = subprocess.Popen(ffmpeg_enc, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        try:
+            cap2 = cv2.VideoCapture(in_path)
+            fi = 0
+            while True:
+                ret, frame = cap2.read()
+                if not ret:
+                    break
+                x = x_positions[fi] if fi < len(x_positions) else x_positions[-1]
+                cropped = frame[y0:y0 + crop_h, x:x + crop_w]
+                if cropped.shape[0] > 0 and cropped.shape[1] > 0:
+                    proc.stdin.write(cropped.tobytes())
+                fi += 1
+            cap2.release()
+        finally:
+            try:
+                proc.stdin.close()
+            except Exception:
+                pass
+        proc.wait(timeout=300)
+        if proc.returncode != 0:
+            raise RuntimeError("Erreur encodage face tracking frame-by-frame")
+    else:
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", in_path,
+            "-vf", f"crop={crop_w}:{crop_h}:{x_static}:{y0},scale=1080:1920",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "128k",
+            out_path,
+        ]
+        r = subprocess.run(cmd, capture_output=True, timeout=300)
+        if r.returncode != 0:
+            raise RuntimeError(f"ffmpeg crop: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
 
 
 def crop_clip(source: str, start: float, end: float, out: str) -> None:
