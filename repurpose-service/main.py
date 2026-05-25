@@ -659,7 +659,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", in_path,
-        "-vf", f"crop={crop_w}:{crop_h}:{x_expr}:{y0}:eval=frame",
+        "-vf", f"crop={crop_w}:{crop_h}:{x_expr}:{y0}",
         "-c:v", "libx264", "-preset", "fast", "-crf", "22",
         "-c:a", "aac", "-b:a", "128k",
         out_path,
