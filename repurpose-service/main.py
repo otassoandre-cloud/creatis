@@ -112,6 +112,7 @@ class GenerateRequest(BaseModel):
     num_clips: int = 3
     video_url: Optional[str] = None   # stream URL pré-résolu par Vercel (Innertube)
     audio_url: Optional[str] = None
+    proxy_url: Optional[str] = None   # proxy résidentiel à utiliser pour le téléchargement de video_url
 
 class ClipsRequest(BaseModel):
     url: str
@@ -163,22 +164,24 @@ def _resolve_path(ydl: "yt_dlp.YoutubeDL", info: dict, out_dir: Path) -> str:
     return path
 
 
-def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: Path) -> str:
-    """Télécharge via URL signée (Innertube). Pas de bot detection."""
+def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: Path, proxy_url: Optional[str] = None) -> str:
+    """Télécharge via URL signée (Innertube) + proxy résidentiel si l'URL est liée à une IP."""
     out_path = str(out_dir / "source.mp4")
+    # ffmpeg -http_proxy "http://user:pass@host:port" pour respecter l'IP signataire de l'URL CDN
+    proxy_args = ["-http_proxy", proxy_url] if proxy_url else []
     if audio_url:
-        # Flux séparés → ffmpeg merge
         cmd = [
             "ffmpeg", "-y", "-loglevel", "error",
+            *proxy_args,
             "-i", video_url, "-i", audio_url,
             "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
             "-map", "0:v:0", "-map", "1:a:0",
             out_path,
         ]
     else:
-        # Flux combiné → téléchargement direct
         cmd = [
             "ffmpeg", "-y", "-loglevel", "error",
+            *proxy_args,
             "-i", video_url,
             "-c", "copy",
             out_path,
@@ -189,7 +192,7 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
     if not os.path.exists(out_path) or os.path.getsize(out_path) < 10_000:
         raise RuntimeError("Fichier téléchargé vide ou manquant")
     size_mb = os.path.getsize(out_path) / 1_048_576
-    logger.info(f"Direct download OK: {size_mb:.1f} MB")
+    logger.info(f"Direct download OK: {size_mb:.1f} MB (proxy={'yes' if proxy_url else 'no'})")
     return out_path
 
 
@@ -602,6 +605,7 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
 async def run_generate_shorts(
     job_id: str, url: str, num_clips: int, out_dir: Path,
     video_url: Optional[str] = None, audio_url: Optional[str] = None,
+    proxy_url: Optional[str] = None,
 ) -> None:
     source = None
 
@@ -612,9 +616,9 @@ async def run_generate_shorts(
     try:
         upd("Téléchargement…")
         if video_url:
-            logger.info("Direct URL download (Innertube)")
+            logger.info(f"Direct URL download (Innertube) proxy={'yes' if proxy_url else 'no'}")
             source = await asyncio.get_event_loop().run_in_executor(
-                None, lambda: download_from_direct_url(video_url, audio_url, out_dir)
+                None, lambda: download_from_direct_url(video_url, audio_url, out_dir, proxy_url)
             )
         else:
             source = await asyncio.get_event_loop().run_in_executor(
@@ -906,7 +910,7 @@ async def generate_shorts(req: GenerateRequest, tasks: BackgroundTasks, _=Depend
     out_dir = WORK_DIR / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     JOBS[job_id] = {"status": "processing", "progress": "Démarrage…"}
-    tasks.add_task(run_generate_shorts, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url, req.audio_url)
+    tasks.add_task(run_generate_shorts, job_id, req.youtube_url, min(max(1, req.num_clips), 5), out_dir, req.video_url, req.audio_url, req.proxy_url)
     return {"ok": True, "job_id": job_id}
 
 
