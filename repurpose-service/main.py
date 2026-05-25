@@ -903,6 +903,7 @@ def health():
 
 @app.get("/transcript/{video_id}")
 async def get_transcript(video_id: str, _=Depends(auth)):
+    # Méthode 1 : youtube-transcript-api Python
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
@@ -915,20 +916,56 @@ async def get_transcript(video_id: str, _=Depends(auth)):
             except:
                 all_codes = list(transcript_list._manually_created_transcripts) + list(transcript_list._generated_transcripts)
                 t = transcript_list.find_transcript(all_codes[:1]) if all_codes else None
-        if not t:
-            raise HTTPException(status_code=404, detail="Aucun sous-titre disponible")
-        fetched = t.fetch()
-        segments = [
-            {"start": s["start"], "end": s["start"] + s.get("duration", 2), "text": s["text"].replace("\n", " ").strip()}
-            for s in fetched if s.get("text", "").strip()
-        ]
-        logger.info(f"[transcript] {video_id} — {len(segments)} segments lang={t.language_code}")
-        return {"ok": True, "segments": segments, "language": t.language_code}
-    except HTTPException:
-        raise
+        if t:
+            fetched = t.fetch()
+            segments = [
+                {"start": s["start"], "end": s["start"] + s.get("duration", 2), "text": s["text"].replace("\n", " ").strip()}
+                for s in fetched if s.get("text", "").strip()
+            ]
+            if segments:
+                logger.info(f"[transcript/api] {video_id} — {len(segments)} segs lang={t.language_code}")
+                return {"ok": True, "segments": segments, "language": t.language_code}
     except Exception as e:
-        logger.warning(f"[transcript] {video_id} error: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
+        logger.warning(f"[transcript/api] {video_id} failed: {e}")
+
+    # Méthode 2 : yt-dlp avec PoToken (sous-titres automatiques)
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            import yt_dlp
+            ydl_opts = {
+                "writeautomaticsub": True,
+                "writesubtitles": True,
+                "subtitleslangs": ["fr", "en"],
+                "subtitlesformat": "json3",
+                "skip_download": True,
+                "outtmpl": os.path.join(td, "subs"),
+                "quiet": True,
+                "no_warnings": True,
+            }
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+            # Cherche le fichier .json3 téléchargé
+            sub_files = sorted(Path(td).glob("*.json3"))
+            if sub_files:
+                data = json.loads(sub_files[0].read_text(encoding="utf-8"))
+                segments = []
+                for event in data.get("events", []):
+                    if not event.get("segs") or event.get("tStartMs") is None:
+                        continue
+                    text = " ".join(s.get("utf8", "").replace("\n", " ") for s in event["segs"]).strip()
+                    if text:
+                        start = event["tStartMs"] / 1000
+                        end = start + event.get("dDurationMs", 2000) / 1000
+                        segments.append({"start": start, "end": end, "text": text})
+                if segments:
+                    lang = sub_files[0].name.split(".")[-2] if len(sub_files[0].name.split(".")) > 2 else "fr"
+                    logger.info(f"[transcript/ytdlp] {video_id} — {len(segments)} segs")
+                    return {"ok": True, "segments": segments, "language": lang}
+    except Exception as e:
+        logger.warning(f"[transcript/ytdlp] {video_id} failed: {e}")
+
+    raise HTTPException(status_code=404, detail="Aucun sous-titre disponible pour cette vidéo")
 
 
 @app.get("/test-formats")
