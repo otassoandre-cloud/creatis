@@ -270,14 +270,15 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
         logger.info("yt-dlp video: cookies actifs")
 
     attempts = [
-        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["tv_embedded"]}}, "label": "tv_embedded"},
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "bgutil"},
         *(
             [{"proxy": RESIDENTIAL_PROXY_URL,
               "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
               "label": "webshare+android"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv_embedded"]}}, "label": "android+tv_embedded"},
     ]
 
     formats = [
@@ -327,14 +328,16 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     cookies_file = _get_cookies_file()
 
     attempts = [
-        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil+section"},
+        # tv_embedded bypass bot detection sur IPs datacenter (GCP, Railway, etc.)
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["tv_embedded"]}}, "label": "tv_embedded"},
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "bgutil+section"},
         *(
             [{"proxy": RESIDENTIAL_PROXY_URL,
               "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
               "label": "webshare+android+section"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android+section"},
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv_embedded"]}}, "label": "android+tv_embedded"},
     ]
 
     last_err = None
