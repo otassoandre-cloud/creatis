@@ -1,0 +1,34 @@
+name: Deploy Cloud Run — Repurpose Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'repurpose-service/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ secrets.CLOUDRUN_SERVICE_NAME }}
+          region: ${{ secrets.CLOUDRUN_REGION }}
+          source: repurpose-service/
+          env_vars: |
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+            REPURPOSE_SERVICE_SECRET=${{ secrets.REPURPOSE_SERVICE_SECRET }}
+            RESIDENTIAL_PROXY_URL=${{ secrets.RESIDENTIAL_PROXY_URL }}
+            YOUTUBE_COOKIES=${{ secrets.YOUTUBE_COOKIES }}
