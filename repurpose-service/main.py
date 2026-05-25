@@ -873,8 +873,9 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
 
         CLIP_EXPORTS[job_id]["progress"] = "Découpe…"
         out_path = str(out_dir / f"clip_{job_id[:8]}.mp4")
+        # Source = section déjà découpée → on reframe directement sans re-couper
         await asyncio.get_event_loop().run_in_executor(
-            None, lambda: crop_clip(source, start, end, out_path)
+            None, lambda: _reframe_vertical(source, out_path)
         )
         Path(source).unlink(missing_ok=True)
         CLIP_EXPORTS[job_id] = {
