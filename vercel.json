@@ -38,8 +38,9 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/app", "dest": "/app.html" },
-    { "src": "/js/app-r5.js", "dest": "/js/app.js" },
-    { "src": "/css/app-r3.css", "dest": "/css/app.css" },
+    { "src": "/js/app-r8.js", "dest": "/js/app.js" },
+    { "src": "/js/app-r9.js", "dest": "/js/app.js" },
+    { "src": "/css/app-r4.css", "dest": "/css/app.css" },
     { "src": "/auth", "dest": "/auth.html" },
     { "src": "/auth/callback", "dest": "/auth/callback.html" },
     { "src": "/success", "dest": "/success.html" },
@@ -98,7 +99,9 @@
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
         { "key": "Surrogate-Control", "value": "no-store" },
-        { "key": "Pragma", "value": "no-cache" }
+        { "key": "Pragma", "value": "no-cache" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" }
       ]
     }
   ]

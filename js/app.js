@@ -999,203 +999,183 @@ class AppCreatis {
     if (zone) zone.classList.add('has-file');
   }
 
+  async _loadFFmpeg() {
+    if (this._ffmpeg) return this._ffmpeg;
+    if (this._ffmpegLoading) return this._ffmpegLoading;
+    this._ffmpegLoading = (async () => {
+      const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
+      const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+      const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
+      const ffmpeg = new FFmpeg();
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+      this._ffmpeg = ffmpeg;
+      return ffmpeg;
+    })();
+    return this._ffmpegLoading;
+  }
+
+  async _extractAudioFFmpeg(file, onProgress) {
+    const ffmpeg = await this._loadFFmpeg();
+    if (onProgress) onProgress(2, 'Montage fichier…');
+    try {
+      await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+      if (onProgress) onProgress(5, 'Extraction audio (peut prendre quelques minutes)…');
+      await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
+      if (onProgress) onProgress(90, 'Lecture…');
+      const data = await ffmpeg.readFile('/audio_out.mp3');
+      await ffmpeg.deleteFile('/audio_out.mp3');
+      await ffmpeg.unmount('/input');
+      if (onProgress) onProgress(100, '');
+      return data;
+    } catch (e) {
+      try { await ffmpeg.unmount('/input'); } catch {}
+      throw e;
+    }
+  }
+
+  async _cutClipFFmpeg(file, startSec, endSec) {
+    const ffmpeg = await this._loadFFmpeg();
+    const duration = endSec - startSec;
+    try {
+      await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+      await ffmpeg.exec([
+        '-ss', String(startSec), '-i', `/input/${file.name}`,
+        '-t', String(duration),
+        '-vf', 'scale=-2:1920,crop=1080:1920,setsar=1',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+        '-c:a', 'aac', '-b:a', '128k',
+        '/clip_out.mp4'
+      ]);
+      const data = await ffmpeg.readFile('/clip_out.mp4');
+      await ffmpeg.deleteFile('/clip_out.mp4');
+      await ffmpeg.unmount('/input');
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } catch (e) {
+      try { await ffmpeg.unmount('/input'); } catch {}
+      throw e;
+    }
+  }
+
   async lancerClipsUpload(agentId) {
     const fileInput = document.getElementById(`clips-file-${agentId}`);
     const file = fileInput?.files?.[0];
     if (!file) { this.afficherToast('❌ Sélectionne une vidéo', 'erreur'); return; }
 
+    this._localVideoFile = this._localVideoFile || {};
+    this._localVideoFile[agentId] = file;
+
     const btn = document.getElementById(`btn-upload-${agentId}`);
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Upload…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Analyse…'; }
     if (resultsZone) resultsZone.innerHTML = `
       <div class="clips-loading">
         <div class="clips-loading-steps">
-          <div class="clips-step actif" id="cstep-up-0">📤 Upload de la vidéo…</div>
-          <div class="clips-step" id="cstep-up-1">🎙️ Transcription Whisper…</div>
-          <div class="clips-step" id="cstep-up-2">🧠 Analyse IA…</div>
-          <div class="clips-step" id="cstep-up-3">✅ Clips identifiés !</div>
+          <div class="clips-step actif" id="cstep-up-0">⚙️ Chargement ffmpeg.wasm…</div>
+          <div class="clips-step" id="cstep-up-1">🎙️ Extraction audio locale…</div>
+          <div class="clips-step" id="cstep-up-2">📤 Upload audio…</div>
+          <div class="clips-step" id="cstep-up-3">🎙️ Transcription Whisper…</div>
+          <div class="clips-step" id="cstep-up-4">🧠 Analyse IA…</div>
+          <div class="clips-step" id="cstep-up-5">✅ Clips identifiés !</div>
         </div>
         <div id="clips-upload-progress" style="margin-top:12px">
           <div style="height:4px;background:var(--bordure);border-radius:2px;overflow:hidden">
             <div id="clips-upload-bar" style="height:100%;background:var(--accent);width:0%;transition:width .3s"></div>
           </div>
         </div>
-        <p id="clips-upload-msg" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px"></p>
+        <p id="clips-upload-msg" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px">${(file.size / 1e9).toFixed(1)} GB — initialisation…</p>
       </div>`;
 
     const step = i => { const el = document.getElementById(`cstep-up-${i}`); if (el) el.classList.add('actif'); };
-    const bar  = document.getElementById('clips-upload-bar');
-    const msg  = document.getElementById('clips-upload-msg');
+    const setBar = p => { const el = document.getElementById('clips-upload-bar'); if (el) el.style.width = p + '%'; };
+    const setMsg = t => { const el = document.getElementById('clips-upload-msg'); if (el) el.textContent = t; };
 
     try {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
-      // 1. Obtenir les credentials Railway
+      // 1. Charger ffmpeg.wasm (SharedArrayBuffer requis — headers COOP/COEP sur /app)
+      setMsg('Chargement ffmpeg.wasm (~30 MB, une seule fois)…');
+      await this._loadFFmpeg();
+      setBar(8);
+      step(1);
+
+      // 2. Extraire l'audio localement (WORKERFS — sans copier en mémoire)
+      setMsg(`Extraction audio de ${(file.size / 1e9).toFixed(1)} GB en local…`);
+      const audioData = await this._extractAudioFFmpeg(file, (pct, msg) => {
+        setBar(8 + Math.round(pct * 0.32));
+        if (msg) setMsg(msg);
+      });
+      setBar(40);
+      setMsg(`Audio extrait : ${(audioData.length / 1e6).toFixed(1)} MB`);
+      step(2);
+
+      // 3. Obtenir le token Railway
       const tokenRes = await fetch('/api/repurpose', { method: 'POST', headers,
         body: JSON.stringify({ mode: 'upload-token' }) });
       const tokenData = await tokenRes.json();
-      if (!tokenData.ok) throw new Error(tokenData.error || 'Erreur authentification');
+      if (!tokenData.ok) throw new Error(tokenData.error || 'Erreur authentification Railway');
 
-      // 2. Upload direct vers Railway avec progression
+      // 4. Upload audio → /transcribe-audio (synchrone, retourne segments directement)
+      setMsg('Upload audio vers le serveur…');
+      const audioBlob = new Blob([audioData.buffer], { type: 'audio/mpeg' });
       const formData = new FormData();
-      formData.append('file', file);
-      const uploadData = await new Promise((resolve, reject) => {
+      formData.append('file', audioBlob, 'audio.mp3');
+
+      const transcribeData = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${tokenData.railway_url}/upload-video`);
+        xhr.open('POST', `${tokenData.railway_url}/transcribe-audio`);
         xhr.setRequestHeader('Authorization', `Bearer ${tokenData.token}`);
+        xhr.timeout = 300000;
         xhr.upload.onprogress = e => {
-          if (e.lengthComputable && bar) bar.style.width = `${Math.round(e.loaded / e.total * 45)}%`;
+          if (e.lengthComputable) setBar(40 + Math.round(e.loaded / e.total * 15));
         };
         xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-          else reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`));
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch { reject(new Error('Réponse invalide du serveur')); }
+          } else {
+            reject(new Error(`Upload audio échoué (${xhr.status}): ${xhr.responseText.slice(0, 200)}`));
+          }
         };
-        xhr.onerror = () => reject(new Error('Erreur réseau pendant l\'upload'));
+        xhr.onerror = () => reject(new Error('Erreur réseau — vérifie ta connexion'));
+        xhr.ontimeout = () => reject(new Error('Timeout (5 min) — transcription trop longue'));
         xhr.send(formData);
       });
-      if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
-      if (bar) bar.style.width = '50%';
-      step(1);
-      if (msg) msg.textContent = 'Transcription en cours (peut prendre 2-5 min pour une longue vidéo)…';
 
-      // 3. Polling /upload-status/{job_id} jusqu'à done/error
-      const { job_id, video_id } = uploadData;
-      const poll = async () => {
-        const r = await fetch(`${tokenData.railway_url}/upload-status/${job_id}`,
-          { headers: { 'Authorization': `Bearer ${tokenData.token}` } });
-        if (!r.ok) throw new Error(`Polling erreur ${r.status}`);
-        return r.json();
-      };
-      let statusData;
-      for (let attempt = 0; attempt < 120; attempt++) {
-        await new Promise(res => setTimeout(res, 5000));
-        statusData = await poll();
-        if (statusData.status === 'done') break;
-        if (statusData.status === 'error') throw new Error(statusData.error || 'Transcription échouée');
-        if (bar) bar.style.width = `${50 + Math.min(attempt, 25)}%`;
-      }
-      if (statusData?.status !== 'done') throw new Error('Timeout transcription (>10 min)');
-      if (bar) bar.style.width = '80%';
-      step(2);
-      if (msg) msg.textContent = '';
+      if (!transcribeData.ok) throw new Error(transcribeData.error || 'Transcription échouée');
+      setBar(60);
+      step(3);
+      step(4);
+      setMsg('');
 
-      // 4. Identifier les clips via Groq
+      // 5. Identifier les clips via Groq
       const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers,
-        body: JSON.stringify({ mode: 'clips', segments: statusData.segments, video_id,
-          title: file.name.replace(/\.[^.]+$/, ''), duration: statusData.duration, n_clips: 5 }) });
+        body: JSON.stringify({
+          mode: 'clips',
+          segments: transcribeData.segments,
+          video_id: `local_${agentId}`,
+          title: file.name.replace(/\.[^.]+$/, ''),
+          duration: transcribeData.duration,
+          n_clips: 5
+        }) });
       const clipsData = await clipsRes.json();
       if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
 
-      if (bar) bar.style.width = '100%';
-      step(3);
+      setBar(100);
+      step(5);
       this._afficherClipsResultats(agentId, clipsData.result);
 
     } catch (err) {
       this.afficherToast(`❌ ${err.message}`, 'erreur');
       if (resultsZone) resultsZone.innerHTML = '';
     } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'; }
-    }
-  }
-
-  async lancerClips(agentId) {
-    const agent = AGENTS.find(a => a.id === agentId);
-    if (!agent) return;
-
-    const urlInput = document.getElementById(`clips-url-${agentId}`);
-    const url = urlInput?.value?.trim();
-    if (!url) { this.afficherToast('❌ Entre une URL YouTube', 'erreur'); urlInput?.focus(); return; }
-
-    // Court-circuit : si les clips sont en cache pour cette vidéo, pas besoin de re-fetcher le transcript
-    const _extractId = u => (u.match(/[?&]v=([a-zA-Z0-9_-]{11})/) || u.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/))?.[1] || null;
-    const currentVid = _extractId(url);
-    const fromLS = (() => { try { const s = localStorage.getItem(`clips_${agentId}`); return s ? JSON.parse(s) : null; } catch(e) { return null; } })();
-    if (currentVid && fromLS?.clips?.length && _extractId(fromLS.url || '') === currentVid && (Date.now() - (fromLS.ts || 0)) < 3600000) {
-      this._clipsCache = this._clipsCache || {};
-      this._clipsCache[agentId] = { clips: fromLS.clips, url };
-      this._afficherClipsResultats(agentId, { clips: fromLS.clips, youtube_url: url });
-      return;
-    }
-
-    const btn = document.getElementById(`btn-clips-${agentId}`);
-    const resultsZone = document.getElementById(`clips-results-${agentId}`);
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Démarrage…'; }
-
-    const steps = ['📡 Récupération des sous-titres…', '🧠 Analyse IA…', '✅ Clips identifiés !'];
-    if (resultsZone) {
-      resultsZone.innerHTML = `
-        <div class="clips-loading">
-          <div class="clips-loading-steps">
-            ${steps.map((s,i) => `<div class="clips-step" id="cstep-${agentId}-${i}">${s}</div>`).join('')}
-          </div>
-          <p id="clips-progress-${agentId}" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px"></p>
-        </div>`;
-    }
-
-    let stepTimer = null;
-    const activateStep = (i) => {
-      const el = document.getElementById(`cstep-${agentId}-${i}`);
-      if (el) el.classList.add('actif');
-    };
-    activateStep(0);
-
-    try {
-      // Lancer le job async
-      const start = await this._appelRepurpose(url, 'clips');
-      // Réponse synchrone (Vercel traite tout directement)
-      if (start.status === 'done' && start.result) {
-        this._afficherClipsResultats(agentId, start.result);
-        return;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
       }
-      const sessionId = start.session_id;
-      if (!sessionId) throw new Error('Pas de session_id reçu');
-
-      // Polling toutes les 4 secondes
-      const result = await new Promise((resolve, reject) => {
-        let attempts = 0;
-        const maxAttempts = 180; // 180 × 4s = 12 minutes max
-        const progressEl = () => document.getElementById(`clips-progress-${agentId}`);
-
-        const poll = async () => {
-          attempts++;
-          if (attempts > maxAttempts) { reject(new Error('Délai dépassé (12 min). La vidéo est peut-être trop longue.')); return; }
-
-          try {
-            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const res = await fetch('/api/repurpose', {
-              method: 'POST', headers,
-              body: JSON.stringify({ url, mode: 'clips_status', session_id: sessionId })
-            });
-            let job; try { job = await res.json(); } catch(e) { reject(new Error(`Erreur serveur (${res.status})`)); return; }
-            if (!res.ok) { reject(new Error(job.error || `Erreur ${res.status}`)); return; }
-
-            // Mettre à jour la progression
-            const prog = job.progress || '';
-            const el = progressEl();
-            if (el) el.textContent = prog;
-
-            // Activer les étapes selon la progression
-            if (prog.includes('sous-titres') || prog.includes('Récup')) activateStep(0);
-            else if (prog.includes('Analyse') || prog.includes('Gemini') || prog.includes('Groq') || prog.includes('viraux')) { activateStep(0); activateStep(1); }
-
-            if (job.status === 'done') { steps.forEach((_,i) => activateStep(i)); resolve(job.result); }
-            else if (job.status === 'error') { reject(new Error(job.error || 'Erreur inconnue')); }
-            else { stepTimer = setTimeout(poll, 4000); }
-          } catch (e) { reject(e); }
-        };
-        stepTimer = setTimeout(poll, 4000);
-      });
-
-      this._afficherClipsResultats(agentId, result);
-    } catch (err) {
-      if (err.message !== 'upgrade') this.afficherToast(`❌ ${err.message}`, 'erreur');
-      if (resultsZone) resultsZone.innerHTML = '';
-    } finally {
-      if (stepTimer) clearTimeout(stepTimer);
-      if (btn) { btn.disabled = false; btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'; }
     }
   }
 
@@ -1311,7 +1291,35 @@ class AppCreatis {
 
   async _downloadClip(agentId, i, videoId, startSec, endSec) {
     const btn = document.getElementById(`cdl-${agentId}-${i}`);
-    if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'; }
+    const spinSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+    const dlIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    if (btn) { btn.disabled = true; btn.innerHTML = spinSvg; }
+
+    // Fichier local → découpe directement dans le navigateur via ffmpeg.wasm
+    const localFile = this._localVideoFile?.[agentId];
+    if (localFile) {
+      this.afficherToast('⏳ Découpe locale 9:16 en cours…', 'info', 180000);
+      try {
+        const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}${String(Math.floor(s % 60)).padStart(2, '0')}`;
+        const clipBlob = await this._cutClipFFmpeg(localFile, startSec, endSec);
+        const url = URL.createObjectURL(clipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `clip_${fmt(startSec)}s_${fmt(endSec)}s.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        this.afficherToast('✅ Clip téléchargé !', 'succes', 3000);
+      } catch (err) {
+        this.afficherToast(`❌ ${err.message}`, 'erreur', 5000);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = dlIcon; }
+      }
+      return;
+    }
+
+    // Fallback Railway clip_export (pour fichiers uploadés via l'ancien flow)
     this.afficherToast('⏳ Préparation du clip…', 'info', 60000);
     try {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
@@ -1324,7 +1332,6 @@ class AppCreatis {
       if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage export');
       const { job_id } = startData;
 
-      const dlIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       let done = false;
       for (let poll = 0; poll < 60 && !done; poll++) {
@@ -1339,7 +1346,6 @@ class AppCreatis {
         if (d.status === 'done' && d.download_url) {
           done = true;
           this.afficherToast('✅ Clip prêt — téléchargement en cours !', 'succes', 4000);
-          // window.location.href fonctionne cross-origin sans blocage de geste ni attribut download ignoré
           window.location.href = d.download_url;
           if (btn) { btn.disabled = false; btn.title = 'Télécharger le clip'; btn.innerHTML = dlIcon; }
         } else if (d.status === 'error') {
@@ -1351,15 +1357,14 @@ class AppCreatis {
       if (!done) throw new Error('Délai dépassé (3 min) — réessaie dans quelques minutes');
     } catch (err) {
       this.afficherToast(`❌ ${err.message}`, 'erreur', 5000);
-      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = dlIcon; }
     }
   }
 
-_afficherClipsResultats(agentId, data) {
+  _afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`clips-results-${agentId}`);
     if (!zone) return;
 
-    // Cache clips pour les passer à _genererShorts sans refaire Gemini
     this._clipsCache = this._clipsCache || {};
     this._clipsCache[agentId] = { clips: data.clips, url: data.youtube_url };
     try { localStorage.setItem(`clips_${agentId}`, JSON.stringify({ clips: data.clips, url: data.youtube_url, ts: Date.now() })); } catch(e) {}
@@ -1371,39 +1376,23 @@ _afficherClipsResultats(agentId, data) {
 
     const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
+    const dlIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
 
     const clipsHtml = data.clips.map((clip, i) => {
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
-      const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${s0}s`;
-      const title = (clip.hook || '').substring(0, 80);
       const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
       return `
       <div class="clip-opus-card">
-        <div class="clip-opus-preview" id="cprev-${agentId}-${i}" onclick="app._clipClick('${agentId}',${i},'${vid}',${s0},${s1})">
-          <div class="clip-play-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-          <iframe class="clip-opus-iframe" id="ciframe-${agentId}-${i}"
-            frameborder="0" allowfullscreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
-          </iframe>
-          <div class="clip-playing-controls">
-            <div class="clip-prog-track" onclick="event.stopPropagation();app._seekClip('${agentId}',${i},event)"><div class="clip-prog-fill" id="cprog-${agentId}-${i}"></div></div>
-            <button class="clip-pause-btn" onclick="event.stopPropagation();app._togglePause('${agentId}',${i})" title="Pause / Play">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-          </div>
+        <div class="clip-opus-preview clip-upload-preview">
+          <div class="clip-upload-badge">${fmt(clip.start)}</div>
+          <div class="clip-play-btn" onclick="app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">${dlIcon}</div>
+          <div class="clip-upload-dur">${dur}</div>
         </div>
         <div class="clip-score-row">
           <span class="clip-score-num" style="color:${scoreColor(clip.score)}">${clip.score}</span>
           <div class="clip-action-btns">
-            <button class="clip-action-btn" title="Voir sur YouTube" onclick="event.stopPropagation();window.open('${ytUrl}','_blank','noopener')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
-            </button>
-            <button class="clip-action-btn" id="cdl-${agentId}-${i}" title="⬇ Télécharger le clip MP4" onclick="event.stopPropagation();app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
+            <button class="clip-action-btn" id="cdl-${agentId}-${i}" title="Télécharger en 9:16" onclick="event.stopPropagation();app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">${dlIcon}</button>
             <button class="clip-action-btn clip-action-del" title="Supprimer" onclick="this.closest('.clip-opus-card').remove()">✕</button>
           </div>
         </div>
@@ -1412,24 +1401,15 @@ _afficherClipsResultats(agentId, data) {
       </div>`;
     }).join('');
 
-    const urlEncoded = encodeURIComponent(data.youtube_url || data.clips[0]?.youtube_url?.split('&t=')[0] || '');
-
     zone.innerHTML = `
       <div class="clips-opus-header">
         <div>
           <strong>${data.clips.length} moments viraux identifiés</strong>
           <span>${this._escapeHtml((data.title || '').substring(0, 60))}</span>
         </div>
-        <button class="btn-shorts-gen btn-shorts-gen--auto" id="btn-shorts-${agentId}" disabled>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          Shorts générés
-        </button>
+        <span style="font-size:12px;color:var(--texte-secondaire)">Clique ⬇ pour couper chaque clip en 9:16</span>
       </div>
-      <div id="shorts-zone-${agentId}"></div>`;
-
-    this._ensureYTListener();
-    // Auto-génère les shorts sans clic supplémentaire
-    setTimeout(() => this._genererShorts(agentId, urlEncoded), 100);
+      <div class="clips-opus-grid">${clipsHtml}</div>`;
   }
 
   async _genererShorts(agentId, urlEncoded) {
@@ -1438,10 +1418,11 @@ _afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`shorts-zone-${agentId}`);
     if (!url || !zone) return;
 
+    const isUploadUrl = url.startsWith('upload:');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours…'; }
     zone.innerHTML = `<div class="shorts-progress" id="sp-${agentId}">
       <div class="shorts-prog-header">
-        <span id="spt-${agentId}">Connexion au stream YouTube…</span>
+        <span id="spt-${agentId}">${isUploadUrl ? 'Découpage vidéo en cours…' : 'Connexion au stream YouTube…'}</span>
         <span class="shorts-prog-pct" id="spp-${agentId}">0%</span>
       </div>
       <div class="shorts-prog-bar"><div class="shorts-prog-fill" id="spf-${agentId}"></div></div>

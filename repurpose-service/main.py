@@ -978,6 +978,36 @@ def upload_status(job_id: str, _=Depends(auth)):
     return job
 
 
+@app.post("/transcribe-audio")
+async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth)):
+    """Transcription d'un fichier audio uploadé (extrait en local via ffmpeg.wasm dans le browser)."""
+    import shutil
+    tmp_dir = WORK_DIR / f"ta_{uuid.uuid4().hex[:8]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        audio_path = tmp_dir / "audio.mp3"
+        with open(audio_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+        size_mb = audio_path.stat().st_size / 1_048_576
+        logger.info(f"[transcribe-audio] {file.filename} {size_mb:.1f}MB")
+        result = await transcribe(str(audio_path))
+        if not result.get("segments"):
+            raise HTTPException(502, "Aucun segment — vidéo sans paroles détectées")
+        logger.info(f"[transcribe-audio] {len(result['segments'])} segments {result['duration']:.0f}s")
+        return {"ok": True, "segments": result["segments"], "duration": result["duration"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[transcribe-audio] erreur: {e}")
+        raise HTTPException(502, str(e))
+    finally:
+        shutil.rmtree(str(tmp_dir), ignore_errors=True)
+
+
 @app.get("/transcript/{video_id}")
 async def get_transcript(video_id: str, _=Depends(auth)):
     # Méthode 1 : youtube-transcript-api Python
