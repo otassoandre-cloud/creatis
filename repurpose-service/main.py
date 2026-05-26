@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import httpx
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
@@ -35,6 +36,8 @@ BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
 
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = WORK_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 JOBS:         dict = {}
 CLIPS:        dict = {}
@@ -89,6 +92,11 @@ def _yt_extractor_args() -> dict:
 
 
 app = FastAPI(title="Créatis Shorts")
+app.add_middleware(CORSMiddleware,
+    allow_origins=["https://creatis.app", "https://www.creatis.app", "http://localhost:3000"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 
 @app.on_event("startup")
@@ -861,15 +869,33 @@ async def run_clips(
 
 async def run_clip_export(job_id: str, video_id: str, start: float, end: float, out_dir: Path) -> None:
     source = str(out_dir / "source.mp4")
-    yt_url = f"https://www.youtube.com/watch?v={video_id}"
     try:
         CLIP_EXPORTS[job_id]["progress"] = "Téléchargement section…"
-        section_path = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_video_section(yt_url, out_dir, start, end)
-        )
-        # Normalize to source.mp4
-        if section_path != source and os.path.exists(section_path):
-            Path(section_path).rename(source)
+
+        # Fichier uploadé localement (video_id préfixé "u_")
+        upload_source = UPLOAD_DIR / video_id / "source.mp4"
+        if upload_source.exists():
+            logger.info(f"[clip-export] fichier local upload: {video_id}")
+            import shutil
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: shutil.copy2(str(upload_source), source)
+            )
+            # Couper la section voulue depuis le fichier complet
+            cut = str(out_dir / "cut.mp4")
+            duration = end - start
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", source,
+                   "-ss", str(start), "-t", str(duration),
+                   "-c", "copy", cut]
+            subprocess.run(cmd, check=True)
+            Path(source).unlink(missing_ok=True)
+            Path(cut).rename(source)
+        else:
+            yt_url = f"https://www.youtube.com/watch?v={video_id}"
+            section_path = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: download_video_section(yt_url, out_dir, start, end)
+            )
+            if section_path != source and os.path.exists(section_path):
+                Path(section_path).rename(source)
 
         if not Path(source).exists() or Path(source).stat().st_size < 10_000:
             raise RuntimeError("Téléchargement échoué")
@@ -899,6 +925,23 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
 @app.get("/health")
 def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
+
+
+@app.post("/upload-video")
+async def upload_video(file: UploadFile = File(...), _=Depends(auth)):
+    video_id = "u_" + str(uuid.uuid4())[:12]
+    upload_path = UPLOAD_DIR / video_id
+    upload_path.mkdir(parents=True, exist_ok=True)
+    file_path = upload_path / "source.mp4"
+    logger.info(f"[upload] réception {file.filename} → {video_id}")
+    with open(file_path, "wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
+    size_mb = file_path.stat().st_size / 1_048_576
+    logger.info(f"[upload] {size_mb:.1f} MB sauvegardé")
+    result = await transcribe(str(file_path))
+    logger.info(f"[upload] transcription OK: {len(result['segments'])} segments")
+    return {"ok": True, "video_id": video_id, "segments": result["segments"], "duration": result["duration"]}
 
 
 @app.get("/transcript/{video_id}")
