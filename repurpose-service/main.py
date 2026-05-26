@@ -941,6 +941,7 @@ async def get_transcript(video_id: str, _=Depends(auth)):
                 "outtmpl": os.path.join(td, "subs"),
                 "quiet": True,
                 "no_warnings": True,
+                "extractor_args": _yt_extractor_args(),
             }
             url = f"https://www.youtube.com/watch?v={video_id}"
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
