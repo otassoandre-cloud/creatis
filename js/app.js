@@ -1020,17 +1020,23 @@ class AppCreatis {
   async _extractAudioFFmpeg(file, onProgress) {
     const ffmpeg = await this._loadFFmpeg();
     if (onProgress) onProgress(2, 'Montage fichier…');
+    const progressHandler = ({ progress }) => {
+      if (onProgress) onProgress(5 + Math.round(Math.min(progress, 1) * 83), `Extraction audio… ${Math.round(Math.min(progress, 1) * 100)}%`);
+    };
+    ffmpeg.on('progress', progressHandler);
     try {
       await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
-      if (onProgress) onProgress(5, 'Extraction audio (peut prendre quelques minutes)…');
+      if (onProgress) onProgress(5, `Extraction audio de ${(file.size / 1e9).toFixed(1)} GB…`);
       await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
-      if (onProgress) onProgress(90, 'Lecture…');
+      ffmpeg.off('progress', progressHandler);
+      if (onProgress) onProgress(90, 'Lecture audio…');
       const data = await ffmpeg.readFile('/audio_out.mp3');
       await ffmpeg.deleteFile('/audio_out.mp3');
       await ffmpeg.unmount('/input');
       if (onProgress) onProgress(100, '');
       return data;
     } catch (e) {
+      ffmpeg.off('progress', progressHandler);
       try { await ffmpeg.unmount('/input'); } catch {}
       throw e;
     }
