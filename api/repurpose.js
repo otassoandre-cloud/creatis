@@ -51,8 +51,17 @@ async function _fetchYT(url, opts = {}) {
     const nodeFetch = require('node-fetch');
     try {
       const r = await nodeFetch(url, { ...opts, agent });
-      if (r.status < 400) return r;
-      console.warn(`[proxy] ${r.status} — retry direct`);
+      if (r.status < 400) {
+        // Détecter les pages d'erreur proxy (Webshare quota dépassé, etc.)
+        const body = await r.text();
+        if (body.includes('Bandwidth Limit') || body.includes('bandwidth limit') || body.includes('proxy activity is suspended')) {
+          console.warn('[proxy] quota dépassé — retry direct');
+        } else {
+          return new Response(body, { status: r.status, headers: Object.fromEntries(r.headers.entries()) });
+        }
+      } else {
+        console.warn(`[proxy] ${r.status} — retry direct`);
+      }
     } catch (e) {
       console.warn('[proxy] erreur réseau — retry direct:', e.message);
     }
@@ -292,36 +301,60 @@ async function getYouTubeTranscriptSegments(videoId) {
   }
 
   // Méthode 2 : fetch page via proxy + extraction caption tracks
-  const html = await _fetchYouTubePage(videoId);
-  const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
-  const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+  try {
+    const html = await _fetchYouTubePage(videoId);
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+    const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+    const tracks = _parseCaptionTracks(html);
+    if (tracks?.length) {
+      const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
+        || tracks.find(t => t.languageCode === 'fr')
+        || tracks.find(t => t.kind === 'asr')
+        || tracks[0];
+      if (track?.baseUrl) {
+        const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
+        const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(10000) });
+        if (cr.ok) {
+          const data = await cr.json();
+          const segments = (data.events || [])
+            .filter(e => e.segs && e.tStartMs != null)
+            .map(e => ({
+              start: e.tStartMs / 1000,
+              end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
+              text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
+            }))
+            .filter(s => s.text);
+          if (segments.length) {
+            console.log(`[captions/fetch] ${segments.length} segments, lang=${track.languageCode}`);
+            return { segments, title, duration: segments[segments.length - 1].end };
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[captions/fetch] failed:', e.message);
+  }
 
-  const tracks = _parseCaptionTracks(html);
-  if (!tracks?.length) throw new Error('Pas de sous-titres disponibles pour cette vidéo');
+  // Méthode 3 : Railway service (IPs différentes de Vercel → contourne bot detection)
+  if (REPURPOSE_SERVICE_URL) {
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcript/${videoId}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(30000),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.segments?.length) {
+          console.log(`[captions/railway] OK ${d.segments.length} segments lang=${d.language}`);
+          return { segments: d.segments, title: '', duration: d.segments[d.segments.length - 1].end };
+        }
+      }
+    } catch (e) {
+      console.warn('[captions/railway] failed:', e.message);
+    }
+  }
 
-  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
-    || tracks.find(t => t.languageCode === 'fr')
-    || tracks.find(t => t.kind === 'asr')
-    || tracks[0];
-  if (!track?.baseUrl) throw new Error('Aucune piste de sous-titres trouvable');
-
-  const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
-  const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(10000) });
-  if (!cr.ok) throw new Error('Impossible de récupérer les sous-titres');
-
-  const data = await cr.json();
-  const segments = (data.events || [])
-    .filter(e => e.segs && e.tStartMs != null)
-    .map(e => ({
-      start: e.tStartMs / 1000,
-      end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
-      text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
-    }))
-    .filter(s => s.text);
-
-  if (!segments.length) throw new Error('Sous-titres vides');
-  console.log(`[captions/fetch] ${segments.length} segments, lang=${track.languageCode}, title="${title}"`);
-  return { segments, title, duration: segments[segments.length - 1].end };
+  throw new Error('Pas de sous-titres disponibles pour cette vidéo');
 }
 
 // Transcription via Groq Whisper à partir d'une URL audio directe (Innertube CDN)
@@ -354,34 +387,68 @@ async function transcribeAudioUrl(audioUrl) {
 
 // Identification des clips viraux via Groq LLM
 async function identifyViralClips(segments, videoId, title, nClips) {
-  const transcript = segments
-    .map(s => `[${s.start.toFixed(1)}s] ${s.text}`)
-    .join('\n')
-    .substring(0, 8000);
+  // Échantillonnage uniforme sur toute la vidéo (pas juste le début)
+  const MAX_CHARS = 7500;
+  let sampled = segments;
+  if (segments.length > 0) {
+    const avgLen = segments.slice(0, 30).reduce((a, s) => a + `[${s.start.toFixed(1)}s] ${s.text}\n`.length, 0) / Math.min(30, segments.length);
+    const maxSegs = Math.max(1, Math.floor(MAX_CHARS / avgLen));
+    if (segments.length > maxSegs) {
+      const step = segments.length / maxSegs;
+      sampled = Array.from({ length: maxSegs }, (_, i) => segments[Math.floor(i * step)]);
+    }
+  }
+  const transcript = sampled.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n').substring(0, MAX_CHARS);
 
-  const prompt = `Tu es un expert YouTube Shorts. Identifie ${nClips} moments viraux VARIÉS dans cette transcription — explore toute la vidéo du début à la fin, pas seulement le début.
+  const prompt = `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cette transcription et sélectionne les ${nClips} MEILLEURS moments qui feront le plus de vues.
 
-Réponds UNIQUEMENT en JSON :
-{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre court","hook":"phrase accroche","score":88}]}
+CRITÈRES DE SÉLECTION (par ordre de priorité) :
+1. HOOK fort dès les 3 premières secondes — phrase qui accroche immédiatement ("j'ai failli mourir", "personne ne le sait mais...", chiffre choc, question rhétorique)
+2. ÉMOTION intense — surprise, rire, choc, admiration, révélation
+3. AUTONOME — le clip se comprend sans contexte, commence et finit proprement sur une idée complète
+4. TENSION ou CURIOSITÉ — l'audience veut savoir la suite
+5. RÉPARTITION — couvre différentes parties de la vidéo, pas tous au même endroit
 
-Règles : durée 30-90s, score 0-100, répartis les clips sur toute la durée, ne coupe pas au milieu d'une phrase.
+ÉVITER : moments trop longs sans action, transitions, intros/outros, passages plats sans émotion.
+
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
+{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"première phrase exacte du clip qui accroche","score":88}]}
+
+Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral), ne coupe pas au milieu d'une phrase.
 
 Transcription "${title}" :
 ${transcript}`;
 
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 1.0, max_tokens: 2048 }),
-    signal: AbortSignal.timeout(60000),
-  });
-  if (!r.ok) throw new Error('Groq LLM error');
+  let r, attempts = 0;
+  while (attempts < 3) {
+    r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], temperature: 0.9, max_tokens: 1024 }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (r.status === 429) {
+      attempts++;
+      if (attempts >= 3) { const errBody = await r.text(); throw new Error(`Groq LLM error 429: ${errBody}`); }
+      await new Promise(res => setTimeout(res, 25000 * attempts)); // 25s, 50s — TPM recharge en ~20s
+      continue;
+    }
+    break;
+  }
+  if (!r.ok) { const errBody = await r.text(); throw new Error(`Groq LLM error ${r.status}: ${errBody}`); }
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
-  const json = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
+  // Nettoie les balises markdown + extrait le JSON même si entouré de texte
+  const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
+  const jsonStart = cleaned.indexOf('{"clips"');
+  const jsonEnd = cleaned.lastIndexOf('}');
+  const json = jsonStart !== -1 ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
   let clips = [];
   try { clips = JSON.parse(json).clips || []; }
-  catch { const s = json.indexOf('{'), e = json.lastIndexOf('}'); if (s !== -1 && e !== -1) clips = JSON.parse(json.slice(s, e+1)).clips || []; }
-  return clips.map(c => ({ video_id: videoId, start: parseFloat(c.start_time), end: parseFloat(c.end_time), title: c.title, hook: c.hook, score: parseInt(c.score) || 80 }));
+  catch { const s = json.indexOf('['), e = json.lastIndexOf(']'); if (s !== -1 && e !== -1) try { clips = JSON.parse(json.slice(s, e+1)); } catch {} }
+  return clips
+    .map(c => ({ video_id: videoId, start: parseFloat(c.start_time), end: parseFloat(c.end_time), title: c.title, hook: c.hook, score: parseInt(c.score) || 80 }))
+    .filter(c => (c.end - c.start) >= 20)
+    .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -527,6 +594,27 @@ module.exports = async (req, res) => {
   const url = body.url || '';
 
   // ── Modes sans URL — traiter immédiatement avant tout autre check ──
+
+  // Upload token : credentials Railway pour upload direct
+  if (mode === 'upload-token') {
+    if (!authUser && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    return res.status(200).json({ ok: true, railway_url: REPURPOSE_SERVICE_URL, token: REPURPOSE_SERVICE_SECRET });
+  }
+
+  // Clips depuis fichier uploadé (segments déjà transcrits, pas d'URL YouTube)
+  if (mode === 'clips' && body.segments?.length && body.video_id) {
+    if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    try {
+      const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
+      return res.status(200).json({ ok: true, mode: 'clips', status: 'done',
+        result: { clips, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
+      });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clip_export') {
     const { video_id, start, end } = body;
     if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
@@ -575,7 +663,13 @@ module.exports = async (req, res) => {
       const videoId = extractVideoId(url);
       if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
 
-      let clips = preClips;
+      let clips = preClips?.filter(c => {
+        const s = c.start_time ?? c.start; const e = c.end_time ?? c.end;
+        return (e - s) >= 5;
+      }).map(c => {
+        const s = c.start_time ?? c.start; const e = c.end_time ?? c.end;
+        return { ...c, start: s, end: Math.min(Math.max(e, s + 30), s + 90) };
+      }) || null;
       if (!clips?.length) {
         if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
         const transcript = await getYouTubeTranscriptSegments(videoId);
@@ -615,79 +709,88 @@ module.exports = async (req, res) => {
   }
 
   if (mode === 'shorts_status') {
-    const { job_ids, pending_clips = [] } = body;
+    // done_clips : clips déjà complétés, accumulés côté client pour éviter de re-vérifier
+    const { job_ids, pending_clips = [], done_clips = [], total_clips } = body;
     if (!job_ids?.length) return res.status(400).json({ error: 'job_ids manquant' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      // Vérifie le statut des jobs actifs
-      const statuses = await Promise.all(job_ids.map(({ job_id }) =>
-        fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${job_id}`, {
-          headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-          signal: AbortSignal.timeout(10000)
-        }).then(async r => {
+      // Ne vérifie QUE le job actif (1 seul à la fois) — évite l'accumulation qui timeout Vercel
+      const activeJob = job_ids[job_ids.length - 1]; // toujours le dernier lancé
+      const statusRes = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export-status/${activeJob.job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(8000)
+      }).catch(e => null);
+
+      const st = statusRes?.ok ? await statusRes.json().catch(() => ({ status: 'processing' })) : { status: 'processing' };
+      const total = total_clips || (done_clips.length + job_ids.length + pending_clips.length);
+
+      console.log(`[shorts_status] job=${activeJob.job_id.slice(0,8)} status=${st.status} done=${done_clips.length} pending=${pending_clips.length}`);
+
+      if (st.status === 'error') {
+        // Clip échoué → on l'ignore et on passe au suivant si disponible
+        if (pending_clips.length > 0) {
+          const next = pending_clips[0];
+          const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+            body: JSON.stringify({ video_id: next.video_id, start: next.start, end: next.end }),
+            signal: AbortSignal.timeout(12000)
+          });
           const data = await r.json();
-          if (!r.ok) return { status: 'error', error: data.detail || `HTTP ${r.status}` };
-          return data;
-        }).catch(e => ({ status: 'error', error: e.message }))
-      ));
+          if (data.job_id) {
+            return res.status(200).json({ ok: true, status: 'processing',
+              progress: `Short ${done_clips.length + 1}/${total} — Démarrage…`,
+              job_ids: [{ job_id: data.job_id, meta: next.meta }],
+              pending_clips: pending_clips.slice(1), done_clips, total_clips: total });
+          }
+        }
+        // Plus de clips ou impossible de lancer → retourner ce qu'on a
+        if (!done_clips.length) throw new Error(st.error || 'Export échoué');
+        return res.status(200).json({ ok: true, status: 'done', clips: done_clips });
+      }
 
-      const done = statuses.filter(s => s.status === 'done').length;
-      const errors = statuses.filter(s => s.status === 'error');
-      const total = job_ids.length + pending_clips.length; // total global incluant pending
+      if (st.status === 'done') {
+        const newClip = {
+          ...activeJob.meta,
+          download_url: `${REPURPOSE_SERVICE_URL}${st.download_url}`,
+          filename: st.download_url?.split('/').pop() || `short_${done_clips.length + 1}.mp4`,
+          duration: Math.round((activeJob.meta?.end || 0) - (activeJob.meta?.start || 0)),
+        };
+        const newDone = [...done_clips, newClip];
 
-      console.log(`[shorts_status] active=${job_ids.length} done=${done} errors=${errors.length} pending=${pending_clips.length}`,
-        statuses.map(s => `${s.status}${s.progress ? ':'+s.progress : ''}${s.error ? ':'+s.error : ''}`).join(' | '));
-
-      // Si tous les actifs sont terminés (done ou error) et il reste des clips en attente → lance le suivant
-      const allActiveDone = (done + errors.length) === job_ids.length;
-      let newJobIds = [...job_ids];
-      let newPending = [...pending_clips];
-
-      if (allActiveDone && pending_clips.length > 0) {
+        if (pending_clips.length === 0) {
+          return res.status(200).json({ ok: true, status: 'done', clips: newDone });
+        }
+        // Lance le clip suivant
         const next = pending_clips[0];
-        newPending = pending_clips.slice(1);
         try {
           const r = await fetch(`${REPURPOSE_SERVICE_URL}/clip-export`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
             body: JSON.stringify({ video_id: next.video_id, start: next.start, end: next.end }),
-            signal: AbortSignal.timeout(15000)
+            signal: AbortSignal.timeout(12000)
           });
           const data = await r.json();
           if (data.job_id) {
-            console.log(`[shorts_status] job suivant lancé: ${data.job_id} (${newPending.length} restants)`);
-            newJobIds = [...job_ids, { job_id: data.job_id, meta: next.meta }];
+            console.log(`[shorts_status] clip suivant lancé: ${data.job_id}`);
+            return res.status(200).json({ ok: true, status: 'processing',
+              progress: `Short ${newDone.length + 1}/${total} — Démarrage…`,
+              job_ids: [{ job_id: data.job_id, meta: next.meta }],
+              pending_clips: pending_clips.slice(1), done_clips: newDone, total_clips: total });
           }
-        } catch (e) {
-          console.warn('[shorts_status] erreur lancement suivant:', e.message);
-        }
+        } catch (e) { console.warn('[shorts_status] erreur lancement suivant:', e.message); }
+        return res.status(200).json({ ok: true, status: 'done', clips: newDone });
       }
 
-      // Résultats finaux si plus rien en attente ET tout terminé
-      const finalDone = (done + errors.length) === newJobIds.length && newPending.length === 0;
-      if (finalDone) {
-        if (errors.length === newJobIds.length) throw new Error(errors[0].error || 'Tous les exports ont échoué');
-        const clips = statuses.map((s, i) => s.status === 'done' ? {
-          ...job_ids[i].meta,
-          download_url: `${REPURPOSE_SERVICE_URL}${s.download_url}`,
-          filename: s.download_url?.split('/').pop() || `short_${i + 1}.mp4`,
-          duration: Math.round((job_ids[i].meta?.end || 0) - (job_ids[i].meta?.start || 0)),
-        } : null).filter(Boolean);
-        if (!clips.length) throw new Error(errors[0]?.error || 'Exports échoués');
-        return res.status(200).json({ ok: true, status: 'done', clips });
-      }
-
-      const doneTotal = done;
-      const processing = statuses.find(s => s.status === 'processing');
-      const progressMsg = processing?.progress || 'téléchargement…';
+      // En cours de traitement
+      const progressMsg = st.progress || 'traitement…';
       return res.status(200).json({
         ok: true, status: 'processing',
-        progress: `Short ${doneTotal + 1}/${total} — ${progressMsg}`,
-        job_ids: newJobIds,
-        pending_clips: newPending
+        progress: `Short ${done_clips.length + 1}/${total} — ${progressMsg}`,
+        job_ids, pending_clips, done_clips, total_clips: total
       });
     } catch (err) {
-      return res.status(502).json({ error: err.message });
+      return res.status(502).json({ status: 'error', error: err.message });
     }
   }
 
@@ -750,51 +853,34 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'URL invalide — entre une URL YouTube (youtube.com ou youtu.be)' });
   }
 
-  // ── Mode CLIPS : traitement synchrone sur Vercel (pas de Railway pour éviter bot detection) ──
+  // ── Mode CLIPS : traitement synchrone sur Vercel ──
   if (mode === 'clips') {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const { n_clips } = body;
     const videoId = extractVideoId(url);
     if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
     try {
       let segments, title = '', duration = 0;
 
-      // 1. Sous-titres YouTube depuis Vercel (IP propre, rapide, gratuit)
-      // On récupère aussi le titre via la page YouTube en parallèle
       let pageTitle = '';
       _fetchYouTubePage(videoId).then(html => {
         const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
         if (m) pageTitle = m[1].replace(' - YouTube', '');
       }).catch(() => {});
 
-      // 1. Sous-titres YouTube (marche pour la majorité des vidéos publiques)
       try {
         const r = await getYouTubeTranscriptSegments(videoId);
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
         console.log(`[clips] captions OK: ${segments.length} segments`);
       } catch (e) {
         console.warn('[clips] captions failed:', e.message);
-
-        // 2. Fallback : Innertube audio → Groq Whisper
-        try {
-          const streams = await getInnertubeStreamUrl(videoId);
-          const audioUrl = streams.audio_url || streams.video_url;
-          const r = await transcribeAudioUrl(audioUrl);
-          segments = r.segments; duration = r.duration;
-          console.log(`[clips] Innertube+Whisper OK: ${segments.length} segments`);
-        } catch (innerErr) {
-          console.warn('[clips] Innertube+Whisper failed:', innerErr.message);
-          const isUnavailable = /indisponible|unavailable|non disponible/i.test(innerErr.message);
-          if (isUnavailable && !YOUTUBE_COOKIES) {
-            throw new Error('Cette vidéo est inaccessible depuis nos serveurs (vidéo géo-restreinte ou privée). Pour analyser cette vidéo, ajoute tes cookies YouTube dans les paramètres Vercel (YOUTUBE_COOKIES).');
-          }
-          throw new Error('Impossible de transcrire cette vidéo. Vérifie que les sous-titres automatiques sont activés sur YouTube, ou essaie une autre vidéo.');
-        }
+        throw new Error('Cette vidéo n\'a pas de sous-titres automatiques disponibles. Active les sous-titres automatiques sur YouTube Studio, ou utilise une vidéo avec des sous-titres existants.');
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
 
       // 3. Identification clips via Groq LLM
-      const clips = await identifyViralClips(segments, videoId, title, 15);
+      const clips = await identifyViralClips(segments, videoId, title, n_clips || 10);
       console.log(`[clips] ${clips.length} clips identifiés pour ${videoId}`);
 
       return res.status(200).json({
