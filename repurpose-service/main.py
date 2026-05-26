@@ -935,7 +935,10 @@ async def upload_video(file: UploadFile = File(...), _=Depends(auth)):
     file_path = upload_path / "source.mp4"
     logger.info(f"[upload] réception {file.filename} → {video_id}")
     with open(file_path, "wb") as f:
-        while chunk := await file.read(1024 * 1024):
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
             f.write(chunk)
     size_mb = file_path.stat().st_size / 1_048_576
     logger.info(f"[upload] {size_mb:.1f} MB sauvegardé")
