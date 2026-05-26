@@ -947,7 +947,6 @@ class AppCreatis {
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
             ondrop="event.preventDefault();this.classList.remove('drag-over');app._onClipsDrop('${agent.id}',event)">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;margin-bottom:12px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <p id="clips-upload-name-${agent.id}" class="clips-drop-text">Glisser une vidéo ici</p>
             <span class="clips-drop-sub">ou</span>
             <label class="btn-charger-fichier">
