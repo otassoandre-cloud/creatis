@@ -30,17 +30,6 @@ class AppCreatis {
       setTimeout(() => this._afficherOnboarding(), 600);
     }
 
-    const pendingRepurpose = localStorage.getItem('creatis_repurpose_pending');
-    if (pendingRepurpose) {
-      localStorage.removeItem('creatis_repurpose_pending');
-      setTimeout(() => {
-        this.selectionnerAgent('repurpose');
-        setTimeout(() => {
-          const el = document.getElementById('champ-repurpose-url');
-          if (el) el.value = pendingRepurpose;
-        }, 300);
-      }, 600);
-    }
   }
 
   async _traiterCallbackYouTube() {
@@ -260,47 +249,7 @@ class AppCreatis {
     } catch { return this.getMiniaturesMois(); }
   }
 
-  /* ===== REPURPOSE CREDITS ===== */
-  _getCleRepurposeMois() {
-    const n = new Date();
-    return `creatis_repurpose_${n.getFullYear()}_${n.getMonth()}`;
-  }
-
-  getRepurposeMois() {
-    return parseInt(localStorage.getItem(this._getCleRepurposeMois()) || '0');
-  }
-
-  getMaxRepurpose() {
-    const user = this.getUtilisateur();
-    const plan = user?.plan || 'gratuit';
-    const limits = { gratuit: 0, pro: 5, studio: 20 };
-    return limits[plan] ?? 0;
-  }
-
-  incrementerRepurpose() {
-    const cle = this._getCleRepurposeMois();
-    const count = this.getRepurposeMois() + 1;
-    localStorage.setItem(cle, count.toString());
-    return count;
-  }
-
-  verifierQuotaRepurpose() {
-    const user = this.getUtilisateur();
-    if (!user || user.plan === 'gratuit') {
-      this.afficherToast('🔒 Repurpose Vidéo est disponible à partir du plan Pro (5/mois).', 'info', 4000);
-      this.afficherModalUpgrade();
-      return false;
-    }
-    const max = this.getMaxRepurpose();
-    const used = this.getRepurposeMois();
-    if (used >= max) {
-      this.afficherToast(`❌ Limite Repurpose atteinte (${used}/${max} ce mois). Renouvellement le 1er.`, 'erreur', 5000);
-      return false;
-    }
-    return true;
-  }
-
-  async _appelRepurpose(url, mode = 'text') {
+  async _appelRepurpose(url, mode = 'clips') {
     const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -319,59 +268,6 @@ class AppCreatis {
       throw new Error(data.error || 'Erreur Repurpose');
     }
     return data;
-  }
-
-  afficherRepurpose(agentId, data) {
-    const workspace = document.getElementById('workspace');
-    if (!workspace) return;
-
-    const panneau = document.getElementById(`panneau-${agentId}`);
-    const zone = panneau?.querySelector('.agent-resultat') || panneau?.querySelector('.resultat-zone');
-    if (!zone) { this.afficherTexte(agentId, data.content); return; }
-
-    const content = data.content || '';
-    const titre = data.title ? `<div class="repurpose-meta"><strong>${data.title}</strong>${data.duration ? ` · ${data.duration}` : ''}</div>` : '';
-
-    // Parser les sections du contenu
-    const sections = [
-      { key: 'tweets', label: '🐦 Tweets', icon: 'twitter', regex: /##\s*🐦\s*TWEETS.*?(?=##\s*💼|$)/s },
-      { key: 'linkedin', label: '💼 LinkedIn', icon: 'linkedin', regex: /##\s*💼\s*POSTS LINKEDIN.*?(?=##\s*⚡|$)/s },
-      { key: 'shorts', label: '⚡ Shorts', icon: 'shorts', regex: /##\s*⚡\s*IDÉES SHORTS.*?(?=##\s*🖼️|$)/s },
-      { key: 'miniatures', label: '🖼️ Miniatures', icon: 'image', regex: /##\s*🖼️\s*CONCEPTS MINIATURES.*$/s }
-    ];
-
-    const tabs = sections.map((s, i) => `
-      <button class="repurpose-tab${i === 0 ? ' actif' : ''}" onclick="app._repurposeTab(this, 'rp-${agentId}-${s.key}')">
-        ${s.label}
-      </button>`).join('');
-
-    const panels = sections.map((s, i) => {
-      const match = content.match(s.regex);
-      const sectionContent = match ? match[0].replace(/##\s*[^\n]+\n/, '').trim() : '(Non généré)';
-      return `<div class="repurpose-panel${i === 0 ? ' actif' : ''}" id="rp-${agentId}-${s.key}">
-        ${this.renduMarkdown(sectionContent)}
-      </div>`;
-    }).join('');
-
-    zone.innerHTML = `
-      <div class="repurpose-resultat">
-        ${titre}
-        <div class="repurpose-tabs">${tabs}</div>
-        <div class="repurpose-panels">${panels}</div>
-        <div class="resultat-actions" style="margin-top:12px">
-          <button class="btn-ghost btn-sm" onclick="app.telechargerResultat('${agentId}')">⬇️ Télécharger tout</button>
-          <button class="btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('panneau-${agentId}').querySelector('.repurpose-panels .actif')?.innerText||'').then(()=>app.afficherToast('✅ Copié !','succes'))">📋 Copier onglet</button>
-        </div>
-      </div>`;
-  }
-
-  _repurposeTab(btn, panelId) {
-    const container = btn.closest('.repurpose-resultat');
-    if (!container) return;
-    container.querySelectorAll('.repurpose-tab').forEach(b => b.classList.remove('actif'));
-    container.querySelectorAll('.repurpose-panel').forEach(p => p.classList.remove('actif'));
-    btn.classList.add('actif');
-    document.getElementById(panelId)?.classList.add('actif');
   }
 
   afficherClips(agentId, data) {
@@ -970,14 +866,7 @@ class AppCreatis {
         : '';
 
       if (agent.type === 'clips') {
-        return; // géré par lancerClips()
-      } else if (agent.type === 'repurpose') {
-        if (!this.verifierQuotaRepurpose()) return;
-        this.afficherToast('🎙️ Récupération des sous-titres et génération en cours…', 'info', 15000);
-        const data = await this._appelRepurpose(donnees.url, 'text');
-        this.afficherRepurpose(agentId, data);
-        this.incrementerRepurpose();
-        resultat = data.content;
+        return; // géré par lancerClipsUpload()
       } else if (agent.type === 'miniature') {
         if (!this.verifierQuotaMiniatures()) return;
 
@@ -1049,82 +938,64 @@ class AppCreatis {
           </button>
         </div>
 
-        <div class="clips-hero">
-          <div class="clips-preview-box" id="clips-preview-${agent.id}">
-            <div class="clips-preview-placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              <p>Aperçu de la vidéo</p>
-            </div>
+        <div class="clips-hero-center">
+          <p class="clips-hero-label">OUTIL DE DÉCOUPAGE VIDÉO IA</p>
+          <h1 class="clips-hero-title">1 longue vidéo,<br>5 clips viraux.</h1>
+          <p class="clips-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
+
+          <div class="clips-drop-zone" id="clips-drop-${agent.id}"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');app._onClipsDrop('${agent.id}',event)">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;margin-bottom:12px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p id="clips-upload-name-${agent.id}" class="clips-drop-text">Glisser une vidéo ici</p>
+            <span class="clips-drop-sub">ou</span>
+            <label class="btn-charger-fichier">
+              Charger un fichier
+              <input type="file" id="clips-file-${agent.id}" accept="video/*" style="display:none" onchange="app._onClipsFileSelect('${agent.id}', this)">
+            </label>
+            <p class="clips-drop-hint">MP4, MOV, AVI — jusqu'à 2h</p>
           </div>
 
-          <div class="clips-input-row">
-            <div class="clips-upload-wrap">
-              <label class="clips-upload-label" id="clips-upload-label-${agent.id}">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span id="clips-upload-name-${agent.id}">Sélectionner une vidéo (MP4, MOV…)</span>
-                <input type="file" id="clips-file-${agent.id}" accept="video/*" style="display:none" onchange="app._onClipsFileSelect('${agent.id}', this)">
-              </label>
-              <button class="btn-get-clips" id="btn-upload-${agent.id}" onclick="app.lancerClipsUpload('${agent.id}')" disabled>
-                Créer les Shorts
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              </button>
-            </div>
-            <p class="clips-hint">MP4, MOV, AVI · Transcription automatique · Jusqu'à 2 Shorts viraux en 9:16</p>
-          </div>
+          <button class="btn-creer-shorts" id="btn-upload-${agent.id}" onclick="app.lancerClipsUpload('${agent.id}')" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Créer les Shorts
+          </button>
         </div>
 
         <div id="clips-results-${agent.id}" class="clips-results-zone"></div>
       </div>`;
 
     workspace.appendChild(panneau);
-    this._initSphereCanvas(agent.id);
-  }
-
-  _clipsPreviewUrl(agentId, url) {
-    const box = document.getElementById(`clips-preview-${agentId}`);
-    if (!box) return;
-    const videoId = this._extractYtId(url);
-    if (videoId) {
-      box.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg"
-        style="width:100%;height:100%;object-fit:cover;border-radius:12px" alt="aperçu">
-        <div class="clips-preview-badge">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        </div>`;
-    } else {
-      box.innerHTML = `<div class="clips-preview-placeholder"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p>Aperçu de la vidéo</p></div>`;
-    }
-  }
-
-  _extractYtId(url) {
-    const m = (url || '').match(/(?:[?&]v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
-    return m ? m[1] : null;
-  }
-
-  _toggleClipsSource(agentId, mode) {
-    const urlRow = document.getElementById(`clips-url-row-${agentId}`);
-    const uploadRow = document.getElementById(`clips-upload-row-${agentId}`);
-    const btnUrl = document.getElementById(`toggle-url-${agentId}`);
-    const btnUpload = document.getElementById(`toggle-upload-${agentId}`);
-    const hint = document.getElementById(`clips-hint-${agentId}`);
-    if (mode === 'url') {
-      urlRow.style.display = ''; uploadRow.style.display = 'none';
-      btnUrl.classList.add('active'); btnUpload.classList.remove('active');
-      if (hint) hint.textContent = 'Formats supportés : YouTube · Vidéo longue → jusqu\'à 2 Shorts viraux en 9:16 avec sous-titres';
-    } else {
-      urlRow.style.display = 'none'; uploadRow.style.display = '';
-      btnUrl.classList.remove('active'); btnUpload.classList.add('active');
-      if (hint) hint.textContent = 'MP4, MOV, AVI · Transcription automatique · Jusqu\'à 2 Shorts viraux en 9:16';
-    }
   }
 
   _onClipsFileSelect(agentId, input) {
     const file = input.files?.[0];
-    const nameEl = document.getElementById(`clips-upload-name-${agentId}`);
-    const btn = document.getElementById(`btn-upload-${agentId}`);
-    if (file) {
-      if (nameEl) nameEl.textContent = `${file.name} (${(file.size / 1_048_576).toFixed(1)} Mo)`;
-      if (btn) btn.disabled = false;
+    if (file) this._setClipsFile(agentId, file);
+  }
+
+  _onClipsDrop(agentId, event) {
+    const file = event.dataTransfer?.files?.[0];
+    if (!file || !file.type.startsWith('video/')) {
+      this.afficherToast('❌ Dépose un fichier vidéo (MP4, MOV…)', 'erreur');
+      return;
     }
+    const input = document.getElementById(`clips-file-${agentId}`);
+    if (input) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+    }
+    this._setClipsFile(agentId, file);
+  }
+
+  _setClipsFile(agentId, file) {
+    const nameEl = document.getElementById(`clips-upload-name-${agentId}`);
+    const btn    = document.getElementById(`btn-upload-${agentId}`);
+    const zone   = document.getElementById(`clips-drop-${agentId}`);
+    if (nameEl) nameEl.textContent = `${file.name} · ${(file.size / 1_048_576).toFixed(1)} Mo`;
+    if (btn) btn.disabled = false;
+    if (zone) zone.classList.add('has-file');
   }
 
   async lancerClipsUpload(agentId) {
