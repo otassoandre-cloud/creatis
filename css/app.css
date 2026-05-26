@@ -2372,15 +2372,16 @@
 .clips-hero-title { font-size:clamp(22px,4vw,36px); font-weight:800; line-height:1.2; margin:0; color:var(--texte-principal); }
 .clips-hero-sub { font-size:13px; color:var(--texte-secondaire); margin:0; }
 
-/* Zone de dépôt */
-.clips-drop-zone { border:2px dashed rgba(255,255,255,.18); border-radius:16px; padding:18px 28px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:border-color .2s,background .2s; }
-.clips-drop-zone:hover, .clips-drop-zone.drag-over { border-color:#10b981; background:rgba(16,185,129,.05); }
-.clips-drop-zone.has-file { border-color:rgba(16,185,129,.5); background:rgba(16,185,129,.05); }
-.clips-drop-text { font-size:14px; font-weight:600; color:var(--texte-principal); margin:0; }
-.clips-drop-sub { font-size:12px; color:var(--texte-secondaire); margin:2px 0; }
-.clips-drop-hint { font-size:11px; color:var(--texte-secondaire); margin:4px 0 0; }
-.btn-charger-fichier { background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.18); border-radius:8px; padding:7px 18px; font-size:13px; font-weight:600; color:var(--texte-principal); cursor:pointer; transition:background .15s; }
-.btn-charger-fichier:hover { background:rgba(255,255,255,.14); }
+/* Barre upload style OpusClip */
+.clips-bar { display:flex; align-items:center; gap:0; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); border-radius:50px; padding:6px 6px 6px 20px; width:100%; max-width:520px; transition:border-color .2s; }
+.clips-bar:hover, .clips-bar.drag-over { border-color:rgba(16,185,129,.5); }
+.clips-bar.has-file { border-color:rgba(16,185,129,.4); }
+.clips-bar-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+.clips-bar-placeholder { font-size:14px; color:var(--texte-secondaire); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clips-bar-left span:not(.clips-bar-placeholder) { font-size:14px; color:var(--texte-principal); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.clips-bar-sep { font-size:13px; color:var(--texte-secondaire); padding:0 12px; flex-shrink:0; }
+.clips-bar-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:40px; padding:9px 20px; font-size:13px; font-weight:600; color:var(--texte-principal); cursor:pointer; transition:background .15s; white-space:nowrap; flex-shrink:0; }
+.clips-bar-btn:hover { background:rgba(255,255,255,.18); }
 
 /* Bouton principal */
 .btn-creer-shorts { display:flex; align-items:center; gap:8px; background:#10b981; color:#fff; border:none; border-radius:40px; padding:13px 32px; font-size:15px; font-weight:700; cursor:pointer; transition:background .2s; margin-top:4px; }

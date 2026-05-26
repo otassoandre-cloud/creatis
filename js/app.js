@@ -943,17 +943,19 @@ class AppCreatis {
           <h1 class="clips-hero-title">1 longue vidéo,<br>5 clips viraux.</h1>
           <p class="clips-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
 
-          <div class="clips-drop-zone" id="clips-drop-${agent.id}"
+          <div class="clips-bar" id="clips-drop-${agent.id}"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
             ondrop="event.preventDefault();this.classList.remove('drag-over');app._onClipsDrop('${agent.id}',event)">
-            <p id="clips-upload-name-${agent.id}" class="clips-drop-text">Glisser une vidéo ici</p>
-            <span class="clips-drop-sub">ou</span>
-            <label class="btn-charger-fichier">
-              Charger un fichier
+            <div class="clips-bar-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span id="clips-upload-name-${agent.id}" class="clips-bar-placeholder">Déposer une vidéo ici</span>
+            </div>
+            <span class="clips-bar-sep">ou</span>
+            <label class="clips-bar-btn">
+              Charger des fichiers
               <input type="file" id="clips-file-${agent.id}" accept="video/*" style="display:none" onchange="app._onClipsFileSelect('${agent.id}', this)">
             </label>
-            <p class="clips-drop-hint">MP4, MOV, AVI — jusqu'à 2h</p>
           </div>
 
           <button class="btn-creer-shorts" id="btn-upload-${agent.id}" onclick="app.lancerClipsUpload('${agent.id}')" disabled>
@@ -992,7 +994,7 @@ class AppCreatis {
     const nameEl = document.getElementById(`clips-upload-name-${agentId}`);
     const btn    = document.getElementById(`btn-upload-${agentId}`);
     const zone   = document.getElementById(`clips-drop-${agentId}`);
-    if (nameEl) nameEl.textContent = `${file.name} · ${(file.size / 1_048_576).toFixed(1)} Mo`;
+    if (nameEl) { nameEl.textContent = `${file.name} · ${(file.size / 1_048_576).toFixed(1)} Mo`; nameEl.classList.remove('clips-bar-placeholder'); }
     if (btn) btn.disabled = false;
     if (zone) zone.classList.add('has-file');
   }
