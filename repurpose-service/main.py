@@ -94,9 +94,10 @@ def _yt_extractor_args() -> dict:
 
 app = FastAPI(title="Créatis Shorts")
 app.add_middleware(CORSMiddleware,
-    allow_origins=["https://creatis.app", "https://www.creatis.app", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["Content-Disposition"],
 )
 
 
