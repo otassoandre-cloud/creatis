@@ -37,7 +37,7 @@
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/app", "dest": "/app.html" },
+    { "src": "/app", "dest": "/app.html", "headers": { "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Embedder-Policy": "credentialless", "Cache-Control": "no-cache, no-store, must-revalidate, s-maxage=0" } },
     { "src": "/js/app-r8.js", "dest": "/js/app.js" },
     { "src": "/js/app-r9.js", "dest": "/js/app.js" },
     { "src": "/css/app-r4.css", "dest": "/css/app.css" },
