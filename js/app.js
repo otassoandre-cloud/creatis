@@ -311,7 +311,9 @@ class AppCreatis {
       body: JSON.stringify({ url, mode })
     });
 
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); }
+    catch { const txt = await res.text().catch(() => ''); throw new Error(`Réponse invalide du serveur (${res.status}): ${txt.substring(0, 200)}`); }
     if (!res.ok) {
       if (data.upgrade_required) { this.afficherModalUpgrade(); throw new Error('upgrade'); }
       throw new Error(data.error || 'Erreur Repurpose');
@@ -1056,18 +1058,18 @@ class AppCreatis {
           </div>
 
           <div class="clips-input-row">
-            <div class="clips-input-wrap">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-              <input type="text" id="clips-url-${agent.id}" class="clips-url-input"
-                placeholder="Colle un lien YouTube, TikTok, Instagram…"
-                oninput="app._clipsPreviewUrl('${agent.id}', this.value)"
-                onkeydown="if(event.key==='Enter') app.lancerClips('${agent.id}')">
-              <button class="btn-get-clips" id="btn-clips-${agent.id}" onclick="app.lancerClips('${agent.id}')">
+            <div class="clips-upload-wrap">
+              <label class="clips-upload-label" id="clips-upload-label-${agent.id}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span id="clips-upload-name-${agent.id}">Sélectionner une vidéo (MP4, MOV…)</span>
+                <input type="file" id="clips-file-${agent.id}" accept="video/*" style="display:none" onchange="app._onClipsFileSelect('${agent.id}', this)">
+              </label>
+              <button class="btn-get-clips" id="btn-upload-${agent.id}" onclick="app.lancerClipsUpload('${agent.id}')" disabled>
                 Créer les Shorts
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </button>
             </div>
-            <p class="clips-hint">Formats supportés : YouTube · Vidéo longue → jusqu'à 15 Shorts viraux en 9:16 avec sous-titres</p>
+            <p class="clips-hint">MP4, MOV, AVI · Transcription automatique · Jusqu'à 2 Shorts viraux en 9:16</p>
           </div>
         </div>
 
@@ -1098,6 +1100,133 @@ class AppCreatis {
     return m ? m[1] : null;
   }
 
+  _toggleClipsSource(agentId, mode) {
+    const urlRow = document.getElementById(`clips-url-row-${agentId}`);
+    const uploadRow = document.getElementById(`clips-upload-row-${agentId}`);
+    const btnUrl = document.getElementById(`toggle-url-${agentId}`);
+    const btnUpload = document.getElementById(`toggle-upload-${agentId}`);
+    const hint = document.getElementById(`clips-hint-${agentId}`);
+    if (mode === 'url') {
+      urlRow.style.display = ''; uploadRow.style.display = 'none';
+      btnUrl.classList.add('active'); btnUpload.classList.remove('active');
+      if (hint) hint.textContent = 'Formats supportés : YouTube · Vidéo longue → jusqu\'à 2 Shorts viraux en 9:16 avec sous-titres';
+    } else {
+      urlRow.style.display = 'none'; uploadRow.style.display = '';
+      btnUrl.classList.remove('active'); btnUpload.classList.add('active');
+      if (hint) hint.textContent = 'MP4, MOV, AVI · Transcription automatique · Jusqu\'à 2 Shorts viraux en 9:16';
+    }
+  }
+
+  _onClipsFileSelect(agentId, input) {
+    const file = input.files?.[0];
+    const nameEl = document.getElementById(`clips-upload-name-${agentId}`);
+    const btn = document.getElementById(`btn-upload-${agentId}`);
+    if (file) {
+      if (nameEl) nameEl.textContent = `${file.name} (${(file.size / 1_048_576).toFixed(1)} Mo)`;
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async lancerClipsUpload(agentId) {
+    const fileInput = document.getElementById(`clips-file-${agentId}`);
+    const file = fileInput?.files?.[0];
+    if (!file) { this.afficherToast('❌ Sélectionne une vidéo', 'erreur'); return; }
+
+    const btn = document.getElementById(`btn-upload-${agentId}`);
+    const resultsZone = document.getElementById(`clips-results-${agentId}`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Upload…'; }
+    if (resultsZone) resultsZone.innerHTML = `
+      <div class="clips-loading">
+        <div class="clips-loading-steps">
+          <div class="clips-step actif" id="cstep-up-0">📤 Upload de la vidéo…</div>
+          <div class="clips-step" id="cstep-up-1">🎙️ Transcription Whisper…</div>
+          <div class="clips-step" id="cstep-up-2">🧠 Analyse IA…</div>
+          <div class="clips-step" id="cstep-up-3">✅ Clips identifiés !</div>
+        </div>
+        <div id="clips-upload-progress" style="margin-top:12px">
+          <div style="height:4px;background:var(--bordure);border-radius:2px;overflow:hidden">
+            <div id="clips-upload-bar" style="height:100%;background:var(--accent);width:0%;transition:width .3s"></div>
+          </div>
+        </div>
+        <p id="clips-upload-msg" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px"></p>
+      </div>`;
+
+    const step = i => { const el = document.getElementById(`cstep-up-${i}`); if (el) el.classList.add('actif'); };
+    const bar  = document.getElementById('clips-upload-bar');
+    const msg  = document.getElementById('clips-upload-msg');
+
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      // 1. Obtenir les credentials Railway
+      const tokenRes = await fetch('/api/repurpose', { method: 'POST', headers,
+        body: JSON.stringify({ mode: 'upload-token' }) });
+      const tokenData = await tokenRes.json();
+      if (!tokenData.ok) throw new Error(tokenData.error || 'Erreur authentification');
+
+      // 2. Upload direct vers Railway avec progression
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadData = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${tokenData.railway_url}/upload-video`);
+        xhr.setRequestHeader('Authorization', `Bearer ${tokenData.token}`);
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable && bar) bar.style.width = `${Math.round(e.loaded / e.total * 45)}%`;
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+          else reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`));
+        };
+        xhr.onerror = () => reject(new Error('Erreur réseau pendant l\'upload'));
+        xhr.send(formData);
+      });
+      if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
+      if (bar) bar.style.width = '50%';
+      step(1);
+      if (msg) msg.textContent = 'Transcription en cours (peut prendre 2-5 min pour une longue vidéo)…';
+
+      // 3. Polling /upload-status/{job_id} jusqu'à done/error
+      const { job_id, video_id } = uploadData;
+      const poll = async () => {
+        const r = await fetch(`${tokenData.railway_url}/upload-status/${job_id}`,
+          { headers: { 'Authorization': `Bearer ${tokenData.token}` } });
+        if (!r.ok) throw new Error(`Polling erreur ${r.status}`);
+        return r.json();
+      };
+      let statusData;
+      for (let attempt = 0; attempt < 120; attempt++) {
+        await new Promise(res => setTimeout(res, 5000));
+        statusData = await poll();
+        if (statusData.status === 'done') break;
+        if (statusData.status === 'error') throw new Error(statusData.error || 'Transcription échouée');
+        if (bar) bar.style.width = `${50 + Math.min(attempt, 25)}%`;
+      }
+      if (statusData?.status !== 'done') throw new Error('Timeout transcription (>10 min)');
+      if (bar) bar.style.width = '80%';
+      step(2);
+      if (msg) msg.textContent = '';
+
+      // 4. Identifier les clips via Groq
+      const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers,
+        body: JSON.stringify({ mode: 'clips', segments: statusData.segments, video_id,
+          title: file.name.replace(/\.[^.]+$/, ''), duration: statusData.duration, n_clips: 5 }) });
+      const clipsData = await clipsRes.json();
+      if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+
+      if (bar) bar.style.width = '100%';
+      step(3);
+      this._afficherClipsResultats(agentId, clipsData.result);
+
+    } catch (err) {
+      this.afficherToast(`❌ ${err.message}`, 'erreur');
+      if (resultsZone) resultsZone.innerHTML = '';
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'; }
+    }
+  }
+
   async lancerClips(agentId) {
     const agent = AGENTS.find(a => a.id === agentId);
     if (!agent) return;
@@ -1105,6 +1234,17 @@ class AppCreatis {
     const urlInput = document.getElementById(`clips-url-${agentId}`);
     const url = urlInput?.value?.trim();
     if (!url) { this.afficherToast('❌ Entre une URL YouTube', 'erreur'); urlInput?.focus(); return; }
+
+    // Court-circuit : si les clips sont en cache pour cette vidéo, pas besoin de re-fetcher le transcript
+    const _extractId = u => (u.match(/[?&]v=([a-zA-Z0-9_-]{11})/) || u.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/))?.[1] || null;
+    const currentVid = _extractId(url);
+    const fromLS = (() => { try { const s = localStorage.getItem(`clips_${agentId}`); return s ? JSON.parse(s) : null; } catch(e) { return null; } })();
+    if (currentVid && fromLS?.clips?.length && _extractId(fromLS.url || '') === currentVid && (Date.now() - (fromLS.ts || 0)) < 3600000) {
+      this._clipsCache = this._clipsCache || {};
+      this._clipsCache[agentId] = { clips: fromLS.clips, url };
+      this._afficherClipsResultats(agentId, { clips: fromLS.clips, youtube_url: url });
+      return;
+    }
 
     const btn = document.getElementById(`btn-clips-${agentId}`);
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
@@ -1157,7 +1297,7 @@ class AppCreatis {
               method: 'POST', headers,
               body: JSON.stringify({ url, mode: 'clips_status', session_id: sessionId })
             });
-            const job = await res.json();
+            let job; try { job = await res.json(); } catch(e) { reject(new Error(`Erreur serveur (${res.status})`)); return; }
             if (!res.ok) { reject(new Error(job.error || `Erreur ${res.status}`)); return; }
 
             // Mettre à jour la progression
@@ -1350,6 +1490,7 @@ _afficherClipsResultats(agentId, data) {
     // Cache clips pour les passer à _genererShorts sans refaire Gemini
     this._clipsCache = this._clipsCache || {};
     this._clipsCache[agentId] = { clips: data.clips, url: data.youtube_url };
+    try { localStorage.setItem(`clips_${agentId}`, JSON.stringify({ clips: data.clips, url: data.youtube_url, ts: Date.now() })); } catch(e) {}
 
     if (!data.clips?.length) {
       zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip identifié.</p>`;
@@ -1427,29 +1568,36 @@ _afficherClipsResultats(agentId, data) {
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Génération en cours…'; }
     zone.innerHTML = `<div class="shorts-progress" id="sp-${agentId}">
+      <div class="shorts-prog-header">
+        <span id="spt-${agentId}">Connexion au stream YouTube…</span>
+        <span class="shorts-prog-pct" id="spp-${agentId}">0%</span>
+      </div>
       <div class="shorts-prog-bar"><div class="shorts-prog-fill" id="spf-${agentId}"></div></div>
-      <span id="spt-${agentId}">Connexion au stream YouTube…</span>
     </div>`;
 
     try {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
-      // Passe les clips déjà identifiés → évite Gemini dans Cloud Run
-      const cached = this._clipsCache?.[agentId];
+      // Passe les clips déjà identifiés → évite le re-fetch transcript YouTube
+      const inMem = this._clipsCache?.[agentId];
+      const fromLS = (() => { try { const s = localStorage.getItem(`clips_${agentId}`); return s ? JSON.parse(s) : null; } catch(e) { return null; } })();
+      const cached = inMem || (fromLS?.url === url && (Date.now() - (fromLS?.ts || 0)) < 3600000 ? fromLS : null);
       const preClips = cached?.clips || null;
 
       const startRes = await fetch('/api/repurpose', {
         method: 'POST', headers,
-        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 15, clips: preClips })
+        body: JSON.stringify({ mode: 'shorts_start', url, n_clips: 2, clips: preClips })
       });
-      const startData = await startRes.json();
+      let startData; try { startData = await startRes.json(); } catch(e) { throw new Error(`Erreur serveur (${startRes.status}) — réessaie`); }
       if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage');
 
-      // Architecture séquentielle : job_ids actifs + pending_clips à venir
+      // Architecture séquentielle : 1 job actif + pending_clips à venir + done_clips accumulés
       let jobIds = startData.job_ids || [];
       let pendingClips = startData.pending_clips || [];
+      let doneClips = [];
       const totalClips = jobIds.length + pendingClips.length;
+      let lastClipNum = 0, clipPollStart = 0, pctCur = 5;
       if (!jobIds?.length) throw new Error('Pas de jobs retournés');
 
       const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1461,17 +1609,32 @@ _afficherClipsResultats(agentId, data) {
 
         const r = await fetch('/api/repurpose', {
           method: 'POST', headers,
-          body: JSON.stringify({ mode: 'shorts_status', job_ids: jobIds, pending_clips: pendingClips })
+          body: JSON.stringify({ mode: 'shorts_status', job_ids: jobIds, pending_clips: pendingClips, done_clips: doneClips, total_clips: totalClips })
         });
-        const d = await r.json();
+        let d; try { d = await r.json(); } catch(e) { continue; }
+        if (!r.ok || d.status === 'error') throw new Error(d.error || `Erreur génération (${r.status})`);
 
-        // Met à jour l'état des jobs (Vercel peut avoir lancé le suivant)
+        // Met à jour l'état (le serveur ne retourne plus que 1 job actif à la fois)
         if (d.job_ids) jobIds = d.job_ids;
         if (d.pending_clips !== undefined) pendingClips = d.pending_clips;
+        if (d.done_clips) doneClips = d.done_clips;
 
         if (d.progress && textEl) textEl.textContent = d.progress;
-        const pct = Math.min(5 + Math.round((jobIds.filter ? 0 : 0) + poll * 2), 90);
-        if (fillEl) fillEl.style.width = `${Math.min(5 + poll * 2, 90)}%`;
+        const pctEl = document.getElementById(`spp-${agentId}`);
+        const m = (d.progress || '').match(/Short\s+(\d+)\s*\/\s*(\d+)/i);
+        if (m) {
+          const clipNum = parseInt(m[1]), totalC = parseInt(m[2]);
+          if (clipNum !== lastClipNum) { lastClipNum = clipNum; clipPollStart = poll; }
+          const perClip = 85 / totalC;
+          const base = (clipNum - 1) * perClip + 5;
+          const within = Math.min((poll - clipPollStart) * 2.5, perClip * 0.85);
+          pctCur = Math.max(pctCur, Math.round(base + within));
+        } else {
+          pctCur = Math.max(pctCur, Math.min(5 + poll, 28));
+        }
+        pctCur = Math.min(pctCur, 95);
+        if (fillEl) fillEl.style.width = `${pctCur}%`;
+        if (pctEl) pctEl.textContent = `${pctCur}%`;
 
         if (d.status === 'done' && d.clips?.length) {
           this._afficherShorts(agentId, d.clips, d.title);
@@ -1491,17 +1654,29 @@ _afficherClipsResultats(agentId, data) {
     const zone = document.getElementById(`shorts-zone-${agentId}`);
     if (!zone) return;
     const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-    const cardsHtml = clips.map((c, i) => `
+    const cardsHtml = clips.map((c, i) => {
+      const preview = c.download_url ? `
+        <div class="short-card-preview" onclick="const v=this.querySelector('video');if(v.paused){v.play();}else{v.pause();}">
+          <video src="${c.download_url}" preload="metadata" muted playsinline onloadedmetadata="this.currentTime=0.01"></video>
+          <div class="short-card-play"><span>▶</span></div>
+        </div>` : '';
+      return `
       <div class="short-card">
-        <div class="short-card-num">Short ${i+1}</div>
-        <div class="short-card-score">${c.score}/100</div>
-        <div class="short-card-hook">${this._escapeHtml(c.hook || '')}</div>
-        <div class="short-card-dur">${fmt(c.start)} → ${fmt(c.end)} · ${c.duration}s</div>
-        <a class="btn-dl-short" href="${c.download_url}" download="${c.filename}" target="_blank">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Télécharger MP4
-        </a>
-      </div>`).join('');
+        ${preview}
+        <div class="short-card-meta">
+          <div class="short-card-top">
+            <span class="short-card-num">Short ${i+1}</span>
+            <span class="short-card-score">${c.score}/100</span>
+          </div>
+          <div class="short-card-hook">${this._escapeHtml(c.hook || '')}</div>
+          <div class="short-card-dur">${fmt(c.start)} → ${fmt(c.end)} · ${c.duration}s</div>
+          <a class="btn-dl-short" href="${c.download_url}" download="${c.filename}" target="_blank">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger MP4
+          </a>
+        </div>
+      </div>`;
+    }).join('');
     zone.innerHTML = `
       <div class="shorts-resultats">
         <div class="shorts-resultats-titre">🎬 ${clips.length} Shorts 9:16 prêts — ${this._escapeHtml((title||'').substring(0,50))}</div>
@@ -3302,3 +3477,4 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
   app = new AppCreatis();
 });
+

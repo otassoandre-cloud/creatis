@@ -42,6 +42,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 JOBS:         dict = {}
 CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
+UPLOAD_JOBS:  dict = {}
 
 
 _bgutil_ok: bool = False
@@ -382,11 +383,11 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
 # ── 2. TRANSCRIPTION ─────────────────────────────────────────────────────────
 
 def _extract_audio(media_path: str, out_path: str) -> float:
-    """Extrait audio en mp3 mono 16kHz 64kbps. Retourne la taille en MB."""
+    """Extrait audio en mp3 mono 16kHz 32kbps. Retourne la taille en MB."""
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", media_path,
-        "-ar", "16000", "-ac", "1", "-b:a", "64k",
+        "-ar", "16000", "-ac", "1", "-b:a", "32k",
         out_path,
     ]
     r = subprocess.run(cmd, capture_output=True, timeout=120)
@@ -927,9 +928,30 @@ def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
 
 
+async def _run_upload_transcription(job_id: str, file_path: Path) -> None:
+    try:
+        UPLOAD_JOBS[job_id]["progress"] = "Transcription en cours…"
+        result = await transcribe(str(file_path))
+        logger.info(f"[upload] transcription OK: {len(result['segments'])} segments")
+        UPLOAD_JOBS[job_id] = {
+            "status": "done",
+            "video_id": UPLOAD_JOBS[job_id]["video_id"],
+            "segments": result["segments"],
+            "duration": result["duration"],
+        }
+    except Exception as e:
+        logger.error(f"[upload] transcription error: {e}")
+        UPLOAD_JOBS[job_id] = {
+            "status": "error",
+            "video_id": UPLOAD_JOBS[job_id].get("video_id", ""),
+            "error": str(e),
+        }
+
+
 @app.post("/upload-video")
-async def upload_video(file: UploadFile = File(...), _=Depends(auth)):
+async def upload_video(file: UploadFile = File(...), tasks: BackgroundTasks = BackgroundTasks(), _=Depends(auth)):
     video_id = "u_" + str(uuid.uuid4())[:12]
+    job_id   = str(uuid.uuid4())[:12]
     upload_path = UPLOAD_DIR / video_id
     upload_path.mkdir(parents=True, exist_ok=True)
     file_path = upload_path / "source.mp4"
@@ -941,10 +963,18 @@ async def upload_video(file: UploadFile = File(...), _=Depends(auth)):
                 break
             f.write(chunk)
     size_mb = file_path.stat().st_size / 1_048_576
-    logger.info(f"[upload] {size_mb:.1f} MB sauvegardé")
-    result = await transcribe(str(file_path))
-    logger.info(f"[upload] transcription OK: {len(result['segments'])} segments")
-    return {"ok": True, "video_id": video_id, "segments": result["segments"], "duration": result["duration"]}
+    logger.info(f"[upload] {size_mb:.1f} MB sauvegardé → job {job_id}")
+    UPLOAD_JOBS[job_id] = {"status": "processing", "video_id": video_id, "progress": "Fichier reçu…"}
+    tasks.add_task(_run_upload_transcription, job_id, file_path)
+    return {"ok": True, "job_id": job_id, "video_id": video_id}
+
+
+@app.get("/upload-status/{job_id}")
+def upload_status(job_id: str, _=Depends(auth)):
+    job = UPLOAD_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
 
 
 @app.get("/transcript/{video_id}")
