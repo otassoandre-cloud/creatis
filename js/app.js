@@ -1087,6 +1087,17 @@ class AppCreatis {
     const file = fileInput?.files?.[0];
     if (!file) { this.afficherToast('❌ Sélectionne une vidéo', 'erreur'); return; }
 
+    // Pour les petits fichiers (<500MB), tester ffmpeg.wasm d'abord.
+    // Si indisponible (mobile/Safari), basculer sur upload direct Railway.
+    const DIRECT_LIMIT = 500 * 1024 * 1024;
+    if (file.size < DIRECT_LIMIT) {
+      let ffmpegOk = false;
+      try { await this._loadFFmpeg(); ffmpegOk = true; } catch(e) {
+        console.warn('[clips] ffmpeg.wasm non disponible, fallback upload direct:', e.message);
+      }
+      if (!ffmpegOk) return this._lancerClipsDirectUpload(agentId, file);
+    }
+
     this._localVideoFile = this._localVideoFile || {};
     this._localVideoFile[agentId] = file;
 
@@ -1119,7 +1130,7 @@ class AppCreatis {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
-      // 1. Charger ffmpeg.wasm (SharedArrayBuffer requis — headers COOP/COEP sur /app)
+      // 1. Charger ffmpeg.wasm (déjà chargé si pre-test passé)
       setMsg('Chargement ffmpeg.wasm (~30 MB, une seule fois)…');
       await this._loadFFmpeg();
       setBar(8);
@@ -1201,6 +1212,82 @@ class AppCreatis {
         btn.disabled = false;
         btn.innerHTML = 'Créer les Shorts <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
       }
+    }
+  }
+
+  async _lancerClipsDirectUpload(agentId, file) {
+    const btn = document.getElementById(`btn-upload-${agentId}`);
+    const resultsZone = document.getElementById(`clips-results-${agentId}`);
+    const dlIco = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Analyse…'; }
+    if (resultsZone) resultsZone.innerHTML = `
+      <div class="clips-loading">
+        <div class="clips-loading-steps">
+          <div class="clips-step actif" id="cstep-up-0">📤 Upload vidéo…</div>
+          <div class="clips-step" id="cstep-up-1">🎙️ Transcription Whisper…</div>
+          <div class="clips-step" id="cstep-up-2">🧠 Analyse IA…</div>
+          <div class="clips-step" id="cstep-up-3">✅ Clips identifiés !</div>
+        </div>
+        <div id="clips-upload-progress" style="margin-top:12px">
+          <div style="height:4px;background:var(--bordure);border-radius:2px;overflow:hidden">
+            <div id="clips-upload-bar" style="height:100%;background:var(--accent);width:0%;transition:width .3s"></div>
+          </div>
+        </div>
+        <p id="clips-upload-msg" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px">Upload ${(file.size/1e6).toFixed(0)} MB…</p>
+      </div>`;
+    const step = i => { const el = document.getElementById(`cstep-up-${i}`); if (el) el.classList.add('actif'); };
+    const setBar = p => { const el = document.getElementById('clips-upload-bar'); if (el) el.style.width = p + '%'; };
+    const setMsg = t => { const el = document.getElementById('clips-upload-msg'); if (el) el.textContent = t; };
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      const tokenRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+      const tokenData = await tokenRes.json();
+      if (!tokenData.ok) throw new Error(tokenData.error || 'Erreur auth Railway');
+
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      const uploadData = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${tokenData.railway_url}/upload-video`);
+        xhr.setRequestHeader('Authorization', `Bearer ${tokenData.token}`);
+        xhr.timeout = 600000;
+        xhr.upload.onprogress = e => { if (e.lengthComputable) { setBar(Math.round(e.loaded/e.total*50)); setMsg(`Upload ${Math.round(e.loaded/e.total*100)}%…`); } };
+        xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) { try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse invalide')); } } else reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`)); };
+        xhr.onerror = () => reject(new Error('Erreur réseau'));
+        xhr.ontimeout = () => reject(new Error('Timeout upload (10 min)'));
+        xhr.send(formData);
+      });
+      if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
+      setBar(55); step(1); setMsg('Transcription en cours…');
+
+      let segments = null, duration = 0;
+      for (let poll = 0; poll < 120; poll++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const r = await fetch(`${tokenData.railway_url}/upload-status/${uploadData.job_id}`, { headers: { 'Authorization': `Bearer ${tokenData.token}` } });
+        const d = await r.json();
+        if (d.status === 'done') { segments = d.segments; duration = d.duration; break; }
+        if (d.status === 'error') throw new Error(d.error || 'Erreur transcription');
+        setBar(55 + Math.min(poll * 0.15, 18));
+      }
+      if (!segments) throw new Error('Timeout transcription (6 min)');
+      setBar(78); step(2); setMsg('');
+
+      const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
+        mode: 'clips', segments, video_id: uploadData.video_id,
+        title: file.name.replace(/\.[^.]+$/, ''), duration, n_clips: 5
+      }) });
+      const clipsData = await clipsRes.json();
+      if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+      setBar(100); step(3);
+      this._afficherClipsResultats(agentId, clipsData.result);
+    } catch(err) {
+      const msg = err?.message || String(err) || 'Erreur inconnue';
+      console.error('[clips-direct]', err);
+      this.afficherToast(`❌ ${msg}`, 'erreur', 8000);
+      if (resultsZone) resultsZone.innerHTML = '';
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = `Créer les Shorts ${dlIco}`; }
     }
   }
 
