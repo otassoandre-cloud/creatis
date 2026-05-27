@@ -1008,14 +1008,22 @@ class AppCreatis {
         const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
         const ffBase = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
 
-        const [coreURL, wasmURL] = await Promise.all([
+        // Charger tous les scripts en blob URLs (même origine)
+        // worker.js : remplacer les imports relatifs par des URLs absolues (blob modules ne résolvent pas "./X")
+        const [coreURL, wasmURL, workerSrc] = await Promise.all([
           toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
           toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+          fetch(`${ffBase}/worker.js`).then(r => r.text()),
         ]);
+        const workerFixed = workerSrc
+          .replace(/from "\.\//g, `from "${ffBase}/`)
+          .replace(/import "\.\//g, `import "${ffBase}/`);
+        const classWorkerURL = URL.createObjectURL(new Blob([workerFixed], { type: 'text/javascript' }));
 
         const { FFmpeg } = await import(`${ffBase}/index.js`);
         const ffmpeg = new FFmpeg();
-        await ffmpeg.load({ coreURL, wasmURL });
+        await ffmpeg.load({ classWorkerURL, coreURL, wasmURL });
+        URL.revokeObjectURL(classWorkerURL);
         this._ffmpeg = ffmpeg;
         return ffmpeg;
       } catch(e) {
