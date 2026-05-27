@@ -994,7 +994,27 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth
                 f.write(chunk)
         size_mb = audio_path.stat().st_size / 1_048_576
         logger.info(f"[transcribe-audio] {file.filename} {size_mb:.1f}MB")
-        result = await transcribe(str(audio_path))
+        # Envoi direct à Groq sans ré-extraction (l'audio est déjà extrait par le browser)
+        if GROQ_API_KEY and size_mb <= 24:
+            async with httpx.AsyncClient(timeout=180) as c:
+                with open(audio_path, "rb") as af:
+                    r = await c.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                        data={"model": "whisper-large-v3", "response_format": "verbose_json"},
+                        files={"file": ("audio.mp3", af, "audio/mpeg")},
+                    )
+            r.raise_for_status()
+            data = r.json()
+            segments = [
+                {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+                for s in data.get("segments", [])
+            ]
+            duration = float(data.get("duration", 0)) or (segments[-1]["end"] if segments else 0.0)
+            result = {"segments": segments, "duration": duration}
+        else:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: _transcribe_local(str(audio_path)))
         if not result.get("segments"):
             raise HTTPException(502, "Aucun segment — vidéo sans paroles détectées")
         logger.info(f"[transcribe-audio] {len(result['segments'])} segments {result['duration']:.0f}s")
