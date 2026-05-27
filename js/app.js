@@ -1008,20 +1008,14 @@ class AppCreatis {
         const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
         const ffBase = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
 
-        const [coreURL, wasmURL, workerSrc] = await Promise.all([
+        const [coreURL, wasmURL] = await Promise.all([
           toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
           toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
-          fetch(`${ffBase}/worker.js`).then(r => r.text()),
         ]);
-
-        // Remplace les imports relatifs par des URLs absolues (les blob modules ne peuvent pas résoudre "./X")
-        const workerFixed = workerSrc.replace(/from "\.\//g, `from "${ffBase}/`).replace(/import "\.\//g, `import "${ffBase}/`);
-        const classWorkerURL = URL.createObjectURL(new Blob([workerFixed], { type: 'text/javascript' }));
 
         const { FFmpeg } = await import(`${ffBase}/index.js`);
         const ffmpeg = new FFmpeg();
-        await ffmpeg.load({ classWorkerURL, coreURL, wasmURL });
-        URL.revokeObjectURL(classWorkerURL);
+        await ffmpeg.load({ coreURL, wasmURL });
         this._ffmpeg = ffmpeg;
         return ffmpeg;
       } catch(e) {
@@ -1190,7 +1184,9 @@ class AppCreatis {
       this._afficherClipsResultats(agentId, clipsData.result);
 
     } catch (err) {
-      this.afficherToast(`❌ ${err.message}`, 'erreur');
+      const msg = err?.message || String(err) || 'Erreur inconnue';
+      console.error('[creatis-clips]', err);
+      this.afficherToast(`❌ ${msg}`, 'erreur', 8000);
       if (resultsZone) resultsZone.innerHTML = '';
     } finally {
       if (btn) {
