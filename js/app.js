@@ -1003,16 +1003,31 @@ class AppCreatis {
     if (this._ffmpeg) return this._ffmpeg;
     if (this._ffmpegLoading) return this._ffmpegLoading;
     this._ffmpegLoading = (async () => {
-      const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
-      const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
-      const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
-      const ffmpeg = new FFmpeg();
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-      this._ffmpeg = ffmpeg;
-      return ffmpeg;
+      try {
+        const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+        const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
+        const ffBase = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
+
+        const [coreURL, wasmURL, workerSrc] = await Promise.all([
+          toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+          toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+          fetch(`${ffBase}/worker.js`).then(r => r.text()),
+        ]);
+
+        // Remplace les imports relatifs par des URLs absolues (les blob modules ne peuvent pas résoudre "./X")
+        const workerFixed = workerSrc.replace(/from "\.\//g, `from "${ffBase}/`).replace(/import "\.\//g, `import "${ffBase}/`);
+        const classWorkerURL = URL.createObjectURL(new Blob([workerFixed], { type: 'text/javascript' }));
+
+        const { FFmpeg } = await import(`${ffBase}/index.js`);
+        const ffmpeg = new FFmpeg();
+        await ffmpeg.load({ classWorkerURL, coreURL, wasmURL });
+        URL.revokeObjectURL(classWorkerURL);
+        this._ffmpeg = ffmpeg;
+        return ffmpeg;
+      } catch(e) {
+        this._ffmpegLoading = null;
+        throw e;
+      }
     })();
     return this._ffmpegLoading;
   }
