@@ -1042,6 +1042,7 @@ class AppCreatis {
     };
     ffmpeg.on('progress', progressHandler);
     try {
+      try { await ffmpeg.createDir('/input'); } catch {}
       await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
       if (onProgress) onProgress(5, `Extraction audio de ${(file.size / 1e9).toFixed(1)} GB…`);
       await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
@@ -1063,6 +1064,7 @@ class AppCreatis {
     const ffmpeg = await this._loadFFmpeg();
     const duration = endSec - startSec;
     try {
+      try { await ffmpeg.createDir('/input'); } catch {}
       await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
       await ffmpeg.exec([
         '-ss', String(startSec), '-i', `/input/${file.name}`,

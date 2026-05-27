@@ -41,6 +41,7 @@
     { "src": "/js/app-r8.js", "dest": "/js/app.js" },
     { "src": "/js/app-r9.js", "dest": "/js/app.js" },
     { "src": "/js/app-r10.js", "dest": "/js/app.js" },
+    { "src": "/js/app-r11.js", "dest": "/js/app.js" },
     { "src": "/css/app-r4.css", "dest": "/css/app.css" },
     { "src": "/auth", "dest": "/auth.html" },
     { "src": "/auth/callback", "dest": "/auth/callback.html" },
