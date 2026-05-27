@@ -19,6 +19,7 @@ from typing import Optional, List, Dict
 import httpx
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -976,6 +977,33 @@ def upload_status(job_id: str, _=Depends(auth)):
     if not job:
         raise HTTPException(404, "Job introuvable")
     return job
+
+
+@app.post("/reframe-clip")
+async def reframe_clip_endpoint(file: UploadFile = File(...), _=Depends(auth)):
+    """Reframe un segment vidéo en 9:16 (ffmpeg natif). Reçoit un segment MP4 stream-copié."""
+    import shutil
+    from fastapi.responses import FileResponse
+    tmp_dir = WORK_DIR / f"rf_{uuid.uuid4().hex[:8]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    in_path = tmp_dir / "segment.mp4"
+    out_path = tmp_dir / "clip_9x16.mp4"
+    try:
+        with open(in_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _reframe_vertical(str(in_path), str(out_path))
+        )
+        if not out_path.exists():
+            raise HTTPException(500, "Reframe échoué")
+        return FileResponse(
+            str(out_path), media_type="video/mp4",
+            filename="clip_9x16.mp4",
+            background=BackgroundTask(shutil.rmtree, tmp_dir, True)
+        )
+    except Exception as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(500, str(e))
 
 
 @app.post("/transcribe-audio")
