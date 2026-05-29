@@ -389,7 +389,8 @@ async function transcribeAudioUrl(audioUrl) {
 
 // Identification des clips viraux via Groq LLM
 async function identifyViralClips(segments, videoId, title, nClips) {
-  console.log(`[clips] start — GROQ:${!!GROQ_KEY} GEMINI:${!!GEMINI_KEY} TOGETHER:${!!TOGETHER_KEY} segments:${segments.length}`);
+  const _dbg = { groq: !!GROQ_KEY, gemini: !!GEMINI_KEY, together: !!TOGETHER_KEY, segments: segments.length, provider: 'none', groq_status: null, gemini_status: null, raw_sample: '' };
+  console.log(`[clips] start — GROQ:${_dbg.groq} GEMINI:${_dbg.gemini} TOGETHER:${_dbg.together} segments:${_dbg.segments}`);
   // Échantillonnage uniforme sur toute la vidéo (pas juste le début)
   const MAX_CHARS = 7500;
   let sampled = segments;
@@ -428,41 +429,63 @@ ${transcript}`;
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
     signal: AbortSignal.timeout(60000),
   });
+  _dbg.groq_status = r.status; _dbg.provider = r.ok ? 'groq' : 'none';
   console.log('[clips] Groq status:', r.status);
-  // Fallback Gemini Flash si Groq rate-limite ou billing
-  if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
-    console.warn(`[clips] Groq ${r.status}, fallback Gemini Flash`);
+
+  // Fallback Gemini Flash
+  if (!r.ok && GEMINI_KEY) {
+    console.warn(`[clips] Groq ${r.status} → Gemini Flash`);
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
       signal: AbortSignal.timeout(60000),
     });
+    _dbg.gemini_status = geminiRes.status;
     console.log('[clips] Gemini status:', geminiRes.status);
     if (geminiRes.ok) {
-      const geminiData = await geminiRes.json();
-      const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      console.log('[clips] Gemini raw:', geminiText.slice(0, 300));
-      // Normaliser en format OpenAI pour réutiliser le parsing
-      r = { ok: true, json: async () => ({ choices: [{ message: { content: geminiText } }] }) };
-    } else {
-      r = geminiRes;
-    }
+      const gd = await geminiRes.json();
+      const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      _dbg.provider = 'gemini'; _dbg.raw_sample = gt.slice(0, 200);
+      r = { ok: true, json: async () => ({ choices: [{ message: { content: gt } }] }) };
+    } else { r = geminiRes; }
   }
-  // Si tous les LLM en erreur → découpage uniforme (on ne crash pas)
+
+  // Fallback Together AI si Groq et Gemini indisponibles
+  if (!r.ok && TOGETHER_KEY) {
+    console.warn(`[clips] Gemini aussi KO → Together AI`);
+    const tr = await fetch('https://api.together.xyz/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
+      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
+      signal: AbortSignal.timeout(60000),
+    });
+    console.log('[clips] Together status:', tr.status);
+    if (tr.ok) {
+      const td = await tr.json();
+      const tt = td.choices?.[0]?.message?.content || '';
+      _dbg.provider = 'together'; _dbg.raw_sample = tt.slice(0, 200);
+      r = { ok: true, json: async () => ({ choices: [{ message: { content: tt } }] }) };
+    } else { r = tr; }
+  }
+
+  // Tous les LLM KO → découpage uniforme
   if (!r.ok) {
-    const errBody = typeof r.text === 'function' ? await r.text() : '';
-    console.warn(`[clips] LLM error ${r.status}, fallback découpage uniforme: ${errBody.slice(0, 200)}`);
+    const errBody = typeof r.text === 'function' ? await r.text() : String(r.status);
+    _dbg.provider = 'fallback'; _dbg.error = errBody.slice(0, 100);
+    console.warn(`[clips] tous LLM KO, découpage uniforme. debug:`, JSON.stringify(_dbg));
     if (segments.length === 0) throw new Error(`LLM error ${r.status}`);
     const totalDur2 = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-    return Array.from({ length: nClips }, (_, i) => {
+    const fallbackClips = Array.from({ length: nClips }, (_, i) => {
       const s2 = Math.floor((totalDur2 / (nClips + 1)) * (i + 1));
       const seg2 = segments.find(s => s.start >= s2) || segments[Math.floor(i / nClips * segments.length)];
       const st2 = seg2 ? seg2.start : s2;
-      return { video_id: videoId, start: st2, end: Math.min(st2 + 60, totalDur2), title: `Moment ${i + 1}`, hook: seg2?.text?.substring(0, 80) || '', score: 70 };
+      return { video_id: videoId, start: st2, end: Math.min(st2 + 60, totalDur2), title: `Moment ${i + 1}`, hook: seg2?.text?.substring(0, 80) || '', score: 70, _dbg };
     });
+    return fallbackClips;
   }
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
+  _dbg.raw_sample = raw.slice(0, 200);
   console.log('[clips] raw LLM response:', raw.slice(0, 400));
   // Extraire le JSON en trouvant le premier { et dernier } (ignore le texte autour)
   const firstBrace = raw.indexOf('{');
@@ -490,15 +513,17 @@ ${transcript}`;
     .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 15)
     .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
 
-  // Fallback : si Groq n'a rien retourné d'utilisable, découpage uniforme
+  // Fallback : LLM n'a rien retourné d'utilisable → découpage uniforme
   if (clips.length === 0 && segments.length > 0) {
+    _dbg.provider = _dbg.provider + '_empty';
+    console.warn('[clips] 0 clips après parsing, découpage uniforme. debug:', JSON.stringify(_dbg));
     const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
     const n = nClips;
     clips = Array.from({ length: n }, (_, i) => {
       const start = Math.floor((totalDur / (n + 1)) * (i + 1));
       const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / n * segments.length)];
       const s = seg ? seg.start : start;
-      return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70 };
+      return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70, _dbg };
     });
   }
   return clips;
