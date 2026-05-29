@@ -522,8 +522,14 @@ ${transcript}`;
       hook: c.hook || c.accroche || c.description || c.extrait || '',
       score: parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral) || 80
     }))
-    .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 15)
-    .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
+    .filter(c => !isNaN(c.start) && !isNaN(c.end) && c.end > c.start)
+    .map(c => {
+      // Étendre les clips trop courts à 60s (certains LLM retournent des clips de 5-10s)
+      const minDur = 30, targetDur = 60, maxDur = 90;
+      const dur = c.end - c.start;
+      const end = dur < minDur ? c.start + targetDur : Math.min(c.end, c.start + maxDur);
+      return { ...c, end };
+    });
 
   // Fallback : LLM n'a rien retourné d'utilisable → découpage uniforme
   if (clips.length === 0 && segments.length > 0) {
