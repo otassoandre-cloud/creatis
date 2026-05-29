@@ -457,7 +457,14 @@ ${transcript}`;
     const tr = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
-      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
+      body: JSON.stringify({
+        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        messages: [
+          { role: 'system', content: 'Tu es un expert YouTube Shorts. Réponds UNIQUEMENT avec du JSON valide, sans aucun texte avant ou après.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7, max_tokens: 4096
+      }),
       signal: AbortSignal.timeout(60000),
     });
     console.log('[clips] Together status:', tr.status);
@@ -465,8 +472,13 @@ ${transcript}`;
       const td = await tr.json();
       const tt = td.choices?.[0]?.message?.content || '';
       _dbg.provider = 'together'; _dbg.raw_sample = tt.slice(0, 200);
+      console.log('[clips] Together raw:', tt.slice(0, 300));
       r = { ok: true, json: async () => ({ choices: [{ message: { content: tt } }] }) };
-    } else { r = tr; }
+    } else {
+      const errT = await tr.text().catch(() => '');
+      console.warn('[clips] Together error:', tr.status, errT.slice(0, 100));
+      r = tr;
+    }
   }
 
   // Tous les LLM KO → découpage uniforme
