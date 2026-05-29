@@ -27,10 +27,10 @@ class AppCreatis {
     this._mettreAJourChecklistOnboarding();
 
     // Vient de la landing page → aller direct sur clips viraux
-    const lpAgent = new URLSearchParams(window.location.search).get('lp_agent');
-    if (lpAgent === 'clips-viraux') {
-      localStorage.setItem('creatis_onboarding_done', '1');
+    const lpRef = localStorage.getItem('creatis_lp_ref');
+    if (lpRef === 'clips-viraux') {
       localStorage.removeItem('creatis_lp_ref');
+      localStorage.setItem('creatis_onboarding_done', '1');
       setTimeout(() => {
         this.selectionnerAgent('clips-viraux');
         this.afficherToast('🎬 1 génération gratuite disponible — upload ta vidéo !', 'succes', 6000);

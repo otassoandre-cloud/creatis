@@ -591,8 +591,7 @@ window.soumettreLead=function(){
   if(videoUrl)localStorage.setItem('creatis_clips_pending',videoUrl);
   localStorage.setItem('creatis_lp_ref','clips-viraux');
   if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
-  const returnUrl=encodeURIComponent('app.html?lp_agent=clips-viraux');
-  window.location.href=`/auth.html?ref=lp-clips&returnUrl=${returnUrl}#email=${encodeURIComponent(email)}`;
+  window.location.href=`/auth.html?ref=lp-clips&returnUrl=app.html#email=${encodeURIComponent(email)}`;
 };
 })();
 </script>
