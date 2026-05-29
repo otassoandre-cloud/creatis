@@ -114,10 +114,41 @@ const Auth = (() => {
       if (error) throw new Error(error.message);
     },
 
-    /* ── Callback OAuth (appelé depuis auth/callback.html) ── */
+    /* ── Callback OAuth + confirmation email (appelé depuis auth/callback.html) ── */
     async handleOAuthCallback() {
       const client = _createClient();
       if (!client) throw new Error('Supabase non configuré');
+
+      // Supabase v2 : access_token dans le hash (OAuth + email confirmation)
+      const hash = Object.fromEntries(new URLSearchParams(window.location.hash.replace('#', '')));
+      if (hash.access_token) {
+        const { data, error } = await client.auth.setSession({
+          access_token: hash.access_token,
+          refresh_token: hash.refresh_token || ''
+        });
+        if (error) throw new Error(error.message);
+        if (data.session) {
+          _session = data.session;
+          await _syncUtilisateur(data.session.user, data.session);
+          return data.session.user;
+        }
+      }
+
+      // Supabase v2 nouveau format : token_hash dans les query params
+      const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get('token_hash');
+      const type = params.get('type');
+      if (tokenHash && type) {
+        const { data, error } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (error) throw new Error(error.message);
+        if (data.session) {
+          _session = data.session;
+          await _syncUtilisateur(data.session.user, data.session);
+          return data.session.user;
+        }
+      }
+
+      // Fallback : session déjà active
       const { data, error } = await client.auth.getSession();
       if (error) throw new Error(error.message);
       if (!data.session) throw new Error('Session introuvable après authentification');
