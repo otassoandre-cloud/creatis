@@ -10,6 +10,7 @@ const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
+const TOGETHER_KEY = (process.env.TOGETHER_API_KEY || '').trim();
 const RESIDENTIAL_PROXY_URL = (process.env.RESIDENTIAL_PROXY_URL || '').trim();
 // Cookies YouTube (exportés depuis un navigateur connecté) pour accéder aux vidéos géo-restreintes
 const YOUTUBE_COOKIES = (process.env.YOUTUBE_COOKIES || '').trim();
@@ -419,25 +420,37 @@ Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral
 Transcription "${title}" :
 ${transcript}`;
 
-  let r, attempts = 0;
-  while (attempts < 3) {
-    r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const llmBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048, response_format: { type: 'json_object' } };
+  let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...llmBody }),
+    signal: AbortSignal.timeout(60000),
+  });
+  // Fallback Together AI si Groq rate-limite ou billing
+  if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
+    console.warn(`[clips] Groq ${r.status}, fallback Together AI`);
+    r = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-      body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: prompt }], temperature: 0.9, max_tokens: 1024 }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
+      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...llmBody }),
       signal: AbortSignal.timeout(60000),
     });
-    if (r.status === 429) {
-      attempts++;
-      if (attempts >= 3) { const errBody = await r.text(); throw new Error(`Groq LLM error 429: ${errBody}`); }
-      await new Promise(res => setTimeout(res, 25000 * attempts)); // 25s, 50s — TPM recharge en ~20s
-      continue;
-    }
-    break;
   }
-  if (!r.ok) { const errBody = await r.text(); throw new Error(`Groq LLM error ${r.status}: ${errBody}`); }
+  // Si Together AI aussi en erreur → découpage uniforme (on ne crash pas)
+  if (!r.ok) {
+    const errBody = await r.text();
+    console.warn(`[clips] LLM error ${r.status}, fallback découpage uniforme: ${errBody.slice(0, 200)}`);
+    if (segments.length === 0) throw new Error(`LLM error ${r.status}`);
+    const totalDur2 = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
+    return Array.from({ length: nClips }, (_, i) => {
+      const s2 = Math.floor((totalDur2 / (nClips + 1)) * (i + 1));
+      const seg2 = segments.find(s => s.start >= s2) || segments[Math.floor(i / nClips * segments.length)];
+      const st2 = seg2 ? seg2.start : s2;
+      return { video_id: videoId, start: st2, end: Math.min(st2 + 60, totalDur2), title: `Moment ${i + 1}`, hook: seg2?.text?.substring(0, 80) || '', score: 70 };
+    });
+  }
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
-  // Nettoie les balises markdown + extrait le JSON même si entouré de texte
   const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
   const jsonStart = cleaned.indexOf('{"clips"');
   const jsonEnd = cleaned.lastIndexOf('}');
@@ -445,10 +458,23 @@ ${transcript}`;
   let clips = [];
   try { clips = JSON.parse(json).clips || []; }
   catch { const s = json.indexOf('['), e = json.lastIndexOf(']'); if (s !== -1 && e !== -1) try { clips = JSON.parse(json.slice(s, e+1)); } catch {} }
-  return clips
+  clips = clips
     .map(c => ({ video_id: videoId, start: parseFloat(c.start_time), end: parseFloat(c.end_time), title: c.title, hook: c.hook, score: parseInt(c.score) || 80 }))
-    .filter(c => (c.end - c.start) >= 20)
+    .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 20)
     .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
+
+  // Fallback : si Groq n'a rien retourné d'utilisable, découpage uniforme
+  if (clips.length === 0 && segments.length > 0) {
+    const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
+    const n = nClips;
+    clips = Array.from({ length: n }, (_, i) => {
+      const start = Math.floor((totalDur / (n + 1)) * (i + 1));
+      const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / n * segments.length)];
+      const s = seg ? seg.start : start;
+      return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70 };
+    });
+  }
+  return clips;
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -550,16 +576,20 @@ Format : [MINIATURE 1] Texte: | Émotion: | Style:
 
 Réponds directement sans introduction. Tout en français.`;
 
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const contentBody = { model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 };
+  let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.8,
-      max_tokens: 4096
-    })
+    body: JSON.stringify(contentBody)
   });
+  if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
+    console.warn(`[content] Groq ${r.status}, fallback Together AI`);
+    r = await fetch('https://api.together.xyz/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
+      body: JSON.stringify({ ...contentBody, model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' })
+    });
+  }
   if (!r.ok) throw new Error('Erreur génération contenu');
   const data = await r.json();
   return data.choices?.[0]?.message?.content || '';
@@ -578,17 +608,48 @@ module.exports = async (req, res) => {
 
   const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
   const token = (req.headers.authorization || '').replace('Bearer ', '');
+  const contentType = req.headers['content-type'] || '';
+
+  // ── Lire le body EN PREMIER avant tout await (évite de manquer les data events) ──
+  const rawChunks = [];
+  for await (const chunk of req) rawChunks.push(chunk);
+  const rawBody = Buffer.concat(rawChunks);
+
+  // ── Proxy multipart vers Railway (upload-video, transcribe-audio, reframe-clip) ──
+  if (contentType.includes('multipart/form-data')) {
+    const authUser2 = await verifyToken(token);
+    if (!authUser2 && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    const railwayEndpoint = (req.query && req.query.railway) || 'upload-video';
+    if (!['upload-video', 'transcribe-audio', 'reframe-clip'].includes(railwayEndpoint)) {
+      return res.status(400).json({ error: 'Endpoint invalide' });
+    }
+    try {
+      const railwayRes = await fetch(`${REPURPOSE_SERVICE_URL}/${railwayEndpoint}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`, 'Content-Type': contentType },
+        body: rawBody,
+      });
+      if (railwayEndpoint === 'reframe-clip') {
+        const buf = Buffer.from(await railwayRes.arrayBuffer());
+        res.setHeader('Content-Type', railwayRes.headers.get('content-type') || 'video/mp4');
+        return res.status(railwayRes.status).send(buf);
+      }
+      const data = await railwayRes.json().catch(() => ({ ok: false, error: 'Réponse invalide' }));
+      return res.status(railwayRes.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: `Proxy: ${err.message}` });
+    }
+  }
+
+  // ── Parser le JSON body depuis le buffer déjà lu ──
+  let body = {};
+  try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
 
   // Auth requise (Repurpose = Pro uniquement)
   const authUser = await verifyToken(token);
   if (!authUser && !isLocal) {
     return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
-  }
-
-  let body = req.body || {};
-  // Fallback : Vercel peut livrer le body en string brut
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch { body = {}; }
   }
   const mode = body.mode || 'text';
   const url = body.url || '';
@@ -602,13 +663,30 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true, railway_url: REPURPOSE_SERVICE_URL, token: REPURPOSE_SERVICE_SECRET });
   }
 
+  // Proxy polling statut upload (évite CORS mobile)
+  if (mode === 'upload-status') {
+    const jobId = body.job_id;
+    if (!jobId) return res.status(400).json({ error: 'job_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/upload-status/${encodeURIComponent(jobId)}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` }
+      });
+      const data = await r.json().catch(() => ({ status: 'error' }));
+      return res.status(r.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   // Clips depuis fichier uploadé (segments déjà transcrits, pas d'URL YouTube)
   if (mode === 'clips' && body.segments?.length && body.video_id) {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
     try {
       const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
+      const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done',
-        result: { clips, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
+        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });
@@ -660,7 +738,9 @@ module.exports = async (req, res) => {
     if (!url) return res.status(400).json({ error: 'url manquante' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     try {
-      const videoId = extractVideoId(url);
+      const isUploadUrl = url.startsWith('upload:');
+      const uploadVideoId = isUploadUrl ? url.slice('upload:'.length) : null;
+      const videoId = isUploadUrl ? uploadVideoId : extractVideoId(url);
       if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
 
       let clips = preClips?.filter(c => {
@@ -671,6 +751,7 @@ module.exports = async (req, res) => {
         return { ...c, start: s, end: Math.min(Math.max(e, s + 30), s + 90) };
       }) || null;
       if (!clips?.length) {
+        if (isUploadUrl) throw new Error('Clips requis pour les vidéos uploadées');
         if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
         const transcript = await getYouTubeTranscriptSegments(videoId);
         clips = await identifyViralClips(transcript.segments, videoId, transcript.title, n_clips || 3);
@@ -678,7 +759,8 @@ module.exports = async (req, res) => {
 
       const maxClips = Math.min(clips.length, n_clips || 3);
       const selected = clips.slice(0, maxClips).map(clip => ({
-        video_id: videoId,
+        // Pour les uploads, conserver le video_id du clip (u_xxx) ; pour YouTube, utiliser videoId
+        video_id: isUploadUrl ? (clip.video_id || videoId) : videoId,
         start: clip.start_time ?? clip.start,
         end: clip.end_time ?? clip.end,
         meta: { title: clip.title, hook: clip.hook_sentence || clip.hook, score: clip.score,
@@ -933,3 +1015,5 @@ module.exports = async (req, res) => {
     return res.status(502).json({ error: err.message });
   }
 };
+
+module.exports.config = { api: { bodyParser: false } };
