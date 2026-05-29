@@ -420,18 +420,17 @@ Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral
 Transcription "${title}" :
 ${transcript}`;
 
-  const baseBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048 };
+  const baseBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } };
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...baseBody, response_format: { type: 'json_object' } }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...baseBody }),
     signal: AbortSignal.timeout(60000),
   });
   console.log('[clips] Groq status:', r.status);
   // Fallback Together AI si Groq rate-limite ou billing
   if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
     console.warn(`[clips] Groq ${r.status}, fallback Together AI`);
-    // Together AI sans response_format (compatibilité)
     r = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
