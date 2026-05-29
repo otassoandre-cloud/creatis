@@ -119,28 +119,39 @@ const Auth = (() => {
       const client = _createClient();
       if (!client) throw new Error('Supabase non configuré');
 
-      // Essai immédiat (session déjà active ou code déjà échangé)
-      const { data: existing } = await client.auth.getSession();
-      if (existing?.session) {
-        _session = existing.session;
-        await _syncUtilisateur(existing.session.user, existing.session);
-        return existing.session.user;
+      // Supabase v2 PKCE : ?code=xxx dans l'URL → échange explicite
+      const code = new URLSearchParams(window.location.search).get('code');
+      if (code) {
+        const { data, error } = await client.auth.exchangeCodeForSession(code);
+        if (error) throw new Error(error.message);
+        if (data?.session) {
+          _session = data.session;
+          await _syncUtilisateur(data.session.user, data.session);
+          return data.session.user;
+        }
       }
 
-      // Supabase v2 PKCE : ?code=xxx → échange automatique via detectSessionInUrl
-      // On attend l'événement SIGNED_IN (déclenché après l'échange asynchrone)
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Timeout — recharge la page et reconnecte-toi')), 12000);
-        const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
-          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-            clearTimeout(timeout);
-            subscription.unsubscribe();
-            _session = session;
-            try { await _syncUtilisateur(session.user, session); } catch {}
-            resolve(session.user);
-          }
-        });
-      });
+      // Implicit flow : #access_token=xxx dans le hash
+      const hash = Object.fromEntries(new URLSearchParams(window.location.hash.replace('#', '')));
+      if (hash.access_token) {
+        const { data, error } = await client.auth.setSession({ access_token: hash.access_token, refresh_token: hash.refresh_token || '' });
+        if (error) throw new Error(error.message);
+        if (data?.session) {
+          _session = data.session;
+          await _syncUtilisateur(data.session.user, data.session);
+          return data.session.user;
+        }
+      }
+
+      // Fallback : session déjà active
+      const { data } = await client.auth.getSession();
+      if (data?.session) {
+        _session = data.session;
+        await _syncUtilisateur(data.session.user, data.session);
+        return data.session.user;
+      }
+
+      throw new Error('Connexion échouée — réessaie');
     },
 
     /* ── Mode démo (sans compte) ── */
