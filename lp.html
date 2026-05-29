@@ -281,7 +281,7 @@
       <!-- Input row horizontal (OpusClip) -->
       <div class="lp-input-row">
         <div class="lp-pill">
-          <span class="lp-pill-hint">Glisse ta vidéo ici…</span>
+          <input type="text" id="lp-url" class="lp-pill-hint" placeholder="Colle une URL YouTube…" style="background:none;border:none;outline:none;color:var(--texte-doux);font-size:14px;flex:1;min-width:0;" onkeydown="if(event.key==='Enter')lancerDemo()">
           <button class="lp-pill-cta" onclick="lancerDemo()">Obtenez des clips gratuits</button>
         </div>
         <span class="lp-ou">ou</span>
@@ -556,23 +556,24 @@ window.lancerDemo=async function(){
   if(!isYT(url)){
     input.style.outline='2px solid #ef4444';
     setTimeout(()=>input.style.outline='',2000);
-    alert('Entre une URL YouTube valide');return;
+    return;
   }
   videoUrl=url;
   if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_url'});
-  hideHero();
-  const[meta]=await Promise.all([getMeta(url),animer()]);
+  const meta=await getMeta(url);
   videoTitle=meta?.title||'ta vidéo';
-  await showRes(videoTitle);
+  document.getElementById('modal-vid-title').textContent=videoTitle;
+  ouvrirModal();
 };
 
 window.lancerDemoFichier=async function(input){
   const f=input.files[0];if(!f)return;
   videoTitle=f.name.replace(/\.[^.]+$/,'')||'ta vidéo';
+  videoUrl='';
+  localStorage.setItem('creatis_lp_file_name', videoTitle);
   if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_file'});
-  hideHero();
-  await animer();
-  await showRes(videoTitle);
+  document.getElementById('modal-vid-title').textContent=videoTitle;
+  ouvrirModal();
 };
 
 window.ouvrirModal=function(){
@@ -588,9 +589,10 @@ window.soumettreLead=function(){
   }
   err.style.display='none';btn.disabled=true;btn.textContent='Redirection…';
   if(videoUrl)localStorage.setItem('creatis_clips_pending',videoUrl);
+  localStorage.setItem('creatis_lp_ref','clips-viraux');
   if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
-  const p=new URLSearchParams({ref:'lp-clips',returnUrl:'app.html'});
-  window.location.href=`/auth.html?${p}#email=${encodeURIComponent(email)}`;
+  const returnUrl=encodeURIComponent('app.html?lp_agent=clips-viraux');
+  window.location.href=`/auth.html?ref=lp-clips&returnUrl=${returnUrl}#email=${encodeURIComponent(email)}`;
 };
 })();
 </script>

@@ -26,7 +26,16 @@ class AppCreatis {
 
     this._mettreAJourChecklistOnboarding();
 
-    if (!localStorage.getItem('creatis_onboarding_done')) {
+    // Vient de la landing page → aller direct sur clips viraux
+    const lpAgent = new URLSearchParams(window.location.search).get('lp_agent');
+    if (lpAgent === 'clips-viraux') {
+      localStorage.setItem('creatis_onboarding_done', '1');
+      localStorage.removeItem('creatis_lp_ref');
+      setTimeout(() => {
+        this.selectionnerAgent('clips-viraux');
+        this.afficherToast('🎬 1 génération gratuite disponible — upload ta vidéo !', 'succes', 6000);
+      }, 400);
+    } else if (!localStorage.getItem('creatis_onboarding_done')) {
       setTimeout(() => this._afficherOnboarding(), 600);
     } else {
       setTimeout(() => this.selectionnerAgent('clips-viraux'), 300);
