@@ -1,82 +1,48 @@
-/* ===== CRÉATIS — Animations GSAP ===== */
-
-if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
-  console.warn('[Créatis] GSAP non disponible — animations désactivées');
-} else {
-
-gsap.registerPlugin(ScrollTrigger);
+/* ===== CRÉATIS — Animations légères (IntersectionObserver + CSS) ===== */
 
 (function () {
   'use strict';
 
-  // Recalcule les positions après chargement complet (images, fonts)
-  window.addEventListener('load', () => ScrollTrigger.refresh());
+  /* ── Hero — fade simple au chargement ── */
+  const heroEls = [
+    document.querySelector('.hero-badge'),
+    document.querySelector('.hero h1'),
+    document.querySelector('.hero-sous-titre'),
+    document.querySelector('.hero-cta')
+  ].filter(Boolean);
 
-  // ── Utilitaires ────────────────────────────────────────────────────────────
-  function splitWords(el) {
-    const nodes = Array.from(el.childNodes);
-    el.innerHTML = '';
-    nodes.forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent.trim().split(/\s+/).filter(w => w).forEach((w, i, arr) => {
-          const outer = document.createElement('span');
-          outer.style.cssText = 'overflow:hidden;display:inline-block;';
-          const inner = document.createElement('span');
-          inner.className = 'word';
-          inner.style.display = 'inline-block';
-          inner.textContent = w;
-          outer.appendChild(inner);
-          el.appendChild(outer);
-          if (i < arr.length - 1) el.appendChild(document.createTextNode(' '));
-        });
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const outer = document.createElement('span');
-        outer.style.cssText = 'overflow:hidden;display:inline-block;';
-        const inner = document.createElement('span');
-        inner.className = 'word';
-        inner.style.display = 'inline-block';
-        inner.appendChild(node.cloneNode(true));
-        outer.appendChild(inner);
-        el.appendChild(outer);
+  heroEls.forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transition = `opacity 0.6s ease ${i * 0.12}s`;
+  });
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    heroEls.forEach(el => { el.style.opacity = '1'; });
+  }));
+
+  /* ── Fade-in au scroll (opacity seulement — pas de translateY) ── */
+  const style = document.createElement('style');
+  style.textContent = '.anim-ready{opacity:0;transition:opacity .55s ease}.anim-ready.anim-in{opacity:1}';
+  document.head.appendChild(style);
+
+  const TARGETS = '.section-entete,.stat-item,.agent-carte,.etape,.showcase-item,.carte-tarif,.cta-final';
+
+  document.querySelectorAll(TARGETS).forEach(el => el.classList.add('anim-ready'));
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('anim-in');
+        io.unobserve(e.target);
       }
     });
-    return el.querySelectorAll('.word');
-  }
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-  // ── Hero — fade-up mot par mot ─────────────────────────────────────────────
-  const heroTitle = document.querySelector('.hero h1');
-  const heroBadge = document.querySelector('.hero-badge');
-  const heroSub   = document.querySelector('.hero-sous-titre');
-  const heroCta   = document.querySelector('.hero-cta');
+  document.querySelectorAll('.anim-ready').forEach(el => io.observe(el));
 
-  if (heroTitle) {
-    const words = splitWords(heroTitle);
-    const tl = gsap.timeline({ delay: 0.15 });
-    if (heroBadge) tl.from(heroBadge, { opacity: 0, y: 12, duration: 0.45, ease: 'power2.out' });
-    tl.from(words, { opacity: 0, y: 28, duration: 0.55, stagger: 0.04, ease: 'power3.out' }, '-=0.15');
-    if (heroSub) tl.from(heroSub, { opacity: 0, y: 16, duration: 0.45, ease: 'power2.out' }, '-=0.25');
-    if (heroCta) tl.from(heroCta, { opacity: 0, y: 12, duration: 0.4,  ease: 'power2.out' }, '-=0.2');
-  }
-
-  // ── Section entêtes ────────────────────────────────────────────────────────
-  gsap.utils.toArray('.section-entete').forEach(el => {
-    gsap.from(el, {
-      opacity: 0, y: 30, duration: 0.7, ease: 'power2.out',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
-  });
-
-  // ── Stats barre — chaque item se déclenche lui-même ────────────────────────
-  gsap.utils.toArray('.stat-item').forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0, y: 20, duration: 0.5, delay: i * 0.08, ease: 'power2.out',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
-  });
-
-  // ── Stats — compteurs animés ────────────────────────────────────────────────
+  /* ── Compteurs animés ── */
   document.querySelectorAll('.stat-item h3').forEach(el => {
-    const raw   = el.textContent.trim();
+    const raw = el.textContent.trim();
     const match = raw.match(/^([+~]?)(\d[\d\s]*)([x%s]?)(.*)$/);
     if (!match) return;
     const prefix = match[1] || '';
@@ -84,68 +50,24 @@ gsap.registerPlugin(ScrollTrigger);
     const suffix = match[3] || '';
     const rest   = match[4] || '';
     if (isNaN(num) || num <= 1) return;
-    const obj = { val: 0 };
-    ScrollTrigger.create({
-      trigger: el, start: 'top bottom', once: true,
-      onEnter() {
-        gsap.to(obj, {
-          val: num, duration: 1.6, ease: 'power2.out',
-          onUpdate() {
-            const v = Math.round(obj.val);
-            el.textContent = prefix + (v >= 1000 ? v.toLocaleString('fr-FR') : v) + suffix + rest;
-          }
-        });
-      }
-    });
-  });
 
-  // ── Agent cards — chaque carte se déclenche elle-même ─────────────────────
-  gsap.utils.toArray('.agent-carte').forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0, y: 40, scale: 0.97, duration: 0.55,
-      delay: (i % 4) * 0.08,
-      ease: 'power2.out',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
+    const counter = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        counter.unobserve(el);
+        const start = performance.now();
+        const dur = 1400;
+        function step(now) {
+          const p = Math.min((now - start) / dur, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          const v = Math.round(ease * num);
+          el.textContent = prefix + (v >= 1000 ? v.toLocaleString('fr-FR') : v) + suffix + rest;
+          if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    }, { threshold: 0.5 });
+    counter.observe(el);
   });
-
-  // ── Étapes ────────────────────────────────────────────────────────────────
-  gsap.utils.toArray('.etape').forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0, y: 30, duration: 0.6, delay: i * 0.12, ease: 'power2.out',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
-  });
-
-  // ── Showcase miniatures — chaque image se déclenche elle-même ─────────────
-  gsap.utils.toArray('.showcase-item').forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0, scale: 0.94, y: 24, duration: 0.65,
-      delay: i * 0.1,
-      ease: 'power3.out',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
-  });
-
-  // ── Pricing cards — chaque carte se déclenche elle-même ───────────────────
-  gsap.utils.toArray('.carte-tarif').forEach((el, i) => {
-    gsap.from(el, {
-      opacity: 0, y: 50, scale: 0.96, duration: 0.7,
-      delay: i * 0.1,
-      ease: 'back.out(1.4)',
-      scrollTrigger: { trigger: el, start: 'top bottom', once: true }
-    });
-  });
-
-  // ── CTA final ──────────────────────────────────────────────────────────────
-  const ctaFinal = document.querySelector('.cta-final');
-  if (ctaFinal) {
-    gsap.from(ctaFinal, {
-      opacity: 0, y: 30, duration: 0.7, ease: 'power2.out',
-      scrollTrigger: { trigger: ctaFinal, start: 'top bottom', once: true }
-    });
-  }
 
 })();
-
-} // end GSAP guard

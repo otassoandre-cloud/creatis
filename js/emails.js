@@ -29,7 +29,7 @@ const Emails = {
         <h2 style="color:#10b981">Bienvenue sur Créatis, ${user.nom || 'Créateur'} !</h2>
         <p>Ton compte est prêt. Commence à générer des titres, des idées de vidéos et des miniatures avec l'IA.</p>
         <a href="${origin}/app.html" style="display:inline-block;background:#10b981;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;margin:16px 0">Accéder à l'application →</a>
-        <p style="color:#666;font-size:14px">Code promo early adopter : <strong>CREATIS20</strong> (-20% sur le Pro)</p>
+        <p style="color:#666;font-size:14px">Offre de lancement : code <strong>LAUNCH50</strong> pour -50% sur le 1er mois Pro</p>
         <div style="background:#f0fdf4;border-left:4px solid #10b981;padding:16px 20px;margin:20px 0;border-radius:0 8px 8px 0">
           <p style="margin:0 0 8px;font-weight:700;color:#059669">💸 Gagne 30% récurrent avec ton lien affilié</p>
           <p style="margin:0 0 12px;font-size:14px;color:#333">Partage Créatis avec d'autres créateurs YouTube. Pour chaque abonnement Pro (19€/mois), tu touches <strong>5,70€/mois à vie</strong>.</p>

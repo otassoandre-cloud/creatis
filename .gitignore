@@ -107,3 +107,5 @@ preview-short-*.png
 *.obj
 *.mtl
 supabase-prospects-table.sql
+
+.env*.local

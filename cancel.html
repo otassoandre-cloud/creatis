@@ -63,10 +63,10 @@
     .btn-primaire-block:hover { opacity:.9; }
     .btn-ghost-block {
       display:block; padding:12px; font-size:14px;
-      background:transparent; color:var(--texte-muted); border:1px solid var(--bordure);
-      border-radius:var(--radius); text-decoration:none; transition:border-color .15s;
+      background:rgba(245,158,11,0.08); color:#f59e0b; border:1.5px solid #f59e0b;
+      border-radius:var(--radius); text-decoration:none; transition:all .15s; font-weight:600;
     }
-    .btn-ghost-block:hover { border-color:var(--texte-muted); color:var(--texte); }
+    .btn-ghost-block:hover { background:rgba(245,158,11,0.15); color:#f59e0b; }
 
     .footer-links { font-size:12px; color:var(--texte-muted); margin-top:24px; }
     .footer-links a { color:var(--texte-muted); margin:0 8px; text-decoration:none; }
@@ -102,7 +102,7 @@
         <span class="objection-icone">♾️</span>
         <div class="objection-texte">
           <strong>Générations illimitées</strong>
-          <span>Fini les 50 générations — génère autant que tu veux</span>
+          <span>Génère autant que tu veux, sans limite mensuelle</span>
         </div>
       </div>
       <div class="objection">
@@ -115,7 +115,7 @@
       <div class="objection">
         <span class="objection-icone">🖼️</span>
         <div class="objection-texte">
-          <strong>10 miniatures IA / mois</strong>
+          <strong>30 miniatures IA / mois</strong>
           <span>Générées par gpt-image-1, fond réaliste sur-mesure</span>
         </div>
       </div>
@@ -131,15 +131,15 @@
     <div class="promo-incentive">
       <div class="promo-titre">🎁 Offre early adopter — encore disponible</div>
       <div class="promo-code" onclick="copierCode()" title="Cliquer pour copier">
-        CREATIS20
+        CREATIS50
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </div>
-      <div class="promo-sub">-20% sur tous les plans pour toujours · Code limité aux premiers inscrits</div>
+      <div class="promo-sub">-50% sur le plan Pro pour toujours · Code limité aux premiers inscrits</div>
     </div>
 
     <div class="cancel-actions">
       <a href="index.html#tarifs" class="btn-primaire-block">
-        ✨ Voir les tarifs (19€/mois)
+        ✨ Voir les tarifs (9,50€ le 1er mois)
       </a>
       <a href="app.html" class="btn-ghost-block">
         Continuer avec le plan gratuit →
@@ -153,11 +153,11 @@
     </div>
   </div>
 
-  <div class="toast-copied" id="toast-copied">✅ Code CREATIS20 copié !</div>
+  <div class="toast-copied" id="toast-copied">✅ Code CREATIS50 copié !</div>
 
   <script>
     function copierCode() {
-      navigator.clipboard.writeText('CREATIS20').catch(() => {});
+      navigator.clipboard.writeText('CREATIS50').catch(() => {});
       const toast = document.getElementById('toast-copied');
       toast.style.display = 'block';
       setTimeout(() => { toast.style.display = 'none'; }, 2500);

@@ -4,6 +4,20 @@
 
 const AGENTS = [
   {
+    id: 'clips-viraux',
+    icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12l2-2 2 2"/></svg>',
+    nom: 'Clips Viraux',
+    description: 'Transforme n\'importe quelle vidéo en 10 Shorts viraux prêts à publier',
+    couleur: '#f59e0b',
+    type: 'clips',
+    plan: 'gratuit',
+    inputs: [
+      { id: 'url', label: 'URL de la vidéo YouTube à découper', type: 'text', placeholder: 'https://youtube.com/watch?v=...', requis: true }
+    ],
+    construirePrompt(d) { return d.url; }
+  },
+
+  {
     id: 'youtube-complet',
     icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
     nom: 'YouTube Complet',
@@ -537,51 +551,59 @@ Réponds en français. Rapport direct sans commentaires introductifs.`;
   },
 
   {
-    id: 'repurpose',
-    icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
-    nom: 'Repurpose Vidéo',
-    description: 'Transcrit ta vidéo YouTube et génère tweets, posts LinkedIn, idées Shorts et concepts miniatures',
-    couleur: '#10b981',
-    type: 'repurpose',
-    plan: 'pro',
-    inputs: [
-      {
-        id: 'url',
-        label: 'URL de la vidéo YouTube à recycler',
-        type: 'text',
-        placeholder: 'https://youtube.com/watch?v=...',
-        requis: true
-      }
-    ],
-    construirePrompt(d) { return d.url; }
-  },
-
-  {
-    id: 'clips-viraux',
-    icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12l2-2 2 2"/></svg>',
-    nom: 'Clips Viraux',
-    description: 'Transforme n\'importe quelle vidéo YouTube en 5 Shorts/Reels viraux prêts à publier',
-    couleur: '#f59e0b',
-    type: 'clips',
-    plan: 'pro',
-    inputs: [
-      { id: 'url', label: 'URL de la vidéo YouTube à découper', type: 'text', placeholder: 'https://youtube.com/watch?v=...', requis: true }
-    ],
-    construirePrompt(d) { return d.url; }
-  },
-
-  {
     id: 'chat-libre',
     icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>',
-    nom: 'Chat IA Libre',
-    description: 'Pose n\'importe quelle question à Créatis — assistant avec mémoire de conversation',
+    nom: 'Assistant & Support',
+    description: 'Aide sur l\'app, questions générales, support — répond à tout avec mémoire de conversation',
     couleur: '#10b981',
     type: 'chat',
     inputs: [],
     construireSystemPrompt(contexteYT = '') {
-      return `Tu es Créatis, un assistant IA expert en création de contenu YouTube pour créateurs francophones. Tu réponds à toutes les questions sur YouTube : stratégie de contenu, algorithme, SEO, monétisation, partenariats sponsors, communauté, montage, équipement, et croissance de chaîne. Tes réponses sont directes, actionnables et adaptées au marché francophone.${contexteYT ? `\n\nCONTEXTE DE LA CHAÎNE DE L'UTILISATEUR :\n${contexteYT}\n\nUtilise ce contexte pour personnaliser tes conseils.` : ''}
+      return `Tu es l'assistant IA de Créatis — tu joues deux rôles à la fois : support client de l'application ET expert YouTube pour créateurs francophones.
 
-Réponds toujours en français. Sois concis et pratique — préfère 3 conseils actionnables à un long discours.`;
+## CONNAISSANCE DE L'APPLICATION CRÉATIS
+
+**C'est quoi Créatis ?**
+Créatis est un SaaS IA pour créateurs YouTube francophones. Il génère en 30 secondes : scripts complets, titres, descriptions SEO, idées de vidéos, stratégie de croissance, et clips viraux à partir de vidéos uploadées.
+
+**Les agents disponibles :**
+- YouTube Complet : script + titre + description + hashtags en une génération
+- YouTube Short : script vertical optimisé pour les Shorts
+- Idées Vidéos : 10 idées avec angles et hooks selon la niche
+- Titres Viraux : 10 variantes de titres A/B testables
+- Description SEO : description optimisée avec mots-clés YouTube
+- Miniature IA : génération d'image miniature 16:9 par IA
+- Stratégie Croissance : plan d'action 30 jours personnalisé
+- Clips Viraux : découpe automatique d'une longue vidéo en 10 clips courts 9:16
+
+**Plans :**
+- Gratuit : 10 générations/mois pour tester, agents de base
+- Pro : générations illimitées, tous les agents, clips viraux
+- Studio : tout illimité, plusieurs chaînes
+- Pour connaître les tarifs exacts ou upgrader : cliquer sur "Upgrade" dans le tableau de bord
+
+**Programme Affilié :**
+- 30% de commission récurrente à vie sur chaque abonné Pro parrainé
+- Accessible via la sidebar "Navigation > Programme Affilié"
+
+**Questions fréquentes support :**
+- "Comment uploader une vidéo pour les clips ?" → Dans l'agent Clips Viraux, glisser-déposer ou cliquer pour choisir un fichier MP4/MOV depuis l'appareil
+- "Le téléchargement de clip ne fonctionne pas" → Sur mobile, l'app utilise le partage natif iOS/Android. Sur desktop, le clip se télécharge en MP4.
+- "Comment connecter ma chaîne YouTube ?" → Dans le tableau de bord, section "Chaîne YouTube", cliquer sur "Connecter"
+- "Mes générations ne s'affichent plus" → L'historique est accessible via "Navigation > Historique" dans la sidebar
+- "Bug ou problème technique persistant" → Écrire à contact@creatis.app en décrivant le problème
+
+**Ce que tu NE peux PAS résoudre (renvoyer vers contact@creatis.app) :**
+- Remboursements
+- Problèmes de paiement Stripe
+- Bugs techniques persistants après rechargement de page
+${contexteYT ? `\n## CONTEXTE DE LA CHAÎNE DE L'UTILISATEUR\n${contexteYT}\n\nUtilise ce contexte pour personnaliser tes conseils YouTube.` : ''}
+
+## RÔLE EXPERT YOUTUBE
+
+Tu réponds aussi à toutes les questions sur YouTube : stratégie de contenu, algorithme, SEO, monétisation, partenariats sponsors, communauté, montage, équipement, croissance de chaîne. Conseils adaptés au marché francophone.
+
+Réponds toujours en français. Sois direct et concret — 3 points actionnables valent mieux qu'un long discours. Pour les bugs sérieux, renvoie toujours vers contact@creatis.app.`;
     },
     construirePrompt() { return ''; }
   }

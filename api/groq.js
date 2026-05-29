@@ -6,7 +6,8 @@
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
 const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
-const FREE_GENERATION_LIMIT = 50;
+const FREE_GENERATION_LIMIT = 1;  // 1 génération gratuite pour découvrir
+const PRO_GENERATION_LIMIT = 50; // 50/mois en Pro — illimité en Studio
 
 /* ── Rate limiter in-memory (resets on cold start) ── */
 const ipRateLimit = new Map();
@@ -20,6 +21,20 @@ function checkRateLimit(ip) {
   entry.count++;
   ipRateLimit.set(ip, entry);
   return entry.count <= RL_MAX;
+}
+
+const ipDemoLimit = new Map();
+const DEMO_MAX = 3;
+const DEMO_WINDOW = 24 * 60 * 60 * 1000;
+
+function checkDemoLimit(ip) {
+  const now = Date.now();
+  let entry = ipDemoLimit.get(ip);
+  if (!entry || now > entry.reset) entry = { count: 0, reset: now + DEMO_WINDOW };
+  if (entry.count >= DEMO_MAX) return false;
+  entry.count++;
+  ipDemoLimit.set(ip, entry);
+  return true;
 }
 
 /* ── Vérification JWT réelle via Supabase Auth API ── */
@@ -47,11 +62,11 @@ async function verifyTokenStrict(token) {
   } catch { return null; }
 }
 
-/* ── Vérifier quota plan gratuit côté serveur ── */
-async function checkQuotaGratuit(userId) {
+/* ── Vérifier quota selon le plan ── */
+async function checkQuota(userId) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return { ok: true }; // fail open si Supabase down
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_count`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_used,generations_reset_at`, {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
@@ -61,10 +76,22 @@ async function checkQuotaGratuit(userId) {
     const rows = await res.json();
     const user = rows?.[0];
     if (!user) return { ok: true };
-    if (user.plan !== 'gratuit') return { ok: true }; // Pro/Studio = illimité
-    const count = user.generations_count || 0;
-    if (count >= FREE_GENERATION_LIMIT) {
-      return { ok: false, error: `Quota atteint — tu as utilisé tes ${FREE_GENERATION_LIMIT} générations gratuites. Passe au plan Pro pour continuer.` };
+    if (user.plan === 'studio') return { ok: true }; // Studio = illimité
+
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const resetAt = user.generations_reset_at ? new Date(user.generations_reset_at) : null;
+    const resetMonth = resetAt ? `${resetAt.getFullYear()}-${String(resetAt.getMonth() + 1).padStart(2, '0')}` : null;
+    const used = resetMonth === monthKey ? (user.generations_used || 0) : 0;
+
+    if (user.plan === 'gratuit') {
+      if (used >= FREE_GENERATION_LIMIT) {
+        return { ok: false, error: `Ta génération gratuite a été utilisée. Passe au plan Pro pour 50 générations/mois.` };
+      }
+    } else if (user.plan === 'pro') {
+      if (used >= PRO_GENERATION_LIMIT) {
+        return { ok: false, error: `Tu as atteint les ${PRO_GENERATION_LIMIT} générations Pro ce mois-ci. Passe au plan Studio pour des générations illimitées.` };
+      }
     }
     return { ok: true };
   } catch { return { ok: true }; } // fail open si erreur réseau
@@ -93,48 +120,99 @@ module.exports = async (req, res) => {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    if (!token && !isLocal) return res.status(401).json({ error: 'Authentification requise' });
-
-    if (token) {
+    if (!token && !isLocal) {
+      if (!checkDemoLimit(ip)) {
+        return res.status(403).json({ error: 'Limite démo atteinte — crée ton compte gratuit pour voir ton résultat', demo_limit: true });
+      }
+      // Demo mode: allow limited generation, skip quota check
+    } else if (token) {
       const user = await verifyTokenStrict(token);
       if (!user) return res.status(401).json({ error: 'Session expirée — reconnecte-toi' });
 
       /* ── Quota plan gratuit côté serveur ── */
-      const quota = await checkQuotaGratuit(user.id);
+      const quota = await checkQuota(user.id);
       if (!quota.ok) return res.status(429).json({ error: quota.error, quota_exceeded: true });
     }
   }
 
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKey     = process.env.GROQ_API_KEY;
+  const togetherKey = process.env.TOGETHER_API_KEY;
   if (!groqKey) return res.status(500).json({ error: 'Groq API non configurée' });
 
   const { model, messages, temperature, max_tokens } = req.body || {};
   if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Paramètre messages manquant' });
 
-  try {
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const params = {
+    messages,
+    temperature: temperature ?? 0.8,
+    max_tokens: max_tokens || 4096,
+    stream: false
+  };
+
+  /* ── Appel générique (Groq ou Together) ── */
+  async function callLLM(provider) {
+    const isGroq = provider === 'groq';
+    const url    = isGroq
+      ? 'https://api.groq.com/openai/v1/chat/completions'
+      : 'https://api.together.xyz/v1/chat/completions';
+    const key    = isGroq ? groqKey : togetherKey;
+    const mdl    = isGroq
+      ? (model || 'llama-3.3-70b-versatile')
+      : 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
+
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: model || 'llama-3.3-70b-versatile',
-        messages,
-        temperature: temperature ?? 0.8,
-        max_tokens: max_tokens || 4096,
-        stream: false
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model: mdl, ...params })
     });
-
-    if (!groqRes.ok) {
-      const errData = await groqRes.json().catch(() => ({}));
-      console.error('[Groq Proxy] Erreur API:', groqRes.status, errData);
-      return res.status(groqRes.status).json({ error: errData.error?.message || 'Erreur Groq API', code: groqRes.status });
-    }
-
-    const data = await groqRes.json();
-    return res.status(200).json(data);
-
-  } catch (err) {
-    console.error('[Groq Proxy] Erreur réseau:', err.message);
-    return res.status(502).json({ error: 'Impossible de joindre Groq — ' + err.message });
+    return res;
   }
+
+  const MAX_RETRIES = 3;
+  let lastErr = null;
+  let groqRateLimited = false;
+
+  /* ── Tentatives Groq ── */
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const groqRes = await callLLM('groq');
+
+      if (groqRes.status === 429) {
+        const retryAfter = parseInt(groqRes.headers.get('retry-after') || '2', 10);
+        const wait = Math.min(retryAfter * 1000, 6000) * attempt;
+        console.warn(`[Groq] Rate limit (tentative ${attempt}/${MAX_RETRIES}), attente ${wait}ms`);
+        if (attempt < MAX_RETRIES) { await new Promise(r => setTimeout(r, wait)); continue; }
+        groqRateLimited = true;
+        break;
+      }
+
+      if (!groqRes.ok) {
+        const errData = await groqRes.json().catch(() => ({}));
+        console.error('[Groq] Erreur API:', groqRes.status, errData);
+        return res.status(groqRes.status).json({ error: errData.error?.message || 'Erreur Groq API' });
+      }
+
+      return res.status(200).json(await groqRes.json());
+
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_RETRIES) await new Promise(r => setTimeout(r, 1500 * attempt));
+    }
+  }
+
+  /* ── Fallback Together AI ── */
+  if (groqRateLimited && togetherKey) {
+    console.warn('[Together] Fallback activé (Groq rate-limité)');
+    try {
+      const togetherRes = await callLLM('together');
+      if (togetherRes.ok) return res.status(200).json(await togetherRes.json());
+      const errData = await togetherRes.json().catch(() => ({}));
+      console.error('[Together] Erreur:', togetherRes.status, errData);
+    } catch (err) {
+      console.error('[Together] Erreur réseau:', err.message);
+    }
+  }
+
+  console.error('[Groq Proxy] Erreur réseau:', lastErr?.message);
+  return res.status(502).json({ error: 'Impossible de joindre Groq — ' + lastErr?.message });
 };

@@ -1273,7 +1273,7 @@
   .dash-ai-widget { grid-column: 1 / -1; }
 }
 
-/* Tabs mobile — cachés par défaut (desktop) */
+/* Tabs mobile — supprimés, tout s'affiche sur une page */
 .dash-mobile-tabs { display: none; }
 
 @media (max-width: 640px) {
@@ -1292,15 +1292,7 @@
   .dash-agent-footer { padding: 6px 12px; }
   .dash-agent-cta { font-size: 11px; }
   .dash-suggestions-grid { grid-template-columns: 1fr; }
-  /* Tabs */
-  .dash-mobile-tabs { display: flex; border-bottom: 1px solid var(--bordure); margin-bottom: 14px; gap: 0; }
-  .dash-mobile-tab { flex: 1; padding: 10px; font-size: 13px; font-weight: 600; text-align: center; color: var(--texte-muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .dash-mobile-tab.actif { color: var(--vert); border-bottom-color: var(--vert); }
-  .dash-tab-historique { display: none; }
-  .dash-tab-historique.actif { display: block; }
-  .dash-tab-agents { display: block; }
-  .dash-agents-grid.dash-tab-agents { display: grid; grid-template-columns: repeat(2, 1fr); }
-  .dash-tab-agents.masque { display: none !important; }
+  .dash-agents-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
 }
 
 /* Historique */
@@ -2362,7 +2354,7 @@
 .repurpose-resultat { width: 100%; }
 
 /* ── Clips Viraux — OpusClip style ── */
-.panneau-clips { display:flex; flex-direction:column; width:100%; height:100%; overflow-y:auto; background:var(--fond-app); }
+.panneau-clips { flex-direction:column; width:100%; height:100%; overflow-y:auto; background:var(--fond-app); }
 .clips-page { display:flex; flex-direction:column; height:100%; }
 .clips-page-header { padding:14px 20px 0; }
 
@@ -2432,6 +2424,7 @@
 .btn-dl-short { display:flex; align-items:center; justify-content:center; gap:6px; background:#10b981; color:#fff; border-radius:8px; padding:10px; font-size:13px; font-weight:600; text-decoration:none; margin-top:4px; transition:background .15s; }
 .btn-dl-short:hover { background:#059669; }
 /* ── Clips Viraux — style OpusClip ── */
+.clips-result-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .clips-opus-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
 @media (max-width:1100px) { .clips-opus-grid { grid-template-columns:repeat(4,1fr); } }
 @media (max-width:800px)  { .clips-opus-grid { grid-template-columns:repeat(3,1fr); } }
@@ -2439,6 +2432,11 @@
 
 /* Preview 9:16 */
 .clip-opus-preview { position:relative; border-radius:10px; overflow:hidden; background:#111; cursor:pointer; width:100%; height:0; padding-bottom:177.78%; }
+.clip-upload-preview { background:#141414 !important; cursor:default !important; }
+.clip-upload-badge { position:absolute; top:8px; left:8px; background:rgba(16,185,129,.25); color:#10b981; font-size:11px; font-weight:700; border-radius:6px; padding:2px 7px; }
+.clip-upload-dur { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:11px; color:rgba(255,255,255,.5); }
+.clip-upload-preview .clip-play-btn { background:#10b981; color:#fff; cursor:pointer; }
+.clip-upload-preview .clip-play-btn:hover { background:#059669; transform:translate(-50%,-50%) scale(1.1); }
 .clip-play-btn { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; width:42px; height:42px; background:rgba(255,255,255,.88); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; transition:background .15s,transform .15s; }
 .clip-opus-preview:hover .clip-play-btn { background:#10b981; color:#fff; transform:translate(-50%,-50%) scale(1.1); }
 .clip-opus-preview.playing .clip-play-btn { display:none; }

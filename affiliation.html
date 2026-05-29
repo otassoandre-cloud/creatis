@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Programme Affilié Créatis — Partage un outil utile, gagne 30% récurrent</title>
-  <meta name="description" content="Créatis génère des scripts YouTube en 30s. Si tu l'utilises et que tu le recommandes, tu touches 30% récurrent à vie. Aucune grosse audience nécessaire.">
-  <meta property="og:title" content="Programme Affilié Créatis — Recommande un outil utile, gagne 30% à vie">
-  <meta property="og:description" content="Créatis génère scripts, titres et miniatures YouTube en 30s. Partage-le à ta communauté créateurs. 30% récurrent à vie, aucune audience minimum.">
+  <title>Programme Affilié Créatis — 30% récurrent à vie</title>
+  <meta name="description" content="Recommande Créatis à ton audience. 30% récurrent à vie sur chaque abonné Pro que tu amènes. Aucune audience minimale.">
+  <meta property="og:title" content="Programme Affilié Créatis — 30% récurrent à vie">
+  <meta property="og:description" content="Recommande Créatis à ton audience. 30% récurrent à vie. Aucune audience minimale.">
   <meta property="og:image" content="https://creatis.app/images/higgsfield/hero-landing.webp">
   <meta property="og:url" content="https://creatis.app/affiliation">
   <meta property="og:type" content="website">
@@ -20,114 +20,77 @@
     "mainEntity": [
       {"@type":"Question","name":"Comment je génère mon lien affilié ?","acceptedAnswer":{"@type":"Answer","text":"Crée un compte gratuit sur Créatis puis reviens sur la page affiliation. Ton lien unique est généré automatiquement dans le tableau de bord."}},
       {"@type":"Question","name":"Quand je reçois mes commissions ?","acceptedAnswer":{"@type":"Answer","text":"Dès 20€ cumulés, un virement est initié via Stripe. Tu reçois une notification email pour chaque abonnement généré."}},
-      {"@type":"Question","name":"La commission dure vraiment à vie ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois, sans limite de durée."}},
-      {"@type":"Question","name":"Dois-je avoir une grosse audience ?","acceptedAnswer":{"@type":"Answer","text":"Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube. Les scripts TikTok fournis sont conçus pour convertir même avec une petite audience engagée."}}
+      {"@type":"Question","name":"La commission dure vraiment à vie ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois, sans limite de durée."}}
     ]
   }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    try {
+      var _s = JSON.parse(localStorage.getItem('creatis_sb_session') || '{}');
+      window._fastSession = (_s.access_token && (_s.expires_at || 0) > Date.now() / 1000) ? _s : null;
+    } catch { window._fastSession = null; }
+  </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","wqzt6m475j");</script>
   <style>
     * { box-sizing:border-box; }
     body { min-height:100vh; background:var(--bg); font-family:'Inter',sans-serif; color:var(--texte); margin:0; }
-    .page { max-width:760px; margin:0 auto; padding:24px 20px 80px; }
-
-    /* Header */
-    .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:56px; }
+    .page { max-width:680px; margin:0 auto; padding:32px 20px 80px; }
+    .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:64px; }
     .logo { font-size:22px; font-weight:800; color:var(--texte); text-decoration:none; }
     .logo span { color:var(--vert); }
     .btn-app { background:var(--vert); color:#000; padding:8px 18px; border-radius:8px; font-weight:700; font-size:13px; text-decoration:none; }
 
-    /* Hero public */
     .hero { text-align:center; margin-bottom:56px; }
     .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.25); border-radius:20px; padding:6px 14px; font-size:13px; color:var(--vert); font-weight:600; margin-bottom:20px; }
-    .hero h1 { font-size:36px; font-weight:800; line-height:1.15; margin:0 0 16px; }
+    .hero h1 { font-size:38px; font-weight:800; line-height:1.15; margin:0 0 16px; }
     .hero h1 span { color:var(--vert); }
-    .hero-sub { font-size:17px; color:var(--texte-doux); max-width:520px; margin:0 auto 32px; line-height:1.6; }
-    .hero-kpis { display:flex; justify-content:center; gap:32px; margin-bottom:36px; flex-wrap:wrap; }
+    .hero-sub { font-size:16px; color:var(--texte-doux); max-width:480px; margin:0 auto 36px; line-height:1.65; }
+    .kpis { display:flex; justify-content:center; gap:28px; margin-bottom:36px; flex-wrap:wrap; }
     .kpi { text-align:center; }
-    .kpi-val { font-size:30px; font-weight:800; color:var(--vert); }
-    .kpi-label { font-size:12px; color:var(--texte-muted); margin-top:2px; }
-    .hero-cta { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-    .btn-primary { background:var(--vert); color:#000; padding:14px 28px; border-radius:10px; font-weight:700; font-size:15px; text-decoration:none; display:inline-block; transition:opacity .15s; }
+    .kpi-val { font-size:32px; font-weight:800; color:var(--vert); }
+    .kpi-label { font-size:12px; color:var(--texte-muted); margin-top:3px; }
+    .btn-primary { background:var(--vert); color:#000; padding:16px 36px; border-radius:10px; font-weight:800; font-size:16px; text-decoration:none; display:inline-block; transition:opacity .15s; }
     .btn-primary:hover { opacity:.85; }
-    .btn-ghost { background:transparent; border:1px solid var(--bordure); color:var(--texte); padding:14px 28px; border-radius:10px; font-weight:600; font-size:15px; text-decoration:none; display:inline-block; }
 
-    /* Proof */
-    .proof { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.15); border-radius:14px; padding:20px 24px; margin-bottom:48px; display:flex; align-items:center; gap:16px; }
-    .proof-icon { font-size:32px; flex-shrink:0; }
-    .proof-text { font-size:14px; color:var(--texte-doux); line-height:1.5; }
-    .proof-text strong { color:var(--texte); }
-
-    /* Section titles */
-    .section-label { font-size:12px; font-weight:700; color:var(--vert); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
-    .section-title { font-size:22px; font-weight:800; margin:0 0 24px; }
-
-    /* Cards */
-    .card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:24px 28px; margin-bottom:20px; }
-    .card-title { font-size:13px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:16px; }
-
-    /* Steps */
-    .steps { display:grid; gap:16px; margin-bottom:48px; }
-    .step { display:flex; gap:16px; align-items:flex-start; }
-    .step-num { width:32px; height:32px; border-radius:50%; background:rgba(16,185,129,.12); color:var(--vert); font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+    .steps { display:grid; gap:14px; margin-bottom:56px; }
+    .step { display:flex; gap:16px; align-items:flex-start; background:var(--bg-card); border:1px solid var(--bordure); border-radius:14px; padding:20px 22px; }
+    .step-num { width:34px; height:34px; border-radius:50%; background:rgba(16,185,129,.12); color:var(--vert); font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .step-content h3 { font-size:15px; font-weight:700; margin:0 0 4px; }
     .step-content p { font-size:14px; color:var(--texte-doux); margin:0; line-height:1.5; }
 
-    /* Scripts TikTok */
-    .scripts-grid { display:grid; gap:14px; margin-bottom:48px; }
-    .script-card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:12px; padding:20px; position:relative; }
-    .script-tag { display:inline-block; background:rgba(16,185,129,.1); color:var(--vert); font-size:11px; font-weight:700; padding:3px 10px; border-radius:6px; margin-bottom:10px; text-transform:uppercase; letter-spacing:.05em; }
-    .script-hook { font-size:13px; font-weight:700; color:var(--texte-muted); margin-bottom:8px; }
-    .script-body { font-size:14px; color:var(--texte-doux); line-height:1.6; white-space:pre-line; }
-    .script-copy { position:absolute; top:16px; right:16px; background:var(--bg); border:1px solid var(--bordure); color:var(--texte); padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
-    .script-copy:hover { background:var(--vert); color:#000; border-color:var(--vert); }
-    .blur-overlay { filter:blur(4px); pointer-events:none; user-select:none; opacity:.5; }
-    .unlock-banner { text-align:center; padding:24px; background:rgba(16,185,129,.05); border:1px dashed rgba(16,185,129,.3); border-radius:12px; margin-top:8px; }
-    .unlock-banner p { color:var(--texte-doux); font-size:14px; margin:0 0 12px; }
-
-    /* Messages Creator Marketplace */
-    .messages-grid { display:grid; gap:14px; }
-    .msg-card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:12px; padding:20px; position:relative; }
-    .msg-num { font-size:11px; font-weight:700; color:var(--vert); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
-    .msg-body { font-size:14px; color:var(--texte-doux); line-height:1.6; white-space:pre-line; }
-    .msg-copy { position:absolute; top:16px; right:16px; background:var(--bg); border:1px solid var(--bordure); color:var(--texte); padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
-    .msg-copy:hover { background:var(--vert); color:#000; border-color:var(--vert); }
-
-    /* Dashboard stats */
-    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
-    .stat-card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:14px; padding:20px; text-align:center; }
-    .stat-val { font-size:28px; font-weight:800; color:var(--vert); }
+    .card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:28px; margin-bottom:20px; }
+    .card-title { font-size:12px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.07em; margin-bottom:18px; }
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+    .stat-card { background:var(--bg); border:1px solid var(--bordure); border-radius:12px; padding:18px; text-align:center; }
+    .stat-val { font-size:26px; font-weight:800; color:var(--vert); }
     .stat-label { font-size:12px; color:var(--texte-muted); margin-top:4px; }
-
-    /* Lien affilié */
-    .link-box { display:flex; gap:10px; align-items:center; }
-    .link-input { flex:1; background:var(--bg); border:1px solid var(--bordure); border-radius:8px; padding:12px 16px; font-size:14px; color:var(--texte); font-family:'Inter',sans-serif; }
-    .btn-copy { background:var(--vert); color:#000; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; transition:opacity .15s; }
-    .btn-copy:hover { opacity:.85; }
-    .commission-info { display:flex; gap:10px; margin-top:14px; }
-    .comm-item { flex:1; background:var(--bg); border:1px solid var(--bordure); border-radius:10px; padding:12px; text-align:center; }
+    .link-box { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+    .link-input { flex:1; background:var(--bg); border:1px solid var(--bordure); border-radius:8px; padding:12px 14px; font-size:14px; color:var(--texte); font-family:'Inter',sans-serif; }
+    .btn-copy { background:var(--vert); color:#000; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .share-btns { display:flex; gap:8px; flex-wrap:wrap; }
+    .share-btns button { flex:1; border:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; min-width:100px; }
+    .commission-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+    .comm-item { background:var(--bg); border:1px solid var(--bordure); border-radius:10px; padding:14px; text-align:center; }
     .comm-pct { font-size:20px; font-weight:800; color:var(--vert); }
-    .comm-label { font-size:11px; color:var(--texte-muted); margin-top:2px; }
+    .comm-label { font-size:11px; color:var(--texte-muted); margin-top:3px; }
     .payout-info { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.2); border-radius:10px; padding:14px 18px; font-size:13px; color:var(--texte-doux); margin-top:14px; }
 
-    /* Divider */
-    .divider { border:none; border-top:1px solid var(--bordure); margin:40px 0; }
+    .faq { margin-bottom:48px; }
+    .faq-title { font-size:20px; font-weight:800; text-align:center; margin-bottom:20px; }
+    details { background:var(--bg-card); border:1px solid var(--bordure); border-radius:12px; padding:18px 22px; margin-bottom:10px; }
+    summary { font-weight:700; font-size:15px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; }
+    summary::-webkit-details-marker { display:none; }
+    details p { margin:12px 0 0; color:var(--texte-doux); font-size:14px; line-height:1.6; }
 
-    /* Toast */
     .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--vert); color:#000; padding:10px 22px; border-radius:10px; font-size:13px; font-weight:700; display:none; z-index:99; }
-
-    @media(max-width:600px) {
-      .hero h1 { font-size:26px; }
-      .stats-grid { grid-template-columns:1fr; }
-      .commission-info { flex-direction:column; }
-      .hero-kpis { gap:20px; }
-      .kpi-val { font-size:24px; }
-    }
+    @media(max-width:600px) { .hero h1 { font-size:28px; } .stats-grid,.commission-grid { grid-template-columns:1fr; } .kpis { gap:20px; } }
   </style>
 </head>
 <body>
@@ -137,360 +100,139 @@
       <a href="app.html" class="btn-app">Ouvrir l'app →</a>
     </div>
 
-    <!-- ═══ SECTION PUBLIQUE ═══ -->
+    <!-- Hero -->
     <div class="hero">
-      <div class="hero-badge">Programme Partenaire · Lancement</div>
-      <h1>Tu utilises Créatis.<br><span>Recommande-le.</span><br>Il t'en remercie.</h1>
-      <p class="hero-sub">Créatis génère scripts YouTube, titres et miniatures en 30 secondes. Si c'est utile pour toi, ça l'est pour d'autres créateurs. Chaque abonnement que tu génères te reverse 30% récurrent — tant qu'il reste actif.</p>
-      <div class="hero-kpis">
+      <div class="hero-badge">Programme Partenaire</div>
+      <h1>Recommande Créatis.<br><span>Gagne 30% à vie.</span></h1>
+      <p class="hero-sub">Chaque abonné Pro que tu amènes te rapporte une commission récurrente, tant qu'il reste actif. Aucune audience minimale.</p>
+      <div class="kpis">
         <div class="kpi"><div class="kpi-val">30%</div><div class="kpi-label">Commission récurrente</div></div>
-        <div class="kpi"><div class="kpi-val">5,70€</div><div class="kpi-label">Par abonné Pro / mois</div></div>
         <div class="kpi"><div class="kpi-val">À vie</div><div class="kpi-label">Tant qu'il reste actif</div></div>
-        <div class="kpi"><div class="kpi-val">20€</div><div class="kpi-label">Seuil de virement</div></div>
       </div>
-      <div class="hero-cta">
-        <a href="auth.html?returnUrl=/affiliation" class="btn-primary" id="cta-rejoindre">Obtenir mon lien affilié →</a>
-        <a href="#comment-promouvoir" class="btn-ghost">Comment promouvoir →</a>
-      </div>
-    </div>
-
-    <!-- Proof — Ce que Créatis génère réellement -->
-    <div style="margin-bottom:48px">
-      <div class="section-label">Ce que Créatis génère réellement</div>
-      <div class="section-title">30 secondes. Voici le résultat.</div>
-      <p style="color:var(--texte-doux);font-size:14px;margin-bottom:20px;">Sujet entré : <em>"Comment économiser 400€/mois sans changer de salaire"</em></p>
-      <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:14px;padding:20px 24px;margin-bottom:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--vert);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">5 titres générés</div>
-        <ul style="margin:0;padding-left:18px;color:var(--texte-doux);font-size:14px;line-height:2">
-          <li>🔴 J'ai économisé 400€/mois sans changer de salaire</li>
-          <li>Ces 3 habitudes m'ont coûté 400€/mois pendant 2 ans</li>
-          <li>400€ économisés en 30 jours — mon bilan honnête</li>
-          <li>Tu dépenses trop ? Ces 3 changements m'ont transformé</li>
-          <li>Comment économiser quand on gagne 2 000€ net</li>
-        </ul>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:14px;padding:20px 24px;margin-bottom:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--vert);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Début de script généré</div>
-        <p style="font-size:14px;color:var(--texte-doux);font-style:italic;margin:0;line-height:1.7">"Il y a 18 mois, je perdais 400€ par mois sans m'en rendre compte. Pas sur des restaurants ni des vacances. Sur des trucs invisibles..."</p>
-      </div>
-      <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--texte-doux)">
-        + Description SEO · 30 tags · Structure timecodes · Idées de miniature — en une seule génération.
-      </div>
-    </div>
-
-    <!-- Bloc micro-créateurs -->
-    <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:14px;padding:24px 28px;margin-bottom:48px">
-      <div style="font-size:11px;font-weight:700;color:var(--vert);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Important à savoir</div>
-      <div style="font-size:20px;font-weight:800;margin-bottom:12px">Aucune grosse audience nécessaire.</div>
-      <p style="font-size:14px;color:var(--texte-doux);margin:0 0 16px;line-height:1.6">Ce programme est pensé pour les <strong style="color:var(--texte)">micro-créateurs</strong> : 1 000 à 20 000 abonnés, engagés, dans la niche YouTube / création de contenu / IA. Un petit compte engagé dans la bonne niche convertit bien mieux qu'un grand compte hors sujet.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--vert);font-weight:600">✓ Créateurs YouTube</div>
-        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--vert);font-weight:600">✓ Comptes IA / tech</div>
-        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--vert);font-weight:600">✓ Niche productivité</div>
-        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--vert);font-weight:600">✓ Aspirants créateurs</div>
-      </div>
+      <a href="auth.html?returnUrl=/affiliation" class="btn-primary" id="cta-rejoindre">Obtenir mon lien affilié →</a>
     </div>
 
     <!-- Comment ça marche -->
-    <div class="section-label">Comment ça marche</div>
-    <div class="section-title">Simple. Rapide. Récurrent.</div>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-content">
-          <h3>Tu crées ton compte Créatis gratuitement</h3>
-          <p>En 30 secondes — ton lien personnalisé est généré automatiquement.</p>
+          <h3>Crée ton compte gratuit</h3>
+          <p>Ton lien affilié personnalisé est généré automatiquement en 30 secondes.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h3>Tu postes le script TikTok fourni</h3>
-          <p>On te donne 5 scripts prêts à filmer. Tu choisis, tu tournes, tu publies avec ton lien en bio.</p>
+          <h3>Partage ton lien</h3>
+          <p>TikTok, YouTube, newsletter, Discord — montre l'outil en action à ton audience.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-content">
-          <h3>Tes followers s'inscrivent via ton lien</h3>
-          <p>Chaque inscription est automatiquement associée à toi. Tu vois tout en temps réel.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-content">
-          <h3>Ils passent Pro → tu touches 5,70€/mois à vie</h3>
-          <p>Tu reçois un email dès qu'une commission est générée. Virement dès 20€ accumulés.</p>
+          <h3>Encaisse chaque mois</h3>
+          <p>30% récurrent sur chaque abonné Pro actif. Virement mensuel dès que tu atteins le seuil.</p>
         </div>
       </div>
     </div>
 
-    <hr class="divider">
-
-    <!-- Comment promouvoir -->
-    <div id="comment-promouvoir" style="margin-bottom:48px">
-      <div class="section-label">Formats qui fonctionnent</div>
-      <div class="section-title">Comment promouvoir Créatis</div>
-      <p style="color:var(--texte-doux);font-size:14px;margin-bottom:24px">Pas besoin de savoir "vendre". Ces formats marchent parce qu'ils montrent un outil utile, pas un programme d'affiliation.</p>
-
-      <div style="display:grid;gap:12px">
-
-        <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">🎵</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">TikTok screen record — le format qui convertit le mieux</div>
-            <div style="font-size:13px;color:var(--texte-doux);line-height:1.6">Lance Créatis, montre l'interface, tape un sujet dans ta niche. Enregistre l'écran. Voix off : <em>"Je tape mon sujet... 30 secondes... voilà mon script complet."</em> Lien en bio. C'est tout. Le produit se vend lui-même.</div>
-          </div>
-        </div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">📹</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">YouTube Short — 60 secondes, résultat visible</div>
-            <div style="font-size:13px;color:var(--texte-doux);line-height:1.6">Montre AVANT (tu fixes un écran blanc) et APRÈS (Créatis génère en 30s). Format Avant/Après marche en Short. Description : ton lien affilié + "10 crédits gratuits".</div>
-          </div>
-        </div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">𝕏</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Thread Twitter — screenshot du résultat</div>
-            <div style="font-size:13px;color:var(--texte-doux);line-height:1.6">Tweet 1 : <em>"J'ai testé de générer mon script YouTube avec une IA. Voici ce que ça donne."</em> → Screenshot du script généré. Tweet 2-5 : compare avec ChatGPT (contexte YouTube, format direct). Tweet final : lien affilié.</div>
-          </div>
-        </div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">📸</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Instagram / Reel — "outil de la semaine"</div>
-            <div style="font-size:13px;color:var(--texte-doux);line-height:1.6">Format "5 outils que j'utilise pour ma chaîne YouTube" ou "outil de la semaine". Créatis = slide 1 ou vedette du Reel. Pas de vente agressive — juste montrer l'utilité dans un contexte réel.</div>
-          </div>
-        </div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">
-          <div style="font-size:24px;flex-shrink:0">📧</div>
-          <div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Newsletter / Communauté</div>
-            <div style="font-size:13px;color:var(--texte-doux);line-height:1.6">Si tu as une newsletter créateurs ou un Discord, un message simple suffit : <em>"J'utilise Créatis pour mes scripts — c'est gratuit pour commencer, voici mon lien : [lien]"</em>. Pas de pitch, juste une recommandation honnête.</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <hr class="divider">
-
-    <!-- Scripts TikTok -->
-    <div id="scripts-tiktok">
-      <div class="section-label">Kit TikTok</div>
-      <div class="section-title">5 scripts prêts à filmer</div>
-      <p style="color:var(--texte-doux);font-size:14px;margin-bottom:24px;">Copie-colle, filme face caméra ou en screen recording. Chaque script est optimisé pour TikTok et Reels.</p>
-
-      <div class="scripts-grid">
-        <div class="script-card">
-          <div class="script-tag">Script 1 — POV</div>
-          <div class="script-hook">Hook : "POV : tu génères ton script YouTube en 30 secondes"</div>
-          <div class="script-body">J'ai découvert un outil IA qui génère mon script complet, mon titre et ma miniature en moins d'une minute.
-
-S'appelle Créatis. Ma chaîne manga a fait 2,6M de vues grâce à un Short dont le script a été généré comme ça.
-
-Essai gratuit, sans CB. Lien dans ma bio 👇</div>
-          <button class="script-copy" onclick="copierScript(this)">Copier</button>
-        </div>
-
-        <div class="script-card">
-          <div class="script-tag">Script 2 — Avant/Après</div>
-          <div class="script-hook">Hook : "Avant/Après depuis que j'utilise une IA pour YouTube"</div>
-          <div class="script-body">Avant : 3h pour écrire un script, page blanche, procrastination.
-Après Créatis : 30 secondes.
-
-Script optimisé. Titre accrocheur. Miniature générée.
-
-Gratuit pour commencer. creatis.app en bio 🎯</div>
-          <button class="script-copy" onclick="copierScript(this)">Copier</button>
-        </div>
-
-        <div class="script-card">
-          <div class="script-tag">Script 3 — Chiffres</div>
-          <div class="script-hook">Hook : "2,6 millions de vues. Script écrit en 30 secondes."</div>
-          <div class="script-body">C'est pas du clickbait.
-
-Une chaîne YouTube à 6 600 abonnés a fait 2,6M de vues sur un Short dont le script a été généré par une IA en 30 secondes.
-
-L'outil s'appelle Créatis. Il est gratuit. creatis.app en bio 👇</div>
-          <button class="script-copy" onclick="copierScript(this)">Copier</button>
-        </div>
-
-        <div class="script-card">
-          <div class="script-tag">Script 4 — Démo</div>
-          <div class="script-hook">Hook : "Je vous montre comment je fais mes scripts en 30 sec"</div>
-          <div class="script-body">[Montre l'écran ou filme face caméra]
-
-Je tape mon sujet → je choisis mon style → boom, script complet prêt à tourner.
-
-Plus besoin de passer des heures à écrire. Créatis, gratuit pour commencer. Lien en bio 🎬</div>
-          <button class="script-copy" onclick="copierScript(this)">Copier</button>
-        </div>
-
-        <div class="script-card">
-          <div class="script-tag">Script 5 — Engagement</div>
-          <div class="script-hook">Hook : "C'est quoi ton plus grand problème sur YouTube ?"</div>
-          <div class="script-body">Idées ? Scripts ? Miniatures ? Shorts ?
-
-Créatis fait les 4 en moins d'une minute grâce à l'IA. 50 crédits gratuits, sans carte bancaire.
-
-Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en bio 👇</div>
-          <button class="script-copy" onclick="copierScript(this)">Copier</button>
-        </div>
-      </div>
-    </div>
-
-    <hr class="divider">
-
-    <!-- Messages Creator Marketplace -->
-    <div class="section-label">TikTok Creator Marketplace</div>
-    <div class="section-title">5 messages de prospection</div>
-    <p style="color:var(--texte-doux);font-size:14px;margin-bottom:24px;">À envoyer directement sur marketplace.tiktok.com aux créateurs dans ta niche. Courts, directs, efficaces.</p>
-
-    <div class="messages-grid" id="messages-kit">
-      <div class="msg-card">
-        <div class="msg-num">Message 1 — Honnête et direct</div>
-        <div class="msg-body">Hey ! J'ai lancé Créatis, un outil IA qui génère des scripts YouTube en 30 secondes. Tu peux l'essayer gratuitement — et si tu l'utilises et que tu veux en parler à ton audience, je te reverserais 30% récurrent sur chaque abonné que tu amènes. Intéressé ?</div>
-        <button class="msg-copy" onclick="copierMessage(this)">Copier</button>
-      </div>
-      <div class="msg-card">
-        <div class="msg-num">Message 2 — Preuve produit</div>
-        <div class="msg-body">Hey ! Je crée Créatis — outil IA scripts YouTube. Ma chaîne manga (6 600 abonnés) a fait 2,6M de vues avec un Short dont le script a été généré en 30 secondes. Si ça te parle, j'ai un programme partenaire : tu essaies l'outil, tu en parles si tu l'aimes, je te reverses 30% récurrent. Je t'envoie l'accès gratuit ?</div>
-        <button class="msg-copy" onclick="copierMessage(this)">Copier</button>
-      </div>
-      <div class="msg-card">
-        <div class="msg-num">Message 3 — Pour créateurs qui veulent gagner du temps</div>
-        <div class="msg-body">Hey ! J'ai vu ta chaîne. Je crée un outil IA pour les créateurs YouTube — scripts complets en 30 secondes, titres, miniatures. Gratuit à tester. Si c'est utile pour toi et que tu veux en parler, il y a une commission récurrente. Mais d'abord : tu veux juste essayer ?</div>
-        <button class="msg-copy" onclick="copierMessage(this)">Copier</button>
-      </div>
-      <div class="msg-card">
-        <div class="msg-num">Message 4 — Partenariat lancement</div>
-        <div class="msg-body">Hey ! Je lance Créatis et je cherche des créateurs pour le tester en avant-première. Outil IA scripts YouTube — 30 secondes pour un script complet. Accès gratuit pour toi. Et si tu veux en parler à ton audience après, il y a une commission récurrente à la clé. Ça t'intéresse d'essayer ?</div>
-        <button class="msg-copy" onclick="copierMessage(this)">Copier</button>
-      </div>
-      <div class="msg-card">
-        <div class="msg-num">Message 5 — Court et simple</div>
-        <div class="msg-body">Hey ! Tu crées du contenu YouTube ? J'ai un outil IA qui génère les scripts en 30s. Gratuit à tester. Et si ça t'aide vraiment, il y a un programme partenaire avec 30% récurrent si tu en parles. Je t'envoie l'accès ?</div>
-        <button class="msg-copy" onclick="copierMessage(this)">Copier</button>
-      </div>
-    </div>
-
-    <hr class="divider">
-
-    <!-- ═══ DASHBOARD (connecté) ═══ -->
+    <!-- Dashboard (connecté) -->
     <div id="dashboard" style="display:none">
-      <div class="section-label">Ton espace affilié</div>
-      <div class="section-title">Tableau de bord</div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-val" id="stat-inscrits">—</div>
-          <div class="stat-label">Inscrits via ton lien</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-abonnes">—</div>
-          <div class="stat-label">Abonnés Pro actifs</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-revenus">—</div>
-          <div class="stat-label">Revenus / mois</div>
-        </div>
-      </div>
-
       <div class="card">
-        <div class="card-title">Ton lien d'affiliation</div>
+        <div class="card-title">Ton tableau de bord</div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="stat-inscrits">—</div><div class="stat-label">Inscrits</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-abonnes">—</div><div class="stat-label">Abonnés Pro</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-revenus">—</div><div class="stat-label">€ / mois</div></div>
+        </div>
         <div class="link-box">
           <input type="text" class="link-input" id="ref-link" readonly>
           <button class="btn-copy" onclick="copierLien()">Copier</button>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <button onclick="partagerWhatsApp()" style="flex:1;background:#25d366;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">📱 WhatsApp</button>
-          <button onclick="partagerTwitter()" style="flex:1;background:#000;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">𝕏 Twitter / X</button>
-          <button onclick="copierScriptTikTok()" style="flex:1;background:#ff0050;color:#fff;border:none;padding:10px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;min-width:110px">🎵 Script TikTok</button>
+        <div class="share-btns">
+          <button onclick="partagerWhatsApp()" style="background:#25d366;color:#fff">📱 WhatsApp</button>
+          <button onclick="partagerTwitter()" style="background:#000;color:#fff">𝕏 Twitter</button>
+          <button onclick="copierScriptTikTok()" style="background:#ff0050;color:#fff">🎵 Script TikTok</button>
         </div>
-        <div class="commission-info">
-          <div class="comm-item"><div class="comm-pct">30%</div><div class="comm-label">Commission récurrente</div></div>
-          <div class="comm-item"><div class="comm-pct">5,70€</div><div class="comm-label">Par abonné Pro / mois</div></div>
-          <div class="comm-item"><div class="comm-pct">14,70€</div><div class="comm-label">Par abonné Studio / mois</div></div>
+        <div class="commission-grid" style="grid-template-columns:1fr">
+          <div class="comm-item"><div class="comm-pct">30%</div><div class="comm-label">Commission récurrente à vie</div></div>
         </div>
         <div class="payout-info">
-          💸 <strong style="color:var(--vert)">Paiement mensuel</strong> par virement ou PayPal dès 20€ accumulés. Écris à <a href="mailto:contact@creatis.app" style="color:var(--vert)">contact@creatis.app</a> pour demander ton virement.
+          💸 <strong style="color:var(--vert)">Virement mensuel</strong> — écris à <a href="mailto:contact@creatis.app" style="color:var(--vert)">contact@creatis.app</a>
         </div>
       </div>
     </div>
 
-    <!-- Auth wall intégré (non connecté) -->
+    <!-- Auth wall (non connecté) -->
     <div id="auth-wall" style="display:none">
-      <div class="card" style="text-align:center;padding:40px;">
-        <div style="font-size:36px;margin-bottom:16px;">🔐</div>
-        <h2 style="font-size:20px;margin:0 0 8px;">Accède à ton lien personnalisé</h2>
-        <p style="color:var(--texte-doux);font-size:14px;margin:0 0 24px;">Connecte-toi pour générer ton lien affilié unique et suivre tes commissions en temps réel.</p>
+      <div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:36px;margin-bottom:16px">🔐</div>
+        <h2 style="font-size:20px;margin:0 0 8px">Accède à ton lien personnalisé</h2>
+        <p style="color:var(--texte-doux);font-size:14px;margin:0 0 24px">Connecte-toi pour générer ton lien affilié unique et suivre tes commissions en temps réel.</p>
         <a href="auth.html?returnUrl=/affiliation" class="btn-primary">Créer mon compte gratuit →</a>
-        <p style="margin:12px 0 0;font-size:13px;color:var(--texte-muted)">Déjà inscrit ? <a href="auth.html?returnUrl=/affiliation" style="color:var(--vert)">Se connecter</a></p>
+        <p style="margin:14px 0 0;font-size:13px;color:var(--texte-muted)">Déjà inscrit ? <a href="auth.html?returnUrl=/affiliation" style="color:var(--vert)">Se connecter</a></p>
       </div>
     </div>
 
-  </div>
-
-  <!-- FAQ -->
-  <div class="page" style="max-width:760px;margin:0 auto;padding:0 20px 80px">
-    <div class="section-label" style="text-align:center">Questions fréquentes</div>
-    <div class="section-title" style="text-align:center;margin-bottom:40px">Tout ce que tu dois savoir</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Comment je génère mon lien affilié ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Crée un compte gratuit sur Créatis (ou connecte-toi), puis reviens sur cette page. Ton lien unique est généré automatiquement dans le tableau de bord. Tu le copies et tu le partages où tu veux.</p>
+    <!-- FAQ -->
+    <div class="faq">
+      <div class="faq-title">Questions fréquentes</div>
+      <details>
+        <summary>La commission dure vraiment à vie ? <span style="color:var(--vert)">+</span></summary>
+        <p>Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois — sans limite de durée. Elle reste 2 ans, tu touches 2 ans de commissions.</p>
       </details>
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Quand et comment je reçois mes commissions ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Les commissions s'accumulent chaque mois. Dès que tu atteins 20€ de commissions cumulées, un virement est initié via Stripe. Tu reçois une notification email automatique pour chaque abonnement que tu génères.</p>
+      <details>
+        <summary>Je dois avoir une grosse audience ? <span style="color:var(--vert)">+</span></summary>
+        <p>Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube ou aspirants créateurs. 1 000 followers engagés dans cette niche convertissent mieux que 100 000 hors cible.</p>
       </details>
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">La commission dure vraiment à vie ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Oui. Tant que la personne que tu as amenée reste abonnée à Créatis Pro, tu touches 30% de son abonnement chaque mois, sans limite de durée. Si elle reste 2 ans, tu touches 2 ans de commissions.</p>
-      </details>
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Je dois avoir une grosse audience ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube (ou aspirants créateurs). 1 000 followers engagés dans cette niche valent mieux que 100 000 followers hors cible. Les scripts TikTok fournis sont conçus pour convertir même avec une petite audience.</p>
-      </details>
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Puis-je utiliser Créatis moi-même avant de le promouvoir ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Oui, et c'est recommandé. Ton compte gratuit te donne 10 générations pour tester. Si tu veux montrer l'interface dans une vidéo TikTok (screen record), c'est la meilleure façon de convertir. L'authenticité = plus de clics sur ton lien.</p>
-      </details>
-      <details style="background:var(--bg-card);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px">
-        <summary style="font-weight:700;font-size:15px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">Que se passe-t-il si quelqu'un utilise mon lien mais ne s'abonne qu'un mois plus tard ? <span style="color:var(--vert)">+</span></summary>
-        <p style="margin:12px 0 0;color:var(--texte-doux);line-height:1.6">Le code affilié est sauvegardé dans le navigateur de la personne. Si elle s'inscrit dans les 90 jours après avoir cliqué sur ton lien, la commission t'est attribuée. Elle peut s'inscrire gratuitement maintenant et convertir plus tard.</p>
+      <details>
+        <summary>Quand et comment je reçois mes commissions ? <span style="color:var(--vert)">+</span></summary>
+        <p>Écris à contact@creatis.app pour demander ton virement dès que tu atteins le seuil. Tu reçois aussi un email automatique pour chaque abonnement que tu génères.</p>
       </details>
     </div>
+
   </div>
 
   <div class="toast" id="toast">✅ Copié !</div>
 
+  <script>
+    // Show immediately from localStorage — no SDK wait needed for non-logged visitors
+    if (window._fastSession) {
+      document.getElementById('dashboard').style.display = 'block';
+      var _cta = document.getElementById('cta-rejoindre');
+      if (_cta) { _cta.textContent = 'Mon tableau de bord ↓'; _cta.href = '#dashboard'; }
+    } else {
+      document.getElementById('auth-wall').style.display = 'block';
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/config.js"></script>
   <script>
     async function init() {
-      let session = null;
-      try {
-        const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-          auth: { persistSession: true, storageKey: 'creatis_sb_session' }
-        });
-        const { data } = await client.auth.getSession();
-        session = data?.session;
-      } catch {}
-
-      if (!session?.user) {
-        document.getElementById('auth-wall').style.display = 'block';
-        document.getElementById('cta-rejoindre').style.display = 'inline-block';
-        return;
+      let session = window._fastSession || null;
+      if (!session) {
+        try {
+          const client = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+            auth: { persistSession: true, storageKey: 'creatis_sb_session' }
+          });
+          const { data } = await client.auth.getSession();
+          session = data?.session;
+          // Refresh UI if session state changed vs fast-path
+          if (session?.user && !window._fastSession) {
+            document.getElementById('auth-wall').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            var cta = document.getElementById('cta-rejoindre');
+            if (cta) { cta.textContent = 'Mon tableau de bord ↓'; cta.href = '#dashboard'; }
+          } else if (!session?.user && window._fastSession) {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('auth-wall').style.display = 'block';
+          }
+        } catch {}
       }
 
-      // Connecté — masquer le CTA hero et montrer le dashboard
+      if (!session?.user) return;
+
       document.getElementById('cta-rejoindre').textContent = 'Mon tableau de bord ↓';
       document.getElementById('cta-rejoindre').href = '#dashboard';
       document.getElementById('dashboard').style.display = 'block';
@@ -500,37 +242,25 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
       const refLink = `${window.location.origin}/?ref=${refCode}`;
       document.getElementById('ref-link').value = refLink;
 
-      // Remplacer le lien dans les scripts par le lien personnalisé
-      document.querySelectorAll('.script-body').forEach(el => {
-        el.textContent = el.textContent.replace(/creatis\.app/g, refLink);
-      });
-
-      // Envoyer le kit affilié une seule fois (première visite du dashboard)
       const kitKey = `creatis_affilie_kit_${userId}`;
       if (!localStorage.getItem(kitKey)) {
         localStorage.setItem(kitKey, '1');
-        const userEmail = session.user.email;
-        const userName = session.user.user_metadata?.full_name || userEmail.split('@')[0];
         fetch('/api/email-sequence', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send_affilie_recruitment', email: userEmail, nom: userName, codeAffilie: refCode })
+          body: JSON.stringify({ action: 'send_affilie_recruitment', email: session.user.email, nom: session.user.user_metadata?.full_name || session.user.email.split('@')[0], codeAffilie: refCode })
         }).catch(() => {});
       }
 
       try {
         const res = await fetch(`/api/parrainage?code=${refCode}`);
         const data = await res.json();
-        const inscrits = data.inscrits || 0;
         const abonnes = data.abonnes || 0;
-        const revenus = (abonnes * 19 * 0.30).toFixed(0);
-        document.getElementById('stat-inscrits').textContent = inscrits;
+        document.getElementById('stat-inscrits').textContent = data.inscrits || 0;
         document.getElementById('stat-abonnes').textContent = abonnes;
-        document.getElementById('stat-revenus').textContent = revenus + '€';
+        document.getElementById('stat-revenus').textContent = (abonnes * 19 * 0.30).toFixed(0) + '€';
       } catch {
-        document.getElementById('stat-inscrits').textContent = '0';
-        document.getElementById('stat-abonnes').textContent = '0';
-        document.getElementById('stat-revenus').textContent = '0€';
+        ['stat-inscrits','stat-abonnes','stat-revenus'].forEach(id => document.getElementById(id).textContent = '0');
       }
     }
 
@@ -543,44 +273,25 @@ Les créateurs qui l'utilisent gagnent des heures chaque semaine. creatis.app en
 
     function copierLien() {
       const link = document.getElementById('ref-link').value;
-      navigator.clipboard.writeText(link).catch(() => {
-        document.getElementById('ref-link').select();
-        document.execCommand('copy');
-      });
+      navigator.clipboard.writeText(link).catch(() => { document.getElementById('ref-link').select(); document.execCommand('copy'); });
       afficherToast('Lien copié !');
     }
 
     function partagerWhatsApp() {
       const link = document.getElementById('ref-link').value;
-      const texte = `J'utilise Créatis pour générer mes scripts YouTube en 30s avec l'IA 🎬 50 crédits gratuits → ${link}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(texte)}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent(`J'utilise Créatis pour mes scripts vidéo en 30s avec l'IA 🎬 Essai gratuit → ${link}`)}`, '_blank');
     }
 
     function partagerTwitter() {
       const link = document.getElementById('ref-link').value;
-      const texte = `Créatis génère mon script YouTube complet en 30 secondes ⚡\nTitres, script, miniature — tout d'un coup.\n50 crédits gratuits → ${link}`;
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texte)}`, '_blank');
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Créatis génère mon script vidéo complet en 30 secondes ⚡\nScript, titre, miniature — tout d'un coup.\nEssai gratuit → ${link}`)}`, '_blank');
     }
 
     function copierScriptTikTok() {
       const link = document.getElementById('ref-link').value;
-      const script = `Hook : "Cet outil génère mon script YouTube en 30 secondes..."\n\nCorps : "Tu rentres juste ton sujet — Créatis te donne 5 titres, un script complet avec timecodes, une description SEO et 30 tags. Avant j'utilisais ChatGPT, ça prenait 2h. Là c'est 30 secondes, calibré YouTube FR."\n\nCTA : "50 crédits gratuits, sans CB → lien en bio : ${link}"`;
+      const script = `Hook : "Cet outil génère mon script en 30 secondes..."\n\nTu tapes ton sujet — Créatis te donne 5 titres, un script complet, une description SEO et la miniature. Avant ça prenait 2h. Maintenant 30 secondes.\n\nGratuit pour commencer → ${link}`;
       navigator.clipboard.writeText(script).catch(() => {});
       afficherToast('Script TikTok copié !');
-    }
-
-    function copierScript(btn) {
-      const body = btn.closest('.script-card').querySelector('.script-body').textContent;
-      navigator.clipboard.writeText(body).catch(() => {});
-      btn.textContent = '✅ Copié !';
-      setTimeout(() => { btn.textContent = 'Copier'; }, 2000);
-    }
-
-    function copierMessage(btn) {
-      const body = btn.closest('.msg-card').querySelector('.msg-body').textContent;
-      navigator.clipboard.writeText(body).catch(() => {});
-      btn.textContent = '✅ Copié !';
-      setTimeout(() => { btn.textContent = 'Copier'; }, 2000);
     }
 
     init();

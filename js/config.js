@@ -61,7 +61,7 @@ const CONFIG = {
   /* ======================================
    * STRIPE — CODES PROMO
    * ====================================== */
-  STRIPE_PROMO_CODE: 'CREATIS20',  // -20% early adopters
+  STRIPE_PROMO_CODE: 'LAUNCH50',  // -50% premier mois offre de lancement
   STRIPE_SUCCESS_URL: window.location.origin + '/success.html?session_id={CHECKOUT_SESSION_ID}',
   STRIPE_CANCEL_URL: window.location.origin + '/cancel.html',
 
@@ -73,20 +73,20 @@ const CONFIG = {
     gratuit: {
       nom: 'Gratuit',
       prix: 0,
-      generations: 50,
-      miniatures: 0,
-      agents: ['youtube-complet', 'youtube-short', 'idees-videos', 'chat-libre'],
-      description: '50 générations pour découvrir',
+      generations: 1, // 1 génération gratuite pour découvrir
+      miniatures: 5,
+      agents: ['clips-viraux', 'youtube-complet', 'idees-videos', 'chat-libre'],
+      description: '10 générations/mois · 5 miniatures pour tester',
       stripeId: null
     },
     pro: {
       nom: 'Pro',
       prix: 19,
       prixAnnuel: 15,
-      generations: -1,
-      miniatures: 10,
+      generations: 50,
+      miniatures: 30,
       agents: 'tous',
-      description: 'Générations illimitées · 10 miniatures/mois',
+      description: '50 générations/mois · 30 miniatures/mois',
       stripeId: 'price_1TWISZAptK6HZtp5uBP0RHe8',
       stripeIdAnnuel: 'price_1TWIU8AptK6HZtp5SbYvQ12d'
     },
@@ -94,10 +94,10 @@ const CONFIG = {
       nom: 'Studio',
       prix: 49,
       prixAnnuel: 39,
-      generations: -1,
-      miniatures: 30,
+      generations: -1, // illimité
+      miniatures: 100,
       agents: 'tous',
-      description: 'Générations illimitées · 30 miniatures/mois',
+      description: 'Générations illimitées · 100 miniatures/mois',
       stripeId: 'price_1TWIV6AptK6HZtp5qlNhu47w',
       stripeIdAnnuel: 'price_1TWIVeAptK6HZtp5zIef773D'
     }

@@ -1,11 +1,16 @@
 /* ===== VERCEL FUNCTION — Sync utilisateur Supabase ===== */
 /* POST /api/user-sync
    Body: { userId, email, plan, chaine, action }
-   Actions: 'get', 'upsert', 'increment_generation'
+   Actions: 'get', 'upsert', 'increment_generation', 'track_event'
    Accès Supabase sécurisé côté serveur (service key jamais exposée) */
+
+const crypto = require('crypto');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
+// TODO: configurer META_PIXEL_ID et META_CAPI_TOKEN dans Vercel → Settings → Environment Variables
+const META_PIXEL_ID = (process.env.META_PIXEL_ID || '').trim();
+const META_CAPI_TOKEN = (process.env.META_CAPI_TOKEN || '').trim();
 
 async function envoyerEmailBienvenue(email) {
   if (!process.env.BREVO_API_KEY) return;
@@ -21,8 +26,8 @@ async function envoyerEmailBienvenue(email) {
       body: JSON.stringify({
         sender: { email: 'contact@creatis.app', name: 'Créatis' },
         to: [{ email }],
-        subject: '🚀 Bienvenue sur Créatis — tes 50 crédits t\'attendent',
-        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;"><div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div><p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Votre assistant YouTube IA</p><h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 12px;">Bienvenue ! 👋</h1><p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">50 crédits gratuits</strong> pour tester Créatis — aucune carte bancaire requise.</p><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;"><p style="color:#10b981;font-weight:600;margin:0 0 12px;">Pour commencer :</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">1. Connecte ton @handle YouTube</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">2. Choisis un agent IA (YouTube Complet, Short, Idées…)</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">3. Génère ton contenu en 30 secondes</p></div><a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Démarrer avec Créatis →</a><p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p></div>`
+        subject: '🚀 Bienvenue sur Créatis — ta génération gratuite t\'attend',
+        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;"><div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div><p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Votre assistant YouTube IA</p><h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 12px;">Bienvenue ! 👋</h1><p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">1 génération gratuite</strong> pour découvrir Créatis — aucune carte bancaire requise.</p><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;"><p style="color:#10b981;font-weight:600;margin:0 0 12px;">Pour commencer :</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">1. Connecte ton @handle YouTube</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">2. Choisis un agent IA (YouTube Complet, Short, Idées…)</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">3. Génère ton contenu en 30 secondes</p></div><a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Démarrer avec Créatis →</a><p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p></div>`
       })
     });
     const emailData = await emailRes.json().catch(() => ({}));
@@ -120,14 +125,24 @@ module.exports = async (req, res) => {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
 
         // Récupérer l'utilisateur
-        const users = await supabase(`/users?${identifier}&select=id,plan,generations_count,miniatures_count`, 'GET');
+        const users = await supabase(`/users?${identifier}&select=id,plan,generations_count,generations_used,generations_reset_at`, 'GET');
         const user = users?.[0];
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        // Compteur mensuel (reset si nouveau mois)
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const resetAt = user.generations_reset_at ? new Date(user.generations_reset_at) : null;
+        const resetMonth = resetAt ? `${resetAt.getFullYear()}-${String(resetAt.getMonth() + 1).padStart(2, '0')}` : null;
+        const usedThisMonth = resetMonth === monthKey ? (user.generations_used || 0) : 0;
+        const newUsed = usedThisMonth + 1;
 
         const newCount = (user.generations_count || 0) + 1;
         await supabase(`/users?${identifier}`, 'PATCH', {
           generations_count: newCount,
-          last_generation_at: new Date().toISOString()
+          generations_used: newUsed,
+          generations_reset_at: resetMonth === monthKey ? user.generations_reset_at : now.toISOString(),
+          last_generation_at: now.toISOString()
         });
 
         // Enregistrer dans la table generations
@@ -142,7 +157,7 @@ module.exports = async (req, res) => {
           }).catch(() => {});
         }
 
-        return res.status(200).json({ count: newCount });
+        return res.status(200).json({ count: newCount, used_this_month: newUsed });
       }
 
       case 'get_history': {
@@ -195,6 +210,56 @@ module.exports = async (req, res) => {
           miniatures_used: 0,
           miniatures_reset_at: new Date().toISOString()
         });
+        return res.status(200).json({ success: true });
+      }
+
+      case 'track_event': {
+        // Meta CAPI — CompleteRegistration avec SHA256 email, déduplication via eventId
+        if (!META_PIXEL_ID || !META_CAPI_TOKEN) {
+          console.warn('[CAPI] META_PIXEL_ID ou META_CAPI_TOKEN non configurés — event ignoré');
+          return res.status(200).json({ skipped: true });
+        }
+        const { eventName = 'CompleteRegistration', eventId, eventSourceUrl } = req.body;
+        if (!email) return res.status(400).json({ error: 'email requis' });
+        const emailHash = crypto.createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+        const capiPayload = {
+          data: [{
+            event_name: eventName,
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: eventId || ('capi_' + Date.now()),
+            event_source_url: eventSourceUrl || 'https://creatis.app/auth.html',
+            action_source: 'website',
+            user_data: { em: [emailHash] }
+          }]
+          // test_event_code: 'TEST_XXXXX' // décommenter pour tester dans Events Manager Meta
+        };
+        const capiRes = await fetch(
+          `https://graph.facebook.com/v18.0/${META_PIXEL_ID}/events?access_token=${META_CAPI_TOKEN}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(capiPayload) }
+        );
+        const capiData = await capiRes.json().catch(() => ({}));
+        if (!capiRes.ok) {
+          console.error('[CAPI] Erreur Meta:', JSON.stringify(capiData));
+          return res.status(200).json({ error: capiData.error?.message });
+        }
+        console.log('[CAPI]', eventName, 'envoyé — received:', capiData.events_received);
+        return res.status(200).json({ success: true, events_received: capiData.events_received });
+      }
+
+      case 'update_profile': {
+        const { niche, plateformes } = req.body;
+        if (!userId && !email) return res.status(400).json({ error: 'userId requis' });
+        const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
+        try {
+          await supabase(`/users?${identifier}`, 'PATCH', {
+            ...(niche !== undefined && { niche }),
+            ...(plateformes !== undefined && { plateformes: Array.isArray(plateformes) ? plateformes.join(',') : plateformes }),
+            updated_at: new Date().toISOString()
+          });
+        } catch (e) {
+          // Colonnes peut-être absentes en DB — silencieux
+          console.warn('[update_profile] PATCH échoué (colonnes manquantes ?):', e.message);
+        }
         return res.status(200).json({ success: true });
       }
 

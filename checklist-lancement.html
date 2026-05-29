@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checklist Lancement — Créatis</title>
+  <script>
+    (function() {
+      const ok = sessionStorage.getItem('creatis_admin_auth');
+      if (ok !== '1') {
+        const pwd = prompt('Mot de passe admin :');
+        if (pwd !== 'OtassoCreatis2606!') {
+          document.write('<style>body{display:none}</style>');
+          location.replace('/');
+        } else {
+          sessionStorage.setItem('creatis_admin_auth', '1');
+        }
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg: #0a0f0a;

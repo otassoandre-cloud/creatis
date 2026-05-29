@@ -407,7 +407,7 @@
 
   <!-- Bloc signup -->
   <div class="signup-block">
-    <div class="signup-label"><strong>50 générations gratuites</strong> · Sans carte bancaire</div>
+    <div class="signup-label"><strong>1 génération gratuite</strong> · Sans carte bancaire</div>
 
     <div class="erreur-auth" id="erreur-auth"></div>
     <div class="succes-auth" id="succes-auth"></div>
@@ -442,7 +442,7 @@
     </form>
 
     <div class="free-note">
-      <span class="green">50 générations offertes</span> · Aucune carte requise<br>
+      <span class="green">1 génération gratuite offerte</span> · Aucune carte requise<br>
       <span id="toggle-label">Déjà un compte ?</span>
       <button class="toggle-lien" onclick="toggleMode()" id="toggle-btn">Se connecter</button>
     </div>
@@ -525,7 +525,7 @@
     document.getElementById('lien-oublie').style.display = modeConnexion ? 'block' : 'none';
     document.getElementById('demo-block').style.display = modeConnexion ? 'none' : 'block';
     document.querySelector('.auth-divider').style.display = modeConnexion ? 'none' : 'flex';
-    document.querySelector('.signup-label').textContent = modeConnexion ? 'Bon retour sur Créatis' : '50 générations gratuites · Sans carte bancaire';
+    document.querySelector('.signup-label').textContent = modeConnexion ? 'Bon retour sur Créatis' : '1 génération gratuite · Sans carte bancaire';
 
     if (modeConnexion) {
       btnTexte.textContent = 'Se connecter →';

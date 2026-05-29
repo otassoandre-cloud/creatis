@@ -123,25 +123,27 @@ module.exports = async (req, res) => {
           break;
         }
 
-        // Email = source la plus fiable pour retrouver l'utilisateur en base
-        const matchValue = email || (userId && userId.includes('@') ? userId : null);
+        const matchEmail = email || (userId && userId.includes('@') ? userId : null);
+        const matchId = userId && !userId.includes('@') && userId !== 'anonymous' ? userId : null;
 
-        if (!matchValue) {
-          console.error('[Webhook] ⚠️ Impossible d\'identifier l\'utilisateur — email manquant. userId:', userId, 'session id:', session.id);
+        if (!matchEmail && !matchId) {
+          console.error('[Webhook] ⚠️ Impossible d\'identifier l\'utilisateur — email et userId manquants. session id:', session.id);
           break;
         }
 
-        if (matchValue) {
-          // Mettre à jour le plan utilisateur
-          await supabasePatch('users', { email: matchValue }, {
-            plan,
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
-            updated_at: new Date().toISOString()
-          });
+        if (matchEmail || matchId) {
+          const patchData = { plan, stripe_customer_id: customerId, stripe_subscription_id: subscriptionId, updated_at: new Date().toISOString() };
+          // Mise à jour par userId Supabase (priorité) ou par email (fallback)
+          if (matchId) {
+            await supabasePatch('users', { id: matchId }, patchData);
+          } else {
+            await supabasePatch('users', { email: matchEmail }, patchData);
+          }
 
-          // Résoudre l'user_id depuis l'email
-          const userRow = await supabaseGet('users', { email: matchValue });
+          // Résoudre l'user row pour l'affiliation
+          const userRow = matchId
+            ? await supabaseGet('users', { id: matchId })
+            : await supabaseGet('users', { email: matchEmail });
 
           // Enregistrer l'abonnement
           await supabaseUpsert('abonnements', {
@@ -155,6 +157,13 @@ module.exports = async (req, res) => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
+        }
+
+        // Notification interne Studio → contact@creatis.app
+        if (plan === 'studio' && process.env.BREVO_API_KEY) {
+          await notifierAdmin(email || userId || 'inconnu', plan).catch(e =>
+            console.warn('[Webhook] Erreur notif admin:', e.message)
+          );
         }
 
         // Notifier Brevo si clé disponible
@@ -282,6 +291,22 @@ module.exports = async (req, res) => {
   return res.status(200).json({ received: true });
 };
 
+/* Notification interne — nouveau client Studio */
+async function notifierAdmin(clientEmail, plan) {
+  if (!process.env.BREVO_API_KEY) return;
+  const planLabel = plan === 'studio' ? 'Studio (49€)' : `Pro (19€)`;
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: 'contact@creatis.app' }],
+      subject: `🎉 Nouveau client ${planLabel} — ${clientEmail}`,
+      htmlContent: `<div style="font-family:Inter,sans-serif;padding:24px;background:#0a0f0a;color:#e5e7eb;border-radius:8px;max-width:480px"><h2 style="color:#10b981;margin:0 0 12px">Nouveau client ${planLabel}</h2><p style="margin:4px 0"><strong>Email :</strong> ${clientEmail}</p><p style="margin:4px 0"><strong>Plan :</strong> ${planLabel}</p><p style="margin:4px 0"><strong>Date :</strong> ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p><p style="margin-top:20px;color:#9ca3af;font-size:13px">À contacter dans les 24h pour le support dédié.</p></div>`
+    })
+  });
+}
+
 /* Notifier Brevo après un paiement */
 async function notifierBrevo(email, plan, stripeCustomerId) {
   const listIds = { pro: [4], studio: [5] };
@@ -358,13 +383,13 @@ async function envoyerEmailBienvenue(email) {
       body: JSON.stringify({
         sender: { email: 'contact@creatis.app', name: 'Créatis' },
         to: [{ email }],
-        subject: '🚀 Bienvenue sur Créatis — tes 50 crédits t\'attendent',
+        subject: '🚀 Bienvenue sur Créatis — ta génération gratuite t\'attend',
         htmlContent: `
           <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
             <div style="font-size:28px;font-weight:800;color:#ffffff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div>
             <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Votre assistant YouTube IA</p>
             <h1 style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px;">Bienvenue ! 👋</h1>
-            <p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">50 crédits gratuits</strong> pour tester Créatis — aucune carte bancaire requise.</p>
+            <p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">1 génération gratuite</strong> pour découvrir Créatis — aucune carte bancaire requise.</p>
             <div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;">
               <p style="color:#10b981;font-weight:600;margin:0 0 12px;">Pour commencer :</p>
               <p style="color:#d1d5db;font-size:14px;margin:4px 0;">1. Connecte ton @handle YouTube</p>
@@ -441,3 +466,6 @@ async function getRawBody(req) {
     req.on('error', reject);
   });
 }
+
+// CRITIQUE : désactiver le body parser Vercel — Stripe a besoin du body brut pour vérifier la signature
+module.exports.config = { api: { bodyParser: false } };

@@ -28,6 +28,8 @@ class AppCreatis {
 
     if (!localStorage.getItem('creatis_onboarding_done')) {
       setTimeout(() => this._afficherOnboarding(), 600);
+    } else {
+      setTimeout(() => this.selectionnerAgent('clips-viraux'), 300);
     }
 
   }
@@ -86,7 +88,8 @@ class AppCreatis {
       if (Auth.estAuthentifie() && !Auth.estDemoMode()) {
         const authUser = await Auth.getUser();
         if (authUser) {
-          const plan = await Auth.getPlanDistant() || 'gratuit';
+          const distantUser = await Auth.getPlanDistant() || {};
+          const plan = (typeof distantUser === 'string' ? distantUser : distantUser?.plan) || 'gratuit';
           const cached = this.getUtilisateur() || {};
           this.setUtilisateur({
             id: authUser.id,
@@ -95,6 +98,26 @@ class AppCreatis {
             plan,
             avatar: authUser.avatar || cached.avatar || null
           });
+
+          // Sync compteur mensuel depuis Supabase
+          if (typeof distantUser === 'object' && distantUser?.generations_used !== undefined) {
+            const now = new Date();
+            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const storedMonth = localStorage.getItem('creatis_gen_month');
+            if (storedMonth !== monthKey) {
+              // Nouveau mois : reset local + sync depuis serveur
+              localStorage.setItem('creatis_generations', String(distantUser.generations_used || 0));
+              localStorage.setItem('creatis_gen_month', monthKey);
+            }
+          } else {
+            // Reset mensuel local si le mois a changé (fallback sans données serveur)
+            const now = new Date();
+            const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            if (localStorage.getItem('creatis_gen_month') !== monthKey) {
+              localStorage.setItem('creatis_generations', '0');
+              localStorage.setItem('creatis_gen_month', monthKey);
+            }
+          }
         }
       }
     }
@@ -501,12 +524,22 @@ class AppCreatis {
     const wsResizer = document.getElementById('workspace-resizer');
     const workspace = document.getElementById('workspace');
     const savedW = parseInt(localStorage.getItem('creatis_workspace_split') || '360', 10);
-    if (dash) { dash.style.display = ''; dash.classList.add('split-mode'); }
-    if (workspace) {
-      workspace.classList.add('mode-split');
-      workspace.style.gridTemplateColumns = `${savedW}px 6px 1fr`;
+    const isMobileLayout = window.innerWidth <= 768;
+    if (dash) {
+      if (isMobileLayout) {
+        dash.style.display = 'none';
+      } else {
+        dash.style.display = '';
+        dash.classList.add('split-mode');
+      }
     }
-    if (wsResizer) wsResizer.style.display = 'flex';
+    if (workspace) {
+      if (!isMobileLayout) {
+        workspace.classList.add('mode-split');
+        workspace.style.gridTemplateColumns = `${savedW}px 6px 1fr`;
+      }
+    }
+    if (wsResizer) wsResizer.style.display = isMobileLayout ? 'none' : 'flex';
     if (!this._wsResizerInited) this._initWorkspaceResizer();
 
     // Mettre à jour sidebar
@@ -940,7 +973,7 @@ class AppCreatis {
 
         <div class="clips-hero-center">
           <p class="clips-hero-label">OUTIL DE DÉCOUPAGE VIDÉO IA</p>
-          <h1 class="clips-hero-title">1 longue vidéo,<br>5 clips viraux.</h1>
+          <h1 class="clips-hero-title">1 longue vidéo,<br>10 clips viraux.</h1>
           <p class="clips-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
 
           <div class="clips-bar" id="clips-drop-${agent.id}"
@@ -968,6 +1001,19 @@ class AppCreatis {
       </div>`;
 
     workspace.appendChild(panneau);
+
+    // Reprise auto si iOS a rechargé la page pendant une transcription
+    try {
+      const saved = localStorage.getItem(`clips_pending_${agent.id}`);
+      if (saved) {
+        const job = JSON.parse(saved);
+        if (Date.now() - job.ts < 600000) { // < 10 min
+          setTimeout(() => this._reprendreClipsUpload(agent.id, job), 500);
+        } else {
+          localStorage.removeItem(`clips_pending_${agent.id}`);
+        }
+      }
+    } catch(e) {}
   }
 
   _onClipsFileSelect(agentId, input) {
@@ -1060,27 +1106,99 @@ class AppCreatis {
     }
   }
 
+  async _acquireWorkerFS(ffmpeg, file) {
+    // Mutex simple : attend si WORKERFS est déjà utilisé
+    while (this._workerFSBusy) await new Promise(r => setTimeout(r, 300));
+    this._workerFSBusy = true;
+    try { await ffmpeg.unmount('/input'); } catch {}
+    try { await ffmpeg.createDir('/input'); } catch {}
+    await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+  }
+
+  async _releaseWorkerFS(ffmpeg) {
+    try { await ffmpeg.unmount('/input'); } catch {}
+    this._workerFSBusy = false;
+  }
+
   async _cutClipFFmpeg(file, startSec, endSec) {
     const ffmpeg = await this._loadFFmpeg();
     const duration = endSec - startSec;
+    await this._acquireWorkerFS(ffmpeg, file);
     try {
-      try { await ffmpeg.createDir('/input'); } catch {}
-      await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+      try { await ffmpeg.deleteFile('/segment.mp4'); } catch {}
       await ffmpeg.exec([
         '-ss', String(startSec), '-i', `/input/${file.name}`,
-        '-t', String(duration),
-        '-vf', 'scale=-2:1920,crop=1080:1920,setsar=1',
-        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
-        '-c:a', 'aac', '-b:a', '128k',
-        '/clip_out.mp4'
+        '-t', String(duration), '-c', 'copy', '/segment.mp4'
       ]);
-      const data = await ffmpeg.readFile('/clip_out.mp4');
-      await ffmpeg.deleteFile('/clip_out.mp4');
-      await ffmpeg.unmount('/input');
-      return new Blob([data.buffer], { type: 'video/mp4' });
-    } catch (e) {
-      try { await ffmpeg.unmount('/input'); } catch {}
-      throw e;
+      const data = await ffmpeg.readFile('/segment.mp4');
+      await ffmpeg.deleteFile('/segment.mp4');
+      return new Blob([data], { type: 'video/mp4' });
+    } finally {
+      await this._releaseWorkerFS(ffmpeg);
+    }
+  }
+
+  async _fetchRailwayToken() {
+    const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+    const res = await fetch('/api/repurpose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ mode: 'upload-token' })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erreur token Railway');
+    return data;
+  }
+
+  async _reframeViaRailway(segmentBlob, onProgress, preTokenData) {
+    const tokenData = preTokenData || await this._fetchRailwayToken();
+    const form = new FormData();
+    form.append('file', segmentBlob, 'segment.mp4');
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${tokenData.railway_url}/reframe-clip?token=${encodeURIComponent(tokenData.token)}`);
+      xhr.responseType = 'blob';
+      xhr.timeout = 300000;
+      xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 50)); };
+      xhr.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(50 + Math.round(e.loaded / e.total * 50)); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr.response);
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const detail = String(reader.result || '').substring(0, 300);
+            console.error('[reframe] Railway error', xhr.status, detail);
+            reject(new Error(`Railway reframe ${xhr.status}: ${detail}`));
+          };
+          reader.onerror = () => reject(new Error(`Railway reframe ${xhr.status}`));
+          reader.readAsText(xhr.response);
+        }
+      };
+      xhr.onerror = () => { console.error('[reframe] network error'); reject(new Error('Erreur réseau Railway')); };
+      xhr.ontimeout = () => reject(new Error('Timeout Railway (5 min)'));
+      xhr.send(form);
+    });
+  }
+
+  async _encodeReframe9x16(segmentBlob) {
+    // Encode libx264 9:16 localement depuis un blob segment
+    const ffmpeg = await this._loadFFmpeg();
+    const data = new Uint8Array(await segmentBlob.arrayBuffer());
+    await ffmpeg.writeFile('/seg_in.mp4', data);
+    try {
+      await ffmpeg.exec([
+        '-i', '/seg_in.mp4',
+        '-vf', 'scale=540:960:force_original_aspect_ratio=increase,crop=540:960,setsar=1',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
+        '-c:a', 'aac', '-b:a', '96k',
+        '/seg_out.mp4'
+      ]);
+      const out = await ffmpeg.readFile('/seg_out.mp4');
+      return new Blob([out], { type: 'video/mp4' });
+    } finally {
+      try { await ffmpeg.deleteFile('/seg_in.mp4'); } catch {}
+      try { await ffmpeg.deleteFile('/seg_out.mp4'); } catch {}
     }
   }
 
@@ -1088,6 +1206,13 @@ class AppCreatis {
     const fileInput = document.getElementById(`clips-file-${agentId}`);
     const file = fileInput?.files?.[0];
     if (!file) { this.afficherToast('❌ Sélectionne une vidéo', 'erreur'); return; }
+
+    const user = this.getUtilisateur();
+    const estGratuit = !user?.plan || user.plan === 'gratuit';
+    if (estGratuit && localStorage.getItem('creatis_clips_essai_used')) {
+      document.getElementById('modal-upgrade')?.classList.add('visible');
+      return;
+    }
 
     // Pour les petits fichiers (<500MB), tester ffmpeg.wasm d'abord.
     // Si indisponible (mobile/Safari), basculer sur upload direct Railway.
@@ -1162,8 +1287,7 @@ class AppCreatis {
 
       const transcribeData = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${tokenData.railway_url}/transcribe-audio`);
-        xhr.setRequestHeader('Authorization', `Bearer ${tokenData.token}`);
+        xhr.open('POST', `${tokenData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokenData.token)}`);
         xhr.timeout = 300000;
         xhr.upload.onprogress = e => {
           if (e.lengthComputable) setBar(40 + Math.round(e.loaded / e.total * 15));
@@ -1195,7 +1319,7 @@ class AppCreatis {
           video_id: `local_${agentId}`,
           title: file.name.replace(/\.[^.]+$/, ''),
           duration: transcribeData.duration,
-          n_clips: 5
+          n_clips: 10
         }) });
       const clipsData = await clipsRes.json();
       if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
@@ -1218,6 +1342,8 @@ class AppCreatis {
   }
 
   async _lancerClipsDirectUpload(agentId, file) {
+    this._localVideoFile = this._localVideoFile || {};
+    this._localVideoFile[agentId] = file;
     const btn = document.getElementById(`btn-upload-${agentId}`);
     const resultsZone = document.getElementById(`clips-results-${agentId}`);
     const dlIco = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
@@ -1251,8 +1377,7 @@ class AppCreatis {
       formData.append('file', file, file.name);
       const uploadData = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${tokenData.railway_url}/upload-video`);
-        xhr.setRequestHeader('Authorization', `Bearer ${tokenData.token}`);
+        xhr.open('POST', `${tokenData.railway_url}/upload-video?token=${encodeURIComponent(tokenData.token)}`);
         xhr.timeout = 600000;
         xhr.upload.onprogress = e => { if (e.lengthComputable) { setBar(Math.round(e.loaded/e.total*50)); setMsg(`Upload ${Math.round(e.loaded/e.total*100)}%…`); } };
         xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) { try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse invalide')); } } else reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`)); };
@@ -1263,10 +1388,14 @@ class AppCreatis {
       if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
       setBar(55); step(1); setMsg('Transcription en cours…');
 
+      // Persiste le job → reprise auto si iOS recharge la page pendant la transcription
+      const jobTitle = file.name.replace(/\.[^.]+$/, '');
+      try { localStorage.setItem(`clips_pending_${agentId}`, JSON.stringify({ job_id: uploadData.job_id, video_id: uploadData.video_id, title: jobTitle, ts: Date.now() })); } catch(e) {}
+
       let segments = null, duration = 0;
       for (let poll = 0; poll < 120; poll++) {
         await new Promise(r => setTimeout(r, 3000));
-        const r = await fetch(`${tokenData.railway_url}/upload-status/${uploadData.job_id}`, { headers: { 'Authorization': `Bearer ${tokenData.token}` } });
+        const r = await fetch(`${tokenData.railway_url}/upload-status/${uploadData.job_id}?token=${encodeURIComponent(tokenData.token)}`);
         const d = await r.json();
         if (d.status === 'done') { segments = d.segments; duration = d.duration; break; }
         if (d.status === 'error') throw new Error(d.error || 'Erreur transcription');
@@ -1277,18 +1406,78 @@ class AppCreatis {
 
       const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
         mode: 'clips', segments, video_id: uploadData.video_id,
-        title: file.name.replace(/\.[^.]+$/, ''), duration, n_clips: 5
+        title: jobTitle, duration, n_clips: 10
       }) });
       const clipsData = await clipsRes.json();
       if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+      try { localStorage.removeItem(`clips_pending_${agentId}`); } catch(e) {}
       setBar(100); step(3);
       this._afficherClipsResultats(agentId, clipsData.result);
     } catch(err) {
+      try { localStorage.removeItem(`clips_pending_${agentId}`); } catch(e) {}
       const msg = err?.message || String(err) || 'Erreur inconnue';
       console.error('[clips-direct]', err);
       this.afficherToast(`❌ ${msg}`, 'erreur', 8000);
       if (resultsZone) resultsZone.innerHTML = '';
     } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = `Créer les Shorts ${dlIco}`; }
+    }
+  }
+
+  async _reprendreClipsUpload(agentId, pendingJob) {
+    const resultsZone = document.getElementById(`clips-results-${agentId}`);
+    const btn = document.getElementById(`btn-upload-${agentId}`);
+    const dlIco = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="clips-spinner"></span> Reprise…'; }
+    if (resultsZone) resultsZone.innerHTML = `
+      <div class="clips-loading">
+        <div class="clips-loading-steps">
+          <div class="clips-step actif" id="cstep-up-0">🔄 Reprise transcription…</div>
+          <div class="clips-step" id="cstep-up-1">🧠 Analyse IA…</div>
+          <div class="clips-step" id="cstep-up-2">✅ Clips identifiés !</div>
+        </div>
+        <div id="clips-upload-progress" style="margin-top:12px">
+          <div style="height:4px;background:var(--bordure);border-radius:2px;overflow:hidden">
+            <div id="clips-upload-bar" style="height:100%;background:var(--accent);width:30%;transition:width .3s"></div>
+          </div>
+        </div>
+        <p id="clips-upload-msg" style="text-align:center;font-size:12px;color:var(--texte-secondaire);margin-top:8px">Reprise en cours — ta vidéo est déjà uploadée…</p>
+      </div>`;
+    const setBar = p => { const el = document.getElementById('clips-upload-bar'); if (el) el.style.width = p + '%'; };
+    const step = i => { const el = document.getElementById(`cstep-up-${i}`); if (el) el.classList.add('actif'); };
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      const tokenRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+      const tokenData = await tokenRes.json();
+      if (!tokenData.ok) throw new Error(tokenData.error || 'Erreur auth Railway');
+
+      let segments = null, duration = 0;
+      for (let poll = 0; poll < 120; poll++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const r = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-status', job_id: pendingJob.job_id }) });
+        const d = await r.json();
+        if (d.status === 'done') { segments = d.segments; duration = d.duration; break; }
+        if (d.status === 'error') throw new Error(d.error || 'Erreur transcription');
+        setBar(30 + Math.min(poll * 0.4, 40));
+      }
+      if (!segments) throw new Error('Timeout transcription');
+      setBar(75); step(1);
+
+      const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
+        mode: 'clips', segments, video_id: pendingJob.video_id,
+        title: pendingJob.title, duration, n_clips: 10
+      }) });
+      const clipsData = await clipsRes.json();
+      if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+      step(2); setBar(100);
+      this._afficherClipsResultats(agentId, clipsData.result);
+    } catch(err) {
+      const msg = err?.message || String(err) || 'Erreur inconnue';
+      this.afficherToast(`❌ ${msg}`, 'erreur', 8000);
+      if (resultsZone) resultsZone.innerHTML = '';
+    } finally {
+      try { localStorage.removeItem(`clips_pending_${agentId}`); } catch(e) {}
       if (btn) { btn.disabled = false; btn.innerHTML = `Créer les Shorts ${dlIco}`; }
     }
   }
@@ -1403,76 +1592,126 @@ class AppCreatis {
     try { iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'seekTo',args:[seekTo, true]}), '*'); } catch {}
   }
 
-  async _downloadClip(agentId, i, videoId, startSec, endSec) {
+  async _downloadClip(agentId, i, _videoId, startSec, endSec) {
     const btn = document.getElementById(`cdl-${agentId}-${i}`);
     const spinSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
-    const dlIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-    if (btn) { btn.disabled = true; btn.innerHTML = spinSvg; }
+    const dlIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    if (btn) { btn.innerHTML = spinSvg; }
 
-    // Fichier local → découpe directement dans le navigateur via ffmpeg.wasm
     const localFile = this._localVideoFile?.[agentId];
-    if (localFile) {
-      this.afficherToast('⏳ Découpe locale 9:16 en cours…', 'info', 180000);
+
+    if (!localFile) {
+      this.afficherToast('❌ Fichier source introuvable — re-uploade la vidéo', 'erreur', 5000);
+      if (btn) btn.innerHTML = dlIcon;
+      return;
+    }
+
+    // Coupure locale ffmpeg (-c copy, rapide) → reframe Railway si desktop, brut si mobile
+    {
+      const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}${String(Math.floor(s % 60)).padStart(2, '0')}`;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       try {
-        const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}${String(Math.floor(s % 60)).padStart(2, '0')}`;
-        const clipBlob = await this._cutClipFFmpeg(localFile, startSec, endSec);
-        const url = URL.createObjectURL(clipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `clip_${fmt(startSec)}s_${fmt(endSec)}s.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-        this.afficherToast('✅ Clip téléchargé !', 'succes', 3000);
+        this.afficherToast('⚡ Extraction…', 'info', 30000);
+        if (isMobile) {
+          // Mobile : coupure brute instantanée (-c copy), pas de reframe
+          const segmentBlob = await this._cutClipFFmpeg(localFile, startSec, endSec);
+          const clipFile = new File([segmentBlob], `clip_${Math.floor(startSec)}s.mp4`, { type: 'video/mp4' });
+          if (navigator.canShare && navigator.canShare({ files: [clipFile] })) {
+            await navigator.share({ files: [clipFile], title: 'Clip Créatis' });
+          } else {
+            const url = URL.createObjectURL(segmentBlob);
+            const a = document.createElement('a');
+            a.href = url; a.download = clipFile.name;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+            this.afficherToast('✅ Clip téléchargé !', 'succes', 3000);
+          }
+        } else {
+          // Desktop : coupure + reframe 9:16 via Railway en parallèle
+          const [segmentBlob, tokenData] = await Promise.all([
+            this._cutClipFFmpeg(localFile, startSec, endSec),
+            this._fetchRailwayToken().catch(() => null)
+          ]);
+          let clipBlob;
+          try {
+            this.afficherToast('🎬 Reframe 9:16…', 'info', 180000);
+            clipBlob = await this._reframeViaRailway(segmentBlob, pct => {
+              if (btn) btn.title = `${pct}%`;
+            }, tokenData);
+          } catch(railwayErr) {
+            console.warn('[reframe] Railway indispo, fallback local:', railwayErr.message);
+            this.afficherToast('🎬 Encodage en cours…', 'info', 300000);
+            clipBlob = await this._encodeReframe9x16(segmentBlob);
+          }
+          const url = URL.createObjectURL(clipBlob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `clip_${fmt(startSec)}_${fmt(endSec)}_9x16.mp4`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+          this.afficherToast('✅ Clip 9:16 téléchargé !', 'succes', 3000);
+        }
       } catch (err) {
         this.afficherToast(`❌ ${err.message}`, 'erreur', 5000);
       } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = dlIcon; }
+        if (btn) { btn.innerHTML = dlIcon; }
       }
       return;
     }
 
-    // Fallback Railway clip_export (pour fichiers uploadés via l'ancien flow)
-    this.afficherToast('⏳ Préparation du clip…', 'info', 60000);
-    try {
-      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
-      const startRes = await fetch('/api/repurpose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ mode: 'clip_export', video_id: videoId, start: startSec, end: endSec })
-      });
-      const startData = await startRes.json();
-      if (!startData.ok) throw new Error(startData.error || 'Erreur démarrage export');
-      const { job_id } = startData;
+  }
 
-      const sleep = ms => new Promise(r => setTimeout(r, ms));
-      let done = false;
-      for (let poll = 0; poll < 60 && !done; poll++) {
-        await sleep(3000);
-        if (btn) btn.title = `Préparation… ${Math.round((poll + 1) * 3)}s`;
-        const r = await fetch('/api/repurpose', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ mode: 'clip_export_status', job_id })
-        });
-        const d = await r.json();
-        if (d.status === 'done' && d.download_url) {
-          done = true;
-          this.afficherToast('✅ Clip prêt — téléchargement en cours !', 'succes', 4000);
-          window.location.href = d.download_url;
-          if (btn) { btn.disabled = false; btn.title = 'Télécharger le clip'; btn.innerHTML = dlIcon; }
-        } else if (d.status === 'error') {
-          throw new Error(d.error || 'Erreur export');
-        } else if (!r.ok) {
-          throw new Error(d.error || `Erreur serveur (${r.status})`);
-        }
-      }
-      if (!done) throw new Error('Délai dépassé (3 min) — réessaie dans quelques minutes');
-    } catch (err) {
-      this.afficherToast(`❌ ${err.message}`, 'erreur', 5000);
-      if (btn) { btn.disabled = false; btn.innerHTML = dlIcon; }
+  _telechargerVideo(url, filename) {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) {
+      // iOS : ouvre dans un nouvel onglet — l'utilisateur peut ensuite appuyer longuement → Enregistrer dans Photos
+      window.open(url, '_blank');
+      this.afficherToast('Vidéo ouverte — appuie longuement dessus → "Enregistrer la vidéo"', 'info', 6000);
+      return;
     }
+    // Desktop : téléchargement direct via <a download>
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  async _generateClipThumbnails(agentId, clips) {
+    const file = this._localVideoFile?.[agentId];
+    if (!file) return;
+    const videoUrl = URL.createObjectURL(file);
+    for (let i = 0; i < clips.length; i++) {
+      const preview = document.getElementById(`cprev-${agentId}-${i}`);
+      if (!preview) continue;
+      const t = Math.max(0, clips[i].start + 1);
+      const dataUrl = await this._captureFrame(videoUrl, t);
+      if (dataUrl) {
+        preview.style.backgroundImage = `url(${dataUrl})`;
+        preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center top';
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+    URL.revokeObjectURL(videoUrl);
+  }
+
+  _captureFrame(videoUrl, time) {
+    return new Promise(resolve => {
+      const vid = document.createElement('video');
+      vid.muted = true; vid.playsInline = true;
+      const to = setTimeout(() => { vid.src = ''; resolve(null); }, 6000);
+      vid.addEventListener('seeked', () => {
+        clearTimeout(to);
+        try {
+          const c = document.createElement('canvas');
+          c.width = 180; c.height = 320;
+          c.getContext('2d').drawImage(vid, 0, 0, 180, 320);
+          resolve(c.toDataURL('image/jpeg', 0.75));
+        } catch(e) { resolve(null); }
+        vid.src = '';
+      }, { once: true });
+      vid.addEventListener('error', () => { clearTimeout(to); vid.src = ''; resolve(null); }, { once: true });
+      vid.addEventListener('loadedmetadata', () => { vid.currentTime = time; }, { once: true });
+      vid.src = videoUrl;
+    });
   }
 
   _afficherClipsResultats(agentId, data) {
@@ -1483,6 +1722,11 @@ class AppCreatis {
     this._clipsCache[agentId] = { clips: data.clips, url: data.youtube_url };
     try { localStorage.setItem(`clips_${agentId}`, JSON.stringify({ clips: data.clips, url: data.youtube_url, ts: Date.now() })); } catch(e) {}
 
+    const user = this.getUtilisateur();
+    if (!user?.plan || user.plan === 'gratuit') {
+      localStorage.setItem('creatis_clips_essai_used', '1');
+    }
+
     if (!data.clips?.length) {
       zone.innerHTML = `<p style="text-align:center;color:var(--texte-secondaire);padding:2rem">Aucun clip identifié.</p>`;
       return;
@@ -1490,28 +1734,29 @@ class AppCreatis {
 
     const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
     const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
-    const dlIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    const dlIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
 
     const clipsHtml = data.clips.map((clip, i) => {
       const vid = clip.video_id;
       const s0 = Math.floor(clip.start), s1 = Math.floor(clip.end);
       const dur = `${fmt(clip.start)} → ${fmt(clip.end)}`;
+      const sc = scoreColor(clip.score);
       return `
-      <div class="clip-opus-card">
-        <div class="clip-opus-preview clip-upload-preview">
-          <div class="clip-upload-badge">${fmt(clip.start)}</div>
-          <div class="clip-play-btn" onclick="app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">${dlIcon}</div>
-          <div class="clip-upload-dur">${dur}</div>
+      <div class="short-card">
+        <div class="short-card-preview" id="cprev-${agentId}-${i}" onclick="app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})" style="cursor:pointer">
+          <div class="short-card-play" style="opacity:1"><span id="cdl-${agentId}-${i}" style="background:${sc}">${dlIcon}</span></div>
         </div>
-        <div class="clip-score-row">
-          <span class="clip-score-num" style="color:${scoreColor(clip.score)}">${clip.score}</span>
-          <div class="clip-action-btns">
-            <button class="clip-action-btn" id="cdl-${agentId}-${i}" title="Télécharger en 9:16" onclick="event.stopPropagation();app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">${dlIcon}</button>
-            <button class="clip-action-btn clip-action-del" title="Supprimer" onclick="this.closest('.clip-opus-card').remove()">✕</button>
+        <div class="short-card-meta">
+          <div class="short-card-top">
+            <span class="short-card-num">Clip ${i + 1}</span>
+            <span class="short-card-score" style="color:${sc}">${clip.score}</span>
           </div>
+          <div class="short-card-hook">${this._escapeHtml(clip.hook || `Moment ${i + 1}`)}</div>
+          <div class="short-card-dur">${dur}</div>
+          <button class="btn-dl-short" style="background:${sc}" onclick="event.stopPropagation();app._downloadClip('${agentId}',${i},'${vid}',${s0},${s1})">
+            ${dlIcon} Télécharger 9:16
+          </button>
         </div>
-        <div class="clip-opus-title">${this._escapeHtml(clip.hook || `Moment ${i+1}`)}</div>
-        <div class="clip-opus-dur">${dur}</div>
       </div>`;
     }).join('');
 
@@ -1521,9 +1766,12 @@ class AppCreatis {
           <strong>${data.clips.length} moments viraux identifiés</strong>
           <span>${this._escapeHtml((data.title || '').substring(0, 60))}</span>
         </div>
-        <span style="font-size:12px;color:var(--texte-secondaire)">Clique ⬇ pour couper chaque clip en 9:16</span>
+        <span style="font-size:12px;color:var(--texte-secondaire)">Clique ⬇ pour couper en 9:16</span>
       </div>
-      <div class="clips-opus-grid">${clipsHtml}</div>`;
+      <div class="clips-result-grid">${clipsHtml}</div>`;
+    this._generateClipThumbnails(agentId, data.clips);
+    // Pre-warm ffmpeg.wasm en fond — sera prêt quand l'utilisateur clique Télécharger
+    if (this._localVideoFile?.[agentId]) this._loadFFmpeg().catch(() => {});
   }
 
   async _genererShorts(agentId, urlEncoded) {
@@ -1541,6 +1789,9 @@ class AppCreatis {
       </div>
       <div class="shorts-prog-bar"><div class="shorts-prog-fill" id="spf-${agentId}"></div></div>
     </div>`;
+
+    let _saveJob = () => {};
+    let _clearJob = () => { try { localStorage.removeItem(`shorts_job_${agentId}`); } catch(e) {} };
 
     try {
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
@@ -1567,6 +1818,12 @@ class AppCreatis {
       let lastClipNum = 0, clipPollStart = 0, pctCur = 5;
       if (!jobIds?.length) throw new Error('Pas de jobs retournés');
 
+      // Persiste le job → reprend automatiquement si iOS recharge la page
+      _saveJob = () => {
+        try { localStorage.setItem(`shorts_job_${agentId}`, JSON.stringify({ agentId, jobIds, pendingClips, doneClips, totalClips, ts: Date.now() })); } catch(e) {}
+      };
+      _saveJob();
+
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       const fillEl = document.getElementById(`spf-${agentId}`);
       const textEl = document.getElementById(`spt-${agentId}`);
@@ -1585,6 +1842,7 @@ class AppCreatis {
         if (d.job_ids) jobIds = d.job_ids;
         if (d.pending_clips !== undefined) pendingClips = d.pending_clips;
         if (d.done_clips) doneClips = d.done_clips;
+        _saveJob();
 
         if (d.progress && textEl) textEl.textContent = d.progress;
         const pctEl = document.getElementById(`spp-${agentId}`);
@@ -1604,6 +1862,7 @@ class AppCreatis {
         if (pctEl) pctEl.textContent = `${pctCur}%`;
 
         if (d.status === 'done' && d.clips?.length) {
+          _clearJob();
           this._afficherShorts(agentId, d.clips, d.title);
           if (btn) { btn.disabled = false; btn.innerHTML = '✅ Shorts générés'; }
           return;
@@ -1612,6 +1871,7 @@ class AppCreatis {
       }
       throw new Error('Timeout — génération trop longue (15 min dépassées), réessaie');
     } catch (err) {
+      _clearJob();
       if (zone) zone.innerHTML = `<div class="shorts-error">❌ ${this._escapeHtml(err.message)}</div>`;
       if (btn) { btn.disabled = false; btn.textContent = '🔄 Réessayer'; }
     }
@@ -1637,10 +1897,10 @@ class AppCreatis {
           </div>
           <div class="short-card-hook">${this._escapeHtml(c.hook || '')}</div>
           <div class="short-card-dur">${fmt(c.start)} → ${fmt(c.end)} · ${c.duration}s</div>
-          <a class="btn-dl-short" href="${c.download_url}" download="${c.filename}" target="_blank">
+          <button class="btn-dl-short" onclick="app._telechargerVideo('${c.download_url}','${c.filename || `creatis_short_${i+1}.mp4`}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Télécharger MP4
-          </a>
+          </button>
         </div>
       </div>`;
     }).join('');
@@ -2219,10 +2479,15 @@ class AppCreatis {
 
   afficherHistorique() {
     this.afficherDashboard();
-    // Sur mobile, switcher sur l'onglet Historique
-    setTimeout(() => {
-      if (window.innerWidth <= 640 && typeof dashTab === 'function') dashTab('historique');
-    }, 50);
+    const agentsSection = document.getElementById('dash-agents-section');
+    const histSection = document.getElementById('dash-historique-section');
+    if (agentsSection) agentsSection.style.display = 'none';
+    if (histSection) histSection.style.display = '';
+    const btnHist = document.getElementById('btn-historique-nav');
+    if (btnHist) btnHist.classList.add('actif');
+    const btnDash = document.getElementById('btn-dashboard');
+    if (btnDash) btnDash.classList.remove('actif');
+    this._dashMettreAJourHistorique();
     this.fermerSidebarMobile();
   }
 
@@ -2244,6 +2509,13 @@ class AppCreatis {
     if (wsResizer) wsResizer.style.display = 'none';
     const btnDash = document.getElementById('btn-dashboard');
     if (btnDash) btnDash.classList.add('actif');
+    const btnHistNav = document.getElementById('btn-historique-nav');
+    if (btnHistNav) btnHistNav.classList.remove('actif');
+    // Afficher agents, masquer historique
+    const agentsSection = document.getElementById('dash-agents-section');
+    const histSection = document.getElementById('dash-historique-section');
+    if (agentsSection) agentsSection.style.display = '';
+    if (histSection) histSection.style.display = 'none';
     const headerTitre = document.getElementById('header-titre');
     if (headerTitre) headerTitre.innerHTML = '<span class="header-icone-svg"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Tableau de bord';
     this.mettreAJourDashboard();
@@ -2258,10 +2530,6 @@ class AppCreatis {
     this._dashMettreAJourChaine();
 
     const gens = this.getGenerations();
-
-    // Affiliation après 3 générations
-    const affilBloc = document.getElementById('dash-affiliation-bloc');
-    if (affilBloc) affilBloc.style.display = gens >= 3 ? '' : 'none';
 
     // Stats compactes dans plan card
     const statsCompact = document.getElementById('dash-stats-compact');
@@ -2310,7 +2578,7 @@ class AppCreatis {
       } else if (gens < 5) {
         tipEl.textContent = `${gens} génération${gens > 1 ? 's' : ''} effectuée${gens > 1 ? 's' : ''} — continue, chaque vidéo optimisée compte !`;
       } else {
-        tipEl.textContent = `${gens} générations — tu es sur la bonne voie. Essaie l'agent Prospection Sponsors !`;
+        tipEl.textContent = `${gens} générations — tu es sur la bonne voie. Essaie l'agent Clips Viraux pour transformer tes vidéos en Shorts !`;
       }
     }
 
@@ -2504,7 +2772,7 @@ class AppCreatis {
 
     grid.innerHTML = AGENTS.map(agent => {
       const actif = agentsAutorisés === 'tous' || agentsAutorisés.includes(agent.id);
-      const featured = agent.id === 'youtube-complet';
+      const featured = agent.id === 'clips-viraux';
       const onClick = actif
         ? `app.selectionnerAgent('${agent.id}')`
         : `document.getElementById('modal-upgrade').classList.add('visible')`;
@@ -3434,7 +3702,7 @@ class AppCreatis {
     if (modal) modal.classList.remove('visible');
     // Si l'utilisateur n'a pas encore généré, ouvrir youtube-complet directement
     if (autoOpen && this.getGenerations() === 0) {
-      setTimeout(() => this.selectionnerAgent('youtube-complet'), 200);
+      setTimeout(() => this.selectionnerAgent('clips-viraux'), 200);
     }
   }
 }

@@ -144,9 +144,9 @@ GROQ_URL: '/api/groq'
 USER_SYNC_URL: '/api/user-sync'
 
 // Plans (generations: -1 = illimité)
-gratuit → 50 générations, 0 miniatures, 4 agents (youtube-complet, youtube-short, idees-videos, chat-libre)
-pro     → illimité, 10 miniatures/mois, tous agents — 19€/mois (stripeId: price_1TVo3PAKwn6IEnxDX4c2KBhC)
-studio  → illimité, illimité miniatures, tous agents — 49€/mois (stripeId: price_1TVo3QAKwn6IEnxDaZV9u9wE)
+gratuit → 50 générations, 5 miniatures, 4 agents (youtube-complet, youtube-short, idees-videos, chat-libre)
+pro     → illimité, 30 miniatures/mois, tous agents — 19€/mois (9,50€ 1er mois avec CREATIS50) (stripeId: price_1TVo3PAKwn6IEnxDX4c2KBhC)
+studio  → illimité, 100 miniatures/mois, tous agents — 49€/mois (stripeId: price_1TVo3QAKwn6IEnxDaZV9u9wE)
 
 // Stripe price IDs (TEST mode)
 pro_mensuel:    price_1TVo3PAKwn6IEnxDX4c2KBhC  (19€/mois)
@@ -216,7 +216,7 @@ studio_annuel:  price_1TVo3QAKwn6IEnxDZ1ke8FOD  (468€/an)
 
 ---
 
-## Dernières modifications importantes (2026-05-12)
+## Dernières modifications importantes (2026-05-18)
 - `api/user-sync.js` : fix Supabase upsert (`resolution=merge-duplicates`), email bienvenue retourne messageId
 - `api/create-checkout-session.js` : trim APP_URL, variable const APP_URL
 - `auth.html` : "10 agents" (était 8)

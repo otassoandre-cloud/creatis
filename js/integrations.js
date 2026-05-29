@@ -199,37 +199,15 @@ const Stripe_Integration = {
     try {
       const priceId = annuel ? (planConfig.stripeIdAnnuel || planConfig.stripeId) : planConfig.stripeId;
       const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
-      const reponse = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId,
-          plan,
-          annuel,
-          userId: this.getUserId(),
-          userEmail: currentUser.email || null,
-          successUrl: CONFIG.STRIPE_SUCCESS_URL,
-          cancelUrl: CONFIG.STRIPE_CANCEL_URL,
-          allowPromoCodes: true
-        })
-      });
 
-      if (!reponse.ok) {
-        const err = await reponse.json().catch(() => ({}));
-        throw new Error(err.error || 'Erreur serveur lors de la création de session');
-      }
-
-      const { sessionId, url } = await reponse.json();
-
-      if (url) {
-        window.location.href = url;
-        return;
-      }
-
-      if (sessionId && this.stripe) {
-        const { error } = await this.stripe.redirectToCheckout({ sessionId });
-        if (error) throw new Error(error.message);
-      }
+      // Sauvegarder les infos pour paiement.html
+      sessionStorage.setItem('creatis_paiement', JSON.stringify({
+        priceId, plan, annuel,
+        userId: this.getUserId(),
+        userEmail: currentUser.email || null
+      }));
+      window.location.href = 'paiement.html';
+      return;
 
     } catch (erreur) {
       console.error('Erreur Stripe:', erreur);

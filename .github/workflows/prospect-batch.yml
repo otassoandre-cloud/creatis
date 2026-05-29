@@ -1,10 +1,12 @@
 name: Prospection quotidienne — 200 emails/jour
 
 on:
-  schedule:
-    # Tous les jours à 8h00 UTC (10h Paris)
-    - cron: '0 8 * * *'
-  workflow_dispatch: # Déclenchement manuel depuis GitHub
+  # DÉSACTIVÉ — arrêt suite plaintes harcèlement
+  # workflow_dispatch:
+  workflow_call:
+    secrets:
+      CRON_SECRET:
+        required: false
 
 jobs:
   prospect:

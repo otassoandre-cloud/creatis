@@ -86,6 +86,16 @@
   </style>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init','953153460847578');fbq('track','PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
   <!-- Microsoft Clarity -->
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
@@ -105,13 +115,13 @@
     <div class="success-plan">
       <div>
         <div class="success-plan-nom" id="plan-nom">Pro</div>
-        <div class="success-plan-prix" id="plan-desc">Générations illimitées · 10 miniatures/mois</div>
+        <div class="success-plan-prix" id="plan-desc">Générations illimitées · 30 miniatures/mois</div>
       </div>
       <span id="plan-prix" style="font-size:18px;font-weight:800;color:var(--texte);">19€/mois</span>
     </div>
 
     <div class="promo-box" id="promo-box">
-      🎁 Code <strong>CREATIS20</strong> appliqué — -20% pour toujours ✓
+      🎁 Code <strong>CREATIS50</strong> appliqué — -50% sur le premier mois ✓
     </div>
 
     <div class="sync-status" id="sync-status">
@@ -243,6 +253,17 @@
         document.getElementById('plan-desc').textContent = planConfig.description;
         document.getElementById('plan-prix').textContent = `${planConfig.prix}€/mois`;
         document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Plan activé — accès complet débloqué</span>';
+
+        /* Meta Pixel — Purchase (une seule fois par session) */
+        if (typeof fbq !== 'undefined' && !sessionStorage.getItem('purchase_tracked')) {
+          fbq('track', 'Purchase', {
+            value: planConfig.prix,
+            currency: 'EUR',
+            content_name: plan,
+            content_type: 'subscription'
+          });
+          sessionStorage.setItem('purchase_tracked', '1');
+        }
         const miniQ = planConfig.miniatures > 0 ? planConfig.miniatures : null;
         if (miniQ && document.getElementById('step-miniatures')) {
           document.getElementById('step-miniatures').innerHTML = `<strong>Génère ${miniQ} miniatures</strong> ce mois avec l'agent Miniature Pro`;
@@ -251,7 +272,7 @@
         document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Activation confirmée</span>';
       }
 
-      if (localStorage.getItem('creatis_promo_used') === 'CREATIS20') {
+      if (localStorage.getItem('creatis_promo_used') === 'CREATIS50') {
         document.getElementById('promo-box').style.display = 'block';
       }
     });

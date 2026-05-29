@@ -26,14 +26,36 @@ module.exports = async (req, res) => {
   // Email fiable : userEmail explicite, sinon userId si c'est un email
   const customerEmail = userEmail || (userId && userId.includes('@') ? userId : null);
 
+  // Appliquer directement -50% sur le premier mois Pro (sans code promo requis)
+  let launchCouponId = null;
+  if ((plan === 'pro' || !plan) && !annuel) {
+    try {
+      const coupon = await stripe.coupons.create({
+        percent_off: 50,
+        duration: 'once',
+        name: 'Offre lancement -50% 1er mois'
+      });
+      launchCouponId = coupon.id;
+    } catch (e) { /* silencieux si création échoue */ }
+  }
+
+  const embedded = req.body.embedded === true;
+
   try {
     const sessionParams = {
       mode: 'subscription',
-      payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl || `${APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${APP_URL}/cancel.html`,
-      allow_promotion_codes: allowPromoCodes !== false,
+      ...(embedded
+        ? { ui_mode: 'embedded', return_url: `${APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}` }
+        : {
+            payment_method_types: ['card'],
+            success_url: successUrl || `${APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: cancelUrl || `${APP_URL}/cancel.html`,
+          }
+      ),
+      ...(launchCouponId
+        ? { discounts: [{ coupon: launchCouponId }] }
+        : (!embedded ? { allow_promotion_codes: allowPromoCodes !== false } : {})),
       billing_address_collection: 'auto',
       metadata: {
         plan: plan || 'pro',
@@ -54,6 +76,9 @@ module.exports = async (req, res) => {
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     res.setHeader('Access-Control-Allow-Origin', APP_URL);
+    if (embedded) {
+      return res.status(200).json({ clientSecret: session.client_secret });
+    }
     return res.status(200).json({ sessionId: session.id, url: session.url });
 
   } catch (error) {

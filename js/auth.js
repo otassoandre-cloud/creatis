@@ -32,8 +32,18 @@ const Auth = (() => {
       const { data } = await client.auth.getSession();
       _session = data?.session || null;
 
+      // No active session but user was previously registered → grant access
+      // (email confirmation pending, or token expired between visits)
+      if (!_session) {
+        try {
+          const u = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+          if (u?.email) _demoMode = true;
+        } catch {}
+      }
+
       client.auth.onAuthStateChange((event, session) => {
         _session = session;
+        if (session) _demoMode = false; // real session restored → exit demo mode
         if (event === 'SIGNED_OUT') {
           _demoMode = false;
           localStorage.removeItem('creatis_user');
@@ -50,6 +60,13 @@ const Auth = (() => {
       _session = data.session;
       if (data.user) {
         await _syncUtilisateur(data.user, null);
+        // Store user in localStorage so app.html stays accessible even if session is null
+        // (Supabase returns null session when email confirmation is required)
+        if (!_session) {
+          localStorage.setItem('creatis_user', JSON.stringify({
+            id: data.user.id, email: data.user.email, plan: 'gratuit'
+          }));
+        }
         const refCode = localStorage.getItem('creatis_ref');
         if (refCode && data.user.id) {
           fetch('/api/parrainage', {
@@ -82,6 +99,31 @@ const Auth = (() => {
       localStorage.removeItem('creatis_user');
       localStorage.removeItem('creatis_generations');
       window.location.href = 'auth.html';
+    },
+
+    /* ── Google OAuth ── */
+    // TODO: activer Google dans Supabase Dashboard → Authentication > Providers > Google
+    async signInWithGoogle() {
+      const client = _createClient();
+      if (!client) throw new Error('Supabase non configuré');
+      const redirectTo = window.location.origin + '/auth/callback';
+      const { error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, queryParams: { access_type: 'offline', prompt: 'consent' } }
+      });
+      if (error) throw new Error(error.message);
+    },
+
+    /* ── Callback OAuth (appelé depuis auth/callback.html) ── */
+    async handleOAuthCallback() {
+      const client = _createClient();
+      if (!client) throw new Error('Supabase non configuré');
+      const { data, error } = await client.auth.getSession();
+      if (error) throw new Error(error.message);
+      if (!data.session) throw new Error('Session introuvable après authentification');
+      _session = data.session;
+      await _syncUtilisateur(data.session.user, data.session);
+      return data.session.user;
     },
 
     /* ── Mode démo (sans compte) ── */
@@ -126,7 +168,7 @@ const Auth = (() => {
       return null;
     },
 
-    /* ── Récupérer le plan depuis Supabase ── */
+    /* ── Récupérer le plan et le compteur mensuel depuis Supabase ── */
     async getPlanDistant() {
       if (!_session?.user?.id) return null;
       try {
@@ -137,7 +179,9 @@ const Auth = (() => {
         });
         if (!res.ok) return null;
         const { user } = await res.json();
-        return user?.plan || 'gratuit';
+        if (!user) return 'gratuit';
+        // Retourner l'objet complet pour que app.js puisse sync le compteur mensuel
+        return { plan: user.plan || 'gratuit', generations_used: user.generations_used || 0, generations_reset_at: user.generations_reset_at || null };
       } catch { return null; }
     }
   };

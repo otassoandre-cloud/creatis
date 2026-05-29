@@ -8,6 +8,7 @@
 
 :root {
   --bg: #050505;
+  --bg-surface: #0d0d0d;
   --bg-card: #090909;
   --bg-card-hover: #0e0e0e;
   --bg-input: #060606;

@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const YOUTUBE_API  = 'https://www.googleapis.com/youtube/v3';
 const BREVO_BASE   = 'https://api.brevo.com/v3';
 const LEMLIST_BASE = 'https://api.lemlist.com/api';
-const SUPA_BASE    = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPA_BASE    = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
 const EMAIL_RE     = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 const SKIP         = ['example.com','youremail','votreemail','email.com','domain.com','sentry.io'];
 
@@ -120,6 +120,22 @@ async function searchKeyword(keyword, maxResults, minAb, maxAb) {
   }).filter(ch => ch.abonnes >= minAb && (maxAb === 0 || ch.abonnes <= maxAb));
 }
 
+// ---- Blacklist helper ----
+let _blacklistCache = null;
+async function getBlacklist() {
+  if (_blacklistCache) return _blacklistCache;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  if (!SUPA_BASE || !key) return new Set();
+  try {
+    const r = await fetch(`${SUPA_BASE}/rest/v1/email_blacklist?select=email`, {
+      headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+    });
+    const rows = r.ok ? await r.json() : [];
+    _blacklistCache = new Set(rows.map(r => r.email.toLowerCase().trim()));
+    return _blacklistCache;
+  } catch { return new Set(); }
+}
+
 // ---- Supabase helpers ----
 async function supaGet(table, select, filter) {
   const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
@@ -146,6 +162,7 @@ async function supaInsert(table, rows) {
 
 // ---- Brevo outreach ----
 async function sendOutreach(ch, appUrl) {
+  return false; // EMAILS DÉSACTIVÉS — arrêt suite plaintes harcèlement
   const key = (process.env.BREVO_API_KEY || '').trim();
   if (!key) return false;
 
@@ -169,7 +186,7 @@ async function sendOutreach(ch, appUrl) {
           <p style="color:#444">Titres CTR, script complet, miniature IA — tout d'un coup.</p>
           <p>Gratuit à tester — 50 générations, sans carte bancaire :</p>
           <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer Créatis →</a>
-          <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part si ça ne t'intéresse pas.</p>
+          <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part. Pour ne plus être contacté : <a href="mailto:contact@creatis.app?subject=Désabonnement&body=Merci%20de%20me%20retirer%20de%20votre%20liste%20:%20${encodeURIComponent(ch.email)}" style="color:#aaa">se désabonner</a>.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p style="color:#444;font-size:13px;margin:0"><strong>PS :</strong> Si tu connais d'autres créateurs YouTube, notre programme affilié verse <strong>30% récurrent à vie</strong> (5,70€/mois par abonné Pro). Ton lien sur <a href="${appUrl}/affiliation" style="color:#10b981">${appUrl}/affiliation</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
@@ -402,9 +419,13 @@ module.exports = async (req, res) => {
     const baseIndex = now.getUTCDate() % KEYWORD_SETS.length;
     const keywords = KEYWORD_SETS[baseIndex];
 
-    // Récupère les emails déjà contactés depuis Supabase
+    // Récupère les emails déjà contactés depuis Supabase + blacklist
     const existing = await supaGet('prospects_contacted', 'email');
-    const alreadySent = new Set((existing || []).map(r => r.email?.toLowerCase()).filter(Boolean));
+    const blacklist = await getBlacklist();
+    const alreadySent = new Set([
+      ...(existing || []).map(r => r.email?.toLowerCase()).filter(Boolean),
+      ...blacklist
+    ]);
 
     const found = [];
     for (let i = 0; i < keywords.length; i += 5) {
@@ -420,7 +441,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    const DAILY_LIMIT = 200;
+    const DAILY_LIMIT = 50;
     let sent = 0, errors = 0;
     const newContacts = [];
     for (const ch of found) {
