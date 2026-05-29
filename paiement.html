@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paiement — Créatis Pro</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body { min-height: 100vh; background: var(--bg); font-family: 'Inter', sans-serif; margin: 0; }
+
+    .paiement-layout {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Colonne gauche — récap commande */
+    .paiement-recap {
+      background: var(--bg-card);
+      border-right: 1px solid var(--bordure);
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .paiement-logo {
+      font-size: 22px; font-weight: 800; color: var(--texte); margin-bottom: 48px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .paiement-logo span { color: var(--vert); }
+
+    .recap-plan {
+      background: var(--bg);
+      border: 1px solid var(--bordure);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .recap-plan-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+      color: var(--vert); font-size: 12px; font-weight: 700;
+      padding: 4px 10px; border-radius: 20px; margin-bottom: 12px;
+    }
+    .recap-plan-nom { font-size: 20px; font-weight: 800; color: var(--texte); margin-bottom: 4px; }
+    .recap-plan-desc { font-size: 13px; color: var(--texte-muted); margin-bottom: 16px; }
+
+    .recap-prix-bloc { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    .recap-prix-barre { font-size: 18px; font-weight: 700; color: var(--texte-muted); text-decoration: line-through; }
+    .recap-prix-final { font-size: 32px; font-weight: 800; color: var(--texte); }
+    .recap-prix-period { font-size: 14px; color: var(--texte-muted); }
+    .recap-prix-suite { font-size: 12px; color: var(--texte-muted); margin-bottom: 16px; }
+
+    .recap-promo {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; color: #f97316; font-weight: 600;
+    }
+
+    .recap-features { margin-top: 24px; }
+    .recap-feature {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--texte-doux); padding: 7px 0;
+      border-bottom: 1px solid var(--bordure);
+    }
+    .recap-feature:last-child { border-bottom: none; }
+    .recap-feature svg { flex-shrink: 0; }
+
+    .recap-securite {
+      margin-top: auto; padding-top: 32px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--texte-muted);
+    }
+
+    .paiement-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--texte-muted); text-decoration: none;
+      margin-bottom: 32px; transition: color .15s;
+    }
+    .paiement-back:hover { color: var(--texte); }
+
+    /* Colonne droite — formulaire Stripe */
+    .paiement-form {
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .paiement-form-inner {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .paiement-form-titre {
+      font-size: 22px; font-weight: 800; color: var(--texte);
+      margin-bottom: 8px;
+    }
+    .paiement-form-sous {
+      font-size: 14px; color: var(--texte-muted); margin-bottom: 32px;
+    }
+
+    #checkout-container { width: 100%; }
+
+    .paiement-loading {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px; padding: 60px 0;
+      color: var(--texte-muted); font-size: 14px;
+    }
+    .paiement-spinner {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 3px solid var(--bordure);
+      border-top-color: var(--vert);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .paiement-error {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 12px; padding: 16px 20px;
+      font-size: 14px; color: #f87171; display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .paiement-layout { grid-template-columns: 1fr; }
+      .paiement-recap { border-right: none; border-bottom: 1px solid var(--bordure); padding: 32px 24px; }
+      .paiement-form { padding: 32px 24px; }
+      .recap-securite { display: none; }
+    }
+    @media (max-width: 480px) {
+      .paiement-recap, .paiement-form { padding: 24px 16px; }
+      .recap-prix-final { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="paiement-layout">
+
+  <!-- Colonne gauche -->
+  <div class="paiement-recap">
+    <a href="index.html" class="paiement-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Retour
+    </a>
+
+    <div class="paiement-logo">Créatis<span>.</span></div>
+
+    <div class="recap-plan">
+      <div class="recap-plan-badge">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Plan Pro
+      </div>
+      <div class="recap-plan-nom">Créatis Pro</div>
+      <div class="recap-plan-desc">Tous les agents · 30 miniatures/mois · Générations illimitées</div>
+
+      <div class="recap-prix-bloc">
+        <span class="recap-prix-barre">19€</span>
+        <span class="recap-prix-final">9,50€</span>
+        <span class="recap-prix-period">/mois</span>
+      </div>
+      <div class="recap-prix-suite">Puis 19€/mois à partir du mois suivant</div>
+
+      <div class="recap-promo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        Offre lancement — <strong>-50% sur le 1er mois</strong>
+      </div>
+    </div>
+
+    <div class="recap-features">
+      <div class="recap-feature">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        10 agents IA spécialisés YouTube
+      </div>
+      <div class="recap-feature">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        30 miniatures HD avec gpt-image-1
+      </div>
+      <div class="recap-feature">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Générations illimitées
+      </div>
+      <div class="recap-feature">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Agents adaptés à ta chaîne YouTube
+      </div>
+      <div class="recap-feature">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Résiliable à tout moment
+      </div>
+    </div>
+
+    <div class="recap-securite">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Paiement sécurisé par Stripe · SSL 256-bit
+    </div>
+  </div>
+
+  <!-- Colonne droite -->
+  <div class="paiement-form">
+    <div class="paiement-form-inner">
+      <div class="paiement-form-titre">Finaliser votre abonnement</div>
+      <div class="paiement-form-sous">Vos informations de paiement sont chiffrées et sécurisées.</div>
+
+      <div class="paiement-error" id="paiement-error"></div>
+
+      <div id="checkout-container">
+        <div class="paiement-loading" id="paiement-loading">
+          <div class="paiement-spinner"></div>
+          Chargement du formulaire…
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const raw = sessionStorage.getItem('creatis_paiement');
+  if (!raw) { window.location.href = 'index.html#tarifs'; return; }
+
+  const { priceId, plan, annuel, userId, userEmail } = JSON.parse(raw);
+
+  // Adapter le récap si plan studio ou annuel
+  if (annuel) {
+    document.querySelector('.recap-prix-final').textContent = plan === 'studio' ? '468€' : '180€';
+    document.querySelector('.recap-prix-period').textContent = '/an';
+    document.querySelector('.recap-prix-suite').textContent = 'Renouvellement annuel automatique';
+    document.querySelector('.recap-prix-barre').style.display = 'none';
+    document.querySelector('.recap-promo').style.display = 'none';
+  } else if (plan === 'studio') {
+    document.querySelector('.recap-plan-badge').innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Plan Studio';
+    document.querySelector('.recap-plan-nom').textContent = 'Créatis Studio';
+    document.querySelector('.recap-plan-desc').textContent = 'Tous les agents · 100 miniatures/mois · Illimité';
+    document.querySelector('.recap-prix-final').textContent = '49€';
+    document.querySelector('.recap-prix-barre').style.display = 'none';
+    document.querySelector('.recap-promo').style.display = 'none';
+  }
+
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+    const reponse = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priceId, plan, annuel, userId, userEmail: userEmail || currentUser.email || null, embedded: true })
+    });
+
+    if (!reponse.ok) {
+      const err = await reponse.json().catch(() => ({}));
+      throw new Error(err.error || 'Erreur serveur');
+    }
+
+    const { clientSecret } = await reponse.json();
+    if (!clientSecret) throw new Error('clientSecret manquant');
+
+    const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+    const checkout = await stripe.initEmbeddedCheckout({ clientSecret });
+
+    document.getElementById('paiement-loading').remove();
+    checkout.mount('#checkout-container');
+
+  } catch (e) {
+    document.getElementById('paiement-loading').remove();
+    const errEl = document.getElementById('paiement-error');
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion — Créatis</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    body {
+      background: #0a0f0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      color: #fff;
+    }
+    .cb-box {
+      text-align: center;
+      padding: 40px;
+    }
+    .cb-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #1e2e1e;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .cb-titre { font-size: 16px; color: #aaa; margin-bottom: 8px; }
+    .cb-erreur { color: #f87171; font-size: 14px; display: none; margin-top: 16px; }
+    .cb-logo { font-size: 24px; font-weight: 800; margin-bottom: 28px; color: #fff; }
+    .cb-logo span { color: #10b981; }
+  </style>
+</head>
+<body>
+  <div class="cb-box">
+    <div class="cb-logo">Créatis<span>.</span></div>
+    <div class="cb-spinner"></div>
+    <div class="cb-titre">Connexion en cours…</div>
+    <div class="cb-erreur" id="cb-erreur"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    (async () => {
+      try {
+        const user = await Auth.handleOAuthCallback();
+
+        // Sync user data to localStorage so app.html has it immediately
+        const nom = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0];
+        const avatar = user.user_metadata?.avatar_url || null;
+        localStorage.setItem('creatis_user', JSON.stringify({
+          id: user.id,
+          email: user.email,
+          nom,
+          avatar,
+          plan: 'gratuit'
+        }));
+
+        // Vérifier si un plan cible est en attente (flow paiement post-auth)
+        const planCible = localStorage.getItem('creatis_plan_cible');
+        if (planCible && window.CONFIG?.PLANS?.[planCible]) {
+          // Laisser integrations.js gérer la redirection vers Stripe
+          window.location.href = '/app.html';
+          return;
+        }
+
+        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+        window.location.href = returnUrl || '/app.html';
+      } catch (err) {
+        const el = document.getElementById('cb-erreur');
+        el.textContent = 'Erreur de connexion : ' + err.message + ' — Redirection…';
+        el.style.display = 'block';
+        document.querySelector('.cb-spinner').style.display = 'none';
+        setTimeout(() => { window.location.href = '/auth.html'; }, 3000);
+      }
+    })();
+  </script>
+</body>
+</html>
