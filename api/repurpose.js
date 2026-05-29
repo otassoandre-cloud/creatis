@@ -389,6 +389,7 @@ async function transcribeAudioUrl(audioUrl) {
 
 // Identification des clips viraux via Groq LLM
 async function identifyViralClips(segments, videoId, title, nClips) {
+  console.log(`[clips] start — GROQ:${!!GROQ_KEY} GEMINI:${!!GEMINI_KEY} TOGETHER:${!!TOGETHER_KEY} segments:${segments.length}`);
   // Échantillonnage uniforme sur toute la vidéo (pas juste le début)
   const MAX_CHARS = 7500;
   let sampled = segments;
@@ -470,21 +471,21 @@ ${transcript}`;
   let clips = [];
   try {
     const parsed = JSON.parse(jsonStr);
-    clips = parsed.clips || parsed.results || parsed.moments || parsed.viral_clips || parsed.top_clips || (Array.isArray(parsed) ? parsed : []);
+    clips = parsed.clips || parsed.extraits || parsed.results || parsed.moments || parsed.viral_clips || parsed.top_clips || (Array.isArray(parsed) ? parsed : []);
   } catch {
-    // Essayer d'extraire juste le tableau
     const s = raw.indexOf('['), e = raw.lastIndexOf(']');
     if (s !== -1 && e > s) try { clips = JSON.parse(raw.slice(s, e + 1)); } catch {}
   }
-  console.log(`[clips] parsed ${clips.length} clips avant filtre`);
+  console.log(`[clips] parsed ${clips.length} clips avant filtre, sample:`, JSON.stringify(clips[0] || {}).slice(0, 200));
   clips = clips
     .map(c => ({
       video_id: videoId,
-      start: parseFloat(c.start_time ?? c.start ?? c.begin ?? c.timestamp_start),
-      end: parseFloat(c.end_time ?? c.end ?? c.finish ?? c.timestamp_end),
-      title: c.title || c.name || '',
-      hook: c.hook || c.description || '',
-      score: parseInt(c.score ?? c.viral_score ?? c.rating) || 80
+      // Accepte noms EN et FR
+      start: parseFloat(c.start_time ?? c.start ?? c.debut ?? c.temps_debut ?? c.begin ?? c.timestamp_start ?? c.heure_debut),
+      end: parseFloat(c.end_time ?? c.end ?? c.fin ?? c.temps_fin ?? c.finish ?? c.timestamp_end ?? c.heure_fin),
+      title: c.title || c.titre || c.name || c.nom || '',
+      hook: c.hook || c.accroche || c.description || c.extrait || '',
+      score: parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral) || 80
     }))
     .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 15)
     .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
