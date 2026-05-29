@@ -451,16 +451,27 @@ ${transcript}`;
     });
   }
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
+  console.log('[clips] raw LLM response:', raw.slice(0, 300));
   const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
-  const jsonStart = cleaned.indexOf('{"clips"');
-  const jsonEnd = cleaned.lastIndexOf('}');
-  const json = jsonStart !== -1 ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
   let clips = [];
-  try { clips = JSON.parse(json).clips || []; }
-  catch { const s = json.indexOf('['), e = json.lastIndexOf(']'); if (s !== -1 && e !== -1) try { clips = JSON.parse(json.slice(s, e+1)); } catch {} }
+  try {
+    const parsed = JSON.parse(cleaned);
+    clips = parsed.clips || parsed.results || parsed.moments || (Array.isArray(parsed) ? parsed : []);
+  } catch {
+    const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
+    if (s !== -1 && e !== -1) try { clips = JSON.parse(cleaned.slice(s, e + 1)); } catch {}
+  }
+  console.log(`[clips] parsed ${clips.length} clips avant filtre`);
   clips = clips
-    .map(c => ({ video_id: videoId, start: parseFloat(c.start_time), end: parseFloat(c.end_time), title: c.title, hook: c.hook, score: parseInt(c.score) || 80 }))
-    .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 20)
+    .map(c => ({
+      video_id: videoId,
+      start: parseFloat(c.start_time ?? c.start ?? c.begin ?? c.timestamp_start),
+      end: parseFloat(c.end_time ?? c.end ?? c.finish ?? c.timestamp_end),
+      title: c.title || c.name || '',
+      hook: c.hook || c.description || '',
+      score: parseInt(c.score ?? c.viral_score ?? c.rating) || 80
+    }))
+    .filter(c => !isNaN(c.start) && !isNaN(c.end) && (c.end - c.start) >= 15)
     .map(c => ({ ...c, end: Math.min(c.end, c.start + 90) }));
 
   // Fallback : si Groq n'a rien retourné d'utilisable, découpage uniforme
