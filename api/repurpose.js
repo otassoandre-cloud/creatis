@@ -11,6 +11,7 @@ const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
 const TOGETHER_KEY = (process.env.TOGETHER_API_KEY || '').trim();
+const GEMINI_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const RESIDENTIAL_PROXY_URL = (process.env.RESIDENTIAL_PROXY_URL || '').trim();
 // Cookies YouTube (exportés depuis un navigateur connecté) pour accéder aux vidéos géo-restreintes
 const YOUTUBE_COOKIES = (process.env.YOUTUBE_COOKIES || '').trim();
@@ -420,28 +421,36 @@ Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral
 Transcription "${title}" :
 ${transcript}`;
 
-  const baseBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } };
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...baseBody }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
     signal: AbortSignal.timeout(60000),
   });
   console.log('[clips] Groq status:', r.status);
-  // Fallback Together AI si Groq rate-limite ou billing
-  if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
-    console.warn(`[clips] Groq ${r.status}, fallback Together AI`);
-    r = await fetch('https://api.together.xyz/v1/chat/completions', {
+  // Fallback Gemini Flash si Groq rate-limite ou billing
+  if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
+    console.warn(`[clips] Groq ${r.status}, fallback Gemini Flash`);
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
-      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...baseBody }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
       signal: AbortSignal.timeout(60000),
     });
-    console.log('[clips] Together AI status:', r.status);
+    console.log('[clips] Gemini status:', geminiRes.status);
+    if (geminiRes.ok) {
+      const geminiData = await geminiRes.json();
+      const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log('[clips] Gemini raw:', geminiText.slice(0, 300));
+      // Normaliser en format OpenAI pour réutiliser le parsing
+      r = { ok: true, json: async () => ({ choices: [{ message: { content: geminiText } }] }) };
+    } else {
+      r = geminiRes;
+    }
   }
-  // Si Together AI aussi en erreur → découpage uniforme (on ne crash pas)
+  // Si tous les LLM en erreur → découpage uniforme (on ne crash pas)
   if (!r.ok) {
-    const errBody = await r.text();
+    const errBody = typeof r.text === 'function' ? await r.text() : '';
     console.warn(`[clips] LLM error ${r.status}, fallback découpage uniforme: ${errBody.slice(0, 200)}`);
     if (segments.length === 0) throw new Error(`LLM error ${r.status}`);
     const totalDur2 = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
@@ -593,19 +602,21 @@ Format : [MINIATURE 1] Texte: | Émotion: | Style:
 
 Réponds directement sans introduction. Tout en français.`;
 
-  const contentBody = { model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 };
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify(contentBody)
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 })
   });
-  if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
-    console.warn(`[content] Groq ${r.status}, fallback Together AI`);
-    r = await fetch('https://api.together.xyz/v1/chat/completions', {
+  if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
+    console.warn(`[content] Groq ${r.status}, fallback Gemini Flash`);
+    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
-      body: JSON.stringify({ ...contentBody, model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 4096 } })
     });
+    if (!gr.ok) throw new Error('Erreur génération contenu');
+    const gd = await gr.json();
+    return gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
   }
   if (!r.ok) throw new Error('Erreur génération contenu');
   const data = await r.json();
