@@ -1,6 +1,6 @@
 # PROJECT_MAP.md — Créatis
 > Lire ce fichier EN PREMIER à chaque session. Évite de relire les gros fichiers en entier.
-> Mis à jour : 2026-05-12
+> Mis à jour : 2026-05-30
 
 ---
 
@@ -42,6 +42,7 @@
 |---------|------|
 | `api/groq.js` | Proxy Groq — POST {messages, model} → texte IA |
 | `api/generate-image.js` | Proxy images — OpenAI gpt-image-1 (principal) + HF/Together (fallback) |
+| `api/repurpose.js` | Clips Viraux — transcription + identification LLM + export 9:16 (~950 lignes) |
 | `api/user-sync.js` | CRUD utilisateur Supabase — actions: get/upsert/increment_generation/upgrade_plan/reset_miniatures |
 | `api/create-checkout-session.js` | Crée session Stripe Checkout — retourne {sessionId, url} |
 | `api/stripe-webhook.js` | Webhook Stripe — met à jour plan Supabase + email confirmation Brevo |
@@ -54,6 +55,7 @@
 | `vercel.json` | Config Vercel — routes, fonctions |
 | `.env` | Variables locales (jamais commitées) |
 | `package.json` | Dépendances Node (stripe, @supabase/supabase-js) |
+| `repurpose-service/main.py` | Service Railway — yt-dlp + faster-whisper + ffmpeg → transcription + reframe 9:16 |
 
 ---
 
@@ -187,7 +189,9 @@ studio_annuel:  price_1TVo3QAKwn6IEnxDZ1ke8FOD  (468€/an)
 
 | Variable | Où | Usage |
 |----------|-----|-------|
-| `GROQ_API_KEY` | Vercel ✓ | Génération texte |
+| `GROQ_API_KEY` | Vercel ✓ | Génération texte + clips (primary LLM) |
+| `GEMINI_API_KEY` | Vercel ✓ | Clips fallback #2 — gemini-2.0-flash, gratuit 1500 req/jour |
+| `TOGETHER_API_KEY` | Vercel ✓ | Clips fallback #3 — $14.96 crédits restants (mai 2026) |
 | `OPENAI_API_KEY` | Vercel ✓ | Génération images (gpt-image-1) |
 | `SUPABASE_URL` | Vercel ✓ | DB utilisateurs |
 | `SUPABASE_SERVICE_KEY` | Vercel ✓ | CRUD Supabase server-side |
@@ -196,6 +200,8 @@ studio_annuel:  price_1TVo3QAKwn6IEnxDZ1ke8FOD  (468€/an)
 | `BREVO_API_KEY` | Vercel ✓ | Emails transactionnels |
 | `YOUTUBE_API_KEY` | Vercel ✓ | Fetch chaîne YouTube |
 | `APP_URL` | Vercel ✓ | https://creatis.app |
+| `REPURPOSE_SERVICE_URL` | Vercel ✓ | URL Railway service (lavish-warmth) |
+| `REPURPOSE_SERVICE_SECRET` | Vercel ✓ | Token auth Railway |
 | `HF_TOKEN` | Vercel ✗ | Fallback images HuggingFace (optionnel) |
 
 ---
@@ -216,7 +222,46 @@ studio_annuel:  price_1TVo3QAKwn6IEnxDZ1ke8FOD  (468€/an)
 
 ---
 
-## Dernières modifications importantes (2026-05-18)
+## Flow Clips Viraux (api/repurpose.js)
+
+### Modes disponibles
+| mode | Description |
+|------|-------------|
+| `clips` | Identification clips depuis segments Railway → LLM → retourne 10 clips |
+| `upload-token` | Récupère credentials Railway pour upload mobile |
+| `upload-status` | Proxy polling statut transcription Railway (évite CORS mobile) |
+| `clip_export` | Découpe + reframe 9:16 un clip via Railway |
+| `shorts_start` | Lance génération shorts YouTube complets |
+| `shorts_status` | Polling progression shorts |
+
+### Chaîne LLM fallback (identifyViralClips)
+1. **Groq** `llama-3.3-70b-versatile` + `response_format: json_object` → si 429/402 →
+2. **Gemini 2.0 Flash** `gemini-2.0-flash` + `responseMimeType: application/json` → si erreur →
+3. **Together AI** `meta-llama/Llama-3.3-70B-Instruct-Turbo` + system message JSON strict → si tous KO →
+4. **Découpage uniforme** score 70 (fallback dernier recours)
+
+### Bugs résolus (2026-05-30)
+- CORS mobile : `?token=` query param au lieu de `Authorization: Bearer` header
+- Railway service crashé → redéployé via git push
+- Modèle Gemini : `gemini-1.5-flash` → `gemini-2.0-flash` (1.5 n'existe plus)
+- Clips courts : Together AI retourne des clips de 8s → filtre `>=15s` les éliminait → extension auto à 60s min
+- Parsing JSON flexible : accepte noms EN et FR (`start_time`/`debut`, `score`/`note`, etc.)
+
+### Service Railway (repurpose-service/main.py)
+- Projet : `vibrant-grace` → service : `lavish-warmth`
+- Auto-deploy sur push GitHub (`otassoandre-cloud/creatis`)
+- Endpoints : `/upload-video`, `/upload-status/{job_id}`, `/transcribe-audio`, `/reframe-clip`, `/clip-export`
+- Auth : `?token=` query param (évite CORS preflight mobile)
+
+---
+
+## Dernières modifications importantes (2026-05-30)
+- `api/repurpose.js` : chaîne Groq→Gemini→Together AI + clips courts étendus à 60s + parsing JSON FR/EN
+- `repurpose-service/main.py` : auth accepte `?token=` query param
+- `js/app.js` : upload Railway via `?token=` (CORS mobile fix)
+- Vercel env : `GEMINI_API_KEY` configurée (gemini-2.0-flash), `TOGETHER_API_KEY` ($14.96 crédits)
+
+## Modifications importantes (2026-05-18)
 - `api/user-sync.js` : fix Supabase upsert (`resolution=merge-duplicates`), email bienvenue retourne messageId
 - `api/create-checkout-session.js` : trim APP_URL, variable const APP_URL
 - `auth.html` : "10 agents" (était 8)
