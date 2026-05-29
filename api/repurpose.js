@@ -751,7 +751,8 @@ module.exports = async (req, res) => {
     try {
       const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
-      return res.status(200).json({ ok: true, mode: 'clips', status: 'done',
+      const _debug = clips[0]?._dbg || null;
+      return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
         result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
       });
     } catch (err) {
