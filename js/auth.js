@@ -151,7 +151,8 @@ const Auth = (() => {
         return data.session.user;
       }
 
-      throw new Error('Connexion échouée — réessaie');
+      const dbg = window.location.search + ' | ' + window.location.hash.slice(0, 60);
+      throw new Error('Connexion échouée — URL: ' + (dbg.trim() || 'vide'));
     },
 
     /* ── Mode démo (sans compte) ── */
