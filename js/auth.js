@@ -119,6 +119,11 @@ const Auth = (() => {
       const client = _createClient();
       if (!client) throw new Error('Supabase non configuré');
 
+      // Supabase renvoie une erreur (ex: Google OAuth mal configuré)
+      const urlError = new URLSearchParams(window.location.search).get('error_description') ||
+                       new URLSearchParams(window.location.search).get('error');
+      if (urlError) throw new Error(decodeURIComponent(urlError.replace(/\+/g, ' ')));
+
       // Supabase v2 PKCE : ?code=xxx dans l'URL → échange explicite
       const code = new URLSearchParams(window.location.search).get('code');
       if (code) {
@@ -151,8 +156,7 @@ const Auth = (() => {
         return data.session.user;
       }
 
-      const dbg = window.location.search + ' | ' + window.location.hash.slice(0, 60);
-      throw new Error('Connexion échouée — URL: ' + (dbg.trim() || 'vide'));
+      throw new Error('Connexion échouée — réessaie');
     },
 
     /* ── Mode démo (sans compte) ── */
