@@ -420,22 +420,25 @@ Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral
 Transcription "${title}" :
 ${transcript}`;
 
-  const llmBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048, response_format: { type: 'json_object' } };
+  const baseBody = { messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 2048 };
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...llmBody }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', ...baseBody, response_format: { type: 'json_object' } }),
     signal: AbortSignal.timeout(60000),
   });
+  console.log('[clips] Groq status:', r.status);
   // Fallback Together AI si Groq rate-limite ou billing
   if ((r.status === 429 || r.status === 402) && TOGETHER_KEY) {
     console.warn(`[clips] Groq ${r.status}, fallback Together AI`);
+    // Together AI sans response_format (compatibilité)
     r = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
-      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...llmBody }),
+      body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', ...baseBody }),
       signal: AbortSignal.timeout(60000),
     });
+    console.log('[clips] Together AI status:', r.status);
   }
   // Si Together AI aussi en erreur → découpage uniforme (on ne crash pas)
   if (!r.ok) {
