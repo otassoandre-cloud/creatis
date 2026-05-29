@@ -435,7 +435,7 @@ ${transcript}`;
   // Fallback Gemini Flash
   if (!r.ok && GEMINI_KEY) {
     console.warn(`[clips] Groq ${r.status} → Gemini Flash`);
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
@@ -635,7 +635,7 @@ Réponds directement sans introduction. Tout en français.`;
   });
   if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
     console.warn(`[content] Groq ${r.status}, fallback Gemini Flash`);
-    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 4096 } })
