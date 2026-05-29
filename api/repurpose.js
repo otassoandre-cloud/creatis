@@ -454,15 +454,19 @@ ${transcript}`;
     });
   }
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
-  console.log('[clips] raw LLM response:', raw.slice(0, 300));
-  const cleaned = raw.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
+  console.log('[clips] raw LLM response:', raw.slice(0, 400));
+  // Extraire le JSON en trouvant le premier { et dernier } (ignore le texte autour)
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+  const jsonStr = firstBrace !== -1 && lastBrace > firstBrace ? raw.slice(firstBrace, lastBrace + 1) : raw;
   let clips = [];
   try {
-    const parsed = JSON.parse(cleaned);
-    clips = parsed.clips || parsed.results || parsed.moments || (Array.isArray(parsed) ? parsed : []);
+    const parsed = JSON.parse(jsonStr);
+    clips = parsed.clips || parsed.results || parsed.moments || parsed.viral_clips || parsed.top_clips || (Array.isArray(parsed) ? parsed : []);
   } catch {
-    const s = cleaned.indexOf('['), e = cleaned.lastIndexOf(']');
-    if (s !== -1 && e !== -1) try { clips = JSON.parse(cleaned.slice(s, e + 1)); } catch {}
+    // Essayer d'extraire juste le tableau
+    const s = raw.indexOf('['), e = raw.lastIndexOf(']');
+    if (s !== -1 && e > s) try { clips = JSON.parse(raw.slice(s, e + 1)); } catch {}
   }
   console.log(`[clips] parsed ${clips.length} clips avant filtre`);
   clips = clips
