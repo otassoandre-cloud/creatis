@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import httpx
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
@@ -111,8 +111,9 @@ async def startup():
 security = HTTPBearer(auto_error=False)
 
 
-def auth(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
-    if SERVICE_SECRET and (not creds or creds.credentials != SERVICE_SECRET):
+def auth(request: Request, creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    token = (creds.credentials if creds else None) or request.query_params.get("token")
+    if SERVICE_SECRET and token != SERVICE_SECRET:
         raise HTTPException(401, "Non autorisé")
 
 
