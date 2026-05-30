@@ -296,6 +296,30 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: !result._err, messageId: result.messageId });
       }
 
+      case 'contact': {
+        const { nom, email: from, sujet, message } = body;
+        if (!message || message.trim().length < 5) return res.status(400).json({ error: 'Message trop court' });
+        const html = `<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;line-height:1.7">
+          <div style="background:#0a0f0a;padding:20px 24px;border-radius:8px 8px 0 0"><span style="font-size:20px;font-weight:900;color:#fff">Créatis<span style="color:#10b981">.</span></span></div>
+          <div style="background:#f9f9f9;padding:24px;border-radius:0 0 8px 8px;border:1px solid #e5e5e5">
+            <h2 style="margin:0 0 16px;font-size:18px">Nouveau message de contact</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#666;width:80px">De</td><td style="padding:8px 0;font-weight:600">${nom || 'Inconnu'} &lt;${from || 'inconnu'}&gt;</td></tr>
+              <tr><td style="padding:8px 0;color:#666">Sujet</td><td style="padding:8px 0;font-weight:600">${sujet || 'Sans sujet'}</td></tr>
+            </table>
+            <div style="background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:20px;white-space:pre-wrap;font-size:15px">${(message||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          </div></div>`;
+        const result = await brevo('/smtp/email', 'POST', {
+          sender: { name: 'Créatis Contact', email: 'noreply@creatis.app' },
+          to: [{ email: 'creatis.app.contact@gmail.com', name: 'André — Créatis' }],
+          replyTo: { email: from || 'noreply@creatis.app', name: nom || 'Utilisateur' },
+          subject: `[Contact Créatis] ${sujet || 'Nouveau message'}`,
+          htmlContent: html,
+        });
+        if (result._err) return res.status(502).json({ error: result._msg || result._err });
+        return res.status(200).json({ ok: true });
+      }
+
       default:
         return res.status(400).json({ error: `Action inconnue: ${action}` });
     }

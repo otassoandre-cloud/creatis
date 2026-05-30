@@ -856,10 +856,10 @@
     btn.textContent = 'Envoi en cours…';
 
     try {
-      const r = await fetch('/api/contact', {
+      const r = await fetch('/api/email-sequence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom, email, sujet, message })
+        body: JSON.stringify({ action: 'contact', nom, email, sujet, message })
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Erreur serveur');
