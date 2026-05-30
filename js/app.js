@@ -283,6 +283,22 @@ class AppCreatis {
 
   async _appelRepurpose(url, mode = 'clips') {
     const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+
+    // Mode démo : pas de JWT → inviter à créer un compte
+    if (!token && typeof Auth !== 'undefined' && Auth.estDemoMode()) {
+      const panneau = document.querySelector('.workspace-content') || document.querySelector('#workspace');
+      if (panneau) {
+        panneau.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:20px;text-align:center;padding:2rem">
+            <div style="font-size:48px">🎬</div>
+            <h2 style="font-size:22px;font-weight:800;color:var(--texte);margin:0">Crée ton compte gratuit pour utiliser les Clips Viraux</h2>
+            <p style="color:var(--texte-secondaire);font-size:15px;max-width:400px;margin:0">Le mode démo ne donne pas accès aux Clips Viraux. Inscris-toi gratuitement — sans carte bancaire — pour transformer tes vidéos en Shorts.</p>
+            <a href="/auth.html" style="background:var(--vert);color:#000;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;margin-top:8px">Créer mon compte gratuit →</a>
+          </div>`;
+      }
+      throw new Error('demo');
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -1338,6 +1354,7 @@ class AppCreatis {
       this._afficherClipsResultats(agentId, clipsData.result);
 
     } catch (err) {
+      if (err?.message === 'demo') { /* message déjà affiché dans le panneau */ return; }
       const msg = err?.message || String(err) || 'Erreur inconnue';
       console.error('[creatis-clips]', err);
       this.afficherToast(`❌ ${msg}`, 'erreur', 8000);
