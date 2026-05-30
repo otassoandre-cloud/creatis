@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
   const { action, email, ...params } = req.body || {};
 
   if (!action) return res.status(400).json({ error: 'action manquante' });
-  if (!email && !['send_email', 'create_campaign'].includes(action)) return res.status(400).json({ error: 'email manquant' });
+  if (!email && !['send_email', 'create_campaign', 'contact'].includes(action)) return res.status(400).json({ error: 'email manquant' });
 
   try {
     switch (action) {
@@ -297,7 +297,8 @@ module.exports = async (req, res) => {
       }
 
       case 'contact': {
-        const { nom, email: from, sujet, message } = body;
+        const { nom, sujet, message } = req.body || {};
+        const from = email;
         if (!message || message.trim().length < 5) return res.status(400).json({ error: 'Message trop court' });
         const html = `<div style="font-family:sans-serif;max-width:600px;color:#1a1a1a;line-height:1.7">
           <div style="background:#0a0f0a;padding:20px 24px;border-radius:8px 8px 0 0"><span style="font-size:20px;font-weight:900;color:#fff">Créatis<span style="color:#10b981">.</span></span></div>
