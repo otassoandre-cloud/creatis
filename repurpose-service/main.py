@@ -644,13 +644,27 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     except Exception as e:
         logger.info(f"Face tracking skipped ({e}) — crop centré")
 
+    # Si > 1080p : pre-scale pour eviter OOM (4K = 512MB insuffisant sur Railway)
+    if src_w > 1920 or src_h > 1080:
+        sx = min(1920 / src_w, 1080 / src_h)
+        pw = int(src_w * sx / 2) * 2
+        ph = int(src_h * sx / 2) * 2
+        cw = max(2, int(crop_w * sx / 2) * 2)
+        ch = max(2, int(crop_h * sx / 2) * 2)
+        xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
+        yy = max(0, int(y0 * sx))
+        vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
+        logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
+    else:
+        vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
+
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", in_path,
         "-map", "0:v:0",
         "-map", "0:a:0?",
-        "-vf", f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=1080:1920",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+        "-vf", vf,
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
         "-pix_fmt", "yuv420p",
         "-threads", "2",
         "-c:a", "aac", "-b:a", "128k",
