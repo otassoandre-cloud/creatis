@@ -646,16 +646,22 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
+        "-fflags", "+genpts",
         "-i", in_path,
         "-vf", f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=1080:1920",
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "20",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
         "-threads", "0",
         "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
         out_path,
     ]
     r = subprocess.run(cmd, capture_output=True, timeout=300)
     if r.returncode != 0:
-        raise RuntimeError(f"ffmpeg crop: {(r.stdout + r.stderr).decode(errors='replace')[:500]}")
+        err = (r.stdout + r.stderr).decode(errors='replace')[:800]
+        logger.error(f"[reframe] ffmpeg error: {err}")
+        raise RuntimeError(f"ffmpeg crop: {err}")
 
 
 def crop_clip(source: str, start: float, end: float, out: str) -> None:
