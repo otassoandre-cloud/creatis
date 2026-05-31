@@ -613,32 +613,35 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     x_default = (src_w - crop_w) // 2
     y0 = (src_h - crop_h) // 2
 
-    # Face tracking : détection sur quelques frames représentatives → position médiane
+    # Face tracking : 3 frames max, resize à 640px pour vitesse
     x_crop = x_default
     try:
         import cv2
         cap = cv2.VideoCapture(in_path)
-        fps_src = cap.get(cv2.CAP_PROP_FPS) or 25
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-        # Échantillonne ~10 frames réparties sur le clip (rapide)
-        sample_frames = [int(total_frames * i / 10) for i in range(1, 10)]
+        sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
         centers = []
         for fi in sample_frames:
             cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
             ret, frame = cap.read()
             if not ret:
                 continue
+            # Resize à 640px max pour accélérer la détection sur 4K
+            h, w = frame.shape[:2]
+            scale = min(1.0, 640 / w)
+            if scale < 1.0:
+                frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(40, 40))
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
             if len(faces) > 0:
                 fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-                centers.append(fx + fw // 2)
+                centers.append(int((fx + fw // 2) / scale))
         cap.release()
         if centers:
             median_cx = sorted(centers)[len(centers) // 2]
             x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
-            logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/9 frames)")
+            logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
         else:
             logger.info("Face tracking: aucun visage — crop centré")
     except Exception as e:
