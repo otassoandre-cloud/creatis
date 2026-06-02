@@ -996,9 +996,9 @@ class AppCreatis {
     const panneau = document.createElement('div');
     panneau.className = 'panneau-agent panneau-clips actif';
     panneau.id = `panneau-${agent.id}`;
-    panneau.style.cssText = 'padding:0;overflow:hidden;height:100%;display:flex;flex-direction:column;';
+    panneau.style.cssText = 'padding:0;overflow:hidden;position:relative;';
 
-    panneau.innerHTML = `<iframe src="/clips-v2.html?embedded=1" style="width:100%;flex:1;border:none;background:#0a0f0a;" allowfullscreen></iframe>`;
+    panneau.innerHTML = `<iframe src="/clips-v2.html?embedded=1" style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#0a0f0a;"></iframe>`;
 
     workspace.appendChild(panneau);
   }

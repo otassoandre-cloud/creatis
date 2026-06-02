@@ -2354,7 +2354,7 @@
 .repurpose-resultat { width: 100%; }
 
 /* ── Clips Viraux — OpusClip style ── */
-.panneau-clips { flex-direction:column; width:100%; height:100%; overflow-y:auto; background:var(--fond-app); }
+.panneau-clips { position:relative; width:100%; height:100%; overflow:hidden; background:#0a0f0a; }
 .clips-page { display:flex; flex-direction:column; height:100%; }
 .clips-page-header { padding:14px 20px 0; }
 
