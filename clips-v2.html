@@ -189,19 +189,17 @@
     .modal-overlay.open { display: flex; }
     @keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+    /* ── MODAL — Desktop ── */
     .clip-modal { background: #0e150e; border: 1px solid #1e2a1e; border-radius: 18px; width: 100%; max-width: 960px; max-height: 94vh; display: flex; flex-direction: row; overflow: hidden; animation: modalIn .2s ease; position: relative; }
-    @media (max-width: 660px) { .clip-modal { flex-direction: column; max-height: 96vh; overflow-y: auto; } }
 
-    /* ── Player column (left) ── */
+    /* ── Player column (left, desktop) ── */
     .modal-player-col { flex-shrink: 0; width: 280px; background: #000; display: flex; flex-direction: column; }
-    @media (max-width: 660px) { .modal-player-col { width: 100%; height: 60vw; } }
-
     .modal-player-wrap { flex: 1; position: relative; overflow: hidden; background: #000; cursor: pointer; }
     .modal-player-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
 
     /* Live subtitle overlay */
-    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; transition: color .1s, font-size .1s; word-wrap: break-word; }
+    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; }
 
     /* Play button overlay */
     .modal-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; transition: opacity .2s; }
@@ -221,15 +219,14 @@
     .modal-prog-fill { height: 100%; background: var(--vert); border-radius: 2px; pointer-events: none; transition: width .1s linear; }
     .modal-time { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); white-space: nowrap; }
 
-    /* ── Settings column (right) ── */
-    .modal-settings-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    /* ── Settings column (right, desktop) ── */
+    .modal-settings-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
     .modal-settings-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--bordure); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .modal-clip-title { font-size: 15px; font-weight: 800; line-height: 1.3; flex: 1; }
+    .modal-clip-title { font-size: 15px; font-weight: 800; line-height: 1.3; flex: 1; min-width: 0; word-break: break-word; }
     .modal-clip-meta { font-size: 11px; color: var(--texte-muted); margin-top: 3px; }
     .modal-close { background: rgba(255,255,255,0.06); border: 1px solid var(--bordure); color: var(--texte-doux); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .modal-close:hover { background: rgba(255,255,255,0.12); color: var(--texte); }
-
-    .modal-settings-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+    .modal-settings-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
 
     /* Score breakdown */
     .modal-score-row { display: flex; align-items: center; gap: 16px; }
@@ -239,9 +236,41 @@
     .score-grade { font-weight: 800; min-width: 26px; font-size: 13px; }
     .score-name { color: var(--texte-doux); }
 
-    /* Style pills per-clip */
+    /* Style pills */
     .modal-styles { display: flex; flex-wrap: wrap; gap: 7px; }
-    .ms-pill { font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 8px; border: 2px solid var(--bordure); background: transparent; cursor: pointer; transition: all .15s; color: var(--texte-doux); }
+    .ms-pill { font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 8px; border: 2px solid var(--bordure); background: transparent; cursor: pointer; transition: all .15s; color: var(--texte-doux); white-space: nowrap; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 660px) {
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .clip-modal {
+        flex-direction: column;
+        max-width: 100%;
+        max-height: 96dvh;
+        height: 96dvh;
+        border-radius: 20px 20px 0 0;
+        overflow: hidden;
+      }
+      /* Lecteur vidéo mobile — ratio 16:9 (conserve les proportions gaming) */
+      .modal-player-col { width: 100%; flex-shrink: 0; }
+      .modal-player-wrap { aspect-ratio: 16/9; flex: none; height: auto; }
+      /* Settings : panneau scrollable en bas */
+      .modal-settings-col { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .modal-settings-header { padding: 12px 16px 10px; }
+      .modal-clip-title { font-size: 14px; }
+      .modal-settings-body { padding: 12px 16px 80px; gap: 14px; }
+      /* Pills : scroll horizontal sur mobile */
+      .modal-styles { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .modal-styles::-webkit-scrollbar { display: none; }
+      /* Options en 2 colonnes sur mobile */
+      .modal-opt-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+      /* Bouton dl fixé en bas */
+      .modal-dl-btn { position: fixed; bottom: 0; left: 0; right: 0; border-radius: 0; z-index: 10; padding: 18px; font-size: 16px; }
+      .modal-dl-status { position: fixed; bottom: 56px; left: 0; right: 0; text-align: center; background: #0e150e; padding: 4px; font-size: 11px; z-index: 10; }
+      /* Score compact */
+      .modal-score-num { font-size: 28px; }
+      .modal-score-row { gap: 10px; }
+    }
     .ms-pill.active { border-color: var(--vert); color: var(--vert); background: var(--vert-dim); }
     .ms-pill[data-style="karaoke"] { color: #FFE000; }
     .ms-pill[data-style="neon"] { color: #00FF9C; }
@@ -542,14 +571,11 @@
           <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
             <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55">Petit</option><option value="70" selected>Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
           </div>
-          <div class="modal-opt-group"><div class="modal-opt-label">Position</div>
-            <select id="modal-position" class="opt-select" onchange="V2.updateClipOpt()"><option value="low" selected>Bas</option><option value="mid">Centre</option></select>
-          </div>
           <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
-            <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:32px" onchange="V2.updateClipOpt()">
+            <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
           </div>
-          <div class="modal-opt-group"><div class="modal-opt-label">Fond</div>
-            <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:32px" onchange="V2.updateClipOpt()">
+          <div class="modal-opt-group"><div class="modal-opt-label">Fond / contour</div>
+            <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
           </div>
         </div>
         <div>
@@ -1037,7 +1063,6 @@ const V2 = (() => {
     // Load per-clip settings into controls
     const opts = getClipOpts(i);
     const fsEl = document.getElementById('modal-fontsize'); if (fsEl) fsEl.value = String(opts.fontSize);
-    const posEl = document.getElementById('modal-position'); if (posEl) posEl.value = opts.position;
     const ctEl = document.getElementById('modal-color-text'); if (ctEl) ctEl.value = opts.colorText;
     const cbEl = document.getElementById('modal-color-bg'); if (cbEl) cbEl.value = opts.colorBg;
     const hookOn = document.getElementById('modal-hook-on'); if (hookOn) hookOn.checked = opts.hookEnabled;
