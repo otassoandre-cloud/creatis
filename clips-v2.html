@@ -843,33 +843,19 @@ const V2 = (() => {
         });
         setBar(40); setStep(3);
 
-        // Get Railway token
-        const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
-        const tokData = await tokRes.json();
-        if (!tokData.ok) throw new Error(tokData.error || 'Erreur auth Railway');
-
-        // Upload audio → transcribe
-        setMsg('Upload audio…');
+        // Transcription Groq Whisper (rapide, ~15s)
+        setMsg('Transcription Groq Whisper…');
         const audioBlob = new Blob([audioData.buffer], { type: 'audio/mpeg' });
         const formData = new FormData();
         formData.append('file', audioBlob, 'audio.mp3');
-        const transcribeData = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', `${tokData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokData.token)}`);
-          xhr.timeout = 300000;
-          xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(40 + Math.round(e.loaded / e.total * 15)); };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse serveur invalide')); }
-            } else reject(new Error(`Upload échoué (${xhr.status})`));
-          };
-          xhr.onerror = () => reject(new Error('Erreur réseau'));
-          xhr.ontimeout = () => reject(new Error('Timeout (5 min)'));
-          xhr.send(formData);
-        });
+        formData.append('model', 'whisper-large-v3-turbo');
+        formData.append('response_format', 'verbose_json');
+        formData.append('language', 'fr');
+        const transcribeRes = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const transcribeData = await transcribeRes.json();
         if (!transcribeData.ok) throw new Error(transcribeData.error || 'Transcription échouée');
         _segments = transcribeData.segments || [];
-        setBar(65); setStep(4);
+        setBar(70); setStep(4);
 
         // Identify clips via Groq
         setMsg('Identification des meilleurs moments…');
@@ -900,7 +886,7 @@ const V2 = (() => {
     try {
       try { await ffmpeg.createDir('/input'); } catch {}
       await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
-      await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
+      await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '8k', '-f', 'mp3', '/audio_out.mp3']);
       ffmpeg.off('progress', progressHandler);
       const data = await ffmpeg.readFile('/audio_out.mp3');
       await ffmpeg.deleteFile('/audio_out.mp3');
