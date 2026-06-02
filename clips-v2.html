@@ -144,7 +144,7 @@
     .watermark-preview { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: var(--bordure); padding: 2px; }
     .watermark-placeholder { width: 40px; height: 40px; background: var(--bordure); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 
-    /* Clip selection grid */
+    /* ─── CLIPS TOOLBAR ─── */
     .clips-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 12px; }
     .clips-toolbar-left { display: flex; align-items: center; gap: 12px; }
     .sel-count { font-size: 14px; font-weight: 700; }
@@ -152,23 +152,75 @@
     .btn-sel-all:hover, .btn-sel-top:hover { border-color: var(--vert); color: var(--vert); }
     .btn-sel-none:hover { border-color: var(--rouge); color: var(--rouge); }
 
-    .clips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
-    .clip-card { background: var(--bg-card); border: 2px solid var(--bordure); border-radius: 14px; overflow: hidden; cursor: pointer; transition: all .2s; position: relative; }
-    .clip-card:hover { border-color: var(--texte-muted); transform: translateY(-2px); }
+    /* ─── CLIP GRID (OpusClip style) ─── */
+    .clips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+    .clip-card { background: var(--bg-card); border: 2px solid var(--bordure); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all .18s; position: relative; }
+    .clip-card:hover { border-color: #3a4a3a; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
     .clip-card.selected { border-color: var(--vert); }
-    .clip-card.selected .clip-thumb { opacity: 1; }
-    .clip-check { position: absolute; top: 8px; left: 8px; z-index: 2; width: 22px; height: 22px; border-radius: 6px; background: var(--bg-card); border: 2px solid var(--bordure); display: flex; align-items: center; justify-content: center; transition: all .15s; }
+
+    /* Thumbnail area */
+    .clip-thumb-wrap { position: relative; width: 100%; aspect-ratio: 9/16; background: #0a100a; overflow: hidden; }
+    .clip-thumb-wrap img, .clip-thumb-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .clip-thumb-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px; background: linear-gradient(160deg, #111911 0%, #0a0f0a 100%); }
+    /* Simulated caption overlay on thumbnail */
+    .clip-thumb-caption { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 4px #000, 0 2px 4px #000; letter-spacing: .2px; pointer-events: none; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+    /* Checkbox */
+    .clip-check { position: absolute; top: 8px; left: 8px; z-index: 3; width: 20px; height: 20px; border-radius: 5px; background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; transition: all .15s; backdrop-filter: blur(4px); }
     .clip-card.selected .clip-check { background: var(--vert); border-color: var(--vert); }
-    .clip-check-icon { display: none; }
-    .clip-card.selected .clip-check-icon { display: block; }
-    .clip-score-badge { position: absolute; top: 8px; right: 8px; z-index: 2; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 100px; background: rgba(0,0,0,0.7); }
-    .clip-thumb { width: 100%; aspect-ratio: 9/16; object-fit: cover; background: #0e150e; display: flex; align-items: center; justify-content: center; opacity: .85; transition: opacity .2s; }
-    .clip-thumb canvas { width: 100%; height: 100%; object-fit: cover; }
-    .clip-thumb-placeholder { width: 100%; aspect-ratio: 9/16; background: linear-gradient(135deg, #111811 0%, #0e150e 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; }
-    .clip-info { padding: 10px 12px; }
-    .clip-num { font-size: 11px; font-weight: 700; color: var(--texte-muted); text-transform: uppercase; letter-spacing: .5px; }
-    .clip-hook { font-size: 12px; color: var(--texte-doux); line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .clip-dur { font-size: 11px; color: var(--texte-muted); margin-top: 6px; }
+    .clip-check svg { display: none; }
+    .clip-card.selected .clip-check svg { display: block; }
+    /* Duration badge */
+    .clip-dur-badge { position: absolute; top: 8px; right: 8px; z-index: 3; background: rgba(0,0,0,0.72); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+
+    /* Bottom info */
+    .clip-bottom { padding: 8px 10px 10px; }
+    .clip-score-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .clip-score-num { font-size: 22px; font-weight: 900; line-height: 1; }
+    .clip-action-icons { display: flex; gap: 8px; }
+    .clip-action-icon { color: var(--texte-muted); cursor: pointer; transition: color .15s; padding: 2px; }
+    .clip-action-icon:hover { color: var(--texte); }
+    .clip-title { font-size: 11px; font-weight: 600; color: var(--texte); line-height: 1.35; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .clip-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .clip-tag { font-size: 10px; font-weight: 600; color: var(--texte-muted); background: rgba(255,255,255,0.05); border: 1px solid var(--bordure); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+
+    /* ─── CLIP DETAIL MODAL ─── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
+    .modal-overlay.open { display: flex; }
+    .clip-modal { background: #111811; border: 1px solid #1e2a1e; border-radius: 18px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; display: grid; grid-template-columns: 200px 1fr 220px; gap: 0; animation: modalIn .2s ease; }
+    @keyframes modalIn { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @media (max-width: 700px) { .clip-modal { grid-template-columns: 1fr; } .modal-vid-col { display: none; } }
+
+    /* Modal left — video preview */
+    .modal-vid-col { padding: 20px 0 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-vid-wrap { aspect-ratio: 9/16; background: #0a100a; border-radius: 10px; overflow: hidden; position: relative; }
+    .modal-vid-wrap video, .modal-vid-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .modal-vid-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+    .modal-score-big { font-size: 36px; font-weight: 900; line-height: 1; }
+    .modal-score-label { font-size: 11px; color: var(--texte-muted); margin-top: 2px; }
+    .score-breakdown { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .score-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .score-grade { font-weight: 800; min-width: 24px; }
+    .score-name { color: var(--texte-doux); flex: 1; }
+
+    /* Modal center — info */
+    .modal-info-col { padding: 20px; border-left: 1px solid var(--bordure); border-right: 1px solid var(--bordure); }
+    .modal-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+    .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .modal-tag { font-size: 11px; font-weight: 600; color: var(--texte-doux); background: rgba(255,255,255,0.05); border: 1px solid var(--bordure); border-radius: 6px; padding: 3px 9px; }
+    .modal-transcript-title { font-size: 11px; font-weight: 700; color: var(--texte-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+    .modal-transcript { font-size: 12px; color: var(--texte-doux); line-height: 1.7; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; }
+    .modal-timestamp { color: var(--vert); font-weight: 700; font-size: 11px; }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.5); border: 1px solid var(--bordure); color: var(--texte-doux); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .modal-overlay { position: relative; }
+
+    /* Modal right — actions */
+    .modal-actions-col { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .modal-action-btn { display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--bordure); color: var(--texte); font-size: 13px; font-weight: 600; padding: 11px 14px; border-radius: 10px; cursor: pointer; width: 100%; text-align: left; transition: all .15s; }
+    .modal-action-btn:hover { border-color: var(--vert); color: var(--vert); background: var(--vert-dim); }
+    .modal-action-btn.primary { background: var(--vert); color: #000; border-color: var(--vert); }
+    .modal-action-btn.primary:hover { opacity: .9; }
+    .modal-action-icon { font-size: 16px; flex-shrink: 0; }
 
     /* Export button */
     .export-bar { position: sticky; bottom: 20px; z-index: 40; display: flex; justify-content: center; }
@@ -489,6 +541,61 @@
 
 </div><!-- /page -->
 
+<!-- ═══ CLIP DETAIL MODAL ═══ -->
+<div class="modal-overlay" id="clip-modal-overlay" onclick="if(event.target===this)V2.closeModal()">
+  <div class="clip-modal" id="clip-modal" style="position:relative">
+    <button class="modal-close" onclick="V2.closeModal()">✕</button>
+
+    <!-- Left: video preview + score -->
+    <div class="modal-vid-col">
+      <div class="modal-vid-wrap" id="modal-vid-wrap">
+        <div class="modal-vid-empty">🎬</div>
+      </div>
+      <div>
+        <div class="modal-score-big" id="modal-score-big">—</div>
+        <div class="modal-score-label">/100 score viral</div>
+      </div>
+      <div class="score-breakdown" id="modal-breakdown"></div>
+    </div>
+
+    <!-- Center: info + transcript -->
+    <div class="modal-info-col">
+      <div class="modal-title" id="modal-title">—</div>
+      <div class="modal-tags" id="modal-tags"></div>
+      <div class="modal-transcript-title">Accroche détectée</div>
+      <div class="modal-transcript" id="modal-transcript"></div>
+    </div>
+
+    <!-- Right: actions -->
+    <div class="modal-actions-col">
+      <button class="modal-action-btn primary" onclick="V2.exportFromModal()">
+        <span class="modal-action-icon">⬇</span> Télécharger 9:16
+      </button>
+      <button class="modal-action-btn" onclick="V2.toggleSelectFromModal()">
+        <span class="modal-action-icon" id="modal-sel-icon">☐</span>
+        <span id="modal-sel-txt">Sélectionner</span>
+      </button>
+      <div style="height:1px;background:var(--bordure);margin:4px 0"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.8px;padding:2px 0">Style sous-titres</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px" id="modal-style-btns">
+        <button onclick="V2.setStyleFromModal('bold')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Bold</button>
+        <button onclick="V2.setStyleFromModal('minimal')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Minimal</button>
+        <button onclick="V2.setStyleFromModal('karaoke')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#FFE000;cursor:pointer">Karaoke</button>
+        <button onclick="V2.setStyleFromModal('neon')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#00FF9C;cursor:pointer">Néon</button>
+        <button onclick="V2.setStyleFromModal('spotlight')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Spotlight</button>
+      </div>
+      <div style="height:1px;background:var(--bordure);margin:4px 0"></div>
+      <button class="modal-action-btn" onclick="V2.hookFromModal()">
+        <span class="modal-action-icon">⚡</span> Hook IA auto
+      </button>
+      <button class="modal-action-btn" onclick="V2.closeModal()">
+        <span class="modal-action-icon">←</span> Retour à la liste
+      </button>
+      <div style="margin-top:auto;padding-top:12px;font-size:11px;color:var(--texte-muted);text-align:center" id="modal-dur-info"></div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
@@ -804,27 +911,82 @@ const V2 = (() => {
     if (bc) bc.value = d.bg;
   }
 
-  // ── Clips grid ──
+  // ── Helpers ──
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#ef4444';
+
+  function scoreGrade(n) {
+    if (n >= 93) return { g: 'A+', c: '#10b981' };
+    if (n >= 87) return { g: 'A', c: '#10b981' };
+    if (n >= 80) return { g: 'A-', c: '#10b981' };
+    if (n >= 73) return { g: 'B+', c: '#f0a500' };
+    if (n >= 65) return { g: 'B', c: '#f0a500' };
+    return { g: 'B-', c: '#6b7280' };
+  }
+
+  function subScores(clip) {
+    const s = clip.score;
+    const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
+    const hookLen = (clip.hook || '').length;
+    return [
+      { name: 'Accroche', val: hookLen > 60 ? s + 2 : s - 4 },
+      { name: 'Flux',     val: dur >= 35 && dur <= 75 ? s + 3 : s - 6 },
+      { name: 'Valeur',   val: s },
+      { name: 'Tendance', val: s - 2 },
+    ].map(x => ({ name: x.name, ...scoreGrade(Math.min(100, Math.max(50, x.val))) }));
+  }
+
+  function autoTags(clip) {
+    const hook = (clip.hook || clip.title || '').toLowerCase();
+    const tags = [];
+    if (/secret|technique|astuce|méthode|hack/i.test(hook)) tags.push('Conseil pratique');
+    if (/erreur|problème|éviter|faut pas/i.test(hook)) tags.push('Erreur commune');
+    if (/gagner|argent|revenu|monétis/i.test(hook)) tags.push('Monétisation');
+    if (/abonn|audience|croissance|grandir/i.test(hook)) tags.push('Croissance');
+    if (/youtube|tiktok|réseaux|contenu/i.test(hook)) tags.push('Créateur');
+    if (/honnête|vérité|personnel|confess/i.test(hook)) tags.push('Storytelling');
+    if (tags.length === 0) tags.push('Moment fort');
+    if (clip.score >= 88) tags.push('Haute viralité');
+    return tags.slice(0, 3);
+  }
+
+  // ── Clips grid (OpusClip style) ──
   function renderClipsGrid() {
     const grid = document.getElementById('clips-grid');
     if (!grid) return;
-    const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
 
     grid.innerHTML = _clips.map((clip, i) => {
       const sc = scoreColor(clip.score);
       const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
+      const tags = autoTags(clip);
+      const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
       return `
-      <div class="clip-card" id="clip-card-${i}" onclick="V2.toggleClip(${i})">
-        <div class="clip-check" id="clip-chk-${i}">
-          <svg class="clip-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      <div class="clip-card" id="clip-card-${i}">
+        <div class="clip-thumb-wrap" id="clip-thumb-${i}" onclick="V2.showModal(${i})">
+          <div class="clip-thumb-empty">🎬</div>
+          <div class="clip-dur-badge">${fmt(clip.start_time ?? clip.start)}&nbsp;·&nbsp;${dur}s</div>
+          <div class="clip-check" onclick="event.stopPropagation();V2.toggleClip(${i})">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="clip-thumb-caption">${captionPreview}</div>
         </div>
-        <div class="clip-score-badge" style="color:${sc}">${clip.score}</div>
-        <div class="clip-thumb-placeholder" id="clip-thumb-${i}">🎬</div>
-        <div class="clip-info">
-          <div class="clip-num">Clip ${i + 1}</div>
-          <div class="clip-hook">${escHtml(clip.hook || clip.title || `Moment ${i+1}`)}</div>
-          <div class="clip-dur">${fmt(clip.start_time ?? clip.start)} → ${fmt(clip.end_time ?? clip.end)} · ${dur}s</div>
+        <div class="clip-bottom">
+          <div class="clip-score-row">
+            <span class="clip-score-num" style="color:${sc}">${clip.score}</span>
+            <div class="clip-action-icons">
+              <span class="clip-action-icon" onclick="V2.showModal(${i})" title="Détails">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </span>
+              <span class="clip-action-icon" onclick="event.stopPropagation();V2._downloadClipDirect(${i})" title="Télécharger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </span>
+              <span class="clip-action-icon" onclick="event.stopPropagation();V2.toggleClip(${i})" title="Sélectionner">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </span>
+            </div>
+          </div>
+          <div class="clip-title">${escHtml(clip.title || clip.hook || `Moment ${i+1}`)}</div>
+          <div class="clip-tags">${tags.map(t => `<span class="clip-tag">${t}</span>`).join('')}</div>
         </div>
       </div>`;
     }).join('');
@@ -834,6 +996,119 @@ const V2 = (() => {
     const sorted = [..._clips].map((c, i) => ({ i, score: c.score })).sort((a,b) => b.score - a.score);
     sorted.slice(0, 5).forEach(({ i }) => _selectedIds.add(i));
     refreshSelection();
+  }
+
+  // ── Modal ──
+  let _modalIdx = null;
+
+  function showModal(i) {
+    const clip = _clips[i];
+    if (!clip) return;
+    _modalIdx = i;
+    const sc = scoreColor(clip.score);
+    const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
+
+    document.getElementById('modal-score-big').textContent = clip.score;
+    document.getElementById('modal-score-big').style.color = sc;
+    document.getElementById('modal-title').textContent = clip.title || clip.hook || `Clip ${i+1}`;
+
+    // Tags
+    const tags = autoTags(clip);
+    document.getElementById('modal-tags').innerHTML = tags.map(t => `<span class="modal-tag">${t}</span>`).join('');
+
+    // Sub-scores
+    const subs = subScores(clip);
+    document.getElementById('modal-breakdown').innerHTML = subs.map(s =>
+      `<div class="score-row"><span class="score-grade" style="color:${s.c}">${s.g}</span><span class="score-name">${s.name}</span></div>`
+    ).join('');
+
+    // Transcript excerpt
+    const start = clip.start_time ?? clip.start;
+    const end = clip.end_time ?? clip.end;
+    const relSegs = _segments.filter(s => {
+      const ss = s.start ?? s.offset ?? 0;
+      return ss >= start - 2 && ss <= end + 2;
+    }).slice(0, 8);
+    const transcriptHtml = relSegs.length
+      ? relSegs.map(s => {
+          const ss = s.start ?? s.offset ?? 0;
+          return `<span class="modal-timestamp">[${fmt(ss)}]</span> ${escHtml(s.text || '')}<br>`;
+        }).join('')
+      : `<em style="color:var(--texte-muted)">${escHtml(clip.hook || 'Aucune transcription disponible.')}</em>`;
+    document.getElementById('modal-transcript').innerHTML = transcriptHtml;
+
+    // Duration info
+    document.getElementById('modal-dur-info').textContent = `${fmt(start)} → ${fmt(end)} · ${dur}s`;
+
+    // Video preview from local file thumbnail
+    const vidWrap = document.getElementById('modal-vid-wrap');
+    const thumb = document.getElementById(`clip-thumb-${i}`);
+    const thumbData = thumb?.dataset.thumb;
+    if (thumbData) {
+      vidWrap.innerHTML = `<img src="${thumbData}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`;
+    } else {
+      vidWrap.innerHTML = '<div class="modal-vid-empty">🎬</div>';
+    }
+
+    // Select button state
+    updateModalSelBtn(i);
+
+    document.getElementById('clip-modal-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function updateModalSelBtn(i) {
+    const sel = _selectedIds.has(i);
+    const icon = document.getElementById('modal-sel-icon');
+    const txt = document.getElementById('modal-sel-txt');
+    if (icon) icon.textContent = sel ? '☑' : '☐';
+    if (txt) txt.textContent = sel ? 'Désélectionner' : 'Sélectionner';
+  }
+
+  function closeModal() {
+    document.getElementById('clip-modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+    _modalIdx = null;
+  }
+
+  function toggleSelectFromModal() {
+    if (_modalIdx === null) return;
+    toggleClip(_modalIdx);
+    updateModalSelBtn(_modalIdx);
+  }
+
+  function setStyleFromModal(style) {
+    selectStyle(style);
+    toast(`✅ Style "${style}" appliqué`, 'succes', 2000);
+  }
+
+  function hookFromModal() {
+    if (_modalIdx === null) return;
+    const clip = _clips[_modalIdx];
+    const hookEl = document.getElementById('opt-hook-text');
+    if (hookEl) hookEl.value = (clip.hook || clip.title || '').substring(0, 80);
+    document.getElementById('opt-hook').checked = true;
+    toggleHook(true);
+    toast('⚡ Hook copié depuis le clip', 'succes', 2000);
+  }
+
+  async function exportFromModal() {
+    if (_modalIdx === null) return;
+    closeModal();
+    const clip = _clips[_modalIdx];
+    _selectedIds.add(_modalIdx);
+    refreshSelection();
+    toast('⬇ Export en cours…', 'info', 3000);
+    await startExport();
+  }
+
+  async function _downloadClipDirect(i) {
+    const clip = _clips[i];
+    if (!clip) return;
+    _selectedIds.clear();
+    _selectedIds.add(i);
+    refreshSelection();
+    await startExport();
   }
 
   function toggleClip(i) {
@@ -886,12 +1161,17 @@ const V2 = (() => {
       if (dataUrl) {
         const el = document.getElementById(`clip-thumb-${i}`);
         if (el) {
-          el.className = 'clip-thumb';
-          el.style.backgroundImage = `url(${dataUrl})`;
-          el.style.backgroundSize = 'cover';
-          el.style.backgroundPosition = 'center';
-          el.style.aspectRatio = '9/16';
-          el.textContent = '';
+          // Remplacer le placeholder par l'image, garder les overlays (badge, check, caption)
+          const empty = el.querySelector('.clip-thumb-empty');
+          if (empty) {
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+            el.insertBefore(img, empty);
+            empty.remove();
+          }
+          // Stocker en style pour le modal
+          el.dataset.thumb = dataUrl;
         }
       }
       await new Promise(r => setTimeout(r, 100));
@@ -1347,7 +1627,7 @@ const V2 = (() => {
     setState('upload');
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
