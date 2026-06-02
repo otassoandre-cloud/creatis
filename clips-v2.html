@@ -247,6 +247,33 @@
     .ms-pill[data-style="neon"] { color: #00FF9C; }
     .ms-pill[data-style="karaoke"].active { border-color: #FFE000; background: rgba(255,224,0,0.08); }
     .ms-pill[data-style="neon"].active { border-color: #00FF9C; background: rgba(0,255,156,0.08); }
+    .ms-pill[data-style="typewriter"] { color: #a78bfa; }
+    .ms-pill[data-style="typewriter"].active { border-color: #a78bfa; background: rgba(167,139,250,0.08); }
+    .ms-pill[data-style="wordpop"] { color: #f97316; }
+    .ms-pill[data-style="wordpop"].active { border-color: #f97316; background: rgba(249,115,22,0.08); }
+    .ms-pill[data-style="slide"] { color: #38bdf8; }
+    .ms-pill[data-style="slide"].active { border-color: #38bdf8; background: rgba(56,189,248,0.08); }
+    .ms-pill[data-style="shake"] { color: #fb7185; }
+    .ms-pill[data-style="shake"].active { border-color: #fb7185; background: rgba(251,113,133,0.08); }
+    .ms-pill[data-style="wave"] { color: #34d399; }
+    .ms-pill[data-style="wave"].active { border-color: #34d399; background: rgba(52,211,153,0.08); }
+
+    /* ── Text animation keyframes ── */
+    @keyframes typeChar { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+    @keyframes wordPop  { from { opacity:0; transform:scale(0.6); } to { opacity:1; transform:scale(1); } }
+    @keyframes slideUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+    @keyframes shakeTxt { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+    @keyframes waveGrad { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+    @keyframes charFadeIn { to { opacity:1; } }
+
+    /* Draggable overlay hint */
+    .sub-drag-hint { position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:10px; color:rgba(255,255,255,0.5); white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .2s; }
+    .modal-sub-overlay:hover .sub-drag-hint, .modal-sub-overlay:focus .sub-drag-hint { opacity:1; }
+    .modal-sub-overlay[contenteditable="true"] { outline:1.5px dashed rgba(16,185,129,0.6); border-radius:4px; cursor:text; min-width:40px; }
+    .modal-sub-overlay { cursor: grab; user-select:none; }
+    .modal-sub-overlay:active { cursor: grabbing; }
+    #modal-hook-overlay { cursor: grab; user-select:none; }
+    #modal-hook-overlay:active { cursor: grabbing; }
 
     /* Per-clip options */
     .modal-opt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -625,6 +652,14 @@
             <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
             <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')">Néon</button>
             <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')">Spotlight</button>
+            <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')">✍️ Typewriter</button>
+            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
+            <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')">⬆ Slide</button>
+            <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
+            <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
+          </div>
+          <div style="font-size:11px;color:var(--texte-muted);margin-top:6px">
+            💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres sur la vidéo · <strong style="color:var(--texte-doux)">Clique</strong> dessus pour modifier le texte
           </div>
         </div>
         <div class="modal-opt-row">
@@ -1069,19 +1104,23 @@ const V2 = (() => {
 
   // ── Modal — per-clip settings + video player ──
   let _modalIdx = null;
-  let _clipSettings = {};   // { [i]: { style, fontSize, position, colorText, colorBg, hookEnabled, hookText } }
+  let _clipSettings = {};
   let _subRaf = null;
   let _modalVideoUrl = null;
+  let _lastSegKey = null;
+  let _isDragging = false;
 
   function getClipOpts(i) {
     return _clipSettings[i] || {
       style: _currentStyle,
       fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '70'),
-      position: document.getElementById('opt-position')?.value || 'low',
       colorText: document.getElementById('opt-color-text')?.value || '#ffffff',
       colorBg: document.getElementById('opt-color-bg')?.value || '#000000',
       hookEnabled: document.getElementById('opt-hook')?.checked || false,
       hookText: document.getElementById('opt-hook-text')?.value || '',
+      subY: 82,
+      hookY: 10,
+      segEdits: {},
     };
   }
 
@@ -1153,7 +1192,15 @@ const V2 = (() => {
         video.currentTime = clipStart;
       }, { once: true });
 
-      // Start subtitle loop — opts lus dynamiquement à chaque frame
+      // Drag & édition sur les overlays
+      const wrap = document.getElementById('modal-player-wrap');
+      const subOv = document.getElementById('modal-sub-overlay');
+      const hookOv = document.getElementById('modal-hook-overlay');
+      if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY');
+      if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY');
+
+      // Start subtitle loop
+      _lastSegKey = null;
       _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
 
     } else {
@@ -1170,9 +1217,7 @@ const V2 = (() => {
   }
 
   function _subLoop(video, clip) {
-    // Lire les opts en temps réel à chaque frame — capture les modifications de l'utilisateur
     const opts = getClipOpts(_modalIdx);
-
     const subEl = document.getElementById('modal-sub-overlay');
     const hookEl = document.getElementById('modal-hook-overlay');
     const progFill = document.getElementById('modal-prog-fill');
@@ -1180,40 +1225,44 @@ const V2 = (() => {
     const clipStart = clip.start_time ?? clip.start;
     const clipEnd = clip.end_time ?? clip.end;
     const clipDur = Math.max(clipEnd - clipStart, 1);
-
     const t = video.currentTime;
     const rel = t - clipStart;
 
-    // Boucle sur le clip
-    if (!video.paused && t >= clipEnd) {
-      video.currentTime = clipStart;
-    }
+    if (!video.paused && t >= clipEnd) video.currentTime = clipStart;
 
-    // Barre de progression
     if (progFill) progFill.style.width = Math.min(100, Math.max(0, rel / clipDur * 100)) + '%';
     if (timeEl) {
       const s = Math.max(0, rel);
       timeEl.textContent = `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')} / ${Math.floor(clipDur/60)}:${String(Math.floor(clipDur%60)).padStart(2,'0')}`;
     }
 
-    // Segment de sous-titre courant
+    // Segment courant
     const seg = _segments.find(s => {
       const ss = s.start ?? s.offset ?? 0;
       const se = s.end ?? (ss + (s.duration ?? 2));
       return t >= ss && t < se;
     });
-    if (subEl) {
-      subEl.textContent = seg ? seg.text.trim() : '';
-      _applySubStyle(subEl, opts);
+    const segKey = seg ? String(seg.start ?? seg.offset ?? 0) : null;
+
+    if (subEl && !subEl.matches(':focus')) {
+      // Texte : édition personnalisée ou texte original
+      const rawText = segKey && opts.segEdits?.[segKey] ? opts.segEdits[segKey] : (seg ? seg.text.trim() : '');
+      // Re-render seulement si le segment ou le style a changé
+      if (segKey !== _lastSegKey) {
+        _lastSegKey = segKey;
+        _renderSubText(subEl, rawText, opts);
+      }
+      _applySubPosition(subEl, opts.subY ?? 82);
     }
 
-    // Hook overlay (3 premières secondes)
-    if (hookEl) {
+    // Hook overlay
+    if (hookEl && !hookEl.matches(':focus')) {
       const hookTxt = document.getElementById('modal-hook-txt')?.value || opts.hookText || '';
       const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
       if (hookOn && hookTxt && rel >= 0 && rel < 3) {
-        hookEl.textContent = hookTxt;
+        if (hookEl.style.display === 'none') hookEl.textContent = hookTxt;
         hookEl.style.display = 'block';
+        _applySubPosition(hookEl, opts.hookY ?? 10);
       } else {
         hookEl.style.display = 'none';
       }
@@ -1222,22 +1271,155 @@ const V2 = (() => {
     _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
   }
 
-  function _applySubStyle(el, opts) {
-    const fs = (opts.fontSize || 70);
+  function _renderSubText(el, text, opts) {
+    const fs = Math.round((opts.fontSize || 70) * 0.24);
     const ct = opts.colorText || '#ffffff';
     const cb = opts.colorBg || '#000000';
-    const styleMap = {
-      bold: `color:${ct};font-size:${Math.round(fs*0.26)}px;font-weight:900;text-shadow:2px 2px 5px ${cb},−2px -2px 5px ${cb};background:none;padding:0;border-radius:0`,
-      minimal: `color:${ct};font-size:${Math.round(fs*0.2)}px;font-weight:500;background:${cb}88;padding:3px 12px;border-radius:16px;text-shadow:none`,
-      karaoke: `color:${ct};font-size:${Math.round(fs*0.24)}px;font-weight:800;background:${cb}44;padding:2px 8px;border-radius:4px;text-shadow:1px 1px 3px #000`,
-      neon: `color:${ct};font-size:${Math.round(fs*0.24)}px;font-weight:800;text-shadow:0 0 10px ${ct},0 0 20px ${ct};background:none;padding:0;border-radius:0`,
-      spotlight: `color:${ct};font-size:${Math.round(fs*0.22)}px;font-weight:700;background:${cb}CC;padding:6px 20px;border-radius:4px;text-shadow:none`,
+    const style = opts.style || 'bold';
+
+    switch(style) {
+      case 'typewriter': {
+        el.innerHTML = '';
+        const words = text.split(' ');
+        words.forEach((word, wi) => {
+          const span = document.createElement('span');
+          span.textContent = word + (wi < words.length - 1 ? ' ' : '');
+          span.style.cssText = `display:inline;opacity:0;animation:typeChar 0.12s forwards;animation-delay:${wi * 0.09}s`;
+          el.appendChild(span);
+        });
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;text-shadow:2px 2px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'wordpop': {
+        el.innerHTML = '';
+        text.split(' ').forEach((word, wi) => {
+          const span = document.createElement('span');
+          span.textContent = word + ' ';
+          span.style.cssText = `display:inline-block;opacity:0;animation:wordPop 0.2s cubic-bezier(.175,.885,.32,1.275) forwards;animation-delay:${wi * 0.12}s`;
+          el.appendChild(span);
+        });
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:1px 1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'slide': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:700;background:${cb}BB;padding:5px 18px;border-radius:4px;animation:slideUp 0.3s ease forwards;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'shake': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 4px ${cb};animation:shakeTxt 0.4s ease infinite;background:none;padding:0;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'wave': {
+        el.textContent = text;
+        el.style.cssText = `font-size:${fs}px;font-weight:900;background:linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#ff6b6b);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:waveGrad 1.5s linear infinite;padding:0;background-clip:text;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'minimal': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${Math.round(fs*0.85)}px;font-weight:500;background:${cb}88;padding:3px 14px;border-radius:20px;text-shadow:none;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'karaoke': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;background:${cb}44;padding:2px 8px;border-radius:4px;text-shadow:1px 1px 3px #000;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'neon': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;text-shadow:0 0 10px ${ct},0 0 20px ${ct};background:none;padding:0;cursor:grab;pointer-events:all`;
+        break;
+      }
+      case 'spotlight': {
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${Math.round(fs*0.9)}px;font-weight:700;background:${cb}CC;padding:6px 22px;border-radius:4px;text-shadow:none;cursor:grab;pointer-events:all`;
+        break;
+      }
+      default: { // bold
+        el.textContent = text;
+        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 5px ${cb},-1px -1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
+      }
+    }
+    // Commun
+    el.style.position = 'absolute';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.width = '92%';
+    el.style.textAlign = 'center';
+    el.style.zIndex = '5';
+    el.style.wordWrap = 'break-word';
+    el.style.maxWidth = '92%';
+    el.style.display = text ? 'block' : 'none';
+    el.title = 'Glisser pour déplacer · Cliquer pour modifier';
+  }
+
+  function _applySubPosition(el, yPct) {
+    el.style.top = `${yPct}%`;
+    el.style.bottom = 'auto';
+  }
+
+  function _setupDraggable(el, wrap, yKey) {
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      _isDragging = false;
+      const startY = e.clientY;
+      const wrapRect = wrap.getBoundingClientRect();
+      const curY = _clipSettings[_modalIdx]?.[yKey] ?? (yKey === 'subY' ? 82 : 10);
+      let moved = false;
+
+      const onMove = ev => {
+        moved = true;
+        _isDragging = true;
+        const dy = (ev.clientY - startY) / wrapRect.height * 100;
+        const newY = Math.max(2, Math.min(92, curY + dy));
+        if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+        _clipSettings[_modalIdx][yKey] = newY;
+      };
+      const onUp = ev => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        // Si pas de mouvement : clic = éditer le texte
+        if (!moved) _makeEditable(el, yKey);
+        setTimeout(() => { _isDragging = false; }, 100);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  function _makeEditable(el, yKey) {
+    if (el.contentEditable === 'true') return;
+    el.contentEditable = 'true';
+    el.style.cursor = 'text';
+    el.focus();
+    // Sélectionner tout
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges(); sel?.addRange(range);
+
+    const onBlur = () => {
+      el.contentEditable = 'false';
+      el.style.cursor = 'grab';
+      // Sauvegarder le texte édité
+      if (yKey === 'subY' && _modalIdx !== null && _lastSegKey !== null) {
+        if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+        if (!_clipSettings[_modalIdx].segEdits) _clipSettings[_modalIdx].segEdits = {};
+        _clipSettings[_modalIdx].segEdits[_lastSegKey] = el.textContent.trim();
+        _lastSegKey = null; // force re-render
+      } else if (yKey === 'hookY') {
+        const hookTxtEl = document.getElementById('modal-hook-txt');
+        if (hookTxtEl) hookTxtEl.value = el.textContent.trim();
+        updateClipOpt();
+      }
+      el.removeEventListener('blur', onBlur);
+      el.removeEventListener('keydown', onKeyDown);
     };
-    el.style.cssText = (styleMap[opts.style] || styleMap.bold) + ';position:absolute;left:50%;transform:translateX(-50%);width:92%;text-align:center;pointer-events:none;z-index:5;word-wrap:break-word;bottom:70px';
-    const yMap = { low: '70px', mid: '45%', 'low-mid': '30%' };
-    el.style.bottom = yMap[opts.position] || '70px';
-    if (opts.position === 'mid') { el.style.bottom = 'auto'; el.style.top = '45%'; }
-    else { el.style.top = 'auto'; }
+    const onKeyDown = ev => { if (ev.key === 'Enter' || ev.key === 'Escape') { ev.preventDefault(); el.blur(); } };
+    el.addEventListener('blur', onBlur, { once: true });
+    el.addEventListener('keydown', onKeyDown);
   }
 
   function togglePlay() {
@@ -1271,12 +1453,11 @@ const V2 = (() => {
     if (_modalIdx === null) return;
     if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
     _clipSettings[_modalIdx].style = style;
-    // Update pills
+    _lastSegKey = null; // force re-render avec la nouvelle animation
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.style === style);
     });
-    // Update defaults for this style
-    const defaults = { bold:'#ffffff', minimal:'#ffffff', karaoke:'#FFE000', neon:'#00FF9C', spotlight:'#ffffff' };
+    const defaults = { bold:'#ffffff', minimal:'#ffffff', karaoke:'#FFE000', neon:'#00FF9C', spotlight:'#ffffff', typewriter:'#ffffff', wordpop:'#ffffff', slide:'#ffffff', shake:'#ffffff', wave:'#ffffff' };
     const ct = document.getElementById('modal-color-text');
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
   }
@@ -1285,17 +1466,20 @@ const V2 = (() => {
     if (_modalIdx === null) return;
     const hookOn = document.getElementById('modal-hook-on')?.checked || false;
     const hookTxt = document.getElementById('modal-hook-txt');
-    // Afficher/cacher champ hook
     if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
-    // Toujours sauvegarder — même si c'est le premier changement
+    // Préserver subY/hookY/segEdits existants
+    const prev = _clipSettings[_modalIdx] || {};
+    _lastSegKey = null; // force re-render (couleur/taille changée)
     _clipSettings[_modalIdx] = {
       style: document.querySelector('#modal-style-btns .ms-pill.active')?.dataset.style || _currentStyle,
       fontSize: parseInt(document.getElementById('modal-fontsize')?.value || '70'),
-      position: document.getElementById('modal-position')?.value || 'low',
       colorText: document.getElementById('modal-color-text')?.value || '#ffffff',
       colorBg: document.getElementById('modal-color-bg')?.value || '#000000',
       hookEnabled: hookOn,
       hookText: hookTxt?.value || '',
+      subY: prev.subY ?? 82,
+      hookY: prev.hookY ?? 10,
+      segEdits: prev.segEdits || {},
     };
   }
 
