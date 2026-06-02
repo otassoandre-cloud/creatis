@@ -1817,21 +1817,9 @@ const V2 = (() => {
     if (onPct) onPct(25);
     if (onMsg) onMsg('Reframe 9:16…');
 
-    // Step 2: Reframe to 9:16 via Railway (face tracking)
-    let reframedBlob;
-    try {
-      const tokRes = await fetch('/api/repurpose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${typeof Auth !== 'undefined' ? Auth.getToken() : ''}` },
-        body: JSON.stringify({ mode: 'upload-token' })
-      });
-      const tokData = await tokRes.json();
-      if (!tokData.ok) throw new Error(tokData.error);
-      reframedBlob = await reframeViaRailway(segmentBlob, tokData, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
-    } catch(e) {
-      if (onMsg) onMsg('Encodage local 9:16…');
-      reframedBlob = await encodeLocal9x16(segmentBlob, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
-    }
+    // Step 2: Reframe to 9:16 local (crop centré, rapide)
+    if (onMsg) onMsg('Encodage 9:16…');
+    const reframedBlob = await encodeLocal9x16(segmentBlob, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
     if (onPct) onPct(68);
     if (onMsg) onMsg('Ajout des sous-titres…');
 
@@ -1932,7 +1920,7 @@ const V2 = (() => {
     const handler = ({ progress }) => { if (onPct) onPct(Math.round(progress * 100)); };
     ffmpeg.on('progress', handler);
     try {
-      await ffmpeg.exec(['-i', '/r_in.mp4', '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26', '-c:a', 'aac', '-b:a', '96k', '/r_out.mp4']);
+      await ffmpeg.exec(['-i', '/r_in.mp4', '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-c:a', 'aac', '-b:a', '64k', '/r_out.mp4']);
       ffmpeg.off('progress', handler);
       const out = await ffmpeg.readFile('/r_out.mp4');
       return new Blob([out], { type: 'video/mp4' });
