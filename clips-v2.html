@@ -1847,6 +1847,7 @@ const V2 = (() => {
     if (onMsg) onMsg('Ajout des sous-titres…');
 
     // Step 3: Burn subtitles (avec segEdits appliqués)
+    if (reframedBlob.size === 0) throw new Error('Reframe 9:16 a retourné un fichier vide — réessaie');
     const hasSubs = _segments.length > 0;
     let finalBlob = reframedBlob;
     if (hasSubs) {
@@ -1856,12 +1857,16 @@ const V2 = (() => {
           const key = `${s.start?.toFixed(2)}_${s.end?.toFixed(2)}`;
           return segEdits[key] !== undefined ? { ...s, text: segEdits[key] } : s;
         }).filter(s => s.text && s.text.trim() !== '');
-        finalBlob = await burnSubtitles(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.28)); });
+        const burned = await burnSubtitles(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.28)); });
+        if (burned.size === 0) throw new Error('burnSubtitles a produit un fichier vide');
+        finalBlob = burned;
       } catch(e) {
-        console.warn('[v2] subtitle burn failed, using plain video:', e.message);
-        toast('⚠️ Sous-titres ignorés (erreur encodage)', 'info', 4000);
+        console.error('[v2] subtitle burn failed:', e.message);
+        toast(`⚠️ Sous-titres ignorés: ${e.message.substring(0, 80)}`, 'erreur', 6000);
+        finalBlob = reframedBlob;
       }
     }
+    if (finalBlob.size === 0) throw new Error('Export produit un fichier vide — réessaie');
     if (onPct) onPct(98);
     if (onMsg) onMsg('Finalisation…');
     await new Promise(r => setTimeout(r, 200));
@@ -2016,6 +2021,7 @@ const V2 = (() => {
       await ffmpeg.exec(cmd);
       ffmpeg.off('progress', handler);
       const out = await ffmpeg.readFile('/sb_out.mp4');
+      if (!out || out.length === 0) throw new Error('ffmpeg drawtext a produit un fichier vide — filtre trop long ou caractère invalide');
       return new Blob([out], { type: 'video/mp4' });
     } finally {
       ffmpeg.off('progress', handler);
