@@ -1153,8 +1153,8 @@ const V2 = (() => {
         video.currentTime = clipStart;
       }, { once: true });
 
-      // Start subtitle loop
-      _subRaf = requestAnimationFrame(() => _subLoop(video, clip, opts));
+      // Start subtitle loop — opts lus dynamiquement à chaque frame
+      _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
 
     } else {
       // No local file — show thumbnail
@@ -1169,7 +1169,10 @@ const V2 = (() => {
     }
   }
 
-  function _subLoop(video, clip, opts) {
+  function _subLoop(video, clip) {
+    // Lire les opts en temps réel à chaque frame — capture les modifications de l'utilisateur
+    const opts = getClipOpts(_modalIdx);
+
     const subEl = document.getElementById('modal-sub-overlay');
     const hookEl = document.getElementById('modal-hook-overlay');
     const progFill = document.getElementById('modal-prog-fill');
@@ -1181,19 +1184,19 @@ const V2 = (() => {
     const t = video.currentTime;
     const rel = t - clipStart;
 
-    // Loop clip at end
+    // Boucle sur le clip
     if (!video.paused && t >= clipEnd) {
       video.currentTime = clipStart;
     }
 
-    // Progress
+    // Barre de progression
     if (progFill) progFill.style.width = Math.min(100, Math.max(0, rel / clipDur * 100)) + '%';
     if (timeEl) {
       const s = Math.max(0, rel);
       timeEl.textContent = `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')} / ${Math.floor(clipDur/60)}:${String(Math.floor(clipDur%60)).padStart(2,'0')}`;
     }
 
-    // Current subtitle segment
+    // Segment de sous-titre courant
     const seg = _segments.find(s => {
       const ss = s.start ?? s.offset ?? 0;
       const se = s.end ?? (ss + (s.duration ?? 2));
@@ -1204,17 +1207,19 @@ const V2 = (() => {
       _applySubStyle(subEl, opts);
     }
 
-    // Hook overlay (first 3 seconds)
+    // Hook overlay (3 premières secondes)
     if (hookEl) {
-      if (opts.hookEnabled && opts.hookText && rel >= 0 && rel < 3) {
-        hookEl.textContent = opts.hookText;
+      const hookTxt = document.getElementById('modal-hook-txt')?.value || opts.hookText || '';
+      const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
+      if (hookOn && hookTxt && rel >= 0 && rel < 3) {
+        hookEl.textContent = hookTxt;
         hookEl.style.display = 'block';
       } else {
         hookEl.style.display = 'none';
       }
     }
 
-    _subRaf = requestAnimationFrame(() => _subLoop(video, clip, opts));
+    _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
   }
 
   function _applySubStyle(el, opts) {
@@ -1278,16 +1283,18 @@ const V2 = (() => {
 
   function updateClipOpt() {
     if (_modalIdx === null) return;
-    const hookOn = document.getElementById('modal-hook-on')?.checked;
+    const hookOn = document.getElementById('modal-hook-on')?.checked || false;
     const hookTxt = document.getElementById('modal-hook-txt');
+    // Afficher/cacher champ hook
     if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
+    // Toujours sauvegarder — même si c'est le premier changement
     _clipSettings[_modalIdx] = {
       style: document.querySelector('#modal-style-btns .ms-pill.active')?.dataset.style || _currentStyle,
       fontSize: parseInt(document.getElementById('modal-fontsize')?.value || '70'),
       position: document.getElementById('modal-position')?.value || 'low',
       colorText: document.getElementById('modal-color-text')?.value || '#ffffff',
       colorBg: document.getElementById('modal-color-bg')?.value || '#000000',
-      hookEnabled: hookOn || false,
+      hookEnabled: hookOn,
       hookText: hookTxt?.value || '',
     };
   }
@@ -1301,6 +1308,7 @@ const V2 = (() => {
     if (hookTxt) { hookTxt.value = txt; hookTxt.style.display = 'block'; }
     if (hookOn) hookOn.checked = true;
     updateClipOpt();
+    toast('⚡ Hook généré depuis le clip', 'succes', 2000);
   }
 
   function stopModalVideo() {
