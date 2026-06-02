@@ -1883,9 +1883,29 @@ const V2 = (() => {
         if (burned.size === 0) throw new Error('burnSubtitles a produit un fichier vide');
         finalBlob = burned;
       } catch(e) {
-        console.error('[v2] subtitle burn failed:', e.message);
-        toast(`⚠️ Sous-titres ignorés: ${e.message.substring(0, 80)}`, 'erreur', 6000);
-        finalBlob = reframedBlob;
+        console.error('[v2] Railway burn failed:', e.message);
+        // Fallback Canvas pour desktop si Railway échoue
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (!isIOS && typeof MediaRecorder !== 'undefined') {
+          try {
+            toast('⚠️ Railway indisponible — encodage local…', 'info', 4000);
+            if (onMsg) onMsg('Encodage sous-titres local…');
+            const webmBlob = await renderSubsOnCanvas(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.2)); });
+            const ffmpeg = await loadFFmpeg();
+            const data = new Uint8Array(await webmBlob.arrayBuffer());
+            await ffmpeg.writeFile('/conv_in.webm', data);
+            await ffmpeg.exec(['-i', '/conv_in.webm', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '/conv_out.mp4']);
+            const out = await ffmpeg.readFile('/conv_out.mp4');
+            try { await ffmpeg.deleteFile('/conv_in.webm'); } catch {}
+            try { await ffmpeg.deleteFile('/conv_out.mp4'); } catch {}
+            if (out && out.length > 0) { finalBlob = new Blob([out], { type: 'video/mp4' }); }
+          } catch(e2) {
+            console.error('[v2] Canvas fallback also failed:', e2.message);
+            finalBlob = reframedBlob;
+          }
+        } else {
+          finalBlob = reframedBlob;
+        }
       }
     }
     if (finalBlob.size === 0) throw new Error('Export produit un fichier vide — réessaie');
