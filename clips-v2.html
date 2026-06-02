@@ -265,9 +265,9 @@
         border-radius: 20px 20px 0 0;
         overflow: hidden;
       }
-      /* Lecteur vidéo mobile — ratio 16:9 (conserve les proportions gaming) */
+      /* Lecteur vidéo mobile — ratio 9:16 (format Short/TikTok) */
       .modal-player-col { width: 100%; flex-shrink: 0; }
-      .modal-player-wrap { aspect-ratio: 16/9; flex: none; height: auto; }
+      .modal-player-wrap { aspect-ratio: 9/16; flex: none; height: auto; max-height: 55dvh; width: auto; margin: 0 auto; }
       /* Settings : panneau scrollable en bas */
       .modal-settings-col { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
       .modal-settings-header { padding: 12px 16px 10px; }
