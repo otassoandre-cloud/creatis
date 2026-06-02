@@ -97,40 +97,8 @@ async function checkQuota(userId) {
   } catch { return { ok: true }; } // fail open si erreur réseau
 }
 
-/* ── Whisper transcription (multipart/form-data) ── */
-async function handleTranscribe(req, res) {
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
-  if (!GROQ_API_KEY) return res.status(500).json({ ok: false, error: 'GROQ_API_KEY manquante' });
-  try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const bodyBuffer = Buffer.concat(chunks);
-    const contentType = req.headers['content-type'] || '';
-    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': contentType },
-      body: bodyBuffer,
-    });
-    if (!groqRes.ok) {
-      const err = await groqRes.text();
-      return res.status(500).json({ ok: false, error: `Groq Whisper: ${err}` });
-    }
-    const data = await groqRes.json();
-    const segments = (data.segments || []).map(s => ({ start: s.start, end: s.end, text: s.text.trim() }));
-    const duration = segments.length > 0 ? segments[segments.length - 1].end : 0;
-    return res.status(200).json({ ok: true, segments, duration, text: data.text || '' });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
-}
-
 module.exports = async (req, res) => {
   const origin = req.headers.origin || '';
-
-  /* ── Route Whisper si multipart ── */
-  if (req.method === 'POST' && (req.headers['content-type'] || '').includes('multipart/form-data')) {
-    return handleTranscribe(req, res);
-  }
   const allowedOrigins = ['https://creatis.app', 'https://www.creatis.app', process.env.APP_URL || ''];
   const isAllowed = allowedOrigins.some(o => o && origin.startsWith(o))
     || origin.includes('localhost') || origin.includes('vercel.app');
