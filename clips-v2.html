@@ -1987,32 +1987,73 @@ const V2 = (() => {
   }
 
   // ── Subtitle burning ──
-  // ── Subtitle burn via Canvas + MediaRecorder (fiable, pas besoin de libass/freetype) ──
+  // ── Subtitle burn via Railway ffmpeg natif (libass disponible, fonctionne iOS + desktop) ──
   async function burnSubtitles(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
     const hasContent = segments.some(s => (s.text || s.word || '').trim()) ||
                        (opts.hookEnabled && opts.hookText);
     if (!hasContent) return videoBlob;
 
-    // iOS Safari ne supporte pas MediaRecorder → skip burn, livrer vidéo propre
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIOS || typeof MediaRecorder === 'undefined') {
-      toast('📱 Sous-titres non intégrés sur iOS — ajoute-les dans TikTok, Reels ou CapCut après import', 'info', 7000);
-      return videoBlob;
-    }
+    if (onPct) onPct(5);
 
-    const webmBlob = await renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct);
+    // Préparer les segments relatifs au clip
+    const relSegs = segments
+      .filter(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        return ss < clipEnd && se > clipStart;
+      })
+      .map(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        return {
+          text: (s.text || s.word || '').trim(),
+          t0: Math.max(0, ss - clipStart),
+          t1: Math.min(clipEnd - clipStart, se - clipStart),
+        };
+      })
+      .filter(s => s.text && s.t1 > s.t0);
 
-    // Re-encoder webm → mp4 via ffmpeg (codec seulement, pas de filtre)
-    if (onPct) onPct(80);
-    const ffmpeg = await loadFFmpeg();
-    const data = new Uint8Array(await webmBlob.arrayBuffer());
-    await ffmpeg.writeFile('/conv_in.webm', data);
-    await ffmpeg.exec(['-i', '/conv_in.webm', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '/conv_out.mp4']);
-    const out = await ffmpeg.readFile('/conv_out.mp4');
-    try { await ffmpeg.deleteFile('/conv_in.webm'); } catch {}
-    try { await ffmpeg.deleteFile('/conv_out.mp4'); } catch {}
-    if (!out || out.length === 0) throw new Error('Re-encodage mp4 échoué');
-    return new Blob([out], { type: 'video/mp4' });
+    // Récupérer le token Railway
+    const headers = { 'Content-Type': 'application/json' };
+    if (typeof Auth !== 'undefined' && Auth.getToken()) headers['Authorization'] = `Bearer ${Auth.getToken()}`;
+    const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+    const tokData = await tokRes.json();
+    if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
+
+    if (onPct) onPct(10);
+
+    // Envoyer la vidéo + sous-titres à Railway
+    const form = new FormData();
+    form.append('file', videoBlob, 'input.mp4');
+    form.append('segments', JSON.stringify(relSegs));
+    form.append('style', opts.style || 'bold');
+    form.append('font_size', String(opts.fontSize || 70));
+    form.append('color_text', opts.colorText || '#ffffff');
+    form.append('color_bg', opts.colorBg || '#000000');
+    form.append('sub_y', String(opts.subY ?? 82));
+    form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
+    form.append('hook_text', opts.hookText || '');
+    form.append('hook_color', opts.hookColor || '#ffffff');
+
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${tokData.railway_url}/burn-subtitles?token=${encodeURIComponent(tokData.token)}`);
+      xhr.responseType = 'blob';
+      xhr.timeout = 120000;
+      xhr.upload.onprogress = e => { if (e.lengthComputable && onPct) onPct(10 + Math.round(e.loaded / e.total * 40)); };
+      xhr.onprogress = e => { if (e.lengthComputable && onPct) onPct(50 + Math.round(e.loaded / e.total * 45)); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else reject(new Error(`burn-subtitles Railway ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error('Erreur réseau Railway burn'));
+      xhr.ontimeout = () => reject(new Error('Timeout Railway burn'));
+      xhr.send(form);
+    });
+
+    if (!result || result.size === 0) throw new Error('Railway burn-subtitles a retourné un fichier vide');
+    if (onPct) onPct(100);
+    return new Blob([await result.arrayBuffer()], { type: 'video/mp4' });
   }
 
   function renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct) {

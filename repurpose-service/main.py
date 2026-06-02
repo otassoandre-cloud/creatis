@@ -1277,6 +1277,110 @@ def clip_export_file(job_id: str, filename: str):
     return FileResponse(str(path), media_type="video/mp4", filename=filename)
 
 
+@app.post("/burn-subtitles")
+async def burn_subtitles_endpoint(
+    file: UploadFile = File(...),
+    segments: str = "",
+    style: str = "bold",
+    font_size: int = 70,
+    color_text: str = "#ffffff",
+    color_bg: str = "#000000",
+    sub_y: float = 82.0,
+    hook_enabled: bool = False,
+    hook_text: str = "",
+    hook_color: str = "#ffffff",
+    _=Depends(auth)
+):
+    """Brûle des sous-titres sur une vidéo 9:16 avec ffmpeg natif (libass disponible)."""
+    import shutil, json as _json
+    from fastapi.responses import FileResponse
+    tmp_dir = WORK_DIR / f"bs_{uuid.uuid4().hex[:8]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    in_path  = tmp_dir / "input.mp4"
+    ass_path = tmp_dir / "subs.ass"
+    out_path = tmp_dir / "output.mp4"
+    try:
+        with open(in_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        # Parser les segments JSON
+        segs = []
+        if segments:
+            try:
+                segs = _json.loads(segments)
+            except Exception:
+                pass
+
+        # Construire le fichier ASS
+        def to_ass_time(secs):
+            h = int(secs // 3600)
+            m = int((secs % 3600) // 60)
+            s = secs % 60
+            return f"{h}:{m:02d}:{s:05.2f}"
+
+        def hex_to_ass(h):
+            h = h.lstrip("#").upper().zfill(6)
+            return f"&H00{h[4:6]}{h[2:4]}{h[0:2]}"
+
+        ct = hex_to_ass(color_text)
+        cb = hex_to_ass(color_bg)
+        margin_v = int((1 - sub_y / 100) * 1280)
+
+        style_map = {
+            "bold":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "minimal":   f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "karaoke":   f"Style: Default,Arial,{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
+            "neon":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
+            "spotlight": f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+        }
+        style_line = style_map.get(style, style_map["bold"])
+        hook_style = f"Style: Hook,Arial,{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
+
+        ass_lines = [
+            "[Script Info]", "ScriptType: v4.00+", "PlayResX: 720", "PlayResY: 1280", "WrapStyle: 1", "",
+            "[V4+ Styles]",
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+            style_line, hook_style, "",
+            "[Events]",
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        ]
+        if hook_enabled and hook_text:
+            ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{hook_text}")
+        for s in segs:
+            t0 = float(s.get("t0", 0))
+            t1 = float(s.get("t1", 0))
+            txt = str(s.get("text", "")).strip().replace("\n", "\\N")
+            if txt and t1 > t0:
+                ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
+
+        with open(ass_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(ass_lines))
+
+        # ffmpeg natif avec libass
+        cmd = [
+            "ffmpeg", "-y", "-i", str(in_path),
+            "-vf", f"ass={str(ass_path)}",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+            "-c:a", "copy", str(out_path)
+        ]
+        proc = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: __import__("subprocess").run(cmd, capture_output=True)
+        )
+        if not out_path.exists() or out_path.stat().st_size == 0:
+            raise HTTPException(500, f"burn-subtitles échoué: {proc.stderr.decode()[:300]}")
+
+        return FileResponse(
+            str(out_path), media_type="video/mp4", filename="clip_subtitled.mp4",
+            background=BackgroundTask(shutil.rmtree, tmp_dir, True)
+        )
+    except HTTPException:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
+    except Exception as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(500, str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
