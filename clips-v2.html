@@ -1993,6 +1993,13 @@ const V2 = (() => {
                        (opts.hookEnabled && opts.hookText);
     if (!hasContent) return videoBlob;
 
+    // iOS Safari ne supporte pas MediaRecorder → skip burn, livrer vidéo propre
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS || typeof MediaRecorder === 'undefined') {
+      toast('📱 Sous-titres non intégrés sur iOS — ajoute-les dans TikTok, Reels ou CapCut après import', 'info', 7000);
+      return videoBlob;
+    }
+
     const webmBlob = await renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct);
 
     // Re-encoder webm → mp4 via ffmpeg (codec seulement, pas de filtre)
