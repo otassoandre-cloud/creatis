@@ -998,7 +998,16 @@ class AppCreatis {
     panneau.id = `panneau-${agent.id}`;
     panneau.style.cssText = 'padding:0;overflow:hidden;position:relative;';
 
-    panneau.innerHTML = `<iframe src="/clips-v2.html?embedded=1" style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#0a0f0a;"></iframe>`;
+    const iframe = document.createElement('iframe');
+    iframe.src = '/clips-v2.html';
+    iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#0a0f0a;';
+    iframe.onload = () => {
+      try {
+        const nav = iframe.contentDocument.querySelector('.nav');
+        if (nav) nav.style.display = 'none';
+      } catch(e) {}
+    };
+    panneau.appendChild(iframe);
 
     workspace.appendChild(panneau);
   }
