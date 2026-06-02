@@ -251,6 +251,7 @@
     .seg-edited { color: var(--vert) !important; }
 
     /* Style pills */
+    .modal-styles-wrap { position: relative; }
     .modal-styles { display: flex; flex-wrap: wrap; gap: 7px; }
     .ms-pill { font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 8px; border: 2px solid var(--bordure); background: transparent; cursor: pointer; transition: all .15s; color: var(--texte-doux); white-space: nowrap; }
 
@@ -276,6 +277,8 @@
       /* Pills : scroll horizontal sur mobile */
       .modal-styles { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
       .modal-styles::-webkit-scrollbar { display: none; }
+      .modal-styles-wrap::after { content: '›'; position: absolute; right: 0; top: 0; bottom: 4px; width: 40px; background: linear-gradient(to right, transparent, #161e16); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: var(--texte-muted); font-size: 18px; pointer-events: none; animation: nudge 1.5s ease-in-out infinite; }
+      @keyframes nudge { 0%,100% { transform: translateX(0); opacity:.6; } 50% { transform: translateX(3px); opacity:1; } }
       /* Options en 2 colonnes sur mobile */
       .modal-opt-row { grid-template-columns: 1fr 1fr; gap: 8px; }
       /* Bouton dl fixé en bas */
@@ -572,6 +575,7 @@
         <!-- Style sous-titres -->
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
+          <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
@@ -583,6 +587,7 @@
             <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')">⬆ Slide</button>
             <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
             <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
+          </div>
           </div>
           <div style="font-size:11px;color:var(--texte-muted);margin-top:6px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres sur la vidéo · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
         </div>
