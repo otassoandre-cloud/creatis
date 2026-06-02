@@ -428,140 +428,6 @@
       <button onclick="V2.restart()" class="btn-restart">↩ Nouvelle vidéo</button>
     </div>
 
-    <!-- Style picker -->
-    <div class="section-label">Style des sous-titres</div>
-    <div class="style-picker" id="style-picker">
-      <div class="style-card selected" data-style="bold" onclick="V2.selectStyle('bold')">
-        <div class="style-preview" style="background:#111">
-          <span class="prev-bold">VOILÀ CE QUE</span>
-        </div>
-        <div class="style-name">Bold</div>
-        <div class="style-desc">CapCut classique</div>
-      </div>
-      <div class="style-card" data-style="minimal" onclick="V2.selectStyle('minimal')">
-        <div class="style-preview" style="background:#1a2a1a">
-          <span class="prev-minimal">voilà ce que…</span>
-        </div>
-        <div class="style-name">Minimal</div>
-        <div class="style-desc">Épuré, discret</div>
-      </div>
-      <div class="style-card" data-style="karaoke" onclick="V2.selectStyle('karaoke')">
-        <div class="style-preview" style="background:#111">
-          <span class="prev-karaoke">MOT CLEF</span>
-        </div>
-        <div class="style-name">Karaoke</div>
-        <div class="style-desc">Accentué jaune</div>
-      </div>
-      <div class="style-card" data-style="neon" onclick="V2.selectStyle('neon')">
-        <div class="style-preview" style="background:#050905">
-          <span class="prev-neon">NÉON GLOW</span>
-        </div>
-        <div class="style-name">Néon</div>
-        <div class="style-desc">Glow coloré</div>
-      </div>
-      <div class="style-card" data-style="spotlight" onclick="V2.selectStyle('spotlight')">
-        <div class="style-preview" style="background:linear-gradient(#1a2a1a,#0a0f0a)">
-          <span class="prev-spotlight">Spotlight</span>
-        </div>
-        <div class="style-name">Spotlight</div>
-        <div class="style-desc">Fond sombre</div>
-      </div>
-    </div>
-
-    <!-- Options -->
-    <div class="section-label">Personnalisation</div>
-    <div class="options-grid">
-      <div class="opt-group">
-        <div class="opt-label">Taille du texte</div>
-        <select id="opt-fontsize" class="opt-select">
-          <option value="55">Petit (55px)</option>
-          <option value="70" selected>Moyen (70px)</option>
-          <option value="82">Grand (82px)</option>
-          <option value="96">XL (96px)</option>
-        </select>
-      </div>
-      <div class="opt-group">
-        <div class="opt-label">Position verticale</div>
-        <select id="opt-position" class="opt-select">
-          <option value="low" selected>Bas (recommandé)</option>
-          <option value="mid">Centre</option>
-          <option value="low-mid">Bas-centre</option>
-        </select>
-      </div>
-      <div class="opt-group">
-        <div class="opt-label">Couleur texte</div>
-        <div class="opt-color-row">
-          <input type="color" id="opt-color-text" class="opt-color" value="#ffffff">
-          <span style="font-size:12px;color:var(--texte-doux)">Couleur principale</span>
-        </div>
-      </div>
-      <div class="opt-group">
-        <div class="opt-label">Couleur accent / fond</div>
-        <div class="opt-color-row">
-          <input type="color" id="opt-color-bg" class="opt-color" value="#000000">
-          <span style="font-size:12px;color:var(--texte-doux)">Contour / fond</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hook text -->
-    <div class="section-label" style="margin-top:8px">Hook d'accroche (0–3s)</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-      <div class="opt-toggle-row">
-        <label class="toggle">
-          <input type="checkbox" id="opt-hook" onchange="V2.toggleHook(this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-        <span class="opt-toggle-label">Afficher texte d'accroche sur les 3 premières secondes</span>
-      </div>
-      <input type="text" id="opt-hook-text" class="opt-input" placeholder="Texte auto-généré depuis le clip…" style="display:none" maxlength="80">
-      <div style="display:none;gap:8px;flex-wrap:wrap" id="opt-hook-style-row">
-        <select id="opt-hook-pos" class="opt-select" style="max-width:180px">
-          <option value="top">En haut</option>
-          <option value="center">Centre</option>
-        </select>
-        <input type="color" id="opt-hook-color" class="opt-color" value="#ffffff" title="Couleur hook">
-      </div>
-    </div>
-
-    <!-- Watermark -->
-    <div class="section-label">Logo / Watermark</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
-      <div class="opt-toggle-row">
-        <label class="toggle">
-          <input type="checkbox" id="opt-wm" onchange="V2.toggleWatermark(this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-        <span class="opt-toggle-label">Ajouter mon logo sur les clips</span>
-      </div>
-      <div id="wm-zone" style="display:none">
-        <div class="watermark-zone" id="wm-drop" onclick="document.getElementById('wm-input').click()">
-          <div class="watermark-placeholder" id="wm-ph">🖼️</div>
-          <img id="wm-preview" class="watermark-preview" style="display:none">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600">Cliquer pour choisir le logo</div>
-            <div style="font-size:11px;color:var(--texte-muted)">PNG transparent recommandé</div>
-          </div>
-          <input type="file" id="wm-input" accept="image/*" style="display:none" onchange="V2.onWatermarkSelect(this)">
-        </div>
-        <div style="display:flex;gap:12px;margin-top:10px;align-items:center">
-          <select id="opt-wm-pos" class="opt-select" style="max-width:160px">
-            <option value="tr">Haut droite</option>
-            <option value="tl">Haut gauche</option>
-            <option value="br">Bas droite</option>
-            <option value="bl">Bas gauche</option>
-          </select>
-          <div style="display:flex;align-items:center;gap:8px;flex:1">
-            <span style="font-size:12px;color:var(--texte-doux)">Opacité</span>
-            <input type="range" id="opt-wm-opacity" min="20" max="100" value="80" style="flex:1">
-            <span id="wm-opacity-val" style="font-size:12px;color:var(--texte-doux)">80%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-sep"></div>
-
     <!-- Clip selection -->
     <div class="section-label">Sélectionner les clips à exporter</div>
     <div class="clips-toolbar">
@@ -647,13 +513,13 @@
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
           <div class="modal-styles" id="modal-style-btns">
-            <button class="ms-pill active" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
+            <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
             <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
             <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')">Néon</button>
             <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')">Spotlight</button>
             <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')">✍️ Typewriter</button>
-            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
+            <button class="ms-pill active" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
             <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')">⬆ Slide</button>
             <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
             <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
@@ -715,7 +581,7 @@ const V2 = (() => {
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
   let _selectedIds = new Set();
-  let _currentStyle = 'bold';
+  let _currentStyle = 'wordpop';
   let _watermarkFile = null;  // Logo File object
   let _ffmpeg = null;
   let _ffmpegLoading = null;
@@ -1113,11 +979,11 @@ const V2 = (() => {
   function getClipOpts(i) {
     return _clipSettings[i] || {
       style: _currentStyle,
-      fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '70'),
-      colorText: document.getElementById('opt-color-text')?.value || '#ffffff',
-      colorBg: document.getElementById('opt-color-bg')?.value || '#000000',
-      hookEnabled: document.getElementById('opt-hook')?.checked || false,
-      hookText: document.getElementById('opt-hook-text')?.value || '',
+      fontSize: 70,
+      colorText: '#ffffff',
+      colorBg: '#000000',
+      hookEnabled: false,
+      hookText: '',
       subY: 82,
       hookY: 10,
       segEdits: {},
@@ -1255,13 +1121,14 @@ const V2 = (() => {
       _applySubPosition(subEl, opts.subY ?? 82);
     }
 
-    // Hook overlay
+    // Hook overlay — toujours visible dans l'éditeur quand activé (pour pouvoir le déplacer)
     if (hookEl && !hookEl.matches(':focus')) {
       const hookTxt = document.getElementById('modal-hook-txt')?.value || opts.hookText || '';
       const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
-      if (hookOn && hookTxt && rel >= 0 && rel < 3) {
-        if (hookEl.style.display === 'none') hookEl.textContent = hookTxt;
+      if (hookOn && hookTxt) {
+        hookEl.textContent = hookTxt;
         hookEl.style.display = 'block';
+        hookEl.style.opacity = (rel >= 0 && rel < 3) ? '1' : '0.35'; // semi-transparent hors des 3s
         _applySubPosition(hookEl, opts.hookY ?? 10);
       } else {
         hookEl.style.display = 'none';
@@ -1360,9 +1227,12 @@ const V2 = (() => {
   }
 
   function _setupDraggable(el, wrap, yKey) {
+    // Bloquer TOUTE propagation de clic — empêche le play/pause du wrapper
+    el.addEventListener('click', e => e.stopPropagation());
     el.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       e.stopPropagation();
+      e.preventDefault(); // empêche la sélection de texte pendant le drag
       _isDragging = false;
       const startY = e.clientY;
       const wrapRect = wrap.getBoundingClientRect();
@@ -1377,12 +1247,11 @@ const V2 = (() => {
         if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
         _clipSettings[_modalIdx][yKey] = newY;
       };
-      const onUp = ev => {
+      const onUp = () => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
-        // Si pas de mouvement : clic = éditer le texte
         if (!moved) _makeEditable(el, yKey);
-        setTimeout(() => { _isDragging = false; }, 100);
+        setTimeout(() => { _isDragging = false; }, 150);
       };
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
