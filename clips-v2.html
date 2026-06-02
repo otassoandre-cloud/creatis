@@ -1624,13 +1624,12 @@ const V2 = (() => {
     if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
     try {
       const opts = getClipOpts(i);
-      const blob = await exportSingleClip(_clips[i], opts, pct => {
+      const result = await exportSingleClip(_clips[i], opts, pct => {
         if (status) status.textContent = `${pct}%`;
       }, msg => {
         if (status) status.textContent = msg;
       });
-      const title = (_clips[i].title || `clip_${i+1}`).replace(/[^\w\- ]/g, '').replace(/\s+/g,'_').substring(0,40);
-      download(URL.createObjectURL(blob), `${title}_9x16.mp4`);
+      download(result.downloadUrl, result.filename);
       if (status) status.textContent = '✅ Téléchargé !';
       toast('✅ Clip téléchargé !', 'succes', 3000);
     } catch(err) {
@@ -1796,9 +1795,8 @@ const V2 = (() => {
 
       setStatus('processing');
       try {
-        const blob = await exportSingleClip(clip, opts, pct => setPct(pct, null), msg => setPct(null, msg));
-        const clipTitle = (clip.title || `clip_${i+1}`).replace(/[^\w\-àéèêëùûüîïôœæç ]/g, '').replace(/\s+/g, '_').substring(0, 40);
-        results.push({ blob, filename: `${clipTitle}_9x16.mp4`, title: clip.title || `Clip ${i+1}`, hook: clip.hook || '' });
+        const result = await exportSingleClip(clip, opts, pct => setPct(pct, null), msg => setPct(null, msg));
+        results.push({ downloadUrl: result.downloadUrl, filename: result.filename, title: clip.title || `Clip ${i+1}`, hook: clip.hook || '' });
         setPct(100, '✅ Terminé');
         setStatus('done');
       } catch(err) {
@@ -1832,90 +1830,81 @@ const V2 = (() => {
 
   async function exportSingleClip(clip, opts, onPct, onMsg) {
     const start = clip.start_time ?? clip.start;
-    const end = clip.end_time ?? clip.end;
+    const end   = clip.end_time   ?? clip.end;
+
+    // Préparer les segments avec segEdits appliqués
+    const segEdits = opts.segEdits || {};
+    const patchedSegments = _segments
+      .filter(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        return ss < end && se > start;
+      })
+      .map(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        const key = `${ss.toFixed(2)}_${se.toFixed(2)}`;
+        const text = segEdits[key] ?? s.text ?? s.word ?? '';
+        return { text: text.trim(), t0: Math.max(0, ss - start), t1: Math.min(end - start, se - start) };
+      })
+      .filter(s => s.text && s.t1 > s.t0);
 
     if (onMsg) onMsg('Découpage…');
     if (onPct) onPct(5);
 
-    // Step 1: Cut clip locally (fast, -c copy)
+    // Step 1 : couper le clip localement (rapide, -c copy)
     let segmentBlob;
     if (_file) {
       segmentBlob = await cutClipFFmpeg(_file, start, end);
     } else {
-      // YouTube: need clip from Railway clip-export
       segmentBlob = await fetchClipFromRailway(clip, onPct, onMsg);
     }
-    if (onPct) onPct(25);
-    if (onMsg) onMsg('Reframe 9:16…');
+    if (onPct) onPct(20);
+    if (onMsg) onMsg('Reframe 9:16 + sous-titres…');
 
-    // Step 2: Reframe to 9:16 via Railway (face tracking)
-    if (onMsg) onMsg('Reframe 9:16…');
-    let reframedBlob;
-    try {
-      const tokRes = await fetch('/api/repurpose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${typeof Auth !== 'undefined' ? Auth.getToken() : ''}` },
-        body: JSON.stringify({ mode: 'upload-token' })
-      });
-      const tokData = await tokRes.json();
-      if (!tokData.ok) throw new Error(tokData.error);
-      reframedBlob = await reframeViaRailway(segmentBlob, tokData, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
-    } catch(e) {
-      if (onMsg) onMsg('Encodage local 9:16…');
-      reframedBlob = await encodeLocal9x16(segmentBlob, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
-    }
-    if (onPct) onPct(68);
-    if (onMsg) onMsg('Ajout des sous-titres…');
+    // Step 2 : Railway /process-clip — reframe + burn sous-titres en une passe, retourne URL directe
+    const headers = { 'Content-Type': 'application/json' };
+    if (typeof Auth !== 'undefined' && Auth.getToken()) headers['Authorization'] = `Bearer ${Auth.getToken()}`;
+    const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+    const tokData = await tokRes.json();
+    if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
 
-    // Step 3: Burn subtitles (avec segEdits appliqués)
-    if (reframedBlob.size === 0) throw new Error('Reframe 9:16 a retourné un fichier vide — réessaie');
-    const hasSubs = _segments.length > 0;
-    let finalBlob = reframedBlob;
-    if (hasSubs) {
-      try {
-        const segEdits = opts.segEdits || {};
-        const patchedSegments = _segments.map(s => {
-          const key = `${s.start?.toFixed(2)}_${s.end?.toFixed(2)}`;
-          if (segEdits[key] !== undefined) return { ...s, text: segEdits[key] };
-          // Normaliser : Railway peut retourner .word au lieu de .text
-          if (!s.text && s.word) return { ...s, text: s.word };
-          return s;
-        });
-        const burned = await burnSubtitles(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.28)); });
-        if (burned.size === 0) throw new Error('burnSubtitles a produit un fichier vide');
-        finalBlob = burned;
-      } catch(e) {
-        console.error('[v2] Railway burn failed:', e.message);
-        // Fallback Canvas pour desktop si Railway échoue
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        if (!isIOS && typeof MediaRecorder !== 'undefined') {
-          try {
-            toast('⚠️ Railway indisponible — encodage local…', 'info', 4000);
-            if (onMsg) onMsg('Encodage sous-titres local…');
-            const webmBlob = await renderSubsOnCanvas(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.2)); });
-            const ffmpeg = await loadFFmpeg();
-            const data = new Uint8Array(await webmBlob.arrayBuffer());
-            await ffmpeg.writeFile('/conv_in.webm', data);
-            await ffmpeg.exec(['-i', '/conv_in.webm', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '/conv_out.mp4']);
-            const out = await ffmpeg.readFile('/conv_out.mp4');
-            try { await ffmpeg.deleteFile('/conv_in.webm'); } catch {}
-            try { await ffmpeg.deleteFile('/conv_out.mp4'); } catch {}
-            if (out && out.length > 0) { finalBlob = new Blob([out], { type: 'video/mp4' }); }
-          } catch(e2) {
-            console.error('[v2] Canvas fallback also failed:', e2.message);
-            finalBlob = reframedBlob;
-          }
-        } else {
-          finalBlob = reframedBlob;
-        }
-      }
-    }
-    if (finalBlob.size === 0) throw new Error('Export produit un fichier vide — réessaie');
-    if (onPct) onPct(98);
-    if (onMsg) onMsg('Finalisation…');
-    await new Promise(r => setTimeout(r, 200));
+    const form = new FormData();
+    form.append('file', segmentBlob, 'segment.mp4');
+    form.append('segments', JSON.stringify(patchedSegments));
+    form.append('style', opts.style || 'bold');
+    form.append('font_size', String(opts.fontSize || 70));
+    form.append('color_text', opts.colorText || '#ffffff');
+    form.append('color_bg',   opts.colorBg   || '#000000');
+    form.append('sub_y',      String(opts.subY ?? 82));
+    form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
+    form.append('hook_text',  opts.hookText  || '');
+    form.append('hook_color', opts.hookColor || '#ffffff');
+
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
+      xhr.timeout = 180000;
+      xhr.upload.onprogress = e => { if (e.lengthComputable && onPct) onPct(20 + Math.round(e.loaded / e.total * 30)); };
+      xhr.onprogress  = e => { if (e.lengthComputable && onPct) onPct(50 + Math.round(e.loaded / e.total * 45)); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch { reject(new Error('Réponse Railway invalide')); }
+        } else reject(new Error(`process-clip Railway ${xhr.status}`));
+      };
+      xhr.onerror   = () => reject(new Error('Erreur réseau Railway'));
+      xhr.ontimeout = () => reject(new Error('Timeout Railway (3 min)'));
+      xhr.send(form);
+    });
+
+    if (!result.ok) throw new Error(result.error || 'process-clip échoué');
+
     if (onPct) onPct(100);
-    return finalBlob;
+    if (onMsg) onMsg('Prêt !');
+
+    // Retourner l'URL directe (comme V1) — iOS peut l'ouvrir dans Safari → Enregistrer
+    return { downloadUrl: result.download_url, filename: (clip.title || `clip`).replace(/[^\w\- ]/g,'').replace(/\s+/g,'_').substring(0,40) + '_9x16.mp4' };
   }
 
   // ── Railway clip export for YouTube clips ──
@@ -2274,7 +2263,7 @@ const V2 = (() => {
     if (title) title.textContent = `🎉 ${results.length} clip${results.length > 1 ? 's' : ''} prêt${results.length > 1 ? 's' : ''} !`;
 
     grid.innerHTML = results.map((r, i) => {
-      const url = URL.createObjectURL(r.blob);
+      const url = r.downloadUrl;
       return `
       <div class="result-card">
         <div class="result-thumb">
@@ -2282,7 +2271,7 @@ const V2 = (() => {
         </div>
         <div class="result-info">
           <div class="result-title">${escHtml(r.title.substring(0, 50))}</div>
-          <div class="result-dur">${(r.blob.size / 1e6).toFixed(1)} MB · 9:16</div>
+          <div class="result-dur">9:16 · prêt</div>
           <button class="btn-dl" onclick="V2.download('${url}','${r.filename}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Télécharger
@@ -2298,24 +2287,12 @@ const V2 = (() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     if (isIOS) {
-      try {
-        // Web Share API — ouvre la feuille de partage iOS native (Enregistrer dans Photos, AirDrop…)
-        const res = await fetch(url);
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: 'video/mp4' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: filename });
-          return;
-        }
-      } catch(e) {
-        if (e.name === 'AbortError') return; // user cancelled
-      }
-      // Fallback : ouvrir dans un nouvel onglet
+      // URL directe Railway — ouvre dans Safari, l'utilisateur appuie longuement → Enregistrer la vidéo
       window.open(url, '_blank');
       return;
     }
 
-    // Desktop / Android
+    // Desktop / Android — téléchargement direct
     const a = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
