@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Studio Clips IA — Créatis</title>
+  <script>if(new URLSearchParams(location.search).get('embedded')==='1'){document.documentElement.dataset.embedded='1';}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -26,6 +27,7 @@
 
     /* ─── NAV ─── */
     .nav { position: sticky; top: 0; z-index: 50; background: rgba(10,15,10,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--bordure); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; }
+    [data-embedded="1"] .nav { display: none; }
     .nav-logo { font-weight: 800; font-size: 17px; color: var(--texte); text-decoration: none; }
     .nav-logo span { color: var(--vert); }
     .nav-badge { background: var(--vert-dim); border: 1px solid rgba(16,185,129,0.3); color: var(--vert); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; letter-spacing: .5px; }

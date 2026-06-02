@@ -39,13 +39,12 @@ class AppCreatis {
 
     this._mettreAJourChecklistOnboarding();
 
-    // Vient de la landing page → rediriger direct vers le studio clips
+    // Vient de la landing page → aller direct sur clips viraux
     const lpRef = localStorage.getItem('creatis_lp_ref');
     if (lpRef === 'clips-viraux') {
       localStorage.removeItem('creatis_lp_ref');
       localStorage.setItem('creatis_onboarding_done', '1');
-      window.location.href = '/clips-v2.html';
-      return;
+      setTimeout(() => this.selectionnerAgent('clips-viraux'), 300);
     } else if (!localStorage.getItem('creatis_onboarding_done')) {
       setTimeout(() => this._afficherOnboarding(), 600);
     } else {
@@ -641,7 +640,7 @@ class AppCreatis {
       return;
     }
     if (agent.type === 'clips') {
-      window.location.href = '/clips-v2.html';
+      this.construirePanneauClips(agent);
       return;
     }
 
@@ -997,60 +996,11 @@ class AppCreatis {
     const panneau = document.createElement('div');
     panneau.className = 'panneau-agent panneau-clips actif';
     panneau.id = `panneau-${agent.id}`;
+    panneau.style.cssText = 'padding:0;overflow:hidden;height:100%;display:flex;flex-direction:column;';
 
-    panneau.innerHTML = `
-      <div class="clips-page">
-        <div class="clips-page-header">
-          <button class="btn-retour-dashboard" onclick="app.afficherDashboard()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            Tableau de bord
-          </button>
-        </div>
-
-        <div class="clips-hero-center">
-          <p class="clips-hero-label">OUTIL DE DÉCOUPAGE VIDÉO IA</p>
-          <h1 class="clips-hero-title">1 longue vidéo,<br>10 clips viraux.</h1>
-          <p class="clips-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
-
-          <div class="clips-bar" id="clips-drop-${agent.id}"
-            ondragover="event.preventDefault();this.classList.add('drag-over')"
-            ondragleave="this.classList.remove('drag-over')"
-            ondrop="event.preventDefault();this.classList.remove('drag-over');app._onClipsDrop('${agent.id}',event)">
-            <div class="clips-bar-left">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span id="clips-upload-name-${agent.id}" class="clips-bar-placeholder">Déposer une vidéo ici</span>
-            </div>
-            <span class="clips-bar-sep">ou</span>
-            <label class="clips-bar-btn">
-              Charger des fichiers
-              <input type="file" id="clips-file-${agent.id}" accept="video/*" style="display:none" onchange="app._onClipsFileSelect('${agent.id}', this)">
-            </label>
-          </div>
-
-          <button class="btn-creer-shorts" id="btn-upload-${agent.id}" onclick="app.lancerClipsUpload('${agent.id}')" disabled>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Créer les Shorts
-          </button>
-
-        </div>
-
-        <div id="clips-results-${agent.id}" class="clips-results-zone"></div>
-      </div>`;
+    panneau.innerHTML = `<iframe src="/clips-v2.html?embedded=1" style="width:100%;flex:1;border:none;background:#0a0f0a;" allowfullscreen></iframe>`;
 
     workspace.appendChild(panneau);
-
-    // Reprise auto si iOS a rechargé la page pendant une transcription
-    try {
-      const saved = localStorage.getItem(`clips_pending_${agent.id}`);
-      if (saved) {
-        const job = JSON.parse(saved);
-        if (Date.now() - job.ts < 600000) { // < 10 min
-          setTimeout(() => this._reprendreClipsUpload(agent.id, job), 500);
-        } else {
-          localStorage.removeItem(`clips_pending_${agent.id}`);
-        }
-      }
-    } catch(e) {}
   }
 
   _onClipsFileSelect(agentId, input) {
