@@ -378,6 +378,22 @@
       .sel-count { width: 100%; }
       .btn-sel-all, .btn-sel-none, .btn-sel-top { font-size: 11px; padding: 4px 10px; }
     }
+
+    /* ── Upload V1 design ── */
+    .v1-hero-center { display:flex; flex-direction:column; align-items:center; padding:60px 20px 28px; gap:16px; text-align:center; }
+    .v1-hero-label { font-size:11px; font-weight:700; letter-spacing:.12em; color:var(--vert); text-transform:uppercase; margin:0; }
+    .v1-hero-title { font-size:clamp(22px,4vw,36px); font-weight:800; line-height:1.2; margin:0; color:var(--texte); }
+    .v1-hero-sub { font-size:13px; color:var(--texte-doux); margin:0; }
+    .v1-bar { display:flex; align-items:center; gap:0; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); border-radius:50px; padding:6px 6px 6px 20px; width:100%; max-width:520px; transition:border-color .2s; cursor:default; }
+    .v1-bar:hover, .v1-bar.drag-over { border-color:rgba(16,185,129,.5); }
+    .v1-bar-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
+    .v1-bar-placeholder { font-size:14px; color:var(--texte-doux); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .v1-bar-sep { font-size:13px; color:var(--texte-doux); padding:0 12px; flex-shrink:0; }
+    .v1-bar-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:40px; padding:9px 20px; font-size:13px; font-weight:600; color:var(--texte); cursor:pointer; transition:background .15s; white-space:nowrap; flex-shrink:0; }
+    .v1-bar-btn:hover { background:rgba(255,255,255,.18); }
+    .v1-btn-creer { display:flex; align-items:center; gap:8px; background:#fff; color:#0a0f0a; border:none; border-radius:40px; padding:13px 32px; font-size:15px; font-weight:700; cursor:pointer; transition:opacity .2s; margin-top:4px; }
+    .v1-btn-creer:hover:not(:disabled) { opacity:.88; }
+    .v1-btn-creer:disabled { opacity:.4; cursor:default; }
   </style>
 </head>
 <body>
@@ -400,45 +416,29 @@
 
   <!-- ═══════════════ STATE: UPLOAD ═══════════════ -->
   <div class="state active" id="state-upload">
-    <div class="upload-hero">
-      <h1>Studio <span>Clips Viraux</span> V2</h1>
-      <p>Sous-titres personnalisables · Sélection des clips · Hook auto · Watermark</p>
-    </div>
+    <div class="v1-hero-center">
+      <p class="v1-hero-label">OUTIL DE DÉCOUPAGE VIDÉO IA</p>
+      <h1 class="v1-hero-title">1 longue vidéo,<br>10 clips viraux.</h1>
+      <p class="v1-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
 
-    <div class="drop-zone" id="drop-zone"
-      ondragover="event.preventDefault();this.classList.add('drag-over')"
-      ondragleave="this.classList.remove('drag-over')"
-      ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)"
-      onclick="if(!this.classList.contains('has-file'))document.getElementById('file-input').click()">
-      <!-- État vide -->
-      <div id="drop-empty">
-        <div class="drop-icon">🎬</div>
-        <div class="drop-label">Dépose ta vidéo ici</div>
-        <div class="drop-sub">MP4, MOV, AVI, MKV · Max 4 GB</div>
-        <label onclick="event.stopPropagation()">
-          <span class="btn-browse">Choisir un fichier</span>
+      <div class="v1-bar" id="drop-zone"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)">
+        <div class="v1-bar-left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span id="v1-upload-name" class="v1-bar-placeholder">Déposer une vidéo ici</span>
+        </div>
+        <span class="v1-bar-sep">ou</span>
+        <label class="v1-bar-btn">
+          Charger des fichiers
           <input type="file" id="file-input" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
         </label>
       </div>
-      <!-- Aperçu vidéo après sélection -->
-      <div id="drop-preview" style="display:none;position:relative">
-        <img id="drop-thumb" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;display:block">
-        <div style="position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(0,0,0,0.7));border-radius:12px"></div>
-        <div style="position:absolute;bottom:16px;left:16px;right:16px;text-align:left">
-          <div id="drop-fname" style="font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-          <div id="drop-fsize" style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:2px"></div>
-        </div>
-        <label onclick="event.stopPropagation()" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;backdrop-filter:blur(4px)">
-          Changer
-          <input type="file" id="file-input-change" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
-        </label>
-      </div>
-    </div>
 
-    <div style="text-align:center;margin-top:20px">
-      <button class="btn-analyze" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
+      <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        Analyser et créer les clips
+        Créer les Shorts
       </button>
     </div>
   </div>
@@ -714,30 +714,10 @@ const V2 = (() => {
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
 
-    // Afficher l'aperçu
-    document.getElementById('drop-empty').style.display = 'none';
-    document.getElementById('drop-preview').style.display = 'block';
-    document.getElementById('drop-fname').textContent = f.name.replace(/\.[^.]+$/, '');
-    const mb = f.size / 1_048_576;
-    document.getElementById('drop-fsize').textContent = mb >= 1000 ? `${(mb/1024).toFixed(1)} GB` : `${mb.toFixed(0)} Mo`;
+    // Afficher le nom dans la V1 pill bar
+    const nameEl = document.getElementById('v1-upload-name');
+    if (nameEl) { nameEl.textContent = f.name.replace(/\.[^.]+$/, ''); nameEl.style.color = 'var(--texte)'; }
 
-    // Capturer une frame à 1 seconde
-    const url = URL.createObjectURL(f);
-    const vid = document.createElement('video');
-    vid.muted = true; vid.playsInline = true;
-    vid.addEventListener('loadedmetadata', () => { vid.currentTime = Math.min(1, vid.duration * 0.1); }, { once: true });
-    vid.addEventListener('seeked', () => {
-      try {
-        const c = document.createElement('canvas');
-        c.width = 600; c.height = 340;
-        c.getContext('2d').drawImage(vid, 0, 0, 600, 340);
-        const thumb = document.getElementById('drop-thumb');
-        if (thumb) thumb.src = c.toDataURL('image/jpeg', 0.85);
-      } catch(e) {}
-      URL.revokeObjectURL(url); vid.src = '';
-    }, { once: true });
-    vid.addEventListener('error', () => { URL.revokeObjectURL(url); }, { once: true });
-    vid.src = url;
   }
 
   function onUrlInput(val) {} // YouTube URL supprimé
@@ -2167,10 +2147,8 @@ const V2 = (() => {
     const fi = document.getElementById('file-input'); if (fi) fi.value = '';
     const fc = document.getElementById('file-input-change'); if (fc) fc.value = '';
     const dz = document.getElementById('drop-zone'); if (dz) dz.classList.remove('has-file');
-    // Remettre l'état vide de la zone de dépôt
-    const empty = document.getElementById('drop-empty'); if (empty) empty.style.display = 'block';
-    const preview = document.getElementById('drop-preview'); if (preview) preview.style.display = 'none';
-    const thumb = document.getElementById('drop-thumb'); if (thumb) thumb.src = '';
+    const nameEl = document.getElementById('v1-upload-name');
+    if (nameEl) { nameEl.textContent = 'Déposer une vidéo ici'; nameEl.style.color = ''; }
     document.getElementById('btn-analyze').disabled = true;
     setState('upload');
   }
