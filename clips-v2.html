@@ -558,39 +558,16 @@
         </div>
         <button class="modal-close" onclick="V2.closeModal()">✕</button>
       </div>
-      <!-- Score + meta compact -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--bordure);flex-shrink:0">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span class="modal-score-num" id="modal-score-num" style="font-size:30px;font-weight:900;line-height:1">—</span>
-          <div class="score-breakdown" id="modal-breakdown" style="font-size:11px"></div>
+      <div class="modal-settings-body">
+
+        <div class="modal-score-row">
+          <div class="modal-score-num" id="modal-score-num">—</div>
+          <div class="score-breakdown" id="modal-breakdown"></div>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="modal-dl-btn" id="modal-dl-btn" onclick="V2.exportFromModal()" style="padding:10px 18px;font-size:13px;border-radius:10px;white-space:nowrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Télécharger
-          </button>
-          <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:12px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:10px;padding:8px 14px;cursor:pointer;white-space:nowrap">
-            ☐ Grouper
-          </button>
-        </div>
-      </div>
-      <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:11px;color:var(--texte-muted);padding:3px 0;border-bottom:1px solid var(--bordure);flex-shrink:0;min-height:22px"></div>
 
-      <!-- Onglets -->
-      <div class="modal-tabs" style="display:flex;border-bottom:1px solid var(--bordure);flex-shrink:0">
-        <button class="modal-tab active" data-tab="subs" onclick="V2.switchTab('subs')">📝 Sous-titres</button>
-        <button class="modal-tab" data-tab="style" onclick="V2.switchTab('style')">🎨 Style</button>
-        <button class="modal-tab" data-tab="opts" onclick="V2.switchTab('opts')">⚙️ Options</button>
-      </div>
-
-      <!-- TAB: Sous-titres -->
-      <div class="modal-tab-pane active" id="tab-subs">
-        <div id="modal-transcript-list" style="display:flex;flex-direction:column;gap:2px;padding:8px"></div>
-      </div>
-
-      <!-- TAB: Style -->
-      <div class="modal-tab-pane" id="tab-style" style="display:none">
-        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+        <!-- Style sous-titres -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
@@ -603,38 +580,68 @@
             <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
             <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
           </div>
-          <div class="modal-opt-row">
-            <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
-              <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55">Petit</option><option value="70" selected>Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
-            </div>
-            <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
-              <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
-            </div>
-            <div class="modal-opt-group"><div class="modal-opt-label">Fond / contour</div>
-              <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
-            </div>
-          </div>
-          <div style="font-size:11px;color:var(--texte-muted)">
-            💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres sur la vidéo pour les repositionner
-          </div>
+          <div style="font-size:11px;color:var(--texte-muted);margin-top:6px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres sur la vidéo · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
         </div>
-      </div>
 
-      <!-- TAB: Options -->
-      <div class="modal-tab-pane" id="tab-opts" style="display:none">
-        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
-          <div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <label class="toggle"><input type="checkbox" id="modal-hook-on" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
-              <span style="font-size:13px;color:var(--texte-doux)">Hook sur les 3 premières secondes</span>
-            </div>
-            <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:8px">
-            <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--vert);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
+        <!-- Options -->
+        <div class="modal-opt-row">
+          <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
+            <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55">Petit</option><option value="70" selected>Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
+          </div>
+          <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
+            <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
+          </div>
+          <div class="modal-opt-group"><div class="modal-opt-label">Fond</div>
+            <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
           </div>
         </div>
+
+        <!-- Hook -->
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <label class="toggle"><input type="checkbox" id="modal-hook-on" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+            <span style="font-size:13px;color:var(--texte-doux)">Hook sur les 3 premières secondes</span>
+          </div>
+          <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:6px">
+          <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--vert);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
+        </div>
+
+        <div style="height:1px;background:var(--bordure)"></div>
+
+        <!-- Bouton modifier sous-titres -->
+        <button onclick="V2.toggleTranscript()" id="btn-transcript" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg);border:1px solid var(--bordure);color:var(--texte);font-size:13px;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--vert)';this.style.color='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)';this.style.color='var(--texte)'">
+          <span>✏️ Modifier les sous-titres</span>
+          <span id="btn-transcript-count" style="font-size:11px;color:var(--texte-muted);font-weight:600"></span>
+        </button>
+
+        <!-- Download -->
+        <div>
+          <button class="modal-dl-btn" id="modal-dl-btn" onclick="V2.exportFromModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger ce clip 9:16
+          </button>
+          <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:12px;color:var(--texte-muted);margin-top:6px"></div>
+        </div>
+
+        <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:13px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:8px;padding:8px 14px;cursor:pointer;width:100%;text-align:center">
+          ☐ Ajouter à l'export groupé
+        </button>
+
       </div>
-    </div><!-- /modal-settings-body removed, using tabs instead -->
     </div>
+
+    <!-- Panneau transcription (overlay sur les settings) -->
+    <div id="transcript-panel" style="display:none;position:absolute;inset:0;background:#0e150e;z-index:20;display:none;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bordure);flex-shrink:0">
+        <div>
+          <div style="font-size:14px;font-weight:800">✏️ Modifier les sous-titres</div>
+          <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Clic sur un texte pour l'éditer · Entrée pour valider</div>
+        </div>
+        <button onclick="V2.toggleTranscript()" style="background:rgba(255,255,255,0.06);border:1px solid var(--bordure);color:var(--texte-doux);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+      </div>
+      <div id="modal-transcript-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:8px;-webkit-overflow-scrolling:touch"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1119,7 +1126,6 @@ const V2 = (() => {
 
     // Transcription + onglet Sous-titres par défaut
     renderTranscript(i);
-    switchTab('subs');
 
     // Start video player
     _startModalVideo(clip, i, opts);
@@ -1485,6 +1491,12 @@ const V2 = (() => {
 
   function closeModal() {
     stopModalVideo();
+    // Fermer le panneau transcription si ouvert
+    if (_transcriptOpen) {
+      _transcriptOpen = false;
+      const panel = document.getElementById('transcript-panel');
+      if (panel) panel.style.display = 'none';
+    }
     document.getElementById('clip-modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     _modalIdx = null;
@@ -1504,13 +1516,21 @@ const V2 = (() => {
   function setStyleFromModal(style) { setClipStyle(style); }
   function hookFromModal() { autoHook(); }
 
-  // ── Onglets ──
-  function switchTab(tab) {
-    document.querySelectorAll('.modal-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-    document.querySelectorAll('.modal-tab-pane').forEach(el => el.style.display = 'none');
-    const pane = document.getElementById('tab-' + tab);
-    if (pane) pane.style.display = 'block';
+  // ── Panneau transcription (toggle overlay) ──
+  let _transcriptOpen = false;
+
+  function toggleTranscript() {
+    _transcriptOpen = !_transcriptOpen;
+    const panel = document.getElementById('transcript-panel');
+    if (panel) panel.style.display = _transcriptOpen ? 'flex' : 'none';
+    const btn = document.getElementById('btn-transcript');
+    if (btn) {
+      btn.style.borderColor = _transcriptOpen ? 'var(--vert)' : 'var(--bordure)';
+      btn.style.color = _transcriptOpen ? 'var(--vert)' : 'var(--texte)';
+    }
   }
+
+  function switchTab() {} // deprecated, gardé pour compat
 
   // ── Éditeur de transcription ──
   function renderTranscript(clipIdx) {
@@ -2164,7 +2184,7 @@ const V2 = (() => {
     setState('upload');
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
