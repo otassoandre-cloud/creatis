@@ -4,6 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Studio Clips V2 — Créatis</title>
+  <!-- Beta gate — accès restreint jusqu'au lancement officiel -->
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var code = params.get('beta');
+      // Activer avec ?beta=creatis2026 → stocké en local pour les visites suivantes
+      if (code === 'creatis2026') {
+        localStorage.setItem('creatis_v2_beta', 'creatis2026');
+        // Nettoyer l'URL sans recharger
+        history.replaceState(null, '', window.location.pathname);
+      }
+      if (localStorage.getItem('creatis_v2_beta') !== 'creatis2026') {
+        document.write('<style>body{background:#0a0f0a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#4a5c4a;font-size:14px;margin:0}</style><p>Cette page n\'est pas encore disponible.</p>');
+        document.close();
+        throw new Error('beta_gate');
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
