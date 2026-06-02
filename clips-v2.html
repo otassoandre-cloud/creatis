@@ -482,7 +482,7 @@
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
         <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
         <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
-        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:88%;text-align:center;pointer-events:all;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px;cursor:grab"></div>
+        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:6%;width:88%;text-align:center;pointer-events:all;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px;cursor:grab"></div>
         <div class="modal-play-overlay paused" id="modal-play-overlay">
           <div class="modal-play-btn-big paused" id="modal-play-btn">
             <svg class="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
@@ -1172,11 +1172,14 @@ const V2 = (() => {
       }
       case 'wordpop': {
         el.innerHTML = '';
-        text.split(' ').forEach((word, wi) => {
+        const wpWords = text.split(' ');
+        wpWords.forEach((word, wi) => {
           const span = document.createElement('span');
-          span.textContent = word + ' ';
+          span.textContent = word;
           span.style.cssText = `display:inline-block;opacity:0;animation:wordPop 0.2s cubic-bezier(.175,.885,.32,1.275) forwards;animation-delay:${wi * 0.12}s`;
           el.appendChild(span);
+          // Espace comme TextNode séparé — inline-block mange les espaces dans textContent
+          if (wi < wpWords.length - 1) el.appendChild(document.createTextNode(' '));
         });
         el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:1px 1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
         break;
@@ -1221,10 +1224,11 @@ const V2 = (() => {
         el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 5px ${cb},-1px -1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
       }
     }
-    // Commun
+    // Commun — centrage via left:4% au lieu de transform:translateX(-50%)
+    // pour ne pas confliter avec les animations shake/slide qui utilisent transform
     el.style.position = 'absolute';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
+    el.style.left = '4%';
+    el.style.transform = '';
     el.style.width = '92%';
     el.style.textAlign = 'center';
     el.style.zIndex = '5';
