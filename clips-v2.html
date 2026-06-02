@@ -559,6 +559,7 @@
           <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
+            <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')">Aucun</button>
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
             <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
@@ -1199,16 +1200,17 @@ const V2 = (() => {
     const segKey = seg ? String(seg.start ?? seg.offset ?? 0) : null;
 
     if (subEl && !subEl.matches(':focus')) {
-      // Texte : édition personnalisée ou texte original
-      const rawText = segKey && opts.segEdits?.[segKey] ? opts.segEdits[segKey] : (seg ? seg.text.trim() : '');
-      // Re-render seulement si le segment ou le style a changé
-      if (segKey !== _lastSegKey) {
-        _lastSegKey = segKey;
-        _renderSubText(subEl, rawText, opts);
-        // Surligner le segment courant dans la transcription
-        if (segKey) highlightSeg(segKey);
+      if (opts.style === 'none') {
+        subEl.style.display = 'none';
+      } else {
+        const rawText = segKey && opts.segEdits?.[segKey] ? opts.segEdits[segKey] : (seg ? seg.text.trim() : '');
+        if (segKey !== _lastSegKey) {
+          _lastSegKey = segKey;
+          _renderSubText(subEl, rawText, opts);
+          if (segKey) highlightSeg(segKey);
+        }
+        _applySubPosition(subEl, opts.subY ?? 82);
       }
-      _applySubPosition(subEl, opts.subY ?? 82);
     }
 
     // Hook overlay
@@ -2009,6 +2011,7 @@ const V2 = (() => {
   // ── Subtitle burning ──
   // ── Subtitle burn via Railway ffmpeg natif (libass disponible, fonctionne iOS + desktop) ──
   async function burnSubtitles(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
+    if (opts.style === 'none') return videoBlob; // Pas de sous-titres
     const hasContent = segments.some(s => (s.text || s.word || '').trim()) ||
                        (opts.hookEnabled && opts.hookText);
     if (!hasContent) return videoBlob;
