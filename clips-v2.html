@@ -1046,8 +1046,13 @@ const V2 = (() => {
       colorBg: '#000000',
       hookEnabled: false,
       hookText: '',
+      hookColor: '#ffffff',
+      hookPos: 'top',
       subY: 82,
       hookY: 10,
+      wmEnabled: false,
+      wmPos: 'tr',
+      wmOpacity: 0.8,
       segEdits: {},
     };
   }
@@ -1429,6 +1434,11 @@ const V2 = (() => {
       colorBg: document.getElementById('modal-color-bg')?.value || '#000000',
       hookEnabled: hookOn,
       hookText: hookTxt?.value || '',
+      hookColor: prev.hookColor || '#ffffff',
+      hookPos: prev.hookPos || 'top',
+      wmEnabled: prev.wmEnabled || false,
+      wmPos: prev.wmPos || 'tr',
+      wmOpacity: prev.wmOpacity ?? 0.8,
       subY: prev.subY ?? 82,
       hookY: prev.hookY ?? 10,
       segEdits: prev.segEdits || {},
@@ -1968,7 +1978,7 @@ const V2 = (() => {
       cmd = ['-i', '/sb_in.mp4', '-i', '/logo.png'];
       const posMap = { tr: 'W-w-20:20', tl: '20:20', br: 'W-w-20:H-h-20', bl: '20:H-h-20' };
       const pos = posMap[opts.wmPos] || posMap.tr;
-      const alpha = opts.wmOpacity.toFixed(2);
+      const alpha = (opts.wmOpacity ?? 0.8).toFixed(2);
       wmFilter = `[1:v]scale=iw*0.12:-1,format=rgba,colorchannelmixer=aa=${alpha}[logo];[0:v][logo]overlay=${pos}`;
     }
 
@@ -2105,6 +2115,7 @@ const V2 = (() => {
   }
 
   function hexToFFColor(hex) {
+    if (!hex) return '0xFFFFFF';
     const h = hex.replace('#', '');
     if (h.length === 6) return `0x${h.toUpperCase()}`;
     return '0xFFFFFF';
