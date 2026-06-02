@@ -184,43 +184,83 @@
     .clip-tags { display: flex; flex-wrap: wrap; gap: 4px; }
     .clip-tag { font-size: 10px; font-weight: 600; color: var(--texte-muted); background: rgba(255,255,255,0.05); border: 1px solid var(--bordure); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
 
-    /* ─── CLIP DETAIL MODAL ─── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); }
+    /* ─── CLIP EDITOR MODAL ─── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px); }
     .modal-overlay.open { display: flex; }
-    .clip-modal { background: #111811; border: 1px solid #1e2a1e; border-radius: 18px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; display: grid; grid-template-columns: 200px 1fr 220px; gap: 0; animation: modalIn .2s ease; }
-    @keyframes modalIn { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    @media (max-width: 700px) { .clip-modal { grid-template-columns: 1fr; } .modal-vid-col { display: none; } }
+    @keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-    /* Modal left — video preview */
-    .modal-vid-col { padding: 20px 0 20px 20px; display: flex; flex-direction: column; gap: 12px; }
-    .modal-vid-wrap { aspect-ratio: 9/16; background: #0a100a; border-radius: 10px; overflow: hidden; position: relative; }
-    .modal-vid-wrap video, .modal-vid-wrap img { width: 100%; height: 100%; object-fit: cover; }
-    .modal-vid-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 36px; }
-    .modal-score-big { font-size: 36px; font-weight: 900; line-height: 1; }
-    .modal-score-label { font-size: 11px; color: var(--texte-muted); margin-top: 2px; }
-    .score-breakdown { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .clip-modal { background: #0e150e; border: 1px solid #1e2a1e; border-radius: 18px; width: 100%; max-width: 960px; max-height: 94vh; display: flex; flex-direction: row; overflow: hidden; animation: modalIn .2s ease; position: relative; }
+    @media (max-width: 660px) { .clip-modal { flex-direction: column; max-height: 96vh; overflow-y: auto; } }
+
+    /* ── Player column (left) ── */
+    .modal-player-col { flex-shrink: 0; width: 280px; background: #000; display: flex; flex-direction: column; }
+    @media (max-width: 660px) { .modal-player-col { width: 100%; height: 60vw; } }
+
+    .modal-player-wrap { flex: 1; position: relative; overflow: hidden; background: #000; cursor: pointer; }
+    .modal-player-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
+
+    /* Live subtitle overlay */
+    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; transition: color .1s, font-size .1s; word-wrap: break-word; }
+
+    /* Play button overlay */
+    .modal-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; transition: opacity .2s; }
+    .modal-play-overlay.playing { opacity: 0; pointer-events: none; }
+    .modal-play-overlay:hover { opacity: 1 !important; }
+    .modal-play-btn-big { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,0,0,0.65); border: 2px solid rgba(255,255,255,0.6); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform .15s; backdrop-filter: blur(4px); }
+    .modal-play-btn-big:hover { transform: scale(1.1); }
+    .modal-play-btn-big svg { color: #fff; margin-left: 3px; }
+    .modal-play-btn-big.paused svg.pause-icon { display: none; }
+    .modal-play-btn-big.paused svg.play-icon { display: block; }
+    .modal-play-btn-big svg.pause-icon { display: block; }
+    .modal-play-btn-big svg.play-icon { display: none; }
+
+    /* Progress bar */
+    .modal-controls { height: 44px; background: rgba(0,0,0,0.85); display: flex; align-items: center; gap: 10px; padding: 0 12px; flex-shrink: 0; }
+    .modal-prog-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; cursor: pointer; position: relative; }
+    .modal-prog-fill { height: 100%; background: var(--vert); border-radius: 2px; pointer-events: none; transition: width .1s linear; }
+    .modal-time { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); white-space: nowrap; }
+
+    /* ── Settings column (right) ── */
+    .modal-settings-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+    .modal-settings-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--bordure); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .modal-clip-title { font-size: 15px; font-weight: 800; line-height: 1.3; flex: 1; }
+    .modal-clip-meta { font-size: 11px; color: var(--texte-muted); margin-top: 3px; }
+    .modal-close { background: rgba(255,255,255,0.06); border: 1px solid var(--bordure); color: var(--texte-doux); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .modal-close:hover { background: rgba(255,255,255,0.12); color: var(--texte); }
+
+    .modal-settings-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+
+    /* Score breakdown */
+    .modal-score-row { display: flex; align-items: center; gap: 16px; }
+    .modal-score-num { font-size: 40px; font-weight: 900; line-height: 1; }
+    .score-breakdown { display: flex; flex-direction: column; gap: 4px; }
     .score-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-    .score-grade { font-weight: 800; min-width: 24px; }
-    .score-name { color: var(--texte-doux); flex: 1; }
+    .score-grade { font-weight: 800; min-width: 26px; font-size: 13px; }
+    .score-name { color: var(--texte-doux); }
 
-    /* Modal center — info */
-    .modal-info-col { padding: 20px; border-left: 1px solid var(--bordure); border-right: 1px solid var(--bordure); }
-    .modal-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
-    .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-    .modal-tag { font-size: 11px; font-weight: 600; color: var(--texte-doux); background: rgba(255,255,255,0.05); border: 1px solid var(--bordure); border-radius: 6px; padding: 3px 9px; }
-    .modal-transcript-title { font-size: 11px; font-weight: 700; color: var(--texte-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
-    .modal-transcript { font-size: 12px; color: var(--texte-doux); line-height: 1.7; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; }
-    .modal-timestamp { color: var(--vert); font-weight: 700; font-size: 11px; }
-    .modal-close { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.5); border: 1px solid var(--bordure); color: var(--texte-doux); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 10; }
-    .modal-overlay { position: relative; }
+    /* Style pills per-clip */
+    .modal-styles { display: flex; flex-wrap: wrap; gap: 7px; }
+    .ms-pill { font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 8px; border: 2px solid var(--bordure); background: transparent; cursor: pointer; transition: all .15s; color: var(--texte-doux); }
+    .ms-pill.active { border-color: var(--vert); color: var(--vert); background: var(--vert-dim); }
+    .ms-pill[data-style="karaoke"] { color: #FFE000; }
+    .ms-pill[data-style="neon"] { color: #00FF9C; }
+    .ms-pill[data-style="karaoke"].active { border-color: #FFE000; background: rgba(255,224,0,0.08); }
+    .ms-pill[data-style="neon"].active { border-color: #00FF9C; background: rgba(0,255,156,0.08); }
 
-    /* Modal right — actions */
-    .modal-actions-col { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-    .modal-action-btn { display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--bordure); color: var(--texte); font-size: 13px; font-weight: 600; padding: 11px 14px; border-radius: 10px; cursor: pointer; width: 100%; text-align: left; transition: all .15s; }
-    .modal-action-btn:hover { border-color: var(--vert); color: var(--vert); background: var(--vert-dim); }
-    .modal-action-btn.primary { background: var(--vert); color: #000; border-color: var(--vert); }
-    .modal-action-btn.primary:hover { opacity: .9; }
-    .modal-action-icon { font-size: 16px; flex-shrink: 0; }
+    /* Per-clip options */
+    .modal-opt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-opt-group { display: flex; flex-direction: column; gap: 5px; }
+    .modal-opt-label { font-size: 11px; font-weight: 700; color: var(--texte-muted); text-transform: uppercase; letter-spacing: .6px; }
+
+    /* Hook per-clip */
+    .modal-hook-row { display: flex; flex-direction: column; gap: 8px; }
+
+    /* Download btn */
+    .modal-dl-btn { background: var(--vert); color: #000; font-weight: 800; font-size: 15px; padding: 14px 20px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: opacity .2s; }
+    .modal-dl-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .modal-dl-btn:hover:not(:disabled) { opacity: .9; }
+    .modal-dl-status { font-size: 12px; color: var(--texte-muted); text-align: center; min-height: 16px; }
 
     /* Export button */
     .export-bar { position: sticky; bottom: 20px; z-index: 40; display: flex; justify-content: center; }
@@ -541,57 +581,86 @@
 
 </div><!-- /page -->
 
-<!-- ═══ CLIP DETAIL MODAL ═══ -->
+<!-- ═══ CLIP EDITOR MODAL ═══ -->
 <div class="modal-overlay" id="clip-modal-overlay" onclick="if(event.target===this)V2.closeModal()">
-  <div class="clip-modal" id="clip-modal" style="position:relative">
-    <button class="modal-close" onclick="V2.closeModal()">✕</button>
-
-    <!-- Left: video preview + score -->
-    <div class="modal-vid-col">
-      <div class="modal-vid-wrap" id="modal-vid-wrap">
-        <div class="modal-vid-empty">🎬</div>
+  <div class="clip-modal">
+    <div class="modal-player-col">
+      <div class="modal-player-wrap" id="modal-player-wrap" onclick="V2.togglePlay()">
+        <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
+        <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
+        <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
+        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:88%;text-align:center;pointer-events:none;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px"></div>
+        <div class="modal-play-overlay paused" id="modal-play-overlay">
+          <div class="modal-play-btn-big paused" id="modal-play-btn">
+            <svg class="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </div>
+        </div>
       </div>
-      <div>
-        <div class="modal-score-big" id="modal-score-big">—</div>
-        <div class="modal-score-label">/100 score viral</div>
+      <div class="modal-controls">
+        <div class="modal-prog-wrap" id="modal-prog-wrap" onclick="V2.seekFromBar(event)">
+          <div class="modal-prog-fill" id="modal-prog-fill" style="width:0%"></div>
+        </div>
+        <span class="modal-time" id="modal-time">0:00</span>
       </div>
-      <div class="score-breakdown" id="modal-breakdown"></div>
     </div>
-
-    <!-- Center: info + transcript -->
-    <div class="modal-info-col">
-      <div class="modal-title" id="modal-title">—</div>
-      <div class="modal-tags" id="modal-tags"></div>
-      <div class="modal-transcript-title">Accroche détectée</div>
-      <div class="modal-transcript" id="modal-transcript"></div>
-    </div>
-
-    <!-- Right: actions -->
-    <div class="modal-actions-col">
-      <button class="modal-action-btn primary" onclick="V2.exportFromModal()">
-        <span class="modal-action-icon">⬇</span> Télécharger 9:16
-      </button>
-      <button class="modal-action-btn" onclick="V2.toggleSelectFromModal()">
-        <span class="modal-action-icon" id="modal-sel-icon">☐</span>
-        <span id="modal-sel-txt">Sélectionner</span>
-      </button>
-      <div style="height:1px;background:var(--bordure);margin:4px 0"></div>
-      <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.8px;padding:2px 0">Style sous-titres</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px" id="modal-style-btns">
-        <button onclick="V2.setStyleFromModal('bold')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Bold</button>
-        <button onclick="V2.setStyleFromModal('minimal')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Minimal</button>
-        <button onclick="V2.setStyleFromModal('karaoke')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#FFE000;cursor:pointer">Karaoke</button>
-        <button onclick="V2.setStyleFromModal('neon')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#00FF9C;cursor:pointer">Néon</button>
-        <button onclick="V2.setStyleFromModal('spotlight')" style="font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--bordure);background:transparent;color:#fff;cursor:pointer">Spotlight</button>
+    <div class="modal-settings-col">
+      <div class="modal-settings-header">
+        <div>
+          <div class="modal-clip-title" id="modal-clip-title">—</div>
+          <div class="modal-clip-meta" id="modal-clip-meta"></div>
+        </div>
+        <button class="modal-close" onclick="V2.closeModal()">✕</button>
       </div>
-      <div style="height:1px;background:var(--bordure);margin:4px 0"></div>
-      <button class="modal-action-btn" onclick="V2.hookFromModal()">
-        <span class="modal-action-icon">⚡</span> Hook IA auto
-      </button>
-      <button class="modal-action-btn" onclick="V2.closeModal()">
-        <span class="modal-action-icon">←</span> Retour à la liste
-      </button>
-      <div style="margin-top:auto;padding-top:12px;font-size:11px;color:var(--texte-muted);text-align:center" id="modal-dur-info"></div>
+      <div class="modal-settings-body">
+        <div class="modal-score-row">
+          <div class="modal-score-num" id="modal-score-num">—</div>
+          <div class="score-breakdown" id="modal-breakdown"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
+          <div class="modal-styles" id="modal-style-btns">
+            <button class="ms-pill active" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
+            <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
+            <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
+            <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')">Néon</button>
+            <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')">Spotlight</button>
+          </div>
+        </div>
+        <div class="modal-opt-row">
+          <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
+            <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55">Petit</option><option value="70" selected>Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
+          </div>
+          <div class="modal-opt-group"><div class="modal-opt-label">Position</div>
+            <select id="modal-position" class="opt-select" onchange="V2.updateClipOpt()"><option value="low" selected>Bas</option><option value="mid">Centre</option></select>
+          </div>
+          <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
+            <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:32px" onchange="V2.updateClipOpt()">
+          </div>
+          <div class="modal-opt-group"><div class="modal-opt-label">Fond</div>
+            <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:32px" onchange="V2.updateClipOpt()">
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <label class="toggle"><input type="checkbox" id="modal-hook-on" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+            <span style="font-size:13px;color:var(--texte-doux)">Hook sur les 3 premières secondes</span>
+          </div>
+          <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:6px">
+          <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--vert);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
+        </div>
+        <div style="height:1px;background:var(--bordure)"></div>
+        <div>
+          <button class="modal-dl-btn" id="modal-dl-btn" onclick="V2.exportFromModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger ce clip 9:16
+          </button>
+          <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:12px;color:var(--texte-muted);margin-top:6px"></div>
+        </div>
+        <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:13px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:8px;padding:8px 14px;cursor:pointer;width:100%;text-align:center">
+          ☐ Ajouter à l'export groupé
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -998,77 +1067,265 @@ const V2 = (() => {
     refreshSelection();
   }
 
-  // ── Modal ──
+  // ── Modal — per-clip settings + video player ──
   let _modalIdx = null;
+  let _clipSettings = {};   // { [i]: { style, fontSize, position, colorText, colorBg, hookEnabled, hookText } }
+  let _subRaf = null;
+  let _modalVideoUrl = null;
+
+  function getClipOpts(i) {
+    return _clipSettings[i] || {
+      style: _currentStyle,
+      fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '70'),
+      position: document.getElementById('opt-position')?.value || 'low',
+      colorText: document.getElementById('opt-color-text')?.value || '#ffffff',
+      colorBg: document.getElementById('opt-color-bg')?.value || '#000000',
+      hookEnabled: document.getElementById('opt-hook')?.checked || false,
+      hookText: document.getElementById('opt-hook-text')?.value || '',
+    };
+  }
 
   function showModal(i) {
     const clip = _clips[i];
     if (!clip) return;
     _modalIdx = i;
     const sc = scoreColor(clip.score);
-    const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
+    const start = clip.start_time ?? clip.start;
+    const end = clip.end_time ?? clip.end;
+    const dur = Math.round(end - start);
 
-    document.getElementById('modal-score-big').textContent = clip.score;
-    document.getElementById('modal-score-big').style.color = sc;
-    document.getElementById('modal-title').textContent = clip.title || clip.hook || `Clip ${i+1}`;
+    // Header
+    document.getElementById('modal-clip-title').textContent = clip.title || clip.hook || `Clip ${i+1}`;
+    document.getElementById('modal-clip-meta').textContent = `${fmt(start)} → ${fmt(end)} · ${dur}s · Score ${clip.score}/100`;
 
-    // Tags
-    const tags = autoTags(clip);
-    document.getElementById('modal-tags').innerHTML = tags.map(t => `<span class="modal-tag">${t}</span>`).join('');
-
-    // Sub-scores
+    // Score
+    const numEl = document.getElementById('modal-score-num');
+    numEl.textContent = clip.score;
+    numEl.style.color = sc;
     const subs = subScores(clip);
     document.getElementById('modal-breakdown').innerHTML = subs.map(s =>
       `<div class="score-row"><span class="score-grade" style="color:${s.c}">${s.g}</span><span class="score-name">${s.name}</span></div>`
     ).join('');
 
-    // Transcript excerpt
-    const start = clip.start_time ?? clip.start;
-    const end = clip.end_time ?? clip.end;
-    const relSegs = _segments.filter(s => {
-      const ss = s.start ?? s.offset ?? 0;
-      return ss >= start - 2 && ss <= end + 2;
-    }).slice(0, 8);
-    const transcriptHtml = relSegs.length
-      ? relSegs.map(s => {
-          const ss = s.start ?? s.offset ?? 0;
-          return `<span class="modal-timestamp">[${fmt(ss)}]</span> ${escHtml(s.text || '')}<br>`;
-        }).join('')
-      : `<em style="color:var(--texte-muted)">${escHtml(clip.hook || 'Aucune transcription disponible.')}</em>`;
-    document.getElementById('modal-transcript').innerHTML = transcriptHtml;
-
-    // Duration info
-    document.getElementById('modal-dur-info').textContent = `${fmt(start)} → ${fmt(end)} · ${dur}s`;
-
-    // Video preview from local file thumbnail
-    const vidWrap = document.getElementById('modal-vid-wrap');
-    const thumb = document.getElementById(`clip-thumb-${i}`);
-    const thumbData = thumb?.dataset.thumb;
-    if (thumbData) {
-      vidWrap.innerHTML = `<img src="${thumbData}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`;
-    } else {
-      vidWrap.innerHTML = '<div class="modal-vid-empty">🎬</div>';
-    }
+    // Load per-clip settings into controls
+    const opts = getClipOpts(i);
+    const fsEl = document.getElementById('modal-fontsize'); if (fsEl) fsEl.value = String(opts.fontSize);
+    const posEl = document.getElementById('modal-position'); if (posEl) posEl.value = opts.position;
+    const ctEl = document.getElementById('modal-color-text'); if (ctEl) ctEl.value = opts.colorText;
+    const cbEl = document.getElementById('modal-color-bg'); if (cbEl) cbEl.value = opts.colorBg;
+    const hookOn = document.getElementById('modal-hook-on'); if (hookOn) hookOn.checked = opts.hookEnabled;
+    const hookTxt = document.getElementById('modal-hook-txt');
+    if (hookTxt) { hookTxt.value = opts.hookText; hookTxt.style.display = opts.hookEnabled ? 'block' : 'none'; }
+    // Style pills
+    document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.style === opts.style);
+    });
 
     // Select button state
-    updateModalSelBtn(i);
+    const selBtn = document.getElementById('modal-sel-btn');
+    if (selBtn) selBtn.textContent = _selectedIds.has(i) ? '☑ Dans l\'export groupé' : '☐ Ajouter à l\'export groupé';
 
+    // Show modal
     document.getElementById('clip-modal-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
+
+    // Start video player
+    _startModalVideo(clip, i, opts);
   }
 
-  function updateModalSelBtn(i) {
-    const sel = _selectedIds.has(i);
-    const icon = document.getElementById('modal-sel-icon');
-    const txt = document.getElementById('modal-sel-txt');
-    if (icon) icon.textContent = sel ? '☑' : '☐';
-    if (txt) txt.textContent = sel ? 'Désélectionner' : 'Sélectionner';
+  function _startModalVideo(clip, i, opts) {
+    stopModalVideo();
+    const video = document.getElementById('modal-video');
+    const ph = document.getElementById('modal-player-ph');
+
+    if (_file) {
+      // Local file — play directly from start_time
+      if (_modalVideoUrl) URL.revokeObjectURL(_modalVideoUrl);
+      _modalVideoUrl = URL.createObjectURL(_file);
+      video.src = _modalVideoUrl;
+      video.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+
+      const clipStart = clip.start_time ?? clip.start;
+      const clipEnd = clip.end_time ?? clip.end;
+
+      video.addEventListener('loadedmetadata', () => {
+        video.currentTime = clipStart;
+      }, { once: true });
+
+      // Start subtitle loop
+      _subRaf = requestAnimationFrame(() => _subLoop(video, clip, opts));
+
+    } else {
+      // No local file — show thumbnail
+      const thumb = document.getElementById(`clip-thumb-${i}`);
+      const thumbData = thumb?.dataset.thumb;
+      if (thumbData && ph) {
+        ph.style.backgroundImage = `url(${thumbData})`;
+        ph.style.backgroundSize = 'cover';
+        ph.style.backgroundPosition = 'center';
+        ph.textContent = '';
+      }
+    }
+  }
+
+  function _subLoop(video, clip, opts) {
+    const subEl = document.getElementById('modal-sub-overlay');
+    const hookEl = document.getElementById('modal-hook-overlay');
+    const progFill = document.getElementById('modal-prog-fill');
+    const timeEl = document.getElementById('modal-time');
+    const clipStart = clip.start_time ?? clip.start;
+    const clipEnd = clip.end_time ?? clip.end;
+    const clipDur = Math.max(clipEnd - clipStart, 1);
+
+    const t = video.currentTime;
+    const rel = t - clipStart;
+
+    // Loop clip at end
+    if (!video.paused && t >= clipEnd) {
+      video.currentTime = clipStart;
+    }
+
+    // Progress
+    if (progFill) progFill.style.width = Math.min(100, Math.max(0, rel / clipDur * 100)) + '%';
+    if (timeEl) {
+      const s = Math.max(0, rel);
+      timeEl.textContent = `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')} / ${Math.floor(clipDur/60)}:${String(Math.floor(clipDur%60)).padStart(2,'0')}`;
+    }
+
+    // Current subtitle segment
+    const seg = _segments.find(s => {
+      const ss = s.start ?? s.offset ?? 0;
+      const se = s.end ?? (ss + (s.duration ?? 2));
+      return t >= ss && t < se;
+    });
+    if (subEl) {
+      subEl.textContent = seg ? seg.text.trim() : '';
+      _applySubStyle(subEl, opts);
+    }
+
+    // Hook overlay (first 3 seconds)
+    if (hookEl) {
+      if (opts.hookEnabled && opts.hookText && rel >= 0 && rel < 3) {
+        hookEl.textContent = opts.hookText;
+        hookEl.style.display = 'block';
+      } else {
+        hookEl.style.display = 'none';
+      }
+    }
+
+    _subRaf = requestAnimationFrame(() => _subLoop(video, clip, opts));
+  }
+
+  function _applySubStyle(el, opts) {
+    const fs = (opts.fontSize || 70);
+    const ct = opts.colorText || '#ffffff';
+    const cb = opts.colorBg || '#000000';
+    const styleMap = {
+      bold: `color:${ct};font-size:${Math.round(fs*0.26)}px;font-weight:900;text-shadow:2px 2px 5px ${cb},−2px -2px 5px ${cb};background:none;padding:0;border-radius:0`,
+      minimal: `color:${ct};font-size:${Math.round(fs*0.2)}px;font-weight:500;background:${cb}88;padding:3px 12px;border-radius:16px;text-shadow:none`,
+      karaoke: `color:${ct};font-size:${Math.round(fs*0.24)}px;font-weight:800;background:${cb}44;padding:2px 8px;border-radius:4px;text-shadow:1px 1px 3px #000`,
+      neon: `color:${ct};font-size:${Math.round(fs*0.24)}px;font-weight:800;text-shadow:0 0 10px ${ct},0 0 20px ${ct};background:none;padding:0;border-radius:0`,
+      spotlight: `color:${ct};font-size:${Math.round(fs*0.22)}px;font-weight:700;background:${cb}CC;padding:6px 20px;border-radius:4px;text-shadow:none`,
+    };
+    el.style.cssText = (styleMap[opts.style] || styleMap.bold) + ';position:absolute;left:50%;transform:translateX(-50%);width:92%;text-align:center;pointer-events:none;z-index:5;word-wrap:break-word;bottom:70px';
+    const yMap = { low: '70px', mid: '45%', 'low-mid': '30%' };
+    el.style.bottom = yMap[opts.position] || '70px';
+    if (opts.position === 'mid') { el.style.bottom = 'auto'; el.style.top = '45%'; }
+    else { el.style.top = 'auto'; }
+  }
+
+  function togglePlay() {
+    const video = document.getElementById('modal-video');
+    const btn = document.getElementById('modal-play-btn');
+    const overlay = document.getElementById('modal-play-overlay');
+    if (!video || !_file) return;
+    if (video.paused) {
+      video.play();
+      btn?.classList.remove('paused');
+      overlay?.classList.add('playing');
+    } else {
+      video.pause();
+      btn?.classList.add('paused');
+      overlay?.classList.remove('playing');
+    }
+  }
+
+  function seekFromBar(event) {
+    const video = document.getElementById('modal-video');
+    if (!video || _modalIdx === null) return;
+    const clip = _clips[_modalIdx];
+    const clipStart = clip.start_time ?? clip.start;
+    const clipEnd = clip.end_time ?? clip.end;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    video.currentTime = clipStart + pct * (clipEnd - clipStart);
+  }
+
+  function setClipStyle(style) {
+    if (_modalIdx === null) return;
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+    _clipSettings[_modalIdx].style = style;
+    // Update pills
+    document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.style === style);
+    });
+    // Update defaults for this style
+    const defaults = { bold:'#ffffff', minimal:'#ffffff', karaoke:'#FFE000', neon:'#00FF9C', spotlight:'#ffffff' };
+    const ct = document.getElementById('modal-color-text');
+    if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
+  }
+
+  function updateClipOpt() {
+    if (_modalIdx === null) return;
+    const hookOn = document.getElementById('modal-hook-on')?.checked;
+    const hookTxt = document.getElementById('modal-hook-txt');
+    if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
+    _clipSettings[_modalIdx] = {
+      style: document.querySelector('#modal-style-btns .ms-pill.active')?.dataset.style || _currentStyle,
+      fontSize: parseInt(document.getElementById('modal-fontsize')?.value || '70'),
+      position: document.getElementById('modal-position')?.value || 'low',
+      colorText: document.getElementById('modal-color-text')?.value || '#ffffff',
+      colorBg: document.getElementById('modal-color-bg')?.value || '#000000',
+      hookEnabled: hookOn || false,
+      hookText: hookTxt?.value || '',
+    };
+  }
+
+  function autoHook() {
+    if (_modalIdx === null) return;
+    const clip = _clips[_modalIdx];
+    const txt = (clip.hook || clip.title || '').substring(0, 80);
+    const hookTxt = document.getElementById('modal-hook-txt');
+    const hookOn = document.getElementById('modal-hook-on');
+    if (hookTxt) { hookTxt.value = txt; hookTxt.style.display = 'block'; }
+    if (hookOn) hookOn.checked = true;
+    updateClipOpt();
+  }
+
+  function stopModalVideo() {
+    cancelAnimationFrame(_subRaf);
+    _subRaf = null;
+    const video = document.getElementById('modal-video');
+    if (video) { video.pause(); video.src = ''; video.style.display = 'none'; }
+    const ph = document.getElementById('modal-player-ph');
+    if (ph) { ph.style.display = 'flex'; ph.textContent = '🎬'; }
+    const btn = document.getElementById('modal-play-btn');
+    btn?.classList.add('paused');
+    const overlay = document.getElementById('modal-play-overlay');
+    overlay?.classList.remove('playing');
   }
 
   function closeModal() {
+    stopModalVideo();
     document.getElementById('clip-modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     _modalIdx = null;
+  }
+
+  function updateModalSelBtn(i) {
+    const btn = document.getElementById('modal-sel-btn');
+    if (btn) btn.textContent = _selectedIds.has(i) ? '☑ Dans l\'export groupé' : '☐ Ajouter à l\'export groupé';
   }
 
   function toggleSelectFromModal() {
@@ -1077,38 +1334,37 @@ const V2 = (() => {
     updateModalSelBtn(_modalIdx);
   }
 
-  function setStyleFromModal(style) {
-    selectStyle(style);
-    toast(`✅ Style "${style}" appliqué`, 'succes', 2000);
-  }
-
-  function hookFromModal() {
-    if (_modalIdx === null) return;
-    const clip = _clips[_modalIdx];
-    const hookEl = document.getElementById('opt-hook-text');
-    if (hookEl) hookEl.value = (clip.hook || clip.title || '').substring(0, 80);
-    document.getElementById('opt-hook').checked = true;
-    toggleHook(true);
-    toast('⚡ Hook copié depuis le clip', 'succes', 2000);
-  }
+  function setStyleFromModal(style) { setClipStyle(style); }
+  function hookFromModal() { autoHook(); }
 
   async function exportFromModal() {
     if (_modalIdx === null) return;
-    closeModal();
-    const clip = _clips[_modalIdx];
-    _selectedIds.add(_modalIdx);
-    refreshSelection();
-    toast('⬇ Export en cours…', 'info', 3000);
-    await startExport();
+    const i = _modalIdx;
+    const btn = document.getElementById('modal-dl-btn');
+    const status = document.getElementById('modal-dl-status');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
+    if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
+    try {
+      const opts = getClipOpts(i);
+      const blob = await exportSingleClip(_clips[i], opts, pct => {
+        if (status) status.textContent = `${pct}%`;
+      }, msg => {
+        if (status) status.textContent = msg;
+      });
+      const title = (_clips[i].title || `clip_${i+1}`).replace(/[^\w\- ]/g, '').replace(/\s+/g,'_').substring(0,40);
+      download(URL.createObjectURL(blob), `${title}_9x16.mp4`);
+      if (status) status.textContent = '✅ Téléchargé !';
+      toast('✅ Clip téléchargé !', 'succes', 3000);
+    } catch(err) {
+      if (status) status.textContent = `❌ ${err.message.substring(0,60)}`;
+      toast(`❌ ${err.message}`, 'erreur', 6000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip 9:16'; }
+    }
   }
 
   async function _downloadClipDirect(i) {
-    const clip = _clips[i];
-    if (!clip) return;
-    _selectedIds.clear();
-    _selectedIds.add(i);
-    refreshSelection();
-    await startExport();
+    showModal(i);
   }
 
   function toggleClip(i) {
@@ -1224,10 +1480,11 @@ const V2 = (() => {
     setState('export');
 
     const results = [];
-    const opts = getExportOptions();
 
     for (let idx = 0; idx < selected.length; idx++) {
       const { i, clip } = selected[idx];
+      // Utiliser les settings par clip si définis, sinon les settings globaux
+      const opts = _clipSettings[i] || getExportOptions();
       const setStatus = status => {
         const el = document.getElementById(`ei-st-${i}`);
         if (el) el.className = `export-item-status ${status}`;
@@ -1627,7 +1884,7 @@ const V2 = (() => {
     setState('upload');
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
