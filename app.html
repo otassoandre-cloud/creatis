@@ -13,6 +13,16 @@
   <link rel="stylesheet" href="css/app-r4.css">
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init','953153460847578');fbq('track','PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
   <!-- Microsoft Clarity -->
   <script type="text/javascript">
     (function(c,l,a,r,i,t,y){
@@ -30,6 +40,23 @@
         e.stopPropagation();
       }
     }, true);
+  </script>
+  <script>
+  // Proxy app — évite "app is not defined" si clic avant chargement des scripts
+  (function(){
+    var _q=[];
+    window.app=new Proxy({},{
+      get:function(_,k){return function(){
+        if(window._appReady)return window._appReady[k].apply(window._appReady,arguments);
+        _q.push([k,Array.prototype.slice.call(arguments)]);
+      };}
+    });
+    window._appFlush=function(instance){
+      window._appReady=instance;
+      _q.forEach(function(item){instance[item[0]]&&instance[item[0]].apply(instance,item[1]);});
+      _q=[];
+    };
+  })();
   </script>
 </head>
 <body>
@@ -533,7 +560,7 @@
   <!-- ===== SCRIPTS ===== -->
   <script src="https://js.stripe.com/v3/"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/agents.js"></script>
@@ -541,7 +568,7 @@
   <script src="js/prospection.js?v=20260523c"></script>
   <script src="js/youtube-context.js?v=20260523c"></script>
   <script src="js/emails.js?v=20260523c"></script>
-  <script src="js/app-r21.js"></script>
+  <script src="js/app-r23.js"></script>
 
   <!-- ===== MODAL SIGNUP (démo) ===== -->
   <div class="modal-fond" id="modal-signup">
@@ -875,6 +902,22 @@
       alert('Erreur : ' + err.message);
     }
   }
+</script>
+<script>
+  // Relay download depuis iframe clips-v2 (iOS Safari ne télécharge pas les blob URLs depuis un iframe)
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'creatis_download' && e.data.buffer) {
+      const blob = new Blob([e.data.buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = e.data.filename || 'clip_9x16.mp4';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+  });
 </script>
 </body>
 </html>

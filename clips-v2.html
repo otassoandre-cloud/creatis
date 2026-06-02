@@ -2224,17 +2224,16 @@ const V2 = (() => {
   }
 
   function download(url, filename) {
+    const isInIframe = window !== window.top;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (isIOS) {
-      // iOS Safari bloque <a download> dans les iframes — ouvrir dans nouvel onglet
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      toast('📱 Appuie longuement sur la vidéo → "Enregistrer la vidéo"', 'info', 7000);
+
+    if (isIOS && isInIframe) {
+      // iOS Safari + iframe : envoyer le blob au parent pour télécharger depuis le contexte top-level
+      fetch(url).then(r => r.arrayBuffer()).then(buffer => {
+        window.parent.postMessage({ type: 'creatis_download', buffer, filename }, '*', [buffer]);
+      }).catch(() => {
+        window.open(url, '_blank');
+      });
       return;
     }
     const a = document.createElement('a');
