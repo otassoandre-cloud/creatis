@@ -39,35 +39,13 @@ class AppCreatis {
 
     this._mettreAJourChecklistOnboarding();
 
-    // Vient de la landing page → aller direct sur clips viraux
+    // Vient de la landing page → rediriger direct vers le studio clips
     const lpRef = localStorage.getItem('creatis_lp_ref');
     if (lpRef === 'clips-viraux') {
       localStorage.removeItem('creatis_lp_ref');
       localStorage.setItem('creatis_onboarding_done', '1');
-      setTimeout(async () => {
-        this.selectionnerAgent('clips-viraux');
-        const pendingTs = parseInt(localStorage.getItem('creatis_lp_pending_ts') || '0');
-        const age = Date.now() - pendingTs;
-        const MAX_AGE = 30 * 60 * 1000;
-        if (pendingTs && age > MAX_AGE) {
-          localStorage.removeItem('creatis_lp_pending_ts');
-          localStorage.removeItem('creatis_lp_file_name');
-          this._idbClearVideo();
-          this.afficherToast('⏳ Ta vidéo a expiré — uploade à nouveau', 'erreur', 7000);
-          return;
-        }
-        if (pendingTs && age <= MAX_AGE) {
-          const entry = await this._idbGetVideo();
-          if (entry?.file) {
-            localStorage.removeItem('creatis_lp_pending_ts');
-            localStorage.removeItem('creatis_lp_file_name');
-            this._idbClearVideo();
-            setTimeout(() => this._autoStartClipsLp('clips-viraux', entry.file), 300);
-            return;
-          }
-        }
-        this.afficherToast('🎬 1 génération gratuite — upload ta vidéo !', 'succes', 6000);
-      }, 400);
+      window.location.href = '/clips-v2.html';
+      return;
     } else if (!localStorage.getItem('creatis_onboarding_done')) {
       setTimeout(() => this._afficherOnboarding(), 600);
     } else {
@@ -663,7 +641,7 @@ class AppCreatis {
       return;
     }
     if (agent.type === 'clips') {
-      this.construirePanneauClips(agent);
+      window.location.href = '/clips-v2.html';
       return;
     }
 
