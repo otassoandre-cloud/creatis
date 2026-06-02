@@ -1989,6 +1989,13 @@ const V2 = (() => {
   // ── Subtitle burning ──
   async function burnSubtitles(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
     const ffmpeg = await loadFFmpeg();
+
+    // Toujours réécrire la police (peut être perdue entre appels ffmpeg)
+    if (_fontData) {
+      try { await ffmpeg.createDir('/fonts'); } catch {}
+      try { await ffmpeg.writeFile('/fonts/Bold.ttf', _fontData); } catch {}
+    }
+
     const videoData = new Uint8Array(await videoBlob.arrayBuffer());
     await ffmpeg.writeFile('/sb_in.mp4', videoData);
 
@@ -2024,7 +2031,7 @@ const V2 = (() => {
       const hookTxt = escapeDrawtext(opts.hookText || '');
       if (hookTxt) {
         const hookPosY = opts.hookPos === 'top' ? 'h*0.08' : '(h-text_h)/2';
-        const hookPart = `drawtext=text='${hookTxt}':fontsize=${Math.round(opts.fontSize * 0.9)}:fontcolor=${hexToFFColor(opts.hookColor)}:x=(w-text_w)/2:y=${hookPosY}:box=1:boxcolor=0x000000CC:boxborderw=18:enable='between(t,0,3)'`;
+        const hookPart = `drawtext=text='${hookTxt}':fontsize=${Math.round(opts.fontSize * 0.9)}:fontcolor=${hexToFFColor(opts.hookColor)}:x=(w-text_w)/2:y=${hookPosY}:box=1:boxcolor=0x000000CC:boxborderw=18:enable='between(t,0,3)'${_fontData ? ':fontfile=/fonts/Bold.ttf' : ''}`;
         vf = vf ? `${vf},${hookPart}` : hookPart;
       }
     }
@@ -2077,7 +2084,7 @@ const V2 = (() => {
     const fontSize = opts.fontSize || 70;
     const colorText = hexToFFColor(opts.colorText || '#ffffff');
     const colorBg = hexToFFColor(opts.colorBg || '#000000');
-    const fontFlag = '';
+    const fontFlag = _fontData ? ':fontfile=/fonts/Bold.ttf' : '';
 
     // Y position — depuis opts.subY (position drag) ou fallback bas de vidéo
     const subYpct = opts.subY ?? 82;
