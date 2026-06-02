@@ -554,14 +554,15 @@ class AppCreatis {
 
     this.agentActuel = agent;
 
-    // Mode split : dashboard à gauche, agent à droite (CSS Grid)
+    // Clips viraux = plein écran (pas de split)
+    const isFullscreen = agent.type === 'clips';
     const dash = document.getElementById('panneau-dashboard');
     const wsResizer = document.getElementById('workspace-resizer');
     const workspace = document.getElementById('workspace');
     const savedW = parseInt(localStorage.getItem('creatis_workspace_split') || '360', 10);
     const isMobileLayout = window.innerWidth <= 768;
     if (dash) {
-      if (isMobileLayout) {
+      if (isMobileLayout || isFullscreen) {
         dash.style.display = 'none';
       } else {
         dash.style.display = '';
@@ -569,12 +570,15 @@ class AppCreatis {
       }
     }
     if (workspace) {
-      if (!isMobileLayout) {
+      if (!isMobileLayout && !isFullscreen) {
         workspace.classList.add('mode-split');
         workspace.style.gridTemplateColumns = `${savedW}px 6px 1fr`;
+      } else if (isFullscreen) {
+        workspace.classList.remove('mode-split');
+        workspace.style.gridTemplateColumns = '';
       }
     }
-    if (wsResizer) wsResizer.style.display = isMobileLayout ? 'none' : 'flex';
+    if (wsResizer) wsResizer.style.display = (isMobileLayout || isFullscreen) ? 'none' : 'flex';
     if (!this._wsResizerInited) this._initWorkspaceResizer();
 
     // Mettre à jour sidebar
