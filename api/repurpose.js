@@ -1040,7 +1040,7 @@ module.exports = async (req, res) => {
 
       return res.status(200).json({
         ok: true, mode: 'clips', status: 'done',
-        result: { clips, title, duration, youtube_url: url }
+        result: { clips, title, duration, youtube_url: url, segments: body.include_segments ? segments : undefined }
       });
     } catch (err) {
       console.error('[clips] fatal:', err.message);

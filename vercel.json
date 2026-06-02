@@ -5,8 +5,16 @@
   "outputDirectory": ".",
   "crons": [
     {
+      "path": "/api/user-sync?action=email_cron",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/prospect-batch",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/prospect-batch?type=clipper",
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/tweet-daily",
@@ -37,7 +45,7 @@
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/", "dest": "/lp.html" },
+    { "src": "/", "dest": "/index.html" },
     { "src": "/app", "dest": "/app.html" },
     { "src": "/js/app-r8.js", "dest": "/js/app.js" },
     { "src": "/js/app-r9.js", "dest": "/js/app.js" },
@@ -53,6 +61,8 @@
     { "src": "/js/app-r19.js", "dest": "/js/app.js" },
     { "src": "/js/app-r20.js", "dest": "/js/app.js" },
     { "src": "/js/app-r21.js", "dest": "/js/app.js" },
+    { "src": "/js/app-r22.js", "dest": "/js/app.js" },
+    { "src": "/js/app-r23.js", "dest": "/js/app.js" },
     { "src": "/css/app-r4.css", "dest": "/css/app.css" },
     { "src": "/auth", "dest": "/auth.html" },
     { "src": "/auth/callback", "dest": "/auth/callback.html" },
@@ -65,6 +75,11 @@
     { "src": "/parrainage", "dest": "/parrainage.html" },
     { "src": "/test-chat", "dest": "/test-chat.html" },
     { "src": "/lp", "dest": "/lp.html" },
+    { "src": "/outils", "dest": "/outils.html" },
+    { "src": "/generateur-clips-viraux", "dest": "/generateur-clips-viraux.html" },
+    { "src": "/clips-v2", "dest": "/clips-v2.html" },
+    { "src": "/studio", "dest": "/clips-v2.html" },
+    { "src": "/outil-ia-createurs-contenu", "dest": "/outil-ia-createurs-contenu.html" },
     { "src": "/programme-affiliation-youtuber", "dest": "/programme-affiliation-youtuber.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],

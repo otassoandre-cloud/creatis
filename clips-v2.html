@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio Clips V2 — Créatis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f0a;
+      --bg-card: #111611;
+      --bg-hover: #161d16;
+      --bordure: #1e2a1e;
+      --vert: #10b981;
+      --vert-dim: rgba(16,185,129,0.12);
+      --texte: #e8f0e8;
+      --texte-doux: #8ba08b;
+      --texte-muted: #4a5c4a;
+      --accent: #10b981;
+      --rouge: #ef4444;
+      --jaune: #f0a500;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--texte); min-height: 100vh; }
+
+    /* ─── NAV ─── */
+    .nav { position: sticky; top: 0; z-index: 50; background: rgba(10,15,10,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--bordure); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; }
+    .nav-logo { font-weight: 800; font-size: 17px; color: var(--texte); text-decoration: none; }
+    .nav-logo span { color: var(--vert); }
+    .nav-badge { background: var(--vert-dim); border: 1px solid rgba(16,185,129,0.3); color: var(--vert); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; letter-spacing: .5px; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .btn-nav { background: var(--vert); color: #000; font-weight: 700; font-size: 13px; padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer; text-decoration: none; }
+
+    /* ─── LAYOUT ─── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+
+    /* ─── STATES ─── */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* ─── UPLOAD STATE ─── */
+    .upload-hero { text-align: center; padding: 48px 0 32px; }
+    .upload-hero h1 { font-size: clamp(26px, 4vw, 44px); font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+    .upload-hero h1 span { color: var(--vert); }
+    .upload-hero p { font-size: 16px; color: var(--texte-doux); max-width: 500px; margin: 0 auto 32px; }
+
+    .drop-zone { border: 2px dashed var(--bordure); border-radius: 18px; padding: 56px 32px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg-card); max-width: 600px; margin: 0 auto; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--vert); background: var(--vert-dim); }
+    .drop-zone.has-file { border-color: var(--vert); border-style: solid; }
+    .drop-icon { font-size: 44px; margin-bottom: 16px; }
+    .drop-label { font-size: 16px; font-weight: 600; color: var(--texte); margin-bottom: 6px; }
+    .drop-sub { font-size: 13px; color: var(--texte-doux); margin-bottom: 20px; }
+    .drop-filename { font-size: 14px; font-weight: 600; color: var(--vert); margin-top: 10px; }
+
+    .btn-browse { background: var(--bg); border: 1px solid var(--bordure); color: var(--texte); font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+    .btn-browse:hover { border-color: var(--vert); color: var(--vert); }
+
+    .url-sep { display: flex; align-items: center; gap: 12px; max-width: 600px; margin: 20px auto; color: var(--texte-muted); font-size: 13px; }
+    .url-sep::before, .url-sep::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
+
+    .url-input-row { display: flex; gap: 8px; max-width: 600px; margin: 0 auto; }
+    .url-input { flex: 1; background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte); font-size: 14px; padding: 12px 16px; border-radius: 10px; outline: none; }
+    .url-input:focus { border-color: var(--vert); }
+    .url-input::placeholder { color: var(--texte-muted); }
+
+    .btn-analyze { background: var(--vert); color: #000; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 24px auto 0; transition: opacity .2s; }
+    .btn-analyze:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-analyze:hover:not(:disabled) { opacity: .9; }
+
+    /* ─── ANALYZE STATE ─── */
+    .analyze-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 28px; text-align: center; }
+    .analyze-spinner { width: 56px; height: 56px; border: 3px solid var(--bordure); border-top-color: var(--vert); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .analyze-title { font-size: 22px; font-weight: 700; }
+    .analyze-steps { display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+    .astep { font-size: 14px; color: var(--texte-muted); padding: 8px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--bordure); transition: all .3s; }
+    .astep.active { color: var(--vert); border-color: rgba(16,185,129,0.3); background: var(--vert-dim); }
+    .astep.done { color: var(--texte-doux); }
+    .prog-bar-wrap { width: 280px; height: 4px; background: var(--bordure); border-radius: 2px; overflow: hidden; }
+    .prog-bar-fill { height: 100%; background: var(--vert); border-radius: 2px; transition: width .4s; }
+
+    /* ─── STUDIO STATE ─── */
+    .studio-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .studio-title { font-size: 20px; font-weight: 800; }
+    .studio-meta { font-size: 13px; color: var(--texte-doux); }
+
+    /* Style picker */
+    .section-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--texte-muted); text-transform: uppercase; margin-bottom: 12px; }
+    .style-picker { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+    .style-card { flex: 1; min-width: 110px; max-width: 160px; background: var(--bg-card); border: 2px solid var(--bordure); border-radius: 12px; padding: 14px 12px; cursor: pointer; text-align: center; transition: all .2s; user-select: none; }
+    .style-card:hover { border-color: var(--texte-doux); }
+    .style-card.selected { border-color: var(--vert); background: var(--vert-dim); }
+    .style-preview { height: 52px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 12px; font-weight: 700; overflow: hidden; }
+    .style-name { font-size: 12px; font-weight: 700; color: var(--texte); }
+    .style-desc { font-size: 11px; color: var(--texte-muted); margin-top: 2px; }
+
+    /* Style previews */
+    .prev-bold { background: #111; color: #fff; text-shadow: 0 0 4px #000, 0 2px 4px #000; font-size: 11px; font-weight: 900; letter-spacing: -.3px; padding: 4px 8px; border-radius: 4px; }
+    .prev-minimal { background: rgba(0,0,0,0.5); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 20px; }
+    .prev-karaoke { background: #111; color: #FFE000; font-size: 11px; font-weight: 800; border-bottom: 2px solid #FFE000; }
+    .prev-neon { background: #0a0f0a; color: #00FF9C; font-size: 11px; font-weight: 800; text-shadow: 0 0 8px #00FF9C, 0 0 16px #00FF9C; }
+    .prev-spotlight { background: rgba(0,0,0,0.82); color: #fff; font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 4px; }
+
+    /* Options panel */
+    .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .opt-group { display: flex; flex-direction: column; gap: 6px; }
+    .opt-label { font-size: 12px; font-weight: 600; color: var(--texte-doux); }
+    .opt-select, .opt-input { background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte); font-size: 13px; padding: 8px 12px; border-radius: 8px; outline: none; width: 100%; }
+    .opt-select:focus, .opt-input:focus { border-color: var(--vert); }
+    .opt-color-row { display: flex; gap: 8px; align-items: center; }
+    .opt-color { width: 36px; height: 32px; border: 1px solid var(--bordure); border-radius: 6px; cursor: pointer; padding: 2px; background: transparent; }
+    .opt-toggle-row { display: flex; align-items: center; gap: 10px; }
+    .toggle { position: relative; display: inline-block; width: 38px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--bordure); border-radius: 22px; cursor: pointer; transition: .3s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: var(--texte-doux); border-radius: 50%; transition: .3s; }
+    .toggle input:checked + .toggle-slider { background: var(--vert); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: #000; }
+    .opt-toggle-label { font-size: 13px; color: var(--texte-doux); cursor: pointer; }
+
+    /* Watermark zone */
+    .watermark-zone { border: 1px dashed var(--bordure); border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all .2s; }
+    .watermark-zone:hover { border-color: var(--texte-doux); }
+    .watermark-zone.has-logo { border-color: var(--vert); border-style: solid; }
+    .watermark-preview { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: var(--bordure); padding: 2px; }
+    .watermark-placeholder { width: 40px; height: 40px; background: var(--bordure); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+    /* Clip selection grid */
+    .clips-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 12px; }
+    .clips-toolbar-left { display: flex; align-items: center; gap: 12px; }
+    .sel-count { font-size: 14px; font-weight: 700; }
+    .btn-sel-all, .btn-sel-none, .btn-sel-top { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--bordure); background: transparent; color: var(--texte-doux); cursor: pointer; transition: all .15s; }
+    .btn-sel-all:hover, .btn-sel-top:hover { border-color: var(--vert); color: var(--vert); }
+    .btn-sel-none:hover { border-color: var(--rouge); color: var(--rouge); }
+
+    .clips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .clip-card { background: var(--bg-card); border: 2px solid var(--bordure); border-radius: 14px; overflow: hidden; cursor: pointer; transition: all .2s; position: relative; }
+    .clip-card:hover { border-color: var(--texte-muted); transform: translateY(-2px); }
+    .clip-card.selected { border-color: var(--vert); }
+    .clip-card.selected .clip-thumb { opacity: 1; }
+    .clip-check { position: absolute; top: 8px; left: 8px; z-index: 2; width: 22px; height: 22px; border-radius: 6px; background: var(--bg-card); border: 2px solid var(--bordure); display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .clip-card.selected .clip-check { background: var(--vert); border-color: var(--vert); }
+    .clip-check-icon { display: none; }
+    .clip-card.selected .clip-check-icon { display: block; }
+    .clip-score-badge { position: absolute; top: 8px; right: 8px; z-index: 2; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 100px; background: rgba(0,0,0,0.7); }
+    .clip-thumb { width: 100%; aspect-ratio: 9/16; object-fit: cover; background: #0e150e; display: flex; align-items: center; justify-content: center; opacity: .85; transition: opacity .2s; }
+    .clip-thumb canvas { width: 100%; height: 100%; object-fit: cover; }
+    .clip-thumb-placeholder { width: 100%; aspect-ratio: 9/16; background: linear-gradient(135deg, #111811 0%, #0e150e 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    .clip-info { padding: 10px 12px; }
+    .clip-num { font-size: 11px; font-weight: 700; color: var(--texte-muted); text-transform: uppercase; letter-spacing: .5px; }
+    .clip-hook { font-size: 12px; color: var(--texte-doux); line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .clip-dur { font-size: 11px; color: var(--texte-muted); margin-top: 6px; }
+
+    /* Export button */
+    .export-bar { position: sticky; bottom: 20px; z-index: 40; display: flex; justify-content: center; }
+    .btn-export { background: var(--vert); color: #000; font-weight: 800; font-size: 16px; padding: 16px 40px; border-radius: 14px; border: none; cursor: pointer; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(16,185,129,0.35); transition: all .2s; }
+    .btn-export:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+    .btn-export:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(16,185,129,0.45); }
+
+    /* ─── EXPORT STATE ─── */
+    .export-center { display: flex; flex-direction: column; align-items: center; min-height: 60vh; padding-top: 60px; gap: 24px; }
+    .export-title { font-size: 22px; font-weight: 700; text-align: center; }
+    .export-list { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
+    .export-item { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+    .export-item-status { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+    .export-item-status.waiting { background: var(--bordure); }
+    .export-item-status.processing { background: var(--vert-dim); border: 2px solid var(--vert); animation: pulse 1.5s ease-in-out infinite; }
+    .export-item-status.done { background: var(--vert); }
+    .export-item-status.error { background: rgba(239,68,68,0.2); border: 2px solid var(--rouge); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+    .export-item-info { flex: 1; min-width: 0; }
+    .export-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .export-item-sub { font-size: 11px; color: var(--texte-doux); margin-top: 2px; }
+    .export-item-pct { font-size: 13px; font-weight: 700; color: var(--vert); }
+    .export-prog-bar { height: 3px; background: var(--bordure); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .export-prog-fill { height: 100%; background: var(--vert); border-radius: 2px; transition: width .3s; }
+
+    /* ─── RESULTS STATE ─── */
+    .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .results-title { font-size: 20px; font-weight: 800; }
+    .btn-restart { background: transparent; border: 1px solid var(--bordure); color: var(--texte-doux); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+    .btn-restart:hover { border-color: var(--texte-muted); color: var(--texte); }
+
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .result-card { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 14px; overflow: hidden; }
+    .result-thumb { width: 100%; aspect-ratio: 9/16; background: #0e150e; display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
+    .result-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .result-info { padding: 12px; }
+    .result-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+    .result-dur { font-size: 11px; color: var(--texte-muted); margin-bottom: 10px; }
+    .btn-dl { width: 100%; background: var(--vert); color: #000; font-weight: 700; font-size: 13px; padding: 10px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-dl:hover { opacity: .9; }
+
+    /* ─── TOAST ─── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+    .toast { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 10px; padding: 12px 16px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: slideIn .25s ease; }
+    @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast.succes { border-color: var(--vert); color: var(--vert); }
+    .toast.erreur { border-color: var(--rouge); color: var(--rouge); }
+    .toast.info { border-color: var(--bordure); color: var(--texte); }
+
+    /* ─── DIVIDER ─── */
+    .section-sep { height: 1px; background: var(--bordure); margin: 24px 0; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .clips-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .style-picker { gap: 8px; }
+      .style-card { min-width: 90px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/app.html" class="nav-logo">Créatis<span>.</span></a>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="nav-badge">✨ STUDIO V2</span>
+    <div id="nav-user" style="font-size:13px;color:var(--texte-doux)"></div>
+  </div>
+  <div class="nav-right">
+    <a href="/app.html" class="btn-nav" style="background:transparent;border:1px solid var(--bordure);color:var(--texte-doux)">← App</a>
+  </div>
+</nav>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<div class="page">
+
+  <!-- ═══════════════ STATE: UPLOAD ═══════════════ -->
+  <div class="state active" id="state-upload">
+    <div class="upload-hero">
+      <h1>Studio <span>Clips Viraux</span> V2</h1>
+      <p>Sous-titres personnalisables · Sélection des clips · Hook auto · Watermark</p>
+    </div>
+
+    <div class="drop-zone" id="drop-zone"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)">
+      <div class="drop-icon">🎬</div>
+      <div class="drop-label">Dépose ta vidéo ici</div>
+      <div class="drop-sub">MP4, MOV, AVI, MKV · Max 4 GB</div>
+      <label>
+        <span class="btn-browse">Choisir un fichier</span>
+        <input type="file" id="file-input" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
+      </label>
+      <div class="drop-filename" id="drop-filename" style="display:none"></div>
+    </div>
+
+    <div class="url-sep">ou analyse une vidéo YouTube</div>
+
+    <div class="url-input-row">
+      <input type="url" id="yt-url" class="url-input" placeholder="https://youtube.com/watch?v=..." oninput="V2.onUrlInput(this.value)">
+    </div>
+
+    <div style="text-align:center">
+      <button class="btn-analyze" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Analyser et créer les clips
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ STATE: ANALYZE ═══════════════ -->
+  <div class="state" id="state-analyze">
+    <div class="analyze-center">
+      <div class="analyze-spinner"></div>
+      <div class="analyze-title" id="analyze-title">Analyse en cours…</div>
+      <div class="analyze-steps" id="analyze-steps">
+        <div class="astep" id="as-1">⚙️ Chargement ffmpeg.wasm…</div>
+        <div class="astep" id="as-2">🎙️ Extraction audio…</div>
+        <div class="astep" id="as-3">📤 Transcription Whisper…</div>
+        <div class="astep" id="as-4">🧠 Identification des clips…</div>
+        <div class="astep" id="as-5">✅ Clips identifiés !</div>
+      </div>
+      <div class="prog-bar-wrap"><div class="prog-bar-fill" id="analyze-bar" style="width:0%"></div></div>
+      <div id="analyze-msg" style="font-size:12px;color:var(--texte-muted);margin-top:4px"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ STATE: STUDIO ═══════════════ -->
+  <div class="state" id="state-studio">
+    <div class="studio-header">
+      <div>
+        <div class="studio-title" id="studio-title">Clips identifiés</div>
+        <div class="studio-meta" id="studio-meta"></div>
+      </div>
+      <button onclick="V2.restart()" class="btn-restart">↩ Nouvelle vidéo</button>
+    </div>
+
+    <!-- Style picker -->
+    <div class="section-label">Style des sous-titres</div>
+    <div class="style-picker" id="style-picker">
+      <div class="style-card selected" data-style="bold" onclick="V2.selectStyle('bold')">
+        <div class="style-preview" style="background:#111">
+          <span class="prev-bold">VOILÀ CE QUE</span>
+        </div>
+        <div class="style-name">Bold</div>
+        <div class="style-desc">CapCut classique</div>
+      </div>
+      <div class="style-card" data-style="minimal" onclick="V2.selectStyle('minimal')">
+        <div class="style-preview" style="background:#1a2a1a">
+          <span class="prev-minimal">voilà ce que…</span>
+        </div>
+        <div class="style-name">Minimal</div>
+        <div class="style-desc">Épuré, discret</div>
+      </div>
+      <div class="style-card" data-style="karaoke" onclick="V2.selectStyle('karaoke')">
+        <div class="style-preview" style="background:#111">
+          <span class="prev-karaoke">MOT CLEF</span>
+        </div>
+        <div class="style-name">Karaoke</div>
+        <div class="style-desc">Accentué jaune</div>
+      </div>
+      <div class="style-card" data-style="neon" onclick="V2.selectStyle('neon')">
+        <div class="style-preview" style="background:#050905">
+          <span class="prev-neon">NÉON GLOW</span>
+        </div>
+        <div class="style-name">Néon</div>
+        <div class="style-desc">Glow coloré</div>
+      </div>
+      <div class="style-card" data-style="spotlight" onclick="V2.selectStyle('spotlight')">
+        <div class="style-preview" style="background:linear-gradient(#1a2a1a,#0a0f0a)">
+          <span class="prev-spotlight">Spotlight</span>
+        </div>
+        <div class="style-name">Spotlight</div>
+        <div class="style-desc">Fond sombre</div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="section-label">Personnalisation</div>
+    <div class="options-grid">
+      <div class="opt-group">
+        <div class="opt-label">Taille du texte</div>
+        <select id="opt-fontsize" class="opt-select">
+          <option value="55">Petit (55px)</option>
+          <option value="70" selected>Moyen (70px)</option>
+          <option value="82">Grand (82px)</option>
+          <option value="96">XL (96px)</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">Position verticale</div>
+        <select id="opt-position" class="opt-select">
+          <option value="low" selected>Bas (recommandé)</option>
+          <option value="mid">Centre</option>
+          <option value="low-mid">Bas-centre</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">Couleur texte</div>
+        <div class="opt-color-row">
+          <input type="color" id="opt-color-text" class="opt-color" value="#ffffff">
+          <span style="font-size:12px;color:var(--texte-doux)">Couleur principale</span>
+        </div>
+      </div>
+      <div class="opt-group">
+        <div class="opt-label">Couleur accent / fond</div>
+        <div class="opt-color-row">
+          <input type="color" id="opt-color-bg" class="opt-color" value="#000000">
+          <span style="font-size:12px;color:var(--texte-doux)">Contour / fond</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hook text -->
+    <div class="section-label" style="margin-top:8px">Hook d'accroche (0–3s)</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+      <div class="opt-toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="opt-hook" onchange="V2.toggleHook(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="opt-toggle-label">Afficher texte d'accroche sur les 3 premières secondes</span>
+      </div>
+      <input type="text" id="opt-hook-text" class="opt-input" placeholder="Texte auto-généré depuis le clip…" style="display:none" maxlength="80">
+      <div style="display:none;gap:8px;flex-wrap:wrap" id="opt-hook-style-row">
+        <select id="opt-hook-pos" class="opt-select" style="max-width:180px">
+          <option value="top">En haut</option>
+          <option value="center">Centre</option>
+        </select>
+        <input type="color" id="opt-hook-color" class="opt-color" value="#ffffff" title="Couleur hook">
+      </div>
+    </div>
+
+    <!-- Watermark -->
+    <div class="section-label">Logo / Watermark</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+      <div class="opt-toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="opt-wm" onchange="V2.toggleWatermark(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="opt-toggle-label">Ajouter mon logo sur les clips</span>
+      </div>
+      <div id="wm-zone" style="display:none">
+        <div class="watermark-zone" id="wm-drop" onclick="document.getElementById('wm-input').click()">
+          <div class="watermark-placeholder" id="wm-ph">🖼️</div>
+          <img id="wm-preview" class="watermark-preview" style="display:none">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Cliquer pour choisir le logo</div>
+            <div style="font-size:11px;color:var(--texte-muted)">PNG transparent recommandé</div>
+          </div>
+          <input type="file" id="wm-input" accept="image/*" style="display:none" onchange="V2.onWatermarkSelect(this)">
+        </div>
+        <div style="display:flex;gap:12px;margin-top:10px;align-items:center">
+          <select id="opt-wm-pos" class="opt-select" style="max-width:160px">
+            <option value="tr">Haut droite</option>
+            <option value="tl">Haut gauche</option>
+            <option value="br">Bas droite</option>
+            <option value="bl">Bas gauche</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <span style="font-size:12px;color:var(--texte-doux)">Opacité</span>
+            <input type="range" id="opt-wm-opacity" min="20" max="100" value="80" style="flex:1">
+            <span id="wm-opacity-val" style="font-size:12px;color:var(--texte-doux)">80%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-sep"></div>
+
+    <!-- Clip selection -->
+    <div class="section-label">Sélectionner les clips à exporter</div>
+    <div class="clips-toolbar">
+      <div class="clips-toolbar-left">
+        <span class="sel-count" id="sel-count">0 sélectionné</span>
+        <button class="btn-sel-all" onclick="V2.selectAll()">Tout sélectionner</button>
+        <button class="btn-sel-top" onclick="V2.selectTop5()">Top 5</button>
+        <button class="btn-sel-none" onclick="V2.deselectAll()">Tout désélectionner</button>
+      </div>
+      <span style="font-size:12px;color:var(--texte-muted)" id="clips-time-total"></span>
+    </div>
+
+    <div class="clips-grid" id="clips-grid"></div>
+
+    <!-- Sticky export bar -->
+    <div class="export-bar">
+      <button class="btn-export" id="btn-export" onclick="V2.startExport()" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="btn-export-txt">Exporter les clips sélectionnés</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ STATE: EXPORT ═══════════════ -->
+  <div class="state" id="state-export">
+    <div class="export-center">
+      <div class="export-title" id="export-title">Export en cours…</div>
+      <div style="font-size:14px;color:var(--texte-doux)" id="export-subtitle">Reframe 9:16 · Sous-titres · Encodage</div>
+      <div class="prog-bar-wrap" style="width:320px">
+        <div class="prog-bar-fill" id="export-total-bar" style="width:0%"></div>
+      </div>
+      <div class="export-list" id="export-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ STATE: RESULTS ═══════════════ -->
+  <div class="state" id="state-results">
+    <div class="results-header">
+      <div class="results-title" id="results-title">🎉 Tes clips sont prêts !</div>
+      <button onclick="V2.restart()" class="btn-restart">↩ Nouvelle vidéo</button>
+    </div>
+    <div class="results-grid" id="results-grid"></div>
+  </div>
+
+</div><!-- /page -->
+
+<script src="js/auth.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CRÉATIS STUDIO V2 — Clips Viraux avec sous-titres personnalisables
+// ═══════════════════════════════════════════════════════════════
+const V2 = (() => {
+
+  // ── State ──
+  let _file = null;           // File object (uploaded video)
+  let _ytUrl = '';            // YouTube URL (if any)
+  let _segments = [];         // Whisper transcript segments
+  let _clips = [];            // Identified clips
+  let _selectedIds = new Set();
+  let _currentStyle = 'bold';
+  let _watermarkFile = null;  // Logo File object
+  let _ffmpeg = null;
+  let _ffmpegLoading = null;
+  let _fontData = null;       // TTF font bytes
+  let _currentState = 'upload';
+
+  // ── Init ──
+  function init() {
+    // Auth check
+    if (typeof Auth !== 'undefined') {
+      Auth.getUser().then(user => {
+        const el = document.getElementById('nav-user');
+        if (el && user) el.textContent = user.email?.split('@')[0] || user.nom || '';
+      }).catch(() => {});
+    }
+    // Watermark opacity display
+    const wmOp = document.getElementById('opt-wm-opacity');
+    if (wmOp) wmOp.addEventListener('input', () => {
+      const v = document.getElementById('wm-opacity-val');
+      if (v) v.textContent = wmOp.value + '%';
+    });
+  }
+
+  // ── State machine ──
+  function setState(id) {
+    _currentState = id;
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById('state-' + id);
+    if (el) el.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Toast ──
+  function toast(msg, type = 'info', ms = 4000) {
+    const tc = document.getElementById('toasts');
+    if (!tc) return;
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    tc.appendChild(t);
+    setTimeout(() => t.remove(), ms);
+  }
+
+  // ── File handlers ──
+  function onFileSelect(input) {
+    const f = input.files?.[0];
+    if (f) setFile(f);
+  }
+
+  function onDrop(event) {
+    const f = event.dataTransfer?.files?.[0];
+    if (!f || !f.type.startsWith('video/')) { toast('❌ Fichier vidéo requis (MP4, MOV…)', 'erreur'); return; }
+    setFile(f);
+  }
+
+  function setFile(f) {
+    _file = f;
+    _ytUrl = '';
+    const zone = document.getElementById('drop-zone');
+    const nameEl = document.getElementById('drop-filename');
+    const urlEl = document.getElementById('yt-url');
+    if (zone) zone.classList.add('has-file');
+    if (nameEl) { nameEl.textContent = `${f.name} · ${(f.size / 1_048_576).toFixed(0)} Mo`; nameEl.style.display = 'block'; }
+    if (urlEl) urlEl.value = '';
+    document.getElementById('btn-analyze').disabled = false;
+  }
+
+  function onUrlInput(val) {
+    _ytUrl = val.trim();
+    _file = null;
+    const zone = document.getElementById('drop-zone');
+    const nameEl = document.getElementById('drop-filename');
+    if (zone) zone.classList.remove('has-file');
+    if (nameEl) nameEl.style.display = 'none';
+    const isYt = /youtube\.com|youtu\.be/.test(_ytUrl);
+    document.getElementById('btn-analyze').disabled = !isYt;
+  }
+
+  function onWatermarkSelect(input) {
+    const f = input.files?.[0];
+    if (!f) return;
+    _watermarkFile = f;
+    const ph = document.getElementById('wm-ph');
+    const prev = document.getElementById('wm-preview');
+    const zone = document.getElementById('wm-drop');
+    const url = URL.createObjectURL(f);
+    if (ph) ph.style.display = 'none';
+    if (prev) { prev.src = url; prev.style.display = 'block'; }
+    if (zone) zone.classList.add('has-logo');
+    toast('✅ Logo chargé', 'succes', 2000);
+  }
+
+  function toggleHook(on) {
+    const inp = document.getElementById('opt-hook-text');
+    const row = document.getElementById('opt-hook-style-row');
+    if (inp) inp.style.display = on ? 'block' : 'none';
+    if (row) row.style.display = on ? 'flex' : 'none';
+  }
+
+  function toggleWatermark(on) {
+    const zone = document.getElementById('wm-zone');
+    if (zone) zone.style.display = on ? 'block' : 'none';
+  }
+
+  // ── FFmpeg loading ──
+  async function loadFFmpeg() {
+    if (_ffmpeg) return _ffmpeg;
+    if (_ffmpegLoading) return _ffmpegLoading;
+    _ffmpegLoading = (async () => {
+      try {
+        const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+        const base = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
+        const ffBase = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
+        const [coreURL, wasmURL, workerSrc] = await Promise.all([
+          toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+          toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+          fetch(`${ffBase}/worker.js`).then(r => r.text()),
+        ]);
+        const workerFixed = workerSrc
+          .replace(/from "\.\//g, `from "${ffBase}/`)
+          .replace(/import "\.\//g, `import "${ffBase}/`);
+        const classWorkerURL = URL.createObjectURL(new Blob([workerFixed], { type: 'text/javascript' }));
+        const { FFmpeg } = await import(`${ffBase}/index.js`);
+        const ff = new FFmpeg();
+        await ff.load({ classWorkerURL, coreURL, wasmURL });
+        URL.revokeObjectURL(classWorkerURL);
+        _ffmpeg = ff;
+
+        // Fetch + cache font for drawtext
+        try {
+          const fontRes = await fetch('https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted-upm-2048/NotoSans/NotoSans-Bold.ttf');
+          _fontData = new Uint8Array(await fontRes.arrayBuffer());
+          await ff.writeFile('/fonts/Bold.ttf', _fontData);
+        } catch(fe) {
+          console.warn('[v2] font load failed, using default:', fe.message);
+        }
+
+        return ff;
+      } catch(e) {
+        _ffmpegLoading = null;
+        throw e;
+      }
+    })();
+    return _ffmpegLoading;
+  }
+
+  // ── Analyze pipeline ──
+  async function startAnalyze() {
+    if (!_file && !_ytUrl) return;
+    setState('analyze');
+
+    const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
+    const setBar = p => { const el = document.getElementById('analyze-bar'); if (el) el.style.width = p + '%'; };
+    const setMsg = t => { const el = document.getElementById('analyze-msg'); if (el) el.textContent = t; };
+
+    try {
+      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      if (_ytUrl) {
+        // YouTube flow — fetch clips + segments
+        setStep(4); setBar(30);
+        document.getElementById('analyze-title').textContent = 'Analyse YouTube…';
+        setMsg('Récupération des sous-titres YouTube…');
+        const res = await fetch('/api/repurpose', {
+          method: 'POST', headers,
+          body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Erreur analyse YouTube');
+        setBar(100); setStep(5);
+        _clips = data.result.clips || [];
+        _segments = data.result.segments || [];
+        renderStudio(data.result.title || 'Vidéo YouTube');
+
+      } else {
+        // Upload flow
+        setStep(1); setBar(3);
+        document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
+        setMsg('Chargement ffmpeg.wasm (~30 MB)…');
+        await loadFFmpeg();
+        setBar(10); setStep(2);
+
+        // Extract audio
+        setMsg(`Extraction audio de ${(_file.size / 1e9).toFixed(1)} GB…`);
+        const audioData = await extractAudio(_file, (pct, msg) => {
+          setBar(10 + Math.round(pct * 0.3));
+          if (msg) setMsg(msg);
+        });
+        setBar(40); setStep(3);
+
+        // Get Railway token
+        const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+        const tokData = await tokRes.json();
+        if (!tokData.ok) throw new Error(tokData.error || 'Erreur auth Railway');
+
+        // Upload audio → transcribe
+        setMsg('Upload audio…');
+        const audioBlob = new Blob([audioData.buffer], { type: 'audio/mpeg' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.mp3');
+        const transcribeData = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${tokData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokData.token)}`);
+          xhr.timeout = 300000;
+          xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(40 + Math.round(e.loaded / e.total * 15)); };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse serveur invalide')); }
+            } else reject(new Error(`Upload échoué (${xhr.status})`));
+          };
+          xhr.onerror = () => reject(new Error('Erreur réseau'));
+          xhr.ontimeout = () => reject(new Error('Timeout (5 min)'));
+          xhr.send(formData);
+        });
+        if (!transcribeData.ok) throw new Error(transcribeData.error || 'Transcription échouée');
+        _segments = transcribeData.segments || [];
+        setBar(65); setStep(4);
+
+        // Identify clips via Groq
+        setMsg('Identification des meilleurs moments…');
+        const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
+          mode: 'clips', segments: _segments, video_id: `local_${Date.now()}`,
+          title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: 10
+        }) });
+        const clipsData = await clipsRes.json();
+        if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+        _clips = clipsData.result.clips || [];
+        setBar(100); setStep(5);
+        renderStudio(_file.name.replace(/\.[^.]+$/, ''));
+      }
+
+    } catch(err) {
+      toast(`❌ ${err.message}`, 'erreur', 8000);
+      setState('upload');
+    }
+  }
+
+  // ── Audio extraction ──
+  async function extractAudio(file, onProgress) {
+    const ffmpeg = await loadFFmpeg();
+    const progressHandler = ({ progress }) => {
+      if (onProgress) onProgress(5 + Math.round(Math.min(progress, 1) * 83), `Extraction… ${Math.round(Math.min(progress, 1) * 100)}%`);
+    };
+    ffmpeg.on('progress', progressHandler);
+    try {
+      try { await ffmpeg.createDir('/input'); } catch {}
+      await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+      await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
+      ffmpeg.off('progress', progressHandler);
+      const data = await ffmpeg.readFile('/audio_out.mp3');
+      await ffmpeg.deleteFile('/audio_out.mp3');
+      await ffmpeg.unmount('/input');
+      return data;
+    } catch(e) {
+      ffmpeg.off('progress', progressHandler);
+      try { await ffmpeg.unmount('/input'); } catch {}
+      throw e;
+    }
+  }
+
+  // ── Render studio ──
+  function renderStudio(title) {
+    document.getElementById('studio-title').textContent = `${_clips.length} clips viraux trouvés`;
+    document.getElementById('studio-meta').textContent = `"${title.substring(0, 60)}"`;
+    renderClipsGrid();
+    updateExportBtn();
+    setState('studio');
+    // Generate thumbnails in background
+    if (_file) setTimeout(() => generateThumbnails(), 200);
+  }
+
+  // ── Style picker ──
+  function selectStyle(style) {
+    _currentStyle = style;
+    document.querySelectorAll('.style-card').forEach(c => c.classList.toggle('selected', c.dataset.style === style));
+    // Update color defaults per style
+    const defaults = {
+      bold:      { text: '#ffffff', bg: '#000000' },
+      minimal:   { text: '#ffffff', bg: '#000000' },
+      karaoke:   { text: '#FFE000', bg: '#000000' },
+      neon:      { text: '#00FF9C', bg: '#00FF9C' },
+      spotlight: { text: '#ffffff', bg: '#000000' },
+    };
+    const d = defaults[style] || defaults.bold;
+    const tc = document.getElementById('opt-color-text');
+    const bc = document.getElementById('opt-color-bg');
+    if (tc) tc.value = d.text;
+    if (bc) bc.value = d.bg;
+  }
+
+  // ── Clips grid ──
+  function renderClipsGrid() {
+    const grid = document.getElementById('clips-grid');
+    if (!grid) return;
+    const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    const scoreColor = s => s >= 90 ? '#10b981' : s >= 75 ? '#f0a500' : '#6b7280';
+
+    grid.innerHTML = _clips.map((clip, i) => {
+      const sc = scoreColor(clip.score);
+      const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
+      return `
+      <div class="clip-card" id="clip-card-${i}" onclick="V2.toggleClip(${i})">
+        <div class="clip-check" id="clip-chk-${i}">
+          <svg class="clip-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="clip-score-badge" style="color:${sc}">${clip.score}</div>
+        <div class="clip-thumb-placeholder" id="clip-thumb-${i}">🎬</div>
+        <div class="clip-info">
+          <div class="clip-num">Clip ${i + 1}</div>
+          <div class="clip-hook">${escHtml(clip.hook || clip.title || `Moment ${i+1}`)}</div>
+          <div class="clip-dur">${fmt(clip.start_time ?? clip.start)} → ${fmt(clip.end_time ?? clip.end)} · ${dur}s</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Auto-select top 5
+    _selectedIds.clear();
+    const sorted = [..._clips].map((c, i) => ({ i, score: c.score })).sort((a,b) => b.score - a.score);
+    sorted.slice(0, 5).forEach(({ i }) => _selectedIds.add(i));
+    refreshSelection();
+  }
+
+  function toggleClip(i) {
+    if (_selectedIds.has(i)) _selectedIds.delete(i);
+    else _selectedIds.add(i);
+    refreshSelection();
+  }
+
+  function selectAll() { _clips.forEach((_, i) => _selectedIds.add(i)); refreshSelection(); }
+  function deselectAll() { _selectedIds.clear(); refreshSelection(); }
+  function selectTop5() {
+    _selectedIds.clear();
+    const sorted = [..._clips].map((c, i) => ({ i, score: c.score })).sort((a,b) => b.score - a.score);
+    sorted.slice(0, 5).forEach(({ i }) => _selectedIds.add(i));
+    refreshSelection();
+  }
+
+  function refreshSelection() {
+    _clips.forEach((_, i) => {
+      const card = document.getElementById(`clip-card-${i}`);
+      if (card) card.classList.toggle('selected', _selectedIds.has(i));
+    });
+    const n = _selectedIds.size;
+    const countEl = document.getElementById('sel-count');
+    if (countEl) countEl.textContent = `${n} sélectionné${n > 1 ? 's' : ''}`;
+    const totalDur = [..._selectedIds].reduce((acc, i) => {
+      const c = _clips[i]; return acc + Math.round((c.end_time ?? c.end) - (c.start_time ?? c.start));
+    }, 0);
+    const timeEl = document.getElementById('clips-time-total');
+    if (timeEl) timeEl.textContent = n > 0 ? `~${totalDur}s de contenu` : '';
+    updateExportBtn();
+  }
+
+  function updateExportBtn() {
+    const btn = document.getElementById('btn-export');
+    const txt = document.getElementById('btn-export-txt');
+    const n = _selectedIds.size;
+    if (btn) btn.disabled = n === 0;
+    if (txt) txt.textContent = n === 0 ? 'Sélectionne au moins 1 clip' : `Exporter ${n} clip${n > 1 ? 's' : ''} (9:16 + sous-titres)`;
+  }
+
+  // ── Thumbnails ──
+  async function generateThumbnails() {
+    if (!_file) return;
+    const videoUrl = URL.createObjectURL(_file);
+    for (let i = 0; i < _clips.length; i++) {
+      const clip = _clips[i];
+      const t = Math.max(0, (clip.start_time ?? clip.start) + 1);
+      const dataUrl = await captureFrame(videoUrl, t);
+      if (dataUrl) {
+        const el = document.getElementById(`clip-thumb-${i}`);
+        if (el) {
+          el.className = 'clip-thumb';
+          el.style.backgroundImage = `url(${dataUrl})`;
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.style.aspectRatio = '9/16';
+          el.textContent = '';
+        }
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+    URL.revokeObjectURL(videoUrl);
+  }
+
+  function captureFrame(videoUrl, time) {
+    return new Promise(resolve => {
+      const vid = document.createElement('video');
+      vid.muted = true; vid.playsInline = true;
+      const to = setTimeout(() => { vid.src = ''; resolve(null); }, 6000);
+      vid.addEventListener('seeked', () => {
+        clearTimeout(to);
+        try {
+          const c = document.createElement('canvas');
+          c.width = 180; c.height = 320;
+          c.getContext('2d').drawImage(vid, 0, 0, 180, 320);
+          resolve(c.toDataURL('image/jpeg', 0.7));
+        } catch { resolve(null); }
+        vid.src = '';
+      }, { once: true });
+      vid.addEventListener('error', () => { clearTimeout(to); vid.src = ''; resolve(null); }, { once: true });
+      vid.addEventListener('loadedmetadata', () => { vid.currentTime = time; }, { once: true });
+      vid.src = videoUrl;
+    });
+  }
+
+  // ── Export ──
+  async function startExport() {
+    if (_selectedIds.size === 0) return;
+    const selected = [..._selectedIds].map(i => ({ i, clip: _clips[i] }));
+    const total = selected.length;
+
+    // Build export items in UI
+    const list = document.getElementById('export-list');
+    const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+    list.innerHTML = selected.map(({ i, clip }) => `
+      <div class="export-item" id="ei-${i}">
+        <div class="export-item-status waiting" id="ei-st-${i}"></div>
+        <div class="export-item-info">
+          <div class="export-item-name">${escHtml((clip.title || `Clip ${i+1}`).substring(0, 40))}</div>
+          <div class="export-item-sub" id="ei-sub-${i}">${fmt(clip.start_time??clip.start)} → ${fmt(clip.end_time??clip.end)}</div>
+          <div class="export-prog-bar"><div class="export-prog-fill" id="ei-bar-${i}" style="width:0%"></div></div>
+        </div>
+        <div class="export-item-pct" id="ei-pct-${i}"></div>
+      </div>
+    `).join('');
+
+    setState('export');
+
+    const results = [];
+    const opts = getExportOptions();
+
+    for (let idx = 0; idx < selected.length; idx++) {
+      const { i, clip } = selected[idx];
+      const setStatus = status => {
+        const el = document.getElementById(`ei-st-${i}`);
+        if (el) el.className = `export-item-status ${status}`;
+        if (status === 'processing') el.textContent = '⚡';
+        if (status === 'done') el.textContent = '✓';
+        if (status === 'error') el.textContent = '✕';
+      };
+      const setPct = (pct, msg) => {
+        const b = document.getElementById(`ei-bar-${i}`); if (b) b.style.width = pct + '%';
+        const p = document.getElementById(`ei-pct-${i}`); if (p) p.textContent = pct + '%';
+        const s = document.getElementById(`ei-sub-${i}`); if (s && msg) s.textContent = msg;
+      };
+      const totalBar = document.getElementById('export-total-bar');
+      if (totalBar) totalBar.style.width = Math.round((idx / total) * 100) + '%';
+
+      setStatus('processing');
+      try {
+        const blob = await exportSingleClip(clip, opts, pct => setPct(pct, null), msg => setPct(null, msg));
+        const clipTitle = (clip.title || `clip_${i+1}`).replace(/[^\w\-àéèêëùûüîïôœæç ]/g, '').replace(/\s+/g, '_').substring(0, 40);
+        results.push({ blob, filename: `${clipTitle}_9x16.mp4`, title: clip.title || `Clip ${i+1}`, hook: clip.hook || '' });
+        setPct(100, '✅ Terminé');
+        setStatus('done');
+      } catch(err) {
+        setPct(0, `❌ ${err.message.substring(0, 50)}`);
+        setStatus('error');
+        toast(`❌ Clip ${i+1}: ${err.message}`, 'erreur', 6000);
+      }
+    }
+    if (totalBar) totalBar.style.width = '100%';
+
+    if (results.length > 0) renderResults(results);
+    else { toast('❌ Aucun clip exporté', 'erreur', 5000); setState('studio'); }
+  }
+
+  function getExportOptions() {
+    return {
+      style: _currentStyle,
+      fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '70'),
+      position: document.getElementById('opt-position')?.value || 'low',
+      colorText: document.getElementById('opt-color-text')?.value || '#ffffff',
+      colorBg: document.getElementById('opt-color-bg')?.value || '#000000',
+      hookEnabled: document.getElementById('opt-hook')?.checked || false,
+      hookText: document.getElementById('opt-hook-text')?.value || '',
+      hookPos: document.getElementById('opt-hook-pos')?.value || 'top',
+      hookColor: document.getElementById('opt-hook-color')?.value || '#ffffff',
+      wmEnabled: document.getElementById('opt-wm')?.checked || false,
+      wmPos: document.getElementById('opt-wm-pos')?.value || 'tr',
+      wmOpacity: parseInt(document.getElementById('opt-wm-opacity')?.value || '80') / 100,
+    };
+  }
+
+  async function exportSingleClip(clip, opts, onPct, onMsg) {
+    const start = clip.start_time ?? clip.start;
+    const end = clip.end_time ?? clip.end;
+
+    if (onMsg) onMsg('Découpage…');
+    if (onPct) onPct(5);
+
+    // Step 1: Cut clip locally (fast, -c copy)
+    let segmentBlob;
+    if (_file) {
+      segmentBlob = await cutClipFFmpeg(_file, start, end);
+    } else {
+      // YouTube: need clip from Railway clip-export
+      segmentBlob = await fetchClipFromRailway(clip, onPct, onMsg);
+    }
+    if (onPct) onPct(25);
+    if (onMsg) onMsg('Reframe 9:16…');
+
+    // Step 2: Reframe to 9:16 via Railway (face tracking)
+    let reframedBlob;
+    try {
+      const tokRes = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${typeof Auth !== 'undefined' ? Auth.getToken() : ''}` },
+        body: JSON.stringify({ mode: 'upload-token' })
+      });
+      const tokData = await tokRes.json();
+      if (!tokData.ok) throw new Error(tokData.error);
+      reframedBlob = await reframeViaRailway(segmentBlob, tokData, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
+    } catch(e) {
+      if (onMsg) onMsg('Encodage local 9:16…');
+      reframedBlob = await encodeLocal9x16(segmentBlob, pct => { if (onPct) onPct(25 + Math.round(pct * 0.4)); });
+    }
+    if (onPct) onPct(68);
+    if (onMsg) onMsg('Ajout des sous-titres…');
+
+    // Step 3: Burn subtitles
+    const hasSubs = _segments.length > 0;
+    let finalBlob = reframedBlob;
+    if (hasSubs) {
+      try {
+        finalBlob = await burnSubtitles(reframedBlob, _segments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.28)); });
+      } catch(e) {
+        console.warn('[v2] subtitle burn failed, using plain video:', e.message);
+        toast('⚠️ Sous-titres ignorés (erreur encodage)', 'info', 4000);
+      }
+    }
+    if (onPct) onPct(98);
+    if (onMsg) onMsg('Finalisation…');
+    await new Promise(r => setTimeout(r, 200));
+    if (onPct) onPct(100);
+    return finalBlob;
+  }
+
+  // ── Railway clip export for YouTube clips ──
+  async function fetchClipFromRailway(clip, onPct, onMsg) {
+    const token = typeof Auth !== 'undefined' ? Auth.getToken() : '';
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const start = clip.start_time ?? clip.start;
+    const end = clip.end_time ?? clip.end;
+
+    const r1 = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'clip_export', video_id: clip.video_id, start, end }) });
+    const d1 = await r1.json();
+    if (!d1.ok) throw new Error(d1.error || 'Erreur démarrage export');
+
+    // Poll status
+    for (let poll = 0; poll < 60; poll++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const r2 = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'clip_export_status', job_id: d1.job_id }) });
+      const d2 = await r2.json();
+      if (onPct) onPct(5 + Math.min(poll * 0.3, 15));
+      if (d2.status === 'done' && d2.download_url) {
+        const res = await fetch(d2.download_url);
+        return res.blob();
+      }
+      if (d2.status === 'error') throw new Error(d2.error || 'Export Railway échoué');
+    }
+    throw new Error('Timeout export Railway');
+  }
+
+  // ── Cut clip ──
+  async function cutClipFFmpeg(file, startSec, endSec) {
+    const ffmpeg = await loadFFmpeg();
+    while (ffmpeg._workerFSBusy) await new Promise(r => setTimeout(r, 300));
+    ffmpeg._workerFSBusy = true;
+    try { await ffmpeg.unmount('/input'); } catch {}
+    try { await ffmpeg.createDir('/input'); } catch {}
+    await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
+    try {
+      try { await ffmpeg.deleteFile('/seg.mp4'); } catch {}
+      await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', String(endSec - startSec), '-c', 'copy', '/seg.mp4']);
+      const data = await ffmpeg.readFile('/seg.mp4');
+      await ffmpeg.deleteFile('/seg.mp4');
+      return new Blob([data], { type: 'video/mp4' });
+    } finally {
+      try { await ffmpeg.unmount('/input'); } catch {}
+      ffmpeg._workerFSBusy = false;
+    }
+  }
+
+  // ── Reframe via Railway ──
+  async function reframeViaRailway(blob, tokData, onPct) {
+    const form = new FormData();
+    form.append('file', blob, 'segment.mp4');
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${tokData.railway_url}/reframe-clip?token=${encodeURIComponent(tokData.token)}`);
+      xhr.responseType = 'blob';
+      xhr.timeout = 300000;
+      xhr.upload.onprogress = e => { if (e.lengthComputable && onPct) onPct(Math.round(e.loaded / e.total * 50)); };
+      xhr.onprogress = e => { if (e.lengthComputable && onPct) onPct(50 + Math.round(e.loaded / e.total * 50)); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else {
+          const reader = new FileReader();
+          reader.onload = () => reject(new Error(`Railway reframe ${xhr.status}`));
+          reader.readAsText(xhr.response);
+        }
+      };
+      xhr.onerror = () => reject(new Error('Erreur réseau Railway'));
+      xhr.ontimeout = () => reject(new Error('Timeout Railway'));
+      xhr.send(form);
+    });
+  }
+
+  // ── Local 9:16 encode fallback ──
+  async function encodeLocal9x16(blob, onPct) {
+    const ffmpeg = await loadFFmpeg();
+    const data = new Uint8Array(await blob.arrayBuffer());
+    await ffmpeg.writeFile('/r_in.mp4', data);
+    const handler = ({ progress }) => { if (onPct) onPct(Math.round(progress * 100)); };
+    ffmpeg.on('progress', handler);
+    try {
+      await ffmpeg.exec(['-i', '/r_in.mp4', '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26', '-c:a', 'aac', '-b:a', '96k', '/r_out.mp4']);
+      ffmpeg.off('progress', handler);
+      const out = await ffmpeg.readFile('/r_out.mp4');
+      return new Blob([out], { type: 'video/mp4' });
+    } finally {
+      ffmpeg.off('progress', handler);
+      try { await ffmpeg.deleteFile('/r_in.mp4'); } catch {}
+      try { await ffmpeg.deleteFile('/r_out.mp4'); } catch {}
+    }
+  }
+
+  // ── Subtitle burning ──
+  async function burnSubtitles(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
+    const ffmpeg = await loadFFmpeg();
+    const videoData = new Uint8Array(await videoBlob.arrayBuffer());
+    await ffmpeg.writeFile('/sb_in.mp4', videoData);
+
+    // Build drawtext filter chain
+    const filter = buildSubtitleFilter(segments, clipStart, clipEnd, opts);
+
+    let cmd = ['-i', '/sb_in.mp4'];
+
+    // Watermark
+    let wmFilter = null;
+    if (opts.wmEnabled && _watermarkFile) {
+      const wmData = new Uint8Array(await _watermarkFile.arrayBuffer());
+      await ffmpeg.writeFile('/logo.png', wmData);
+      cmd = ['-i', '/sb_in.mp4', '-i', '/logo.png'];
+      const posMap = { tr: 'W-w-20:20', tl: '20:20', br: 'W-w-20:H-h-20', bl: '20:H-h-20' };
+      const pos = posMap[opts.wmPos] || posMap.tr;
+      const alpha = opts.wmOpacity.toFixed(2);
+      wmFilter = `[1:v]scale=iw*0.12:-1,format=rgba,colorchannelmixer=aa=${alpha}[logo];[0:v][logo]overlay=${pos}`;
+    }
+
+    // Assemble filtergraph
+    let vf;
+    if (filter && wmFilter) {
+      vf = `${wmFilter}[wtmp];[wtmp]${filter}`;
+    } else if (wmFilter) {
+      vf = wmFilter;
+    } else if (filter) {
+      vf = filter;
+    }
+
+    // Hook text (first 3s)
+    if (opts.hookEnabled) {
+      const hookTxt = escapeDrawtext(opts.hookText || '');
+      if (hookTxt) {
+        const hookPosY = opts.hookPos === 'top' ? 'h*0.08' : '(h-text_h)/2';
+        const hookPart = `drawtext=text='${hookTxt}':fontsize=${Math.round(opts.fontSize * 0.9)}:fontcolor=${hexToFFColor(opts.hookColor)}:x=(w-text_w)/2:y=${hookPosY}:box=1:boxcolor=0x000000CC:boxborderw=18:enable='between(t,0,3)'${_fontData ? ':fontfile=/fonts/Bold.ttf' : ''}`;
+        vf = vf ? `${vf},${hookPart}` : hookPart;
+      }
+    }
+
+    if (vf) {
+      cmd.push('-vf', vf);
+      cmd.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22');
+    } else {
+      cmd.push('-c:v', 'copy');
+    }
+    cmd.push('-c:a', 'copy', '/sb_out.mp4');
+
+    const handler = ({ progress }) => { if (onPct) onPct(Math.round(progress * 100)); };
+    ffmpeg.on('progress', handler);
+    try {
+      await ffmpeg.exec(cmd);
+      ffmpeg.off('progress', handler);
+      const out = await ffmpeg.readFile('/sb_out.mp4');
+      return new Blob([out], { type: 'video/mp4' });
+    } finally {
+      ffmpeg.off('progress', handler);
+      try { await ffmpeg.deleteFile('/sb_in.mp4'); } catch {}
+      try { await ffmpeg.deleteFile('/sb_out.mp4'); } catch {}
+      try { if (opts.wmEnabled) await ffmpeg.deleteFile('/logo.png'); } catch {}
+    }
+  }
+
+  function buildSubtitleFilter(segments, clipStart, clipEnd, opts) {
+    // Filter segments within clip range, adjust timestamps
+    const relSegs = segments
+      .filter(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        return ss < clipEnd && se > clipStart;
+      })
+      .map(s => {
+        const ss = s.start ?? s.offset ?? 0;
+        const se = s.end ?? (ss + (s.duration ?? 2));
+        return {
+          text: (s.text || '').trim().replace(/\n/g, ' '),
+          t0: parseFloat(Math.max(0, ss - clipStart).toFixed(3)),
+          t1: parseFloat(Math.min(clipEnd - clipStart, se - clipStart).toFixed(3)),
+        };
+      })
+      .filter(s => s.text.length > 0 && s.t1 > s.t0);
+
+    if (!relSegs.length) return null;
+
+    const fontSize = opts.fontSize || 70;
+    const colorText = hexToFFColor(opts.colorText || '#ffffff');
+    const colorBg = hexToFFColor(opts.colorBg || '#000000');
+    const fontFlag = _fontData ? ':fontfile=/fonts/Bold.ttf' : '';
+
+    // Y position
+    const yMap = { low: `h-${Math.round(fontSize * 2.2)}`, mid: '(h-text_h)/2', 'low-mid': `h*0.68` };
+    const yPos = yMap[opts.position] || yMap.low;
+
+    const styleParams = {
+      bold: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=3:shadowy=3:shadowcolor=${colorBg}@0.8`,
+      minimal: `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.55:boxborderw=16:borderw=0`,
+      karaoke: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=4:bordercolor=0x00000088:box=1:boxcolor=0x00000033:boxborderw=10`,
+      neon: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=7:bordercolor=${colorBg}@0.5:shadowx=0:shadowy=0:shadowcolor=${colorText}@0.6`,
+      spotlight: `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.82:boxborderw=36:borderw=0`,
+    };
+    const sp = styleParams[opts.style] || styleParams.bold;
+
+    const parts = relSegs.map(s => {
+      const lines = wrapText(s.text, 28);
+      const txt = escapeDrawtext(lines);
+      return `drawtext=text='${txt}':${sp}:x=(w-text_w)/2:y=${yPos}${fontFlag}:enable='between(t,${s.t0},${s.t1})'`;
+    });
+
+    // Return at most 120 segments to avoid filter string overflow
+    return parts.slice(0, 120).join(',');
+  }
+
+  // ── Text helpers ──
+  function wrapText(text, maxChars) {
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const candidate = cur ? cur + ' ' + w : w;
+      if (candidate.length > maxChars && cur) {
+        lines.push(cur);
+        cur = w;
+      } else cur = candidate;
+    }
+    if (cur) lines.push(cur);
+    return lines.join('\n');
+  }
+
+  function escapeDrawtext(text) {
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/:/g, '\\:')
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/,/g, '\\,')
+      .replace(/%/g, '\\%')
+      .replace(/</g, '\\<')
+      .replace(/>/g, '\\>')
+      .replace(/&/g, 'et')
+      .replace(/[^\x00-\x7F]/g, c => {
+        // Keep common accented chars, remove others
+        const safe = 'àâäéèêëîïôœùûüÿçÀÂÄÉÈÊËÎÏÔŒÙÛÜŸÇ';
+        return safe.includes(c) ? c : '?';
+      });
+  }
+
+  function hexToFFColor(hex) {
+    const h = hex.replace('#', '');
+    if (h.length === 6) return `0x${h.toUpperCase()}`;
+    return '0xFFFFFF';
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Render results ──
+  function renderResults(results) {
+    const grid = document.getElementById('results-grid');
+    const title = document.getElementById('results-title');
+    if (title) title.textContent = `🎉 ${results.length} clip${results.length > 1 ? 's' : ''} prêt${results.length > 1 ? 's' : ''} !`;
+
+    grid.innerHTML = results.map((r, i) => {
+      const url = URL.createObjectURL(r.blob);
+      return `
+      <div class="result-card">
+        <div class="result-thumb">
+          <video src="${url}" muted playsinline loop style="width:100%;height:100%;object-fit:cover" onmouseover="this.play()" onmouseout="this.pause();this.currentTime=0"></video>
+        </div>
+        <div class="result-info">
+          <div class="result-title">${escHtml(r.title.substring(0, 50))}</div>
+          <div class="result-dur">${(r.blob.size / 1e6).toFixed(1)} MB · 9:16</div>
+          <button class="btn-dl" onclick="V2.download('${url}','${r.filename}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Télécharger
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+    setState('results');
+  }
+
+  function download(url, filename) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  function restart() {
+    _file = null; _ytUrl = ''; _segments = []; _clips = [];
+    _selectedIds.clear(); _watermarkFile = null;
+    const fi = document.getElementById('file-input'); if (fi) fi.value = '';
+    const yi = document.getElementById('yt-url'); if (yi) yi.value = '';
+    const dz = document.getElementById('drop-zone'); if (dz) dz.classList.remove('has-file');
+    const dn = document.getElementById('drop-filename'); if (dn) dn.style.display = 'none';
+    document.getElementById('btn-analyze').disabled = true;
+    setState('upload');
+  }
+
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart };
+})();
+
+document.addEventListener('DOMContentLoaded', V2.init);
+</script>
+</body>
+</html>
