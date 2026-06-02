@@ -2005,7 +2005,7 @@ const V2 = (() => {
       const hookTxt = escapeDrawtext(opts.hookText || '');
       if (hookTxt) {
         const hookPosY = opts.hookPos === 'top' ? 'h*0.08' : '(h-text_h)/2';
-        const hookPart = `drawtext=text='${hookTxt}':fontsize=${Math.round(opts.fontSize * 0.9)}:fontcolor=${hexToFFColor(opts.hookColor)}:x=(w-text_w)/2:y=${hookPosY}:box=1:boxcolor=0x000000CC:boxborderw=18:enable='between(t,0,3)'${_fontData ? ':fontfile=/fonts/Bold.ttf' : ''}`;
+        const hookPart = `drawtext=text='${hookTxt}':fontsize=${Math.round(opts.fontSize * 0.9)}:fontcolor=${hexToFFColor(opts.hookColor)}:x=(w-text_w)/2:y=${hookPosY}:box=1:boxcolor=0x000000CC:boxborderw=18:enable='between(t,0,3)'`;
         vf = vf ? `${vf},${hookPart}` : hookPart;
       }
     }
@@ -2058,7 +2058,7 @@ const V2 = (() => {
     const fontSize = opts.fontSize || 70;
     const colorText = hexToFFColor(opts.colorText || '#ffffff');
     const colorBg = hexToFFColor(opts.colorBg || '#000000');
-    const fontFlag = _fontData ? ':fontfile=/fonts/Bold.ttf' : '';
+    const fontFlag = '';
 
     // Y position — depuis opts.subY (position drag) ou fallback bas de vidéo
     const subYpct = opts.subY ?? 82;
@@ -2084,8 +2084,8 @@ const V2 = (() => {
       return `drawtext=text='${txt}':${sp}:x=(w-text_w)/2:y=${yPos}${fontFlag}:enable='between(t,${s.t0},${s.t1})'`;
     });
 
-    // Return at most 120 segments to avoid filter string overflow
-    return parts.slice(0, 120).join(',');
+    // Return at most 40 segments to avoid filter string overflow in ffmpeg wasm
+    return parts.slice(0, 40).join(',');
   }
 
   // ── Text helpers ──
