@@ -1987,145 +1987,167 @@ const V2 = (() => {
   }
 
   // ── Subtitle burning ──
+  // ── Subtitle burn via Canvas + MediaRecorder (fiable, pas besoin de libass/freetype) ──
   async function burnSubtitles(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
+    const hasContent = segments.some(s => (s.text || s.word || '').trim()) ||
+                       (opts.hookEnabled && opts.hookText);
+    if (!hasContent) return videoBlob;
+
+    const webmBlob = await renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct);
+
+    // Re-encoder webm → mp4 via ffmpeg (codec seulement, pas de filtre)
+    if (onPct) onPct(80);
     const ffmpeg = await loadFFmpeg();
-    const videoData = new Uint8Array(await videoBlob.arrayBuffer());
-    await ffmpeg.writeFile('/sb_in.mp4', videoData);
-
-    // Construire le fichier ASS (beaucoup plus fiable que drawtext chaîné)
-    const assContent = buildASSFile(segments, clipStart, clipEnd, opts);
-
-    let cmd = ['-i', '/sb_in.mp4'];
-    let vf = null;
-
-    if (assContent) {
-      const assBytes = new TextEncoder().encode(assContent);
-      await ffmpeg.writeFile('/subs.ass', assBytes);
-      vf = 'ass=/subs.ass';
-    }
-
-    // Watermark
-    if (opts.wmEnabled && _watermarkFile) {
-      const wmData = new Uint8Array(await _watermarkFile.arrayBuffer());
-      await ffmpeg.writeFile('/logo.png', wmData);
-      cmd = ['-i', '/sb_in.mp4', '-i', '/logo.png'];
-      const posMap = { tr: 'W-w-20:20', tl: '20:20', br: 'W-w-20:H-h-20', bl: '20:H-h-20' };
-      const pos = posMap[opts.wmPos] || posMap.tr;
-      const alpha = (opts.wmOpacity ?? 0.8).toFixed(2);
-      const wmFilter = `[1:v]scale=iw*0.12:-1,format=rgba,colorchannelmixer=aa=${alpha}[logo];[0:v][logo]overlay=${pos}`;
-      vf = vf ? `${wmFilter}[wtmp];[wtmp]${vf}` : wmFilter;
-    }
-
-    if (vf) {
-      cmd.push('-vf', vf, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22');
-    } else {
-      cmd.push('-c:v', 'copy');
-    }
-    cmd.push('-c:a', 'copy', '/sb_out.mp4');
-
-    const handler = ({ progress }) => { if (onPct) onPct(Math.round(progress * 100)); };
-    ffmpeg.on('progress', handler);
-    try {
-      await ffmpeg.exec(cmd);
-      ffmpeg.off('progress', handler);
-      const out = await ffmpeg.readFile('/sb_out.mp4');
-      if (!out || out.length === 0) throw new Error('Encodage sous-titres échoué (fichier vide)');
-      return new Blob([out], { type: 'video/mp4' });
-    } finally {
-      ffmpeg.off('progress', handler);
-      try { await ffmpeg.deleteFile('/sb_in.mp4'); } catch {}
-      try { await ffmpeg.deleteFile('/sb_out.mp4'); } catch {}
-      try { await ffmpeg.deleteFile('/subs.ass'); } catch {}
-      try { if (opts.wmEnabled) await ffmpeg.deleteFile('/logo.png'); } catch {}
-    }
+    const data = new Uint8Array(await webmBlob.arrayBuffer());
+    await ffmpeg.writeFile('/conv_in.webm', data);
+    await ffmpeg.exec(['-i', '/conv_in.webm', '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '/conv_out.mp4']);
+    const out = await ffmpeg.readFile('/conv_out.mp4');
+    try { await ffmpeg.deleteFile('/conv_in.webm'); } catch {}
+    try { await ffmpeg.deleteFile('/conv_out.mp4'); } catch {}
+    if (!out || out.length === 0) throw new Error('Re-encodage mp4 échoué');
+    return new Blob([out], { type: 'video/mp4' });
   }
 
-  function toASSTime(secs) {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = (secs % 60).toFixed(2).padStart(5, '0');
-    return `${h}:${String(m).padStart(2,'0')}:${s}`;
-  }
+  function renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.playsInline = true;
+      video.muted = true;
+      const canvas = document.createElement('canvas');
+      canvas.width = 720; canvas.height = 1280;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const url = URL.createObjectURL(videoBlob);
 
-  function hexToASS(hex) {
-    // ASS color = &HAABBGGRR
-    const h = (hex || '#ffffff').replace('#', '').padEnd(6, '0');
-    return `&H00${h.slice(4,6)}${h.slice(2,4)}${h.slice(0,2)}`.toUpperCase();
-  }
+      video.onloadedmetadata = () => {
+        const dur = video.duration;
+        const stream = canvas.captureStream(30);
 
-  function buildASSFile(segments, clipStart, clipEnd, opts) {
-    const relSegs = segments
-      .filter(s => {
-        const ss = s.start ?? s.offset ?? 0;
-        const se = s.end ?? (ss + (s.duration ?? 2));
-        return ss < clipEnd && se > clipStart;
-      })
-      .map(s => {
-        const ss = s.start ?? s.offset ?? 0;
-        const se = s.end ?? (ss + (s.duration ?? 2));
-        return {
-          text: (s.text || s.word || '').trim().replace(/\n/g, ' '),
-          t0: Math.max(0, ss - clipStart),
-          t1: Math.min(clipEnd - clipStart, se - clipStart),
+        // Capturer l'audio sans jouer dans les haut-parleurs
+        let audioCtx;
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaElementSource(video);
+          const dest = audioCtx.createMediaStreamDestination();
+          src.connect(dest);
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        } catch(e) {}
+
+        const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+          .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+        const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
+        const chunks = [];
+        rec.ondataavailable = e => { if (e.data?.size > 0) chunks.push(e.data); };
+        rec.onstop = async () => {
+          URL.revokeObjectURL(url);
+          if (audioCtx) audioCtx.close().catch(() => {});
+          resolve(new Blob(chunks, { type: mimeType }));
         };
-      })
-      .filter(s => s.text.length > 0 && s.t1 > s.t0)
-      .slice(0, 100);
 
-    const fontSize = opts.fontSize || 70;
-    const ct = hexToASS(opts.colorText || '#ffffff');
-    const cb = hexToASS(opts.colorBg || '#000000');
-    const subYpct = opts.subY ?? 82;
-    const marginV = Math.round((1 - subYpct / 100) * 1280);
+        let raf;
+        const draw = () => {
+          ctx.drawImage(video, 0, 0, 720, 1280);
+          const t = video.currentTime;
+          const absT = t + clipStart;
 
-    // Style selon le mode choisi
-    const styleMap = {
-      bold:      `Style: Default,Arial,${fontSize},${ct},${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1`,
-      minimal:   `Style: Default,Arial,${fontSize},${ct},${ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,${marginV},1`,
-      karaoke:   `Style: Default,Arial,${fontSize},&H0000E8FF,${ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,${marginV},1`,
-      neon:      `Style: Default,Arial,${fontSize},${ct},${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,${marginV},1`,
-      spotlight: `Style: Default,Arial,${fontSize},${ct},${ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,${marginV},1`,
-      typewriter:`Style: Default,Arial,${fontSize},${ct},${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1`,
-      wordpop:   `Style: Default,Arial,${fontSize},${ct},${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1`,
-      slide:     `Style: Default,Arial,${fontSize},${ct},${ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,${marginV},1`,
-      shake:     `Style: Default,Arial,${fontSize},${ct},${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1`,
-      wave:      `Style: Default,Arial,${fontSize},&H006BFF6B,${ct},${cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1`,
-    };
-    const styleLine = styleMap[opts.style] || styleMap.bold;
+          // Sous-titres
+          const seg = segments.find(s => {
+            const ss = s.start ?? s.offset ?? 0;
+            const se = s.end ?? (ss + (s.duration ?? 2));
+            return absT >= ss && absT < se;
+          });
+          if (seg) {
+            const txt = (seg.text || seg.word || '').trim();
+            if (txt) _drawSubCanvas(ctx, txt, opts, 720, 1280);
+          }
+          // Hook
+          if (opts.hookEnabled && opts.hookText && t < 3)
+            _drawHookCanvas(ctx, opts.hookText, opts, 720, 1280);
 
-    // Style hook (en haut, fond noir)
-    const hookMarginV = 80;
-    const hookStyle = `Style: Hook,Arial,${Math.round(fontSize * 0.9)},${ct},${ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,${hookMarginV},1`;
+          if (onPct && dur > 0) onPct(Math.round(t / dur * 78));
+          if (!video.ended && !video.paused) raf = requestAnimationFrame(draw);
+        };
 
-    const lines = [
-      '[Script Info]',
-      'ScriptType: v4.00+',
-      'PlayResX: 720',
-      'PlayResY: 1280',
-      'WrapStyle: 1',
-      '',
-      '[V4+ Styles]',
-      'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-      styleLine,
-      hookStyle,
-      '',
-      '[Events]',
-      'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
-    ];
+        video.onended = () => {
+          cancelAnimationFrame(raf);
+          ctx.drawImage(video, 0, 0, 720, 1280);
+          setTimeout(() => rec.stop(), 200);
+        };
+        video.onerror = () => reject(new Error('Erreur lecture vidéo canvas'));
 
-    // Hook sur les 3 premières secondes
-    if (opts.hookEnabled && opts.hookText) {
-      const hookTxt = opts.hookText.replace(/\n/g, '\\N');
-      const clipDur = clipEnd - clipStart;
-      lines.push(`Dialogue: 0,${toASSTime(0)},${toASSTime(Math.min(3, clipDur))},Hook,,0,0,0,,${hookTxt}`);
-    }
-
-    // Sous-titres
-    relSegs.forEach(s => {
-      lines.push(`Dialogue: 0,${toASSTime(s.t0)},${toASSTime(s.t1)},Default,,0,0,0,,${s.text}`);
+        rec.start(200);
+        video.play().then(() => draw()).catch(reject);
+      };
+      video.onerror = () => reject(new Error('Chargement vidéo échoué'));
+      video.src = url;
+      video.load();
     });
+  }
 
-    return relSegs.length > 0 || (opts.hookEnabled && opts.hookText) ? lines.join('\n') : null;
+  function _drawSubCanvas(ctx, text, opts, w, h) {
+    const fontSize = opts.fontSize || 70;
+    const subYpct = opts.subY ?? 82;
+    const colorText = opts.colorText || '#ffffff';
+    const colorBg = opts.colorBg || '#000000';
+    const style = opts.style || 'bold';
+    ctx.save();
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const maxW = w * 0.88;
+    // Wrap
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const wd of words) {
+      const test = cur ? `${cur} ${wd}` : wd;
+      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = wd; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    const lh = fontSize * 1.25;
+    let y = h * subYpct / 100 - (lines.length - 1) * lh;
+    for (const line of lines) {
+      const tw = ctx.measureText(line).width;
+      if (['minimal','spotlight','slide'].includes(style)) {
+        ctx.fillStyle = style === 'spotlight' ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.55)';
+        const pad = 14;
+        ctx.fillRect(w/2 - tw/2 - pad, y - fontSize - 4, tw + pad*2, fontSize + 16);
+      } else if (style === 'karaoke') {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        const pad = 8;
+        ctx.fillRect(w/2 - tw/2 - pad, y - fontSize - 4, tw + pad*2, fontSize + 16);
+      }
+      if (!['minimal','spotlight','slide'].includes(style)) {
+        ctx.strokeStyle = colorBg;
+        ctx.lineWidth = style === 'neon' ? 9 : 5;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(line, w/2, y, maxW);
+      }
+      ctx.fillStyle = style === 'karaoke' ? '#FFE000'
+                    : style === 'neon' ? '#00FF9C'
+                    : style === 'wave' ? '#6BFF6B'
+                    : colorText;
+      ctx.fillText(line, w/2, y, maxW);
+      y += lh;
+    }
+    ctx.restore();
+  }
+
+  function _drawHookCanvas(ctx, text, opts, w, h) {
+    const fontSize = Math.round((opts.fontSize || 70) * 0.9);
+    ctx.save();
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const maxW = w * 0.88;
+    const tw = Math.min(ctx.measureText(text).width, maxW);
+    const y = h * 0.12;
+    const pad = 18;
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
+    ctx.fillRect(w/2 - tw/2 - pad, y - fontSize - 6, tw + pad*2, fontSize + 20);
+    ctx.fillStyle = opts.hookColor || '#ffffff';
+    ctx.fillText(text, w/2, y, maxW);
+    ctx.restore();
   }
 
   // ── Text helpers ──
