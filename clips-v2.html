@@ -482,7 +482,7 @@
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
         <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
         <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
-        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:88%;text-align:center;pointer-events:none;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px"></div>
+        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:88%;text-align:center;pointer-events:all;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px;cursor:grab"></div>
         <div class="modal-play-overlay paused" id="modal-play-overlay">
           <div class="modal-play-btn-big paused" id="modal-play-btn">
             <svg class="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
@@ -1121,14 +1121,27 @@ const V2 = (() => {
       _applySubPosition(subEl, opts.subY ?? 82);
     }
 
-    // Hook overlay — toujours visible dans l'éditeur quand activé (pour pouvoir le déplacer)
+    // Hook overlay
     if (hookEl && !hookEl.matches(':focus')) {
       const hookTxt = document.getElementById('modal-hook-txt')?.value || opts.hookText || '';
       const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
       if (hookOn && hookTxt) {
+        const inWindow = rel >= 0 && rel < 3;
+        if (video.paused) {
+          // En pause : toujours visible pour pouvoir le placer
+          // Contour pointillé si hors de la fenêtre 0-3s pour indiquer la position
+          hookEl.style.display = 'block';
+          hookEl.style.opacity = '1';
+          hookEl.style.outline = inWindow ? 'none' : '1.5px dashed rgba(255,255,255,0.5)';
+          hookEl.style.background = inWindow ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.25)';
+        } else {
+          // En lecture : disparaît complètement après 3s
+          hookEl.style.display = inWindow ? 'block' : 'none';
+          hookEl.style.opacity = '1';
+          hookEl.style.outline = 'none';
+          hookEl.style.background = 'rgba(0,0,0,0.55)';
+        }
         hookEl.textContent = hookTxt;
-        hookEl.style.display = 'block';
-        hookEl.style.opacity = (rel >= 0 && rel < 3) ? '1' : '0.35'; // semi-transparent hors des 3s
         _applySubPosition(hookEl, opts.hookY ?? 10);
       } else {
         hookEl.style.display = 'none';
