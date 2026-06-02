@@ -659,7 +659,15 @@ const V2 = (() => {
     const setMsg = t => { const el = document.getElementById('analyze-msg'); if (el) el.textContent = t; };
 
     try {
+      // Attendre que la session Supabase soit chargée (async)
+      if (typeof Auth !== 'undefined') await Auth.getSession().catch(() => {});
       const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      if (!token) {
+        setState('upload');
+        toast('❌ Connexion requise — connecte-toi sur creatis.app/auth', 'erreur', 6000);
+        setTimeout(() => { window.location.href = '/auth.html?redirect=/clips-v2'; }, 1500);
+        return;
+      }
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
       if (_ytUrl) {

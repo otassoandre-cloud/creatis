@@ -1054,9 +1054,6 @@ class AppCreatis {
             Créer les Shorts
           </button>
 
-          <a href="/clips-v2" style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:13px;font-weight:700;color:var(--vert);text-decoration:none;padding:8px 18px;border:1px solid rgba(16,185,129,0.3);border-radius:8px;background:rgba(16,185,129,0.07);transition:all .2s" onmouseover="this.style.background='rgba(16,185,129,0.14)'" onmouseout="this.style.background='rgba(16,185,129,0.07)'">
-            ✨ Essayer Studio V2 — sous-titres, sélection, hook, watermark
-          </a>
         </div>
 
         <div id="clips-results-${agent.id}" class="clips-results-zone"></div>
