@@ -851,7 +851,7 @@ const V2 = (() => {
         formData.append('model', 'whisper-large-v3-turbo');
         formData.append('response_format', 'verbose_json');
         formData.append('language', 'fr');
-        const transcribeRes = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const transcribeRes = await fetch('/api/groq', { method: 'POST', body: formData });
         const transcribeData = await transcribeRes.json();
         if (!transcribeData.ok) throw new Error(transcribeData.error || 'Transcription échouée');
         _segments = transcribeData.segments || [];
