@@ -2224,6 +2224,19 @@ const V2 = (() => {
   }
 
   function download(url, filename) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      // iOS Safari bloque <a download> dans les iframes — ouvrir dans nouvel onglet
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast('📱 Appuie longuement sur la vidéo → "Enregistrer la vidéo"', 'info', 7000);
+      return;
+    }
     const a = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
