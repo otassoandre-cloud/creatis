@@ -2223,19 +2223,28 @@ const V2 = (() => {
     setState('results');
   }
 
-  function download(url, filename) {
-    const isInIframe = window !== window.top;
+  async function download(url, filename) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (isIOS && isInIframe) {
-      // iOS Safari + iframe : envoyer le blob au parent pour télécharger depuis le contexte top-level
-      fetch(url).then(r => r.arrayBuffer()).then(buffer => {
-        window.parent.postMessage({ type: 'creatis_download', buffer, filename }, '*', [buffer]);
-      }).catch(() => {
-        window.open(url, '_blank');
-      });
+    if (isIOS) {
+      try {
+        // Web Share API — ouvre la feuille de partage iOS native (Enregistrer dans Photos, AirDrop…)
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: 'video/mp4' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+      } catch(e) {
+        if (e.name === 'AbortError') return; // user cancelled
+      }
+      // Fallback : ouvrir dans un nouvel onglet
+      window.open(url, '_blank');
       return;
     }
+
+    // Desktop / Android
     const a = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
