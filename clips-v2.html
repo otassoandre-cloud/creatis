@@ -1246,12 +1246,12 @@ const V2 = (() => {
         el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 5px ${cb},-1px -1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
       }
     }
-    // Commun — centrage via left:4% au lieu de transform:translateX(-50%)
-    // pour ne pas confliter avec les animations shake/slide qui utilisent transform
+    // Commun — left:4% + right:4% + width:auto = centrage sans transform (pas de conflit avec animations)
     el.style.position = 'absolute';
     el.style.left = '4%';
+    el.style.right = '4%';
+    el.style.width = 'auto';
     el.style.transform = '';
-    el.style.width = '92%';
     el.style.textAlign = 'center';
     el.style.zIndex = '5';
     el.style.wordWrap = 'break-word';
@@ -1872,22 +1872,27 @@ const V2 = (() => {
     const colorBg = hexToFFColor(opts.colorBg || '#000000');
     const fontFlag = _fontData ? ':fontfile=/fonts/Bold.ttf' : '';
 
-    // Y position
-    const yMap = { low: `h-${Math.round(fontSize * 2.2)}`, mid: '(h-text_h)/2', 'low-mid': `h*0.68` };
-    const yPos = yMap[opts.position] || yMap.low;
+    // Y position — depuis opts.subY (position drag) ou fallback bas de vidéo
+    const subYpct = opts.subY ?? 82;
+    const yPos = `h*${(subYpct / 100).toFixed(3)}-text_h`;
 
     const styleParams = {
-      bold: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=3:shadowy=3:shadowcolor=${colorBg}@0.8`,
-      minimal: `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.55:boxborderw=16:borderw=0`,
-      karaoke: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=4:bordercolor=0x00000088:box=1:boxcolor=0x00000033:boxborderw=10`,
-      neon: `fontsize=${fontSize}:fontcolor=${colorText}:borderw=7:bordercolor=${colorBg}@0.5:shadowx=0:shadowy=0:shadowcolor=${colorText}@0.6`,
+      bold:      `fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=3:shadowy=3:shadowcolor=${colorBg}@0.8`,
+      minimal:   `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.55:boxborderw=16:borderw=0`,
+      karaoke:   `fontsize=${fontSize}:fontcolor=${colorText}:borderw=4:bordercolor=0x00000088:box=1:boxcolor=0x00000033:boxborderw=10`,
+      neon:      `fontsize=${fontSize}:fontcolor=${colorText}:borderw=7:bordercolor=${colorBg}@0.5:shadowx=0:shadowy=0:shadowcolor=${colorText}@0.6`,
       spotlight: `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.82:boxborderw=36:borderw=0`,
+      typewriter:`fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=2:shadowy=2:shadowcolor=${colorBg}@0.8`,
+      wordpop:   `fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=3:shadowy=3:shadowcolor=${colorBg}@0.8`,
+      slide:     `fontsize=${fontSize}:fontcolor=${colorText}:box=1:boxcolor=${colorBg}@0.75:boxborderw=20:borderw=0`,
+      shake:     `fontsize=${fontSize}:fontcolor=${colorText}:borderw=5:bordercolor=${colorBg}:shadowx=3:shadowy=3:shadowcolor=${colorBg}@0.8`,
+      wave:      `fontsize=${fontSize}:fontcolor=0xFF6B6B:borderw=4:bordercolor=${colorBg}:shadowx=2:shadowy=2`,
     };
     const sp = styleParams[opts.style] || styleParams.bold;
 
     const parts = relSegs.map(s => {
-      const lines = wrapText(s.text, 28);
-      const txt = escapeDrawtext(lines);
+      // Pas de wrapText — texte sur une ligne pour que text_w = largeur réelle = centrage correct
+      const txt = escapeDrawtext(s.text);
       return `drawtext=text='${txt}':${sp}:x=(w-text_w)/2:y=${yPos}${fontFlag}:enable='between(t,${s.t0},${s.t1})'`;
     });
 
