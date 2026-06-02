@@ -1855,8 +1855,11 @@ const V2 = (() => {
         const segEdits = opts.segEdits || {};
         const patchedSegments = _segments.map(s => {
           const key = `${s.start?.toFixed(2)}_${s.end?.toFixed(2)}`;
-          return segEdits[key] !== undefined ? { ...s, text: segEdits[key] } : s;
-        }).filter(s => s.text && s.text.trim() !== '');
+          if (segEdits[key] !== undefined) return { ...s, text: segEdits[key] };
+          // Normaliser : Railway peut retourner .word au lieu de .text
+          if (!s.text && s.word) return { ...s, text: s.word };
+          return s;
+        });
         const burned = await burnSubtitles(reframedBlob, patchedSegments, start, end, opts, pct => { if (onPct) onPct(68 + Math.round(pct * 0.28)); });
         if (burned.size === 0) throw new Error('burnSubtitles a produit un fichier vide');
         finalBlob = burned;
