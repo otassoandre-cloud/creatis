@@ -598,6 +598,15 @@
           <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--vert);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
         </div>
 
+        <!-- Reframe mode -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--texte-doux)">Face tracking</div>
+            <div style="font-size:11px;color:var(--texte-muted)">Crop intelligent — idéal vlogs/IRL, désactive pour gaming</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="modal-face-track" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+        </div>
+
         <div style="height:1px;background:var(--bordure)"></div>
 
         <!-- Bouton modifier sous-titres -->
@@ -1074,6 +1083,7 @@ const V2 = (() => {
       hookPos: globalOpts.hookPos || 'top',
       subY: 82,
       hookY: 10,
+      reframeMode: 'center',
       wmEnabled: globalOpts.wmEnabled || false,
       wmPos: globalOpts.wmPos || 'tr',
       wmOpacity: globalOpts.wmOpacity || 0.8,
@@ -1466,6 +1476,7 @@ const V2 = (() => {
       wmOpacity: prev.wmOpacity ?? 0.8,
       subY: prev.subY ?? 82,
       hookY: prev.hookY ?? 10,
+      reframeMode: document.getElementById('modal-face-track')?.checked ? 'face' : 'center',
       segEdits: prev.segEdits || {},
     };
   }
@@ -1968,7 +1979,8 @@ const V2 = (() => {
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText  || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
-    form.append('hook_y',     String(opts.hookY ?? 10));
+    form.append('hook_y',       String(opts.hookY ?? 10));
+    form.append('reframe_mode', opts.reframeMode || 'center');
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
     // Railway renvoie le fichier vidéo directement (blob) — plus de temp URL
