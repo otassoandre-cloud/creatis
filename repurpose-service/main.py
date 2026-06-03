@@ -1325,9 +1325,12 @@ async def process_clip_endpoint(
     hook_enabled: str = "false",
     hook_text: str = "",
     hook_color: str = "#ffffff",
+    clip_start: float = -1.0,
+    clip_end: float = -1.0,
     _=Depends(auth)
 ):
-    """Reframe 9:16 (face tracking) + burn sous-titres en une seule passe. Retourne URL directe."""
+    """Reframe 9:16 (face tracking) + burn sous-titres en une seule passe. Retourne URL directe.
+    clip_start/clip_end : si fournis, coupe le fichier côté serveur (évite FFmpeg.wasm sur iOS)."""
     import shutil, json as _json, subprocess
     job_id = uuid.uuid4().hex[:10]
     tmp_dir = WORK_DIR / f"pc_{job_id}"
@@ -1339,6 +1342,19 @@ async def process_clip_endpoint(
     try:
         with open(in_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
+
+        # Coupe côté serveur si start/end fournis (iOS : évite FFmpeg.wasm client)
+        if clip_start >= 0 and clip_end > clip_start:
+            cut_path = tmp_dir / "cut.mp4"
+            cut_cmd = ["ffmpeg", "-y", "-loglevel", "error",
+                       "-ss", str(clip_start), "-to", str(clip_end),
+                       "-i", str(in_path), "-c", "copy", str(cut_path)]
+            r_cut = subprocess.run(cut_cmd, capture_output=True, timeout=120)
+            if r_cut.returncode == 0 and cut_path.exists() and cut_path.stat().st_size > 0:
+                in_path = cut_path
+                logger.info(f"[process-clip] coupe serveur {clip_start:.1f}→{clip_end:.1f}s OK")
+            else:
+                logger.warning(f"[process-clip] coupe serveur échouée, utilise fichier entier")
 
         # Étape 1 : reframe 9:16 avec face tracking (sémaphore anti-OOM)
         async with _get_ffmpeg_sem():
