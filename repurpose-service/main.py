@@ -1361,7 +1361,7 @@ async def process_clip_endpoint(
         margin_v = int((1 - sub_y / 100) * 1280)
 
         has_subs = bool(segs) or (hook_bool and hook_text)
-        F = "Liberation Sans"
+        F = "DejaVu Sans"
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
             "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
