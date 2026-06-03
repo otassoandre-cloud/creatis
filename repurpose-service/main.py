@@ -1325,6 +1325,7 @@ async def process_clip_endpoint(
     hook_enabled: str = Form("false"),
     hook_text: str = Form(""),
     hook_color: str = Form("#ffffff"),
+    hook_y: float = Form(10.0),
     clip_start: float = Form(-1.0),
     clip_end: float = Form(-1.0),
     _=Depends(auth)
@@ -1400,7 +1401,9 @@ async def process_clip_endpoint(
             "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
-        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
+        hc = hex_to_ass(hook_color)
+        hook_margin_v = max(20, int(hook_y / 100 * 1280))
+        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,{hook_margin_v},1"
 
         if has_subs and style != "none":
             ass_lines = [

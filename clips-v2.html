@@ -1968,6 +1968,7 @@ const V2 = (() => {
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText  || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
+    form.append('hook_y',     String(opts.hookY ?? 10));
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
     // Railway renvoie le fichier vidéo directement (blob) — plus de temp URL
