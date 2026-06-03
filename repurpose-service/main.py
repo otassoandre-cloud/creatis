@@ -45,15 +45,6 @@ CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 UPLOAD_JOBS:  dict = {}
 
-# Limite les ffmpeg lourds en parallèle — initialisé au premier appel async
-_FFMPEG_SEM = None
-
-def _get_ffmpeg_sem():
-    global _FFMPEG_SEM
-    if _FFMPEG_SEM is None:
-        _FFMPEG_SEM = asyncio.Semaphore(1)
-    return _FFMPEG_SEM
-
 
 _bgutil_ok: bool = False
 
@@ -600,23 +591,7 @@ def _get_video_dimensions(in_path: str):
     )
     streams = json.loads(r.stdout).get("streams", []) if r.returncode == 0 else []
     v = next((s for s in streams if s.get("codec_type") == "video"), {})
-    w = int(v.get("width", 1920))
-    h = int(v.get("height", 1080))
-    # Rotation metadata : vidéos iPhone/Android encodées en paysage avec rotate=90/270
-    # ffprobe retourne les dimensions codées, ffmpeg les applique — on swap pour le vrai ratio
-    rotation = 0
-    try:
-        rotation = int(v.get("tags", {}).get("rotate", 0))
-    except (ValueError, TypeError):
-        pass
-    for sd in v.get("side_data_list", []):
-        if "rotation" in sd:
-            try: rotation = abs(int(sd["rotation"]))
-            except (ValueError, TypeError): pass
-    if abs(rotation) in (90, 270):
-        w, h = h, w
-    logger.info(f"[dimensions] {in_path.split('/')[-1]}: {w}x{h} (rotation={rotation})")
-    return w, h
+    return int(v.get("width", 1920)), int(v.get("height", 1080))
 
 
 def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -> None:
@@ -624,74 +599,67 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     target_ratio = tw / th
 
     src_w, src_h = _get_video_dimensions(in_path)
-    src_ratio = src_w / src_h
 
-    # Déjà au bon ratio (±1.5%) → juste scale à 720×1280, pas de crop
-    if abs(src_ratio - target_ratio) / target_ratio < 0.015:
-        logger.info(f"[reframe] already {aspect_ratio} ({src_w}x{src_h}) — scale only, no crop")
-        vf = "scale=720:1280"
+    # Calcule le crop 9:16 centré
+    if target_ratio < src_w / src_h:
+        crop_w = int(src_h * target_ratio)
+        crop_h = src_h
     else:
-        # Calcule le crop vers le ratio cible
-        if target_ratio < src_ratio:
-            crop_w = int(src_h * target_ratio)
-            crop_h = src_h
+        crop_w = src_w
+        crop_h = int(src_w / target_ratio)
+    crop_w = max(2, crop_w - crop_w % 2)
+    crop_h = max(2, crop_h - crop_h % 2)
+
+    x_default = (src_w - crop_w) // 2
+    y0 = (src_h - crop_h) // 2
+
+    # Face tracking : 3 frames max, resize à 640px pour vitesse
+    x_crop = x_default
+    try:
+        import cv2
+        cap = cv2.VideoCapture(in_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
+        centers = []
+        for fi in sample_frames:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            # Resize à 640px max pour accélérer la détection sur 4K
+            h, w = frame.shape[:2]
+            scale = min(1.0, 640 / w)
+            if scale < 1.0:
+                frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
+            if len(faces) > 0:
+                fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+                centers.append(int((fx + fw // 2) / scale))
+        cap.release()
+        if centers:
+            median_cx = sorted(centers)[len(centers) // 2]
+            x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
+            logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
         else:
-            crop_w = src_w
-            crop_h = int(src_w / target_ratio)
-        crop_w = max(2, crop_w - crop_w % 2)
-        crop_h = max(2, crop_h - crop_h % 2)
+            logger.info("Face tracking: aucun visage — crop centré")
+    except Exception as e:
+        logger.info(f"Face tracking skipped ({e}) — crop centré")
 
-        x_default = (src_w - crop_w) // 2
-        y0 = (src_h - crop_h) // 2
-
-        # Face tracking : 3 frames max, resize à 640px pour vitesse
-        x_crop = x_default
-        try:
-            import cv2
-            cap = cv2.VideoCapture(in_path)
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-            sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
-            centers = []
-            for fi in sample_frames:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
-                ret, frame = cap.read()
-                if not ret:
-                    continue
-                h, w = frame.shape[:2]
-                scale = min(1.0, 640 / w)
-                if scale < 1.0:
-                    frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
-                if len(faces) > 0:
-                    fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-                    centers.append(int((fx + fw // 2) / scale))
-            cap.release()
-            if centers:
-                median_cx = sorted(centers)[len(centers) // 2]
-                x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
-                logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
-            else:
-                logger.info("Face tracking: aucun visage — crop centré")
-        except Exception as e:
-            logger.info(f"Face tracking skipped ({e}) — crop centré")
-
-        # Pre-scale uniquement pour les vraies 4K (> 2× la résolution 1080p)
-        # Évite de déclencher ce chemin sur des vidéos portrait 1080x1920 standard
-        if src_w * src_h > 2 * 1920 * 1080:
-            sx = min(1920 / src_w, 1080 / src_h)
-            pw = int(src_w * sx / 2) * 2
-            ph = int(src_h * sx / 2) * 2
-            cw = max(2, int(crop_w * sx / 2) * 2)
-            ch = max(2, int(crop_h * sx / 2) * 2)
-            xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
-            yy = max(0, int(y0 * sx))
-            vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
-            logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
-        else:
-            vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
-            logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
+    # Si > 1080p : pre-scale pour eviter OOM (4K = 512MB insuffisant sur Railway)
+    if src_w > 1920 or src_h > 1080:
+        sx = min(1920 / src_w, 1080 / src_h)
+        pw = int(src_w * sx / 2) * 2
+        ph = int(src_h * sx / 2) * 2
+        cw = max(2, int(crop_w * sx / 2) * 2)
+        ch = max(2, int(crop_h * sx / 2) * 2)
+        xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
+        yy = max(0, int(y0 * sx))
+        vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
+        logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
+    else:
+        vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
@@ -708,10 +676,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     r = subprocess.run(cmd, capture_output=True, timeout=300)
     if r.returncode != 0:
         err = (r.stdout + r.stderr).decode(errors='replace')[:800]
-        if r.returncode == -9 or not err.strip():
-            logger.error(f"[reframe] ffmpeg OOM-killed (signal -9) — video too large for available memory")
-            raise RuntimeError("Vidéo trop volumineuse — réessaie dans quelques secondes")
-        logger.error(f"[reframe] ffmpeg error (code {r.returncode}): {err}")
+        logger.error(f"[reframe] ffmpeg error: {err}")
         raise RuntimeError(f"ffmpeg crop: {err}")
 
 
@@ -1339,11 +1304,10 @@ async def process_clip_endpoint(
         with open(in_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        # Étape 1 : reframe 9:16 avec face tracking (sémaphore anti-OOM)
-        async with _get_ffmpeg_sem():
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: _reframe_vertical(str(in_path), str(reframed))
-            )
+        # Étape 1 : reframe 9:16 avec face tracking
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _reframe_vertical(str(in_path), str(reframed))
+        )
         if not reframed.exists():
             raise HTTPException(500, "Reframe 9:16 échoué")
 
@@ -1367,21 +1331,20 @@ async def process_clip_endpoint(
         margin_v = int((1 - sub_y / 100) * 1280)
 
         has_subs = bool(segs) or (hook_bool and hook_text)
-        F = "DejaVu Sans"
         style_map = {
-            "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
-            "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
-            "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "typewriter":f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "bold":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "minimal":   f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "karaoke":   f"Style: Default,Arial,{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
+            "neon":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
+            "spotlight": f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "typewriter":f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "wordpop":   f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "slide":     f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "shake":     f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "wave":      f"Style: Default,Arial,{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
-        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
+        hook_style = f"Style: Hook,Arial,{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
 
         if has_subs and style != "none":
             ass_lines = [
@@ -1401,13 +1364,11 @@ async def process_clip_endpoint(
                     ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
-            # Étape 2 : burn subtitles (sous sémaphore aussi)
-            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
-            async with _get_ffmpeg_sem():
-                proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
+            # Étape 2 : burn subtitles
+            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","fast","-crf","22","-c:a","copy",str(out_path)]
+            proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
-                err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
-                print(f"[WARN] ASS burn failed (code {proc.returncode}): {err}", flush=True)
+                # Fallback : livrer sans sous-titres si ASS échoue
                 shutil.copy(reframed, out_path)
         else:
             shutil.copy(reframed, out_path)
