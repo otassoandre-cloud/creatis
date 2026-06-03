@@ -1366,9 +1366,10 @@ async def process_clip_endpoint(
 
         # Parser les segments
         segs = []
+        logger.info(f"[subs-debug] raw segments param: {repr(segments[:120]) if segments else '(empty)'} len={len(segments)}")
         if segments:
             try: segs = _json.loads(segments)
-            except: pass
+            except Exception as pe: logger.warning(f"[subs-debug] JSON parse error: {pe}")
 
         hook_bool = hook_enabled.lower() in ("true", "1", "yes")
 

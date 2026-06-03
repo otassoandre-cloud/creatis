@@ -1052,6 +1052,7 @@ const V2 = (() => {
 
   // ── Modal — per-clip settings + video player ──
   let _modalIdx = null;
+  let _pendingDownload = null; // { url, filename } — stocké après export, consommé au 2e tap iOS
   let _clipSettings = {};
   let _subRaf = null;
   let _modalVideoUrl = null;
@@ -1059,20 +1060,23 @@ const V2 = (() => {
   let _isDragging = false;
 
   function getClipOpts(i) {
-    return _clipSettings[i] || {
+    if (_clipSettings[i]) return _clipSettings[i];
+    // Pas de réglages per-clip → reprendre les options globales du panneau
+    const globalOpts = getExportOptions();
+    return {
       style: _currentStyle,
-      fontSize: 70,
-      colorText: '#ffffff',
-      colorBg: '#000000',
-      hookEnabled: false,
-      hookText: '',
-      hookColor: '#ffffff',
-      hookPos: 'top',
+      fontSize: globalOpts.fontSize || 70,
+      colorText: globalOpts.colorText || '#ffffff',
+      colorBg: globalOpts.colorBg || '#000000',
+      hookEnabled: globalOpts.hookEnabled || false,
+      hookText: globalOpts.hookText || '',
+      hookColor: globalOpts.hookColor || '#ffffff',
+      hookPos: globalOpts.hookPos || 'top',
       subY: 82,
       hookY: 10,
-      wmEnabled: false,
-      wmPos: 'tr',
-      wmOpacity: 0.8,
+      wmEnabled: globalOpts.wmEnabled || false,
+      wmPos: globalOpts.wmPos || 'tr',
+      wmOpacity: globalOpts.wmOpacity || 0.8,
       segEdits: {},
     };
   }
@@ -1615,12 +1619,21 @@ const V2 = (() => {
     if (cur) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
+  const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  function _resetModalBtn(btn) {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.onclick = () => V2.exportFromModal();
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip 9:16';
+  }
+
   async function exportFromModal() {
     if (_modalIdx === null) return;
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const status = document.getElementById('modal-dl-status');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
+    if (btn) { btn.disabled = true; btn.onclick = null; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
     if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
     try {
       const opts = getClipOpts(i);
@@ -1629,14 +1642,68 @@ const V2 = (() => {
       }, msg => {
         if (status) status.textContent = msg;
       });
-      download(result.downloadUrl, result.filename);
-      if (status) status.textContent = '✅ Téléchargé !';
-      toast('✅ Clip téléchargé !', 'succes', 3000);
+
+      if (_isIOS() && navigator.canShare) {
+        // iOS : blob déjà en mémoire (dans result.blob) — 2e tap juste pour le gesture share
+        _pendingDownload = { blob: result.blob, filename: result.filename };
+        if (status) status.textContent = 'Prêt ! Appuie sur le bouton ↓';
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '📲 Enregistrer dans Photos';
+          btn.onclick = () => V2._iosSharePending();
+        }
+      } else {
+        // Desktop / Android : objectURL + téléchargement direct
+        const objUrl = URL.createObjectURL(result.blob);
+        const a = document.createElement('a');
+        a.href = objUrl; a.download = result.filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
+        if (status) status.textContent = '✅ Téléchargé !';
+        toast('✅ Clip téléchargé !', 'succes', 3000);
+        _resetModalBtn(btn);
+      }
     } catch(err) {
-      if (status) status.textContent = `❌ ${err.message.substring(0,60)}`;
-      toast(`❌ ${err.message}`, 'erreur', 6000);
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip 9:16'; }
+      if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé.'; }
+      else {
+        if (status) status.textContent = `❌ ${err.message.substring(0, 80)}`;
+        toast(`❌ ${err.message}`, 'erreur', 6000);
+      }
+      _resetModalBtn(btn);
+    }
+  }
+
+  // Étape 2 iOS — blob déjà en mémoire, juste navigator.share dans un gesture propre
+  async function _iosSharePending() {
+    if (!_pendingDownload) return;
+    const { blob, filename } = _pendingDownload;
+    const btn = document.getElementById('modal-dl-btn');
+    const status = document.getElementById('modal-dl-status');
+    if (btn) { btn.disabled = true; }
+    try {
+      const file = new File([blob], filename, { type: 'video/mp4' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (status) status.textContent = 'Appuie sur "Enregistrer la vidéo" ↓';
+        await navigator.share({ files: [file], title: filename });
+        if (status) status.textContent = '✅ Enregistré dans Photos !';
+        toast('✅ Enregistré dans Photos !', 'succes', 3000);
+        _pendingDownload = null;
+        _resetModalBtn(btn);
+      } else {
+        // Fallback : créer objectURL et ouvrir
+        const objUrl = URL.createObjectURL(blob);
+        window.open(objUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+        if (status) status.textContent = 'Vidéo ouverte — maintiens appuyé → Enregistrer';
+        _resetModalBtn(btn);
+      }
+    } catch(err) {
+      if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé.'; }
+      else {
+        if (status) status.textContent = `❌ ${err.message.substring(0, 80)}`;
+        toast(`❌ ${err.message}`, 'erreur', 6000);
+      }
+      if (btn) { btn.disabled = false; btn.innerHTML = '📲 Enregistrer dans Photos'; btn.onclick = () => V2._iosSharePending(); }
     }
   }
 
@@ -1752,6 +1819,10 @@ const V2 = (() => {
   // ── Export ──
   async function startExport() {
     if (_selectedIds.size === 0) return;
+    if (_segments.length === 0) {
+      toast('⚠️ Aucun segment de transcription — les sous-titres ne seront pas générés. Vérifie la console (F12) pour les détails.', 'info', 6000);
+      console.warn('[startExport] _segments vide au moment de l\'export !');
+    }
     const selected = [..._selectedIds].map(i => ({ i, clip: _clips[i] }));
     const total = selected.length;
 
@@ -1796,7 +1867,7 @@ const V2 = (() => {
       setStatus('processing');
       try {
         const result = await exportSingleClip(clip, opts, pct => setPct(pct, null), msg => setPct(null, msg));
-        results.push({ downloadUrl: result.downloadUrl, filename: result.filename, title: clip.title || `Clip ${i+1}`, hook: clip.hook || '' });
+        results.push({ blob: result.blob, filename: result.filename, title: clip.title || `Clip ${i+1}`, hook: clip.hook || '' });
         setPct(100, '✅ Terminé');
         setStatus('done');
       } catch(err) {
@@ -1849,13 +1920,30 @@ const V2 = (() => {
       })
       .filter(s => s.text && s.t1 > s.t0);
 
+    console.log('[export] _segments:', _segments.length, 'patched:', patchedSegments.length, 'clip:', start, '-', end, 'style:', opts.style, 'hook:', opts.hookEnabled, opts.hookText);
+    if (_segments.length === 0 && opts.style !== 'none') {
+      console.warn('[export] _segments vide — sous-titres impossibles, style forcé à none');
+    }
+    if (patchedSegments.length === 0 && _segments.length > 0) {
+      console.warn('[export] patchedSegments vide malgré', _segments.length, 'segments — timestamps clip:', start, '-', end, '| 1er seg:', _segments[0]);
+    }
+
     if (onMsg) onMsg('Découpage…');
     if (onPct) onPct(5);
 
-    // Step 1 : couper le clip localement (rapide, -c copy)
-    let segmentBlob;
-    if (_file) {
+    // Sur iOS : skip FFmpeg.wasm (trop lent/instable) → envoyer fichier brut + timestamps à Railway
+    // Sur desktop : couper localement d'abord (plus rapide)
+    const useServerSideCut = _isIOS() && _file;
+    let segmentBlob, clipStartParam = -1, clipEndParam = -1;
+    if (_file && !useServerSideCut) {
+      if (onMsg) onMsg('Découpage local…');
       segmentBlob = await cutClipFFmpeg(_file, start, end);
+    } else if (_file && useServerSideCut) {
+      // iOS : envoyer le fichier original, Railway coupe côté serveur
+      segmentBlob = _file;
+      clipStartParam = start;
+      clipEndParam = end;
+      if (onMsg) onMsg('Envoi vers Railway…');
     } else {
       segmentBlob = await fetchClipFromRailway(clip, onPct, onMsg);
     }
@@ -1880,31 +1968,61 @@ const V2 = (() => {
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText  || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
+    if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
-    const result = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
-      xhr.timeout = 180000;
-      xhr.upload.onprogress = e => { if (e.lengthComputable && onPct) onPct(20 + Math.round(e.loaded / e.total * 30)); };
-      xhr.onprogress  = e => { if (e.lengthComputable && onPct) onPct(50 + Math.round(e.loaded / e.total * 45)); };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch { reject(new Error('Réponse Railway invalide')); }
-        } else reject(new Error(`process-clip Railway ${xhr.status}`));
-      };
-      xhr.onerror   = () => reject(new Error('Erreur réseau Railway'));
-      xhr.ontimeout = () => reject(new Error('Timeout Railway (3 min)'));
-      xhr.send(form);
-    });
-
-    if (!result.ok) throw new Error(result.error || 'process-clip échoué');
+    // Railway renvoie le fichier vidéo directement (blob) — plus de temp URL
+    let videoBlob, lastErr;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        videoBlob = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
+          xhr.responseType = 'blob';
+          xhr.timeout = 120000;
+          xhr.upload.onprogress = e => {
+            if (e.lengthComputable) {
+              if (onPct) onPct(20 + Math.round(e.loaded / e.total * 30));
+              if (onMsg) onMsg(`Envoi ${Math.round(e.loaded / e.total * 100)}%…`);
+            }
+          };
+          xhr.onprogress = e => {
+            if (e.lengthComputable) {
+              if (onPct) onPct(50 + Math.round(e.loaded / e.total * 45));
+              if (onMsg) onMsg(`Traitement ${Math.round(e.loaded / e.total * 100)}%…`);
+            }
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(xhr.response); // blob vidéo directement
+            } else {
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const e = JSON.parse(reader.result);
+                  reject(new Error(e.detail || e.error || `Erreur Railway ${xhr.status}`));
+                } catch { reject(new Error(`Erreur Railway ${xhr.status}`)); }
+              };
+              reader.readAsText(xhr.response);
+            }
+          };
+          xhr.onerror   = () => reject(Object.assign(new Error('Erreur réseau Railway'), { retryable: true }));
+          xhr.ontimeout = () => reject(Object.assign(new Error('Timeout Railway (2 min)'), { retryable: true }));
+          xhr.send(form);
+        });
+        break;
+      } catch(e) {
+        lastErr = e;
+        if (!e.retryable || attempt === 2) throw e;
+        if (onMsg) onMsg(`Connexion perdue — nouvelle tentative…`);
+        await new Promise(r => setTimeout(r, 4000));
+      }
+    }
 
     if (onPct) onPct(100);
     if (onMsg) onMsg('Prêt !');
 
-    // Retourner l'URL directe (comme V1) — iOS peut l'ouvrir dans Safari → Enregistrer
-    return { downloadUrl: result.download_url, filename: (clip.title || `clip`).replace(/[^\w\- ]/g,'').replace(/\s+/g,'_').substring(0,40) + '_9x16.mp4' };
+    const filename = (clip.title || 'clip').replace(/[^\w\- ]/g,'').replace(/\s+/g,'_').substring(0,40) + '_9x16.mp4';
+    return { blob: videoBlob, filename };
   }
 
   // ── Railway clip export for YouTube clips ──
@@ -2262,8 +2380,10 @@ const V2 = (() => {
     const title = document.getElementById('results-title');
     if (title) title.textContent = `🎉 ${results.length} clip${results.length > 1 ? 's' : ''} prêt${results.length > 1 ? 's' : ''} !`;
 
+    // Créer des objectURL depuis les blobs pour la prévisualisation et le téléchargement
+    const objUrls = results.map(r => URL.createObjectURL(r.blob));
     grid.innerHTML = results.map((r, i) => {
-      const url = r.downloadUrl;
+      const url = objUrls[i];
       return `
       <div class="result-card">
         <div class="result-thumb">
@@ -2272,7 +2392,7 @@ const V2 = (() => {
         <div class="result-info">
           <div class="result-title">${escHtml(r.title.substring(0, 50))}</div>
           <div class="result-dur">9:16 · prêt</div>
-          <button class="btn-dl" onclick="V2.download('${url}','${r.filename}')">
+          <button class="btn-dl" onclick="V2._dlResult(this,'${escHtml(url)}','${escHtml(r.filename)}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Télécharger
           </button>
@@ -2283,14 +2403,26 @@ const V2 = (() => {
     setState('results');
   }
 
-  async function download(url, filename) {
+  async function download(url, filename, statusEl = null) {
+    const setStatus = txt => { if (statusEl) statusEl.textContent = txt; };
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     if (isIOS) {
-      // URL HTTPS Railway → <a download> fonctionne sur iOS Safari 13+ (1 tap → Fichiers/Téléchargements)
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      // Fetch le blob → Web Share API → iOS share sheet → "Enregistrer la vidéo" → Photos
+      setStatus('Récupération de la vidéo…');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Erreur récupération vidéo (${res.status})`);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: 'video/mp4' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        setStatus('Appuie sur "Enregistrer la vidéo" ↓');
+        await navigator.share({ files: [file], title: filename });
+        setStatus('✅ Enregistré dans Photos !');
+      } else {
+        // Fallback iOS ancienne version : ouvrir dans Safari (maintenir appuyé pour enregistrer)
+        window.open(url, '_blank');
+        setStatus('Vidéo ouverte — maintiens appuyé pour enregistrer dans Photos');
+      }
       return;
     }
 
@@ -2298,6 +2430,52 @@ const V2 = (() => {
     const a = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setStatus('✅ Téléchargé !');
+  }
+
+  // Bouton "Télécharger" dans la grille résultats — iOS 2-step, desktop direct
+  function _dlResult(btn, url, filename) {
+    if (_isIOS() && navigator.canShare) {
+      // Étape 1 : changer le bouton (gesture A, synchrone — pas d'async ici)
+      btn.textContent = '📲 Appuie ici → Photos';
+      btn.style.background = '#0d9488';
+      btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = '⏳ Récupération…';
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Erreur réseau ${res.status}`);
+          const blob = await res.blob();
+          const file = new File([blob], filename, { type: 'video/mp4' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: filename });
+            btn.textContent = '✅ Dans Photos !';
+            btn.disabled = false;
+          } else {
+            window.open(url, '_blank');
+            btn.textContent = '✅ Ouvert';
+          }
+        } catch(e) {
+          if (e.name === 'AbortError') {
+            btn.textContent = '📲 Appuie ici → Photos';
+            btn.disabled = false;
+          } else {
+            btn.textContent = '❌ Réessaie';
+            btn.disabled = false;
+            toast(`❌ ${e.message.substring(0, 60)}`, 'erreur', 5000);
+          }
+        }
+      };
+    } else {
+      // Desktop / Android : téléchargement direct
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      btn.textContent = '✅ Téléchargé';
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger'; }, 3000);
+    }
   }
 
   function restart() {
@@ -2312,7 +2490,7 @@ const V2 = (() => {
     setState('upload');
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
