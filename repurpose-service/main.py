@@ -1429,14 +1429,9 @@ async def process_clip_endpoint(
         else:
             shutil.copy(reframed, out_path)
 
-        # Retourner URL directe (comme V1) — pas de FileResponse streaming
-        base_url = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
-        if not base_url:
-            # Fallback : stream direct
-            return FileResponse(str(out_path), media_type="video/mp4", filename="clip_9x16.mp4",
-                background=BackgroundTask(shutil.rmtree, tmp_dir, True))
-        download_url = f"https://{base_url}/process-clip-file/{job_id}/clip_9x16.mp4"
-        return {"ok": True, "download_url": download_url, "job_id": job_id}
+        # Streamer le fichier directement — pas de temp URL, pas d'expiration
+        return FileResponse(str(out_path), media_type="video/mp4", filename="clip_9x16.mp4",
+            background=BackgroundTask(shutil.rmtree, tmp_dir, True))
 
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True); raise
