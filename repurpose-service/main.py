@@ -591,7 +591,23 @@ def _get_video_dimensions(in_path: str):
     )
     streams = json.loads(r.stdout).get("streams", []) if r.returncode == 0 else []
     v = next((s for s in streams if s.get("codec_type") == "video"), {})
-    return int(v.get("width", 1920)), int(v.get("height", 1080))
+    w = int(v.get("width", 1920))
+    h = int(v.get("height", 1080))
+    # Rotation metadata : vidéos iPhone/Android encodées en paysage avec rotate=90/270
+    # ffprobe retourne les dimensions codées, ffmpeg les applique — on swap pour le vrai ratio
+    rotation = 0
+    try:
+        rotation = int(v.get("tags", {}).get("rotate", 0))
+    except (ValueError, TypeError):
+        pass
+    for sd in v.get("side_data_list", []):
+        if "rotation" in sd:
+            try: rotation = abs(int(sd["rotation"]))
+            except (ValueError, TypeError): pass
+    if abs(rotation) in (90, 270):
+        w, h = h, w
+    logger.info(f"[dimensions] {in_path.split('/')[-1]}: {w}x{h} (rotation={rotation})")
+    return w, h
 
 
 def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -> None:
