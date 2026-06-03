@@ -1404,7 +1404,7 @@ async def process_clip_endpoint(
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
         hook_margin_v = max(20, int(hook_y / 100 * 1280))
-        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},&H00000000,&H2E000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,{hook_margin_v},1"
+        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},&H00000000,&H2E000000,-1,0,0,0,100,100,0,0,3,18,10,8,30,30,{hook_margin_v},1"
 
         if has_subs and style != "none":
             ass_lines = [
