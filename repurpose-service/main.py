@@ -45,6 +45,9 @@ CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 UPLOAD_JOBS:  dict = {}
 
+# Limite les ffmpeg lourds en parallèle pour éviter l'OOM sur Railway 512MB
+_FFMPEG_SEM = asyncio.Semaphore(1)
+
 
 _bgutil_ok: bool = False
 
@@ -699,7 +702,10 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     r = subprocess.run(cmd, capture_output=True, timeout=300)
     if r.returncode != 0:
         err = (r.stdout + r.stderr).decode(errors='replace')[:800]
-        logger.error(f"[reframe] ffmpeg error: {err}")
+        if r.returncode == -9 or not err.strip():
+            logger.error(f"[reframe] ffmpeg OOM-killed (signal -9) — video too large for available memory")
+            raise RuntimeError("Vidéo trop volumineuse — réessaie dans quelques secondes")
+        logger.error(f"[reframe] ffmpeg error (code {r.returncode}): {err}")
         raise RuntimeError(f"ffmpeg crop: {err}")
 
 
@@ -1327,10 +1333,11 @@ async def process_clip_endpoint(
         with open(in_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        # Étape 1 : reframe 9:16 avec face tracking
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _reframe_vertical(str(in_path), str(reframed))
-        )
+        # Étape 1 : reframe 9:16 avec face tracking (sémaphore anti-OOM)
+        async with _FFMPEG_SEM:
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _reframe_vertical(str(in_path), str(reframed))
+            )
         if not reframed.exists():
             raise HTTPException(500, "Reframe 9:16 échoué")
 
