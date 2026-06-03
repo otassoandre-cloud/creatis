@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import httpx
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
@@ -1316,17 +1316,17 @@ def clip_export_file(job_id: str, filename: str):
 @app.post("/process-clip")
 async def process_clip_endpoint(
     file: UploadFile = File(...),
-    segments: str = "",
-    style: str = "bold",
-    font_size: int = 70,
-    color_text: str = "#ffffff",
-    color_bg: str = "#000000",
-    sub_y: float = 82.0,
-    hook_enabled: str = "false",
-    hook_text: str = "",
-    hook_color: str = "#ffffff",
-    clip_start: float = -1.0,
-    clip_end: float = -1.0,
+    segments: str = Form(""),
+    style: str = Form("bold"),
+    font_size: int = Form(70),
+    color_text: str = Form("#ffffff"),
+    color_bg: str = Form("#000000"),
+    sub_y: float = Form(82.0),
+    hook_enabled: str = Form("false"),
+    hook_text: str = Form(""),
+    hook_color: str = Form("#ffffff"),
+    clip_start: float = Form(-1.0),
+    clip_end: float = Form(-1.0),
     _=Depends(auth)
 ):
     """Reframe 9:16 (face tracking) + burn sous-titres en une seule passe. Retourne URL directe.
