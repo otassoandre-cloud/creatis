@@ -1422,13 +1422,14 @@ async def process_clip_endpoint(
                 txt = str(s.get("text","")).strip().replace("\n"," ")
                 if txt and t1 > t0:
                     if style == "typewriter":
-                        # Reveal mot par mot (chaque mot s'ajoute au précédent)
+                        # Reveal mot par mot — chaque étape NON-chevauchante
                         words = txt.split()
                         dt = (t1 - t0) / max(len(words), 1)
-                        for wi, word in enumerate(words):
-                            line_t0 = t0 + wi * dt
+                        for wi in range(len(words)):
+                            step_t0 = t0 + wi * dt
+                            step_t1 = t0 + (wi + 1) * dt if wi < len(words) - 1 else t1
                             line_txt = " ".join(words[:wi + 1])
-                            ass_lines.append(f"Dialogue: 0,{to_ass_time(line_t0)},{to_ass_time(t1)},Default,,0,0,0,,{line_txt}")
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
                     else:
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
