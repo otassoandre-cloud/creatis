@@ -1331,20 +1331,21 @@ async def process_clip_endpoint(
         margin_v = int((1 - sub_y / 100) * 1280)
 
         has_subs = bool(segs) or (hook_bool and hook_text)
+        F = "Liberation Sans"
         style_map = {
-            "bold":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "minimal":   f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "karaoke":   f"Style: Default,Arial,{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
-            "neon":      f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
-            "spotlight": f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "typewriter":f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "wordpop":   f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "slide":     f"Style: Default,Arial,{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "shake":     f"Style: Default,Arial,{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "wave":      f"Style: Default,Arial,{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
+            "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
+            "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "typewriter":f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
+            "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
-        hook_style = f"Style: Hook,Arial,{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
+        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,8,30,30,80,1"
 
         if has_subs and style != "none":
             ass_lines = [
@@ -1368,7 +1369,8 @@ async def process_clip_endpoint(
             cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","fast","-crf","22","-c:a","copy",str(out_path)]
             proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
-                # Fallback : livrer sans sous-titres si ASS échoue
+                err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
+                print(f"[WARN] ASS burn failed (code {proc.returncode}): {err}", flush=True)
                 shutil.copy(reframed, out_path)
         else:
             shutil.copy(reframed, out_path)
