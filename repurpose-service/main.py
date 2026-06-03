@@ -599,67 +599,74 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16") -
     target_ratio = tw / th
 
     src_w, src_h = _get_video_dimensions(in_path)
+    src_ratio = src_w / src_h
 
-    # Calcule le crop 9:16 centré
-    if target_ratio < src_w / src_h:
-        crop_w = int(src_h * target_ratio)
-        crop_h = src_h
+    # Déjà au bon ratio (±1.5%) → juste scale à 720×1280, pas de crop
+    if abs(src_ratio - target_ratio) / target_ratio < 0.015:
+        logger.info(f"[reframe] already {aspect_ratio} ({src_w}x{src_h}) — scale only, no crop")
+        vf = "scale=720:1280"
     else:
-        crop_w = src_w
-        crop_h = int(src_w / target_ratio)
-    crop_w = max(2, crop_w - crop_w % 2)
-    crop_h = max(2, crop_h - crop_h % 2)
-
-    x_default = (src_w - crop_w) // 2
-    y0 = (src_h - crop_h) // 2
-
-    # Face tracking : 3 frames max, resize à 640px pour vitesse
-    x_crop = x_default
-    try:
-        import cv2
-        cap = cv2.VideoCapture(in_path)
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-        sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
-        centers = []
-        for fi in sample_frames:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
-            ret, frame = cap.read()
-            if not ret:
-                continue
-            # Resize à 640px max pour accélérer la détection sur 4K
-            h, w = frame.shape[:2]
-            scale = min(1.0, 640 / w)
-            if scale < 1.0:
-                frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
-            if len(faces) > 0:
-                fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-                centers.append(int((fx + fw // 2) / scale))
-        cap.release()
-        if centers:
-            median_cx = sorted(centers)[len(centers) // 2]
-            x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
-            logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
+        # Calcule le crop vers le ratio cible
+        if target_ratio < src_ratio:
+            crop_w = int(src_h * target_ratio)
+            crop_h = src_h
         else:
-            logger.info("Face tracking: aucun visage — crop centré")
-    except Exception as e:
-        logger.info(f"Face tracking skipped ({e}) — crop centré")
+            crop_w = src_w
+            crop_h = int(src_w / target_ratio)
+        crop_w = max(2, crop_w - crop_w % 2)
+        crop_h = max(2, crop_h - crop_h % 2)
 
-    # Si > 1080p : pre-scale pour eviter OOM (4K = 512MB insuffisant sur Railway)
-    if src_w > 1920 or src_h > 1080:
-        sx = min(1920 / src_w, 1080 / src_h)
-        pw = int(src_w * sx / 2) * 2
-        ph = int(src_h * sx / 2) * 2
-        cw = max(2, int(crop_w * sx / 2) * 2)
-        ch = max(2, int(crop_h * sx / 2) * 2)
-        xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
-        yy = max(0, int(y0 * sx))
-        vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
-        logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
-    else:
-        vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
+        x_default = (src_w - crop_w) // 2
+        y0 = (src_h - crop_h) // 2
+
+        # Face tracking : 3 frames max, resize à 640px pour vitesse
+        x_crop = x_default
+        try:
+            import cv2
+            cap = cv2.VideoCapture(in_path)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+            sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
+            centers = []
+            for fi in sample_frames:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+                ret, frame = cap.read()
+                if not ret:
+                    continue
+                h, w = frame.shape[:2]
+                scale = min(1.0, 640 / w)
+                if scale < 1.0:
+                    frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
+                if len(faces) > 0:
+                    fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+                    centers.append(int((fx + fw // 2) / scale))
+            cap.release()
+            if centers:
+                median_cx = sorted(centers)[len(centers) // 2]
+                x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
+                logger.info(f"Face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
+            else:
+                logger.info("Face tracking: aucun visage — crop centré")
+        except Exception as e:
+            logger.info(f"Face tracking skipped ({e}) — crop centré")
+
+        # Pre-scale uniquement pour les vraies 4K (> 2× la résolution 1080p)
+        # Évite de déclencher ce chemin sur des vidéos portrait 1080x1920 standard
+        if src_w * src_h > 2 * 1920 * 1080:
+            sx = min(1920 / src_w, 1080 / src_h)
+            pw = int(src_w * sx / 2) * 2
+            ph = int(src_h * sx / 2) * 2
+            cw = max(2, int(crop_w * sx / 2) * 2)
+            ch = max(2, int(crop_h * sx / 2) * 2)
+            xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
+            yy = max(0, int(y0 * sx))
+            vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
+            logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
+        else:
+            vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
+            logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
