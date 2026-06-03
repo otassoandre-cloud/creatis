@@ -689,7 +689,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             ph = int(src_h * sx / 2) * 2
             cw = max(2, int(crop_w * sx / 2) * 2)
             ch = max(2, int(crop_h * sx / 2) * 2)
-            xc = max(0, min(pw - cw, int(x_crop * sx) - cw // 2))
+            xc = max(0, min(pw - cw, int(x_crop * sx)))
             yy = max(0, int(y0 * sx))
             vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
             logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
