@@ -1387,14 +1387,15 @@ async def process_clip_endpoint(
 
         has_subs = bool(segs) or (hook_bool and hook_text)
         logger.info(f"[subs] style={style} has_subs={has_subs} segs={len(segs)} hook={hook_bool} hook_text={repr(hook_text[:30]) if hook_text else ''}")
-        F = "DejaVu Sans"
+        F  = "DejaVu Sans"
+        FM = "DejaVu Sans Mono"
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
             "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
             "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
             "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
             "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "typewriter":f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "typewriter":f"Style: Default,{FM},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
             "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
             "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
             "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
@@ -1418,9 +1419,18 @@ async def process_clip_endpoint(
                 ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{hook_text}")
             for s in segs:
                 t0 = float(s.get("t0", 0)); t1 = float(s.get("t1", 0))
-                txt = str(s.get("text","")).strip().replace("\n","\\N")
+                txt = str(s.get("text","")).strip().replace("\n"," ")
                 if txt and t1 > t0:
-                    ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
+                    if style == "typewriter":
+                        # Reveal mot par mot (chaque mot s'ajoute au précédent)
+                        words = txt.split()
+                        dt = (t1 - t0) / max(len(words), 1)
+                        for wi, word in enumerate(words):
+                            line_t0 = t0 + wi * dt
+                            line_txt = " ".join(words[:wi + 1])
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(line_t0)},{to_ass_time(t1)},Default,,0,0,0,,{line_txt}")
+                    else:
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
             # Étape 2 : burn subtitles (sous sémaphore aussi)
