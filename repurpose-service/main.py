@@ -1384,6 +1384,7 @@ async def process_clip_endpoint(
         margin_v = int((1 - sub_y / 100) * 1280)
 
         has_subs = bool(segs) or (hook_bool and hook_text)
+        logger.info(f"[subs] style={style} has_subs={has_subs} segs={len(segs)} hook={hook_bool} hook_text={repr(hook_text[:30]) if hook_text else ''}")
         F = "DejaVu Sans"
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
@@ -1424,10 +1425,13 @@ async def process_clip_endpoint(
                 proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
                 err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
-                print(f"[WARN] ASS burn failed (code {proc.returncode}): {err}", flush=True)
+                logger.warning(f"[subs] ASS burn failed (code {proc.returncode}): {err}")
                 shutil.copy(reframed, out_path)
+            else:
+                logger.info(f"[subs] ASS burn OK — {out_path.stat().st_size // 1024}KB")
         else:
             shutil.copy(reframed, out_path)
+            logger.info("[subs] pas de sous-titres (has_subs=False ou style=none)")
 
         # Streamer le fichier directement — pas de temp URL, pas d'expiration
         return FileResponse(str(out_path), media_type="video/mp4", filename="clip_9x16.mp4",
