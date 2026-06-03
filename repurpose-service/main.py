@@ -1395,9 +1395,10 @@ async def process_clip_endpoint(
                     ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
-            # Étape 2 : burn subtitles
-            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","fast","-crf","22","-c:a","copy",str(out_path)]
-            proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
+            # Étape 2 : burn subtitles (sous sémaphore aussi)
+            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
+            async with _FFMPEG_SEM:
+                proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
                 err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
                 print(f"[WARN] ASS burn failed (code {proc.returncode}): {err}", flush=True)
