@@ -1403,7 +1403,7 @@ async def process_clip_endpoint(
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
             # Étape 2 : burn subtitles (sous sémaphore aussi)
-            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}:fontsdir=/app/fonts","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
+            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
             async with _get_ffmpeg_sem():
                 proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
