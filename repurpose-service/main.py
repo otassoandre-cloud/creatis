@@ -45,8 +45,14 @@ CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 UPLOAD_JOBS:  dict = {}
 
-# Limite les ffmpeg lourds en parallèle pour éviter l'OOM sur Railway 512MB
-_FFMPEG_SEM = asyncio.Semaphore(1)
+# Limite les ffmpeg lourds en parallèle — initialisé au premier appel async
+_FFMPEG_SEM = None
+
+def _get_ffmpeg_sem():
+    global _FFMPEG_SEM
+    if _FFMPEG_SEM is None:
+        _FFMPEG_SEM = asyncio.Semaphore(1)
+    return _FFMPEG_SEM
 
 
 _bgutil_ok: bool = False
@@ -1334,7 +1340,7 @@ async def process_clip_endpoint(
             shutil.copyfileobj(file.file, f)
 
         # Étape 1 : reframe 9:16 avec face tracking (sémaphore anti-OOM)
-        async with _FFMPEG_SEM:
+        async with _get_ffmpeg_sem():
             await asyncio.get_event_loop().run_in_executor(
                 None, lambda: _reframe_vertical(str(in_path), str(reframed))
             )
@@ -1397,7 +1403,7 @@ async def process_clip_endpoint(
                 f.write("\n".join(ass_lines))
             # Étape 2 : burn subtitles (sous sémaphore aussi)
             cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
-            async with _FFMPEG_SEM:
+            async with _get_ffmpeg_sem():
                 proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
             if not out_path.exists() or out_path.stat().st_size == 0:
                 err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
