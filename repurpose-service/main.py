@@ -983,6 +983,7 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
 
 # ── ENDPOINTS ──────────────────────────────────────────────────────────────────
 
+@app.get("/")
 @app.get("/health")
 def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
