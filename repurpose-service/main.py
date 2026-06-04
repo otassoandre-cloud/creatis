@@ -1388,16 +1388,16 @@ async def process_clip_endpoint(
         F  = "DejaVu Sans"
         FM = "DejaVu Sans Mono"
         style_map = {
-            "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
-            "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,30,30,{margin_v},1",
-            "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "typewriter":f"Style: Default,{FM},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,30,30,{margin_v},1",
-            "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,30,30,{margin_v},1",
-            "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
-            "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,{margin_v},1",
+            "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
+            "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
+            "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
+            "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,44,44,{margin_v},1",
+            "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
+            "typewriter":f"Style: Default,{FM},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
+            "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
+            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
+            "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
+            "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
