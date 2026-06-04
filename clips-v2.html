@@ -1991,7 +1991,7 @@ const V2 = (() => {
           const xhr = new XMLHttpRequest();
           xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
           xhr.responseType = 'blob';
-          xhr.timeout = 120000;
+          xhr.timeout = 300000;
           xhr.upload.onprogress = e => {
             if (e.lengthComputable) {
               if (onPct) onPct(20 + Math.round(e.loaded / e.total * 30));

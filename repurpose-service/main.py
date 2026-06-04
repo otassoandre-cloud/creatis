@@ -619,7 +619,7 @@ def _get_video_dimensions(in_path: str):
     return w, h
 
 
-def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center") -> None:
+def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "") -> None:
     tw, th = (float(x) for x in aspect_ratio.split(":"))
     target_ratio = tw / th
 
@@ -697,15 +697,16 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
+    final_vf = f"{vf},{overlay_vf}" if overlay_vf else vf
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", in_path,
         "-map", "0:v:0",
         "-map", "0:a:0?",
-        "-vf", vf,
+        "-vf", final_vf,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
         "-pix_fmt", "yuv420p",
-        "-threads", "2",
+        "-threads", "4",
         "-c:a", "aac", "-b:a", "128k",
         out_path,
     ]
@@ -1362,15 +1363,7 @@ async def process_clip_endpoint(
             else:
                 logger.warning(f"[process-clip] coupe serveur échouée, utilise fichier entier")
 
-        # Étape 1 : reframe 9:16 avec face tracking (sémaphore anti-OOM)
-        async with _get_ffmpeg_sem():
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: _reframe_vertical(str(in_path), str(reframed), reframe_mode=reframe_mode)
-            )
-        if not reframed.exists():
-            raise HTTPException(500, "Reframe 9:16 échoué")
-
-        # Parser les segments
+        # Préparer le filtre ASS (avant la passe unique FFmpeg)
         segs = []
         logger.info(f"[subs-debug] raw segments param: {repr(segments[:120]) if segments else '(empty)'} len={len(segments)}")
         if segments:
@@ -1411,6 +1404,7 @@ async def process_clip_endpoint(
         hook_margin_v = max(20, int(hook_y / 100 * 1280))
         hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},&H00000000,&H2E000000,-1,0,0,0,100,100,0,0,3,18,10,8,30,30,{hook_margin_v},1"
 
+        overlay_vf = ""
         if has_subs and style != "none":
             ass_lines = [
                 "[Script Info]","ScriptType: v4.00+","PlayResX: 720","PlayResY: 1280","WrapStyle: 1","",
@@ -1427,7 +1421,6 @@ async def process_clip_endpoint(
                 txt = str(s.get("text","")).strip().replace("\n"," ")
                 if txt and t1 > t0:
                     if style == "typewriter":
-                        # Reveal mot par mot — chaque étape NON-chevauchante
                         words = txt.split()
                         dt = (t1 - t0) / max(len(words), 1)
                         for wi in range(len(words)):
@@ -1439,19 +1432,16 @@ async def process_clip_endpoint(
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
-            # Étape 2 : burn subtitles (sous sémaphore aussi)
-            cmd = ["ffmpeg","-y","-i",str(reframed),"-vf",f"ass={str(ass_path)}","-c:v","libx264","-preset","ultrafast","-crf","22","-c:a","copy",str(out_path)]
-            async with _get_ffmpeg_sem():
-                proc = await asyncio.get_event_loop().run_in_executor(None, lambda: subprocess.run(cmd, capture_output=True))
-            if not out_path.exists() or out_path.stat().st_size == 0:
-                err = proc.stderr.decode("utf-8", errors="replace")[-600:] if proc.stderr else "(no stderr)"
-                logger.warning(f"[subs] ASS burn failed (code {proc.returncode}): {err}")
-                shutil.copy(reframed, out_path)
-            else:
-                logger.info(f"[subs] ASS burn OK — {out_path.stat().st_size // 1024}KB")
-        else:
-            shutil.copy(reframed, out_path)
-            logger.info("[subs] pas de sous-titres (has_subs=False ou style=none)")
+            overlay_vf = f"ass={str(ass_path)}"
+
+        # Passe unique : reframe + sous-titres en une seule commande FFmpeg
+        async with _get_ffmpeg_sem():
+            await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf)
+            )
+        if not out_path.exists() or out_path.stat().st_size == 0:
+            raise HTTPException(500, "Reframe/burn échoué")
+        logger.info(f"[process-clip] OK — {out_path.stat().st_size // 1024}KB")
 
         # Streamer le fichier directement — pas de temp URL, pas d'expiration
         return FileResponse(str(out_path), media_type="video/mp4", filename="clip_9x16.mp4",
