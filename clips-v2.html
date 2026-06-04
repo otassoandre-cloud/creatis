@@ -270,21 +270,15 @@
       .modal-score-num { font-size: 28px; }
       .modal-score-row { gap: 10px; }
     }
-    .ms-pill.active { border-color: #4a4a4a; color: #fff; background: #1f1f1f; }
     .ms-pill[data-style="karaoke"] { color: #FFE000; }
-    .ms-pill[data-style="neon"] { color: #00FF9C; }
-    .ms-pill[data-style="karaoke"].active { border-color: #554400; color: #FFE000; background: #1a1500; }
-    .ms-pill[data-style="neon"].active { border-color: #004433; color: #00FF9C; background: #001a11; }
+    .ms-pill[data-style="neon"]    { color: #00FF9C; }
     .ms-pill[data-style="typewriter"] { color: #a78bfa; }
-    .ms-pill[data-style="typewriter"].active { border-color: #3d2f6e; color: #a78bfa; background: #16102a; }
     .ms-pill[data-style="wordpop"] { color: #f97316; }
-    .ms-pill[data-style="wordpop"].active { border-color: #f97316; background: rgba(249,115,22,0.08); }
-    .ms-pill[data-style="slide"] { color: #38bdf8; }
-    .ms-pill[data-style="slide"].active { border-color: #38bdf8; background: rgba(56,189,248,0.08); }
-    .ms-pill[data-style="shake"] { color: #fb7185; }
-    .ms-pill[data-style="shake"].active { border-color: #fb7185; background: rgba(251,113,133,0.08); }
-    .ms-pill[data-style="wave"] { color: #34d399; }
-    .ms-pill[data-style="wave"].active { border-color: #34d399; background: rgba(52,211,153,0.08); }
+    .ms-pill[data-style="slide"]   { color: #38bdf8; }
+    .ms-pill[data-style="shake"]   { color: #fb7185; }
+    .ms-pill[data-style="wave"]    { color: #34d399; }
+    .ms-pill.active,
+    .ms-pill[data-style].active { border-color: #3a3a3a !important; background: #1c1c1c !important; }
 
     /* ── Text animation keyframes ── */
     @keyframes typeChar { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
