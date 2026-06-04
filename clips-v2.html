@@ -2064,7 +2064,7 @@ const V2 = (() => {
     throw new Error('Timeout export Railway');
   }
 
-  // ── Cut clip ──
+  // ── Cut clip — re-encode à 1080p max si fichier > 40MB (4K) pour réduire upload Railway ──
   async function cutClipFFmpeg(file, startSec, endSec) {
     const ffmpeg = await loadFFmpeg();
     while (ffmpeg._workerFSBusy) await new Promise(r => setTimeout(r, 300));
@@ -2074,7 +2074,17 @@ const V2 = (() => {
     await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
     try {
       try { await ffmpeg.deleteFile('/seg.mp4'); } catch {}
-      await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', String(endSec - startSec), '-c', 'copy', '/seg.mp4']);
+      const dur = String(endSec - startSec);
+      const needsScale = file.size > 40 * 1024 * 1024; // > 40MB → re-encode 1080p
+      if (needsScale) {
+        // Re-encoder à 1080p max — réduit ~10-20x la taille avant upload Railway
+        await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', dur,
+          '-vf', 'scale=1920:1080:flags=fast_bilinear:force_original_aspect_ratio=decrease',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+          '-c:a', 'aac', '-b:a', '128k', '/seg.mp4']);
+      } else {
+        await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', dur, '-c', 'copy', '/seg.mp4']);
+      }
       const data = await ffmpeg.readFile('/seg.mp4');
       await ffmpeg.deleteFile('/seg.mp4');
       return new Blob([data], { type: 'video/mp4' });
