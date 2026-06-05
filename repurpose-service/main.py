@@ -1323,7 +1323,7 @@ async def process_clip_endpoint(
     file: UploadFile = File(...),
     segments: str = Form(""),
     style: str = Form("bold"),
-    font_size: int = Form(70),
+    font_size: int = Form(55),
     color_text: str = Form("#ffffff"),
     color_bg: str = Form("#000000"),
     sub_y: float = Form(82.0),
@@ -1428,10 +1428,21 @@ async def process_clip_endpoint(
             ]
             if hook_bool and hook_text:
                 ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{hook_text}")
+            def split_seg(t0, t1, txt, max_w=7):
+                words = txt.split()
+                if len(words) <= max_w:
+                    yield (t0, t1, txt); return
+                dur = t1 - t0; n = len(words)
+                for i in range(0, n, max_w):
+                    chunk = words[i:i+max_w]
+                    ct0 = t0 + dur * i / n
+                    ct1 = t0 + dur * min(i + max_w, n) / n
+                    yield (ct0, ct1, " ".join(chunk))
             for s in segs:
                 t0 = float(s.get("t0", 0)); t1 = float(s.get("t1", 0))
                 txt = str(s.get("text","")).strip().replace("\n"," ")
-                if txt and t1 > t0:
+                if not (txt and t1 > t0): continue
+                for t0, t1, txt in split_seg(t0, t1, txt):
                     if style == "typewriter":
                         words = txt.split()
                         dt = (t1 - t0) / max(len(words), 1)
