@@ -1331,6 +1331,7 @@ async def process_clip_endpoint(
     hook_text: str = Form(""),
     hook_color: str = Form("#ffffff"),
     hook_bg: str = Form("#000000"),
+    hook_font_size: int = Form(0),
     hook_y: float = Form(10.0),
     reframe_mode: str = Form("center"),
     clip_start: float = Form(-1.0),
@@ -1414,7 +1415,8 @@ async def process_clip_endpoint(
         hbg_solid = hex_to_ass_bg(hook_bg, "00")   # 100% opaque — OutlineColour = meme couleur que fond
         # OutlineColour = meme couleur que BackColour → les 18px d'outline = padding invisible (pas de noir qui deborde)
         hook_margin_v = max(20, int(hook_y / 100 * 1280))
-        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
+        hfs = hook_font_size if hook_font_size > 0 else int(font_size * 0.9)
+        hook_style = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
 
         overlay_vf = ""
         if has_subs and style != "none":
