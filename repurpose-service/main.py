@@ -1383,10 +1383,10 @@ async def process_clip_endpoint(
             return f"&H00{h[4:6]}{h[2:4]}{h[0:2]}"
 
         ct = hex_to_ass(color_text); cb = hex_to_ass(color_bg)
-        # Couleur dim pour karaoke (mots non encore prononcés) — meme couleur texte a 40% opaque
+        # Couleur dim pour karaoke — 35% opaque (alpha A6), identique preview rgba(255,255,255,0.35)
         def hex_to_ass_dim(h):
             h = h.lstrip("#").upper().zfill(6)
-            return f"&H99{h[4:6]}{h[2:4]}{h[0:2]}"
+            return f"&HA6{h[4:6]}{h[2:4]}{h[0:2]}"
         ct_dim = hex_to_ass_dim(color_text)
         margin_v = int((1 - sub_y / 100) * 1280)
 
@@ -1441,7 +1441,7 @@ async def process_clip_endpoint(
                     ct1 = t0 + dur * min(i + max_w, n) / n
                     yield (ct0, ct1, " ".join(chunk))
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
-            _karo_colors = ["&H0000DFFF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
+            _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
             _karo_idx = 0
             for s in segs:
                 t0 = float(s.get("t0", 0)); t1 = float(s.get("t1", 0))
