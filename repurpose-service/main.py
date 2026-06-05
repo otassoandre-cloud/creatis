@@ -1382,6 +1382,11 @@ async def process_clip_endpoint(
             return f"&H00{h[4:6]}{h[2:4]}{h[0:2]}"
 
         ct = hex_to_ass(color_text); cb = hex_to_ass(color_bg)
+        # Couleur dim pour karaoke (mots non encore prononcés) — meme couleur texte a 40% opaque
+        def hex_to_ass_dim(h):
+            h = h.lstrip("#").upper().zfill(6)
+            return f"&H99{h[4:6]}{h[2:4]}{h[0:2]}"
+        ct_dim = hex_to_ass_dim(color_text)
         margin_v = int((1 - sub_y / 100) * 1280)
 
         has_subs = bool(segs) or (hook_bool and hook_text)
@@ -1391,7 +1396,7 @@ async def process_clip_endpoint(
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
             "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
-            "karaoke":   f"Style: Default,{F},{font_size},&H0000E8FF,{ct},&H00000000,&H55000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
+            "karaoke":   f"Style: Default,{F},{font_size},{ct},{ct_dim},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
             "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,44,44,{margin_v},1",
             "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
             "typewriter":f"Style: Default,{FM},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
@@ -1435,6 +1440,18 @@ async def process_clip_endpoint(
                             step_t1 = t0 + (wi + 1) * dt if wi < len(words) - 1 else t1
                             line_txt = " ".join(words[:wi + 1])
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
+                    elif style == "karaoke":
+                        # \k{dur_cs} par mot — highlight progressif (PrimaryColour=bright, SecondaryColour=dim)
+                        words = txt.split()
+                        n = max(len(words), 1)
+                        total_cs = max(1, int((t1 - t0) * 100))
+                        dt_cs = max(1, total_cs // n)
+                        remainder = total_cs - dt_cs * (n - 1)
+                        karaoke_txt = "".join(
+                            f"{{\\k{dt_cs if i < n-1 else remainder}}}{w} "
+                            for i, w in enumerate(words)
+                        ).rstrip()
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{karaoke_txt}")
                     else:
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
