@@ -1458,7 +1458,7 @@ async def process_clip_endpoint(
                             line_txt = " ".join(words[:wi + 1])
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
                     elif style == "karaoke":
-                        # 1 ligne par mot : mot courant=accent, passés=blanc, futurs=dim
+                        # 1 ligne par mot : courant=accent+scale112%, passés=blanc, futurs=dim
                         words = txt.split()
                         n_w = max(len(words), 1)
                         dt = (t1 - t0) / n_w
@@ -1470,7 +1470,12 @@ async def process_clip_endpoint(
                                 clr = ct if j < wi else (seg_color if j == wi else ct_dim)
                                 if clr != cur_clr:
                                     parts.append(f"{{\\1c{clr}}}"); cur_clr = clr
-                                parts.append(w + (" " if j < n_w - 1 else ""))
+                                if j == wi:
+                                    parts.append(f"{{\\fscx112\\fscy112}}{w}{{\\fscx100\\fscy100}}")
+                                else:
+                                    parts.append(w)
+                                if j < n_w - 1:
+                                    parts.append(" ")
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{''.join(parts)}")
                     else:
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
