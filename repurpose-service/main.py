@@ -1440,10 +1440,14 @@ async def process_clip_endpoint(
                     ct0 = t0 + dur * i / n
                     ct1 = t0 + dur * min(i + max_w, n) / n
                     yield (ct0, ct1, " ".join(chunk))
+            # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
+            _karo_colors = ["&H0000DFFF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
+            _karo_idx = 0
             for s in segs:
                 t0 = float(s.get("t0", 0)); t1 = float(s.get("t1", 0))
                 txt = str(s.get("text","")).strip().replace("\n"," ")
                 if not (txt and t1 > t0): continue
+                seg_color = _karo_colors[_karo_idx % 2]; _karo_idx += 1
                 for t0, t1, txt in split_seg(t0, t1, txt):
                     if style == "typewriter":
                         words = txt.split()
@@ -1454,13 +1458,12 @@ async def process_clip_endpoint(
                             line_txt = " ".join(words[:wi + 1])
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
                     elif style == "karaoke":
-                        # \k{dur_cs} par mot — highlight progressif (PrimaryColour=bright, SecondaryColour=dim)
                         words = txt.split()
                         n = max(len(words), 1)
                         total_cs = max(1, int((t1 - t0) * 100))
                         dt_cs = max(1, total_cs // n)
                         remainder = total_cs - dt_cs * (n - 1)
-                        karaoke_txt = "".join(
+                        karaoke_txt = "{\\1c" + seg_color + "}" + "".join(
                             f"{{\\k{dt_cs if i < n-1 else remainder}}}{w} "
                             for i, w in enumerate(words)
                         ).rstrip()
