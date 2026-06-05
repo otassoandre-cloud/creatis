@@ -107,7 +107,7 @@
     .opt-group { display: flex; flex-direction: column; gap: 6px; }
     .opt-label { font-size: 12px; font-weight: 600; color: var(--texte-doux); }
     .opt-select, .opt-input { background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte); font-size: 13px; padding: 8px 12px; border-radius: 8px; outline: none; width: 100%; }
-    .opt-select:focus, .opt-input:focus { border-color: var(--vert); }
+    .opt-select:focus, .opt-input:focus { border-color: rgba(255,255,255,0.4); }
     .opt-color-row { display: flex; gap: 8px; align-items: center; }
     .opt-color { width: 36px; height: 32px; border: 1px solid var(--bordure); border-radius: 6px; cursor: pointer; padding: 2px; background: transparent; }
     .opt-toggle-row { display: flex; align-items: center; gap: 10px; }
@@ -115,8 +115,8 @@
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-slider { position: absolute; inset: 0; background: var(--bordure); border-radius: 22px; cursor: pointer; transition: .3s; }
     .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: var(--texte-doux); border-radius: 50%; transition: .3s; }
-    .toggle input:checked + .toggle-slider { background: var(--vert); }
-    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: #000; }
+    .toggle input:checked + .toggle-slider { background: #e0e0e0; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: #0a0a0a; }
     .opt-toggle-label { font-size: 13px; color: var(--texte-doux); cursor: pointer; }
 
     /* Watermark zone */
@@ -172,7 +172,7 @@
     @keyframes modalIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     /* ── MODAL — Desktop ── */
-    .clip-modal { background: #0e150e; border: 1px solid #1e2a1e; border-radius: 18px; width: 100%; max-width: 960px; max-height: 94vh; display: flex; flex-direction: row; overflow: hidden; animation: modalIn .2s ease; position: relative; }
+    .clip-modal { background: #0d0d0d; border: 1px solid #222; border-radius: 18px; width: 100%; max-width: 960px; max-height: 94vh; display: flex; flex-direction: row; overflow: hidden; animation: modalIn .2s ease; position: relative; }
 
     /* ── Player column (left, desktop) ── */
     .modal-player-col { flex-shrink: 0; width: 280px; background: #000; display: flex; flex-direction: column; }
@@ -198,11 +198,11 @@
     /* Progress bar */
     .modal-controls { height: 44px; background: rgba(0,0,0,0.85); display: flex; align-items: center; gap: 10px; padding: 0 12px; flex-shrink: 0; }
     .modal-prog-wrap { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; cursor: pointer; position: relative; }
-    .modal-prog-fill { height: 100%; background: var(--vert); border-radius: 2px; pointer-events: none; transition: width .1s linear; }
+    .modal-prog-fill { height: 100%; background: #e0e0e0; border-radius: 2px; pointer-events: none; transition: width .1s linear; }
     .modal-time { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); white-space: nowrap; }
 
     /* ── Settings column (right, desktop) ── */
-    .modal-settings-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
+    .modal-settings-col { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; background: #0c0c0c; }
     .modal-settings-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--bordure); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .modal-clip-title { font-size: 15px; font-weight: 800; line-height: 1.3; flex: 1; min-width: 0; word-break: break-word; }
     .modal-clip-meta { font-size: 11px; color: var(--texte-muted); margin-top: 3px; }
@@ -211,7 +211,7 @@
     .modal-settings-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
 
     /* Score breakdown */
-    .modal-score-row { display: flex; align-items: center; gap: 16px; }
+    .modal-score-row { display: none; } .modal-score-badge { display:inline-flex;align-items:center;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);color:#10b981;font-size:12px;font-weight:800;padding:2px 9px;border-radius:20px;flex-shrink:0; }
     .modal-score-num { font-size: 40px; font-weight: 900; line-height: 1; }
     .score-breakdown { display: flex; flex-direction: column; gap: 4px; }
     .score-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
@@ -220,25 +220,30 @@
 
     /* Tabs */
     .modal-tab { flex: 1; padding: 10px 6px; font-size: 12px; font-weight: 700; color: var(--texte-muted); background: transparent; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; }
-    .modal-tab.active { color: var(--vert); border-bottom-color: var(--vert); }
+    .modal-tab.active { color: var(--texte); border-bottom-color: var(--texte); }
     .modal-tab-pane { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     /* Transcript editor */
     .seg-item { display: flex; gap: 10px; align-items: flex-start; padding: 7px 10px; border-radius: 8px; cursor: pointer; transition: background .12s; border-left: 2px solid transparent; }
     .seg-item:hover { background: rgba(255,255,255,0.04); }
-    .seg-item.seg-current { background: rgba(16,185,129,0.08); border-left-color: var(--vert); }
-    .seg-time { font-size: 11px; font-weight: 700; color: var(--vert); white-space: nowrap; min-width: 38px; margin-top: 2px; flex-shrink: 0; }
+    .seg-item.seg-current { background: rgba(255,255,255,0.05); border-left-color: rgba(255,255,255,0.5); }
+    .seg-time { font-size: 11px; font-weight: 700; color: var(--texte-muted); white-space: nowrap; min-width: 38px; margin-top: 2px; flex-shrink: 0; }
     .seg-txt { font-size: 13px; color: var(--texte-doux); line-height: 1.5; flex: 1; outline: none; border-radius: 4px; transition: background .15s; word-break: break-word; }
     .seg-txt[contenteditable="true"] { color: var(--texte); background: rgba(255,255,255,0.05); padding: 2px 6px; outline: 1px solid rgba(16,185,129,0.5); }
-    .seg-edited { color: var(--vert) !important; }
+    .seg-edited { color: var(--texte) !important; }
 
     /* Style pills */
-    .modal-styles-wrap { position: relative; }
-    .modal-styles { display: flex; flex-wrap: wrap; gap: 7px; }
-    .ms-pill { font-size: 12px; font-weight: 600; padding: 6px 13px; border-radius: 8px; border: 1px solid #2a2a2a; background: #111; cursor: pointer; transition: all .15s; color: #888; white-space: nowrap; }
+    .modal-styles-wrap { overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style:none; position: relative; }
+    .modal-styles { display: inline-flex; flex-wrap: nowrap; gap: 7px; }
+    .ms-pill { font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #1e1e1e; background: #141414; cursor: pointer; transition: all .15s; color: #555; white-space: nowrap; }
     .ms-pill:hover { border-color: #444; color: #ccc; }
 
     /* ── MOBILE ── */
+    /* ── Toolbar icônes mobile ── */
+    .mob-icon-bar { display: none; }
+    .mob-section { display: block; }
+    .mob-desktop-extra { display: block; }
+
     @media (max-width: 660px) {
       .modal-overlay { padding: 0; align-items: flex-end; }
       .clip-modal {
@@ -249,29 +254,52 @@
         border-radius: 20px 20px 0 0;
         overflow: hidden;
       }
-      /* Lecteur vidéo mobile — ratio 9:16 (format Short/TikTok) */
       .modal-player-col { width: 100%; flex-shrink: 0; }
-      .modal-player-wrap { aspect-ratio: 9/16; flex: none; height: auto; max-height: 55dvh; width: auto; margin: 0 auto; }
-      /* Settings : panneau scrollable en bas */
-      .modal-settings-col { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-      .modal-settings-header { padding: 12px 16px 10px; }
-      .modal-clip-title { font-size: 14px; }
-      .modal-settings-body { padding: 12px 16px 80px; gap: 14px; }
-      /* Pills : scroll horizontal sur mobile */
+      .modal-player-wrap { aspect-ratio: 9/16; flex: none; height: auto; max-height: 48dvh; width: auto; margin: 0 auto; }
+      .modal-settings-col { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+      .modal-settings-header { padding: 10px 14px 8px; }
+      .modal-clip-title { font-size: 13px; }
+      .modal-settings-body { padding: 0; gap: 0; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+      /* Sur mobile : cacher toutes les sections sauf download */
+      .mob-section { display: none; }
+      .mob-section.mob-open { display: block; padding: 14px 16px; overflow-y: auto; max-height: calc(96dvh - 48dvh - 44px - 52px - 100px); }
+      .mob-always { padding: 10px 16px; border-top: 1px solid var(--bordure); flex-shrink: 0; }
+
+      /* Barre icônes */
+      .mob-icon-bar { display: flex; gap: 0; border-top: 1px solid var(--bordure); flex-shrink: 0; background: #0d0d0d; align-items: center; padding: 0 6px 0 0; }
+      .mob-icon-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 4px; background: transparent; border: none; cursor: pointer; color: var(--texte-muted); font-size: 10px; font-weight: 700; letter-spacing: .02em; transition: color .15s; border-top: 2px solid transparent; }
+      .mob-icon-btn svg { width: 20px; height: 20px; }
+      .mob-icon-btn.mob-active { color: var(--texte); border-top-color: var(--texte); }
+      .mob-icon-dl { flex: none; background: #fff; color: #0a0f0a !important; border-radius: 10px; padding: 8px 14px; margin: 6px 0; border-top: none !important; }
+      .mob-icon-dl svg { stroke: #0a0f0a; }
+      .mob-always { display: none; }
+
+      /* Cacher header score row + export groupé sur mobile */
+      .modal-score-row { display: none; }
+      .mob-desktop-extra { display: none; }
+
+      /* Pills scroll */
       .modal-styles { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
       .modal-styles::-webkit-scrollbar { display: none; }
-      .modal-styles-wrap::after { content: '›'; position: absolute; right: 0; top: 0; bottom: 4px; width: 40px; background: linear-gradient(to right, transparent, #161e16); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: var(--texte-muted); font-size: 18px; pointer-events: none; animation: nudge 1.5s ease-in-out infinite; }
+      .modal-styles-wrap::after { content: '›'; position: absolute; right: 0; top: 0; bottom: 4px; width: 40px; background: linear-gradient(to right, transparent, #0d0d0d); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: var(--texte-muted); font-size: 18px; pointer-events: none; animation: nudge 1.5s ease-in-out infinite; }
       @keyframes nudge { 0%,100% { transform: translateX(0); opacity:.6; } 50% { transform: translateX(3px); opacity:1; } }
       /* Options en 2 colonnes sur mobile */
       .modal-opt-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-      /* Bouton dl fixé en bas */
-      .modal-dl-btn { position: fixed; bottom: 0; left: 0; right: 0; border-radius: 0; z-index: 10; padding: 18px; font-size: 16px; }
-      .modal-dl-status { position: fixed; bottom: 56px; left: 0; right: 0; text-align: center; background: #0e150e; padding: 4px; font-size: 11px; z-index: 10; }
+      /* Bouton dl compact sur mobile */
+      .modal-dl-btn { padding: 10px 14px; font-size: 13px; border-radius: 10px; font-weight: 700; }
+      .mob-always { padding: 6px 12px 8px; }
       /* Score compact */
       .modal-score-num { font-size: 28px; }
       .modal-score-row { gap: 10px; }
     }
     .ms-pill.active { border-color: #fff !important; background: #1c1c1c !important; color: #fff !important; outline: none !important; }
+    .sz-btns { display: flex; gap: 6px; }
+    .sz-btn { width: 36px; height: 36px; background: #141414; border: 1px solid #282828; border-radius: 8px; color: #555; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; }
+    .sz-btn:hover { border-color: #444; color: #ccc; }
+    .sz-btn.active { background: #1c1c1c; border-color: #fff; color: #fff; }
+    #modal-fontsize { display: none; }
+    .opt-color { width: 36px !important; height: 36px !important; border: 1.5px solid #282828; border-radius: 6px; padding: 2px; cursor: pointer; background: none; display: block; }
 
     /* ── Text animation keyframes ── */
     @keyframes typeChar { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
@@ -285,9 +313,9 @@
     .sub-drag-hint { position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:10px; color:rgba(255,255,255,0.5); white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .2s; }
     .modal-sub-overlay:hover .sub-drag-hint, .modal-sub-overlay:focus .sub-drag-hint { opacity:1; }
     .modal-sub-overlay[contenteditable="true"] { outline:1.5px dashed rgba(16,185,129,0.6); border-radius:4px; cursor:text; min-width:40px; }
-    .modal-sub-overlay { cursor: grab; user-select:none; }
+    .modal-sub-overlay { cursor: grab; user-select:none; touch-action:none; }
     .modal-sub-overlay:active { cursor: grabbing; }
-    #modal-hook-overlay { cursor: grab; user-select:none; }
+    #modal-hook-overlay { cursor: grab; user-select:none; touch-action:none; }
     #modal-hook-overlay:active { cursor: grabbing; }
 
     /* Per-clip options */
@@ -336,7 +364,7 @@
 
     .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
     .result-card { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 14px; overflow: hidden; }
-    .result-thumb { width: 100%; aspect-ratio: 9/16; background: #0e150e; display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
+    .result-thumb { width: 100%; aspect-ratio: 9/16; background: #0d0d0d; display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
     .result-thumb video { width: 100%; height: 100%; object-fit: cover; }
     .result-info { padding: 12px; }
     .result-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
@@ -511,7 +539,9 @@
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
         <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
         <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
-        <div id="modal-hook-overlay" style="position:absolute;top:14px;left:6%;width:88%;text-align:center;pointer-events:all;z-index:5;font-size:13px;font-weight:900;color:#fff;display:none;text-shadow:1px 1px 4px #000,-1px -1px 4px #000;padding:4px 10px;background:rgba(0,0,0,0.55);border-radius:6px;cursor:grab"></div>
+        <div id="modal-hook-overlay" style="position:absolute;top:14px;text-align:center;pointer-events:all;z-index:5;font-weight:900;color:#fff;display:none;border-radius:0;cursor:grab"></div>
+        <div id="modal-sub-handle" style="display:none;position:absolute;width:24px;height:24px;background:#fff;border-radius:5px;z-index:20;cursor:nwse-resize;touch-action:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.6)"><svg width='11' height='11' viewBox='0 0 11 11' fill='none'><path d='M10 1L1 10M6 10H10V6' stroke='#222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg></div>
+        <div id="modal-hook-handle" style="display:none;position:absolute;width:24px;height:24px;background:#fff;border-radius:5px;z-index:20;cursor:nwse-resize;touch-action:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.6)"><svg width='11' height='11' viewBox='0 0 11 11' fill='none'><path d='M10 1L1 10M6 10H10V6' stroke='#222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg></div>
         <div class="modal-play-overlay paused" id="modal-play-overlay">
           <div class="modal-play-btn-big paused" id="modal-play-btn">
             <svg class="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
@@ -528,8 +558,11 @@
     </div>
     <div class="modal-settings-col">
       <div class="modal-settings-header">
-        <div>
-          <div class="modal-clip-title" id="modal-clip-title">—</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
+            <div class="modal-clip-title" id="modal-clip-title">—</div>
+            <div id="modal-score-badge" class="modal-score-badge">—</div>
+          </div>
           <div class="modal-clip-meta" id="modal-clip-meta"></div>
         </div>
         <button class="modal-close" onclick="V2.closeModal()">✕</button>
@@ -541,69 +574,109 @@
           <div class="score-breakdown" id="modal-breakdown"></div>
         </div>
 
-        <!-- Style sous-titres -->
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--texte-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Style sous-titres</div>
+        <!-- Toolbar icônes (mobile uniquement) -->
+        <div class="mob-icon-bar">
+          <button class="mob-icon-btn mob-active" id="mob-btn-subs" onclick="V2.mobPanel('subs')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="14" y2="14"/></svg>
+            Sous-titres
+          </button>
+          <button class="mob-icon-btn" id="mob-btn-hook" onclick="V2.mobPanel('hook')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Hook
+          </button>
+          <button class="mob-icon-btn" id="mob-btn-face" onclick="V2.mobPanel('face')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Recadrage
+          </button>
+          <button class="mob-icon-btn" id="mob-btn-edit" onclick="V2.mobPanel('edit')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Texte
+          </button>
+          <button class="mob-icon-btn mob-icon-dl" id="mob-dl-btn" onclick="V2.exportFromModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+
+        <!-- Section : Sous-titres -->
+        <div class="mob-section mob-open" id="mob-sec-subs">
+          <div style="font-size:10px;font-weight:700;color:#3a3a3a;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Style sous-titres</div>
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')">Aucun</button>
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
-            <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
+            <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
             <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')">Néon</button>
             <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')">Spotlight</button>
             <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')">✍️ Typewriter</button>
-            <button class="ms-pill active" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
+            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
             <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')">⬆ Slide</button>
             <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
             <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
           </div>
           </div>
-          <div style="font-size:11px;color:var(--texte-muted);margin-top:6px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres sur la vidéo · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
+          <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
+          <div class="modal-opt-row">
+            <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
+              <div class="sz-btns" id="sz-btns">
+                <button class="sz-btn active" data-sz="55" onclick="V2.setSzBtn(55)">S</button>
+                <button class="sz-btn" data-sz="70" onclick="V2.setSzBtn(70)">M</button>
+                <button class="sz-btn" data-sz="82" onclick="V2.setSzBtn(82)">L</button>
+                <button class="sz-btn" data-sz="96" onclick="V2.setSzBtn(96)">XL</button>
+              </div>
+              <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55" selected>Petit</option><option value="70">Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
+            </div>
+            <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
+              <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" onchange="V2.updateClipOpt()">
+            </div>
+            <div class="modal-opt-group"><div class="modal-opt-label">Fond</div>
+              <input type="color" id="modal-color-bg" value="#000000" class="opt-color" onchange="V2.updateClipOpt()">
+            </div>
+          </div>
         </div>
 
-        <!-- Options -->
-        <div class="modal-opt-row">
-          <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
-            <select id="modal-fontsize" class="opt-select" onchange="V2.updateClipOpt()"><option value="55">Petit</option><option value="70" selected>Moyen</option><option value="82">Grand</option><option value="96">XL</option></select>
-          </div>
-          <div class="modal-opt-group"><div class="modal-opt-label">Couleur texte</div>
-            <input type="color" id="modal-color-text" value="#ffffff" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
-          </div>
-          <div class="modal-opt-group"><div class="modal-opt-label">Fond</div>
-            <input type="color" id="modal-color-bg" value="#000000" class="opt-color" style="width:100%;height:36px" onchange="V2.updateClipOpt()">
-          </div>
-        </div>
-
-        <!-- Hook -->
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <!-- Section : Hook -->
+        <div class="mob-section" id="mob-sec-hook">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <label class="toggle"><input type="checkbox" id="modal-hook-on" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
             <span style="font-size:13px;color:var(--texte-doux)">Hook sur les 3 premières secondes</span>
           </div>
-          <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:6px">
-          <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--vert);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
-        </div>
-
-        <!-- Reframe mode -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--texte-doux)">Face tracking</div>
-            <div style="font-size:11px;color:var(--texte-muted)">Crop intelligent — idéal vlogs/IRL, désactive pour gaming</div>
+          <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:8px">
+          <div id="hook-presets" style="display:none;gap:12px;margin-bottom:8px;align-items:center">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texte-doux);cursor:pointer">
+              <input type="color" id="modal-hook-bg" value="#000000" oninput="V2.updateClipOpt()" style="width:28px;height:28px;border:none;background:none;cursor:pointer;padding:0;border-radius:4px">
+              Fond
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texte-doux);cursor:pointer">
+              <input type="color" id="modal-hook-fg" value="#ffffff" oninput="V2.updateClipOpt()" style="width:28px;height:28px;border:none;background:none;cursor:pointer;padding:0;border-radius:4px">
+              Texte
+            </label>
           </div>
-          <label class="toggle"><input type="checkbox" id="modal-face-track" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+          <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--texte-doux);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
         </div>
 
-        <div style="height:1px;background:var(--bordure)"></div>
+        <!-- Section : Face tracking -->
+        <div class="mob-section" id="mob-sec-face">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Face tracking</div>
+              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Crop intelligent — idéal vlogs/IRL, désactive pour gaming</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="modal-face-track" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
 
-        <!-- Bouton modifier sous-titres -->
-        <button onclick="V2.toggleTranscript()" id="btn-transcript" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg);border:1px solid var(--bordure);color:var(--texte);font-size:13px;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--vert)';this.style.color='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)';this.style.color='var(--texte)'">
-          <span>✏️ Modifier les sous-titres</span>
-          <span id="btn-transcript-count" style="font-size:11px;color:var(--texte-muted);font-weight:600"></span>
-        </button>
+        <!-- Section : Modifier texte -->
+        <div class="mob-section" id="mob-sec-edit">
+          <button onclick="V2.toggleTranscript()" id="btn-transcript" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg);border:1px solid var(--bordure);color:var(--texte);font-size:13px;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer">
+            <span>✏️ Modifier les sous-titres</span>
+            <span id="btn-transcript-count" style="font-size:11px;color:var(--texte-muted);font-weight:600"></span>
+          </button>
+        </div>
 
-        <!-- Download -->
-        <div>
+        <!-- Toujours visible : download -->
+        <div class="mob-always">
           <button class="modal-dl-btn" id="modal-dl-btn" onclick="V2.exportFromModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Télécharger ce clip 9:16
@@ -611,15 +684,19 @@
           <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:12px;color:var(--texte-muted);margin-top:6px"></div>
         </div>
 
-        <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:13px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:8px;padding:8px 14px;cursor:pointer;width:100%;text-align:center">
-          ☐ Ajouter à l'export groupé
-        </button>
+        <!-- Desktop only: séparateur + export groupé -->
+        <div class="mob-desktop-extra">
+          <div style="height:1px;background:var(--bordure)"></div>
+          <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:13px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:8px;padding:8px 14px;cursor:pointer;width:100%;text-align:center">
+            ☐ Ajouter à l'export groupé
+          </button>
+        </div>
 
       </div>
     </div>
 
     <!-- Panneau transcription (overlay sur les settings) -->
-    <div id="transcript-panel" style="display:none;position:absolute;inset:0;background:#0e150e;z-index:20;display:none;flex-direction:column">
+    <div id="transcript-panel" style="display:none;position:absolute;inset:0;background:#0d0d0d;z-index:20;display:none;flex-direction:column">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bordure);flex-shrink:0">
         <div>
           <div style="font-size:14px;font-weight:800">✏️ Modifier les sous-titres</div>
@@ -648,7 +725,7 @@ const V2 = (() => {
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
   let _selectedIds = new Set();
-  let _currentStyle = 'wordpop';
+  let _currentStyle = 'karaoke';
   let _watermarkFile = null;  // Logo File object
   let _ffmpeg = null;
   let _ffmpegLoading = null;
@@ -948,7 +1025,7 @@ const V2 = (() => {
     const defaults = {
       bold:      { text: '#ffffff', bg: '#000000' },
       minimal:   { text: '#ffffff', bg: '#000000' },
-      karaoke:   { text: '#FFE000', bg: '#000000' },
+      karaoke:   { text: '#ffffff', bg: '#000000' },
       neon:      { text: '#00FF9C', bg: '#00FF9C' },
       spotlight: { text: '#ffffff', bg: '#000000' },
     };
@@ -1061,7 +1138,7 @@ const V2 = (() => {
     const globalOpts = getExportOptions();
     return {
       style: _currentStyle,
-      fontSize: globalOpts.fontSize || 70,
+      fontSize: globalOpts.fontSize || 55,
       colorText: globalOpts.colorText || '#ffffff',
       colorBg: globalOpts.colorBg || '#000000',
       hookEnabled: globalOpts.hookEnabled || false,
@@ -1094,6 +1171,8 @@ const V2 = (() => {
     // Score
     const numEl = document.getElementById('modal-score-num');
     numEl.textContent = clip.score;
+    const badgeEl = document.getElementById('modal-score-badge');
+    if (badgeEl) { badgeEl.textContent = clip.score; badgeEl.style.color = numEl.style.color; }
     numEl.style.color = sc;
     const subs = subScores(clip);
     document.getElementById('modal-breakdown').innerHTML = subs.map(s =>
@@ -1103,9 +1182,13 @@ const V2 = (() => {
     // Load per-clip settings into controls
     const opts = getClipOpts(i);
     const fsEl = document.getElementById('modal-fontsize'); if (fsEl) fsEl.value = String(opts.fontSize);
+    document.querySelectorAll('.sz-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sz) === (opts.fontSize || 55)));
     const ctEl = document.getElementById('modal-color-text'); if (ctEl) ctEl.value = opts.colorText;
     const cbEl = document.getElementById('modal-color-bg'); if (cbEl) cbEl.value = opts.colorBg;
     const hookOn = document.getElementById('modal-hook-on'); if (hookOn) hookOn.checked = opts.hookEnabled;
+    const hookBgEl = document.getElementById('modal-hook-bg'); if (hookBgEl) hookBgEl.value = opts.hookBg || '#000000';
+    const hookFgEl = document.getElementById('modal-hook-fg'); if (hookFgEl) hookFgEl.value = opts.hookColor || '#ffffff';
+    const presetsEl2 = document.getElementById('hook-presets'); if (presetsEl2) presetsEl2.style.display = opts.hookEnabled ? 'flex' : 'none';
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) { hookTxt.value = opts.hookText; hookTxt.style.display = opts.hookEnabled ? 'block' : 'none'; }
     // Style pills
@@ -1154,6 +1237,10 @@ const V2 = (() => {
       const hookOv = document.getElementById('modal-hook-overlay');
       if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY');
       if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY');
+      const subHandle = document.getElementById('modal-sub-handle');
+      const hookHandle = document.getElementById('modal-hook-handle');
+      if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
+      if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
 
       // Start subtitle loop
       _lastSegKey = null;
@@ -1214,25 +1301,35 @@ const V2 = (() => {
       }
     }
 
-    // Hook overlay
+    // Hook overlay — proportions identiques au rendu Railway ASS
     if (hookEl && !hookEl.matches(':focus')) {
       const hookTxt = document.getElementById('modal-hook-txt')?.value || opts.hookText || '';
       const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
       if (hookOn && hookTxt) {
         const inWindow = rel >= 0 && rel < 3;
+        const sc = _previewScale();
+        const hookFs = Math.round((opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)) * sc);
+        const hookPad = Math.round(18 * sc);
+        hookEl.style.fontSize = hookFs + 'px';
+        hookEl.style.fontWeight = '900';
+        hookEl.style.color = opts.hookColor || '#ffffff';
+        hookEl.style.lineHeight = '1.3';
+        hookEl.style.borderRadius = '0';
+        hookEl.style.padding = `${hookPad}px`;
+        hookEl.style.left = `${Math.round(12 * sc)}px`;
+        hookEl.style.right = `${Math.round(12 * sc)}px`;
+        hookEl.style.width = 'auto';
+        hookEl.style.textShadow = 'none';
         if (video.paused) {
-          // En pause : toujours visible pour pouvoir le placer
-          // Contour pointillé si hors de la fenêtre 0-3s pour indiquer la position
           hookEl.style.display = 'block';
-          hookEl.style.opacity = '1';
           hookEl.style.outline = inWindow ? 'none' : '1.5px dashed rgba(255,255,255,0.5)';
-          hookEl.style.background = inWindow ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.25)';
+          const _hbg = opts.hookBg || '#000000'; const _hr=parseInt(_hbg.slice(1,3),16),_hg=parseInt(_hbg.slice(3,5),16),_hb=parseInt(_hbg.slice(5,7),16);
+          hookEl.style.background = inWindow ? `rgba(${_hr},${_hg},${_hb},0.93)` : `rgba(${_hr},${_hg},${_hb},0.3)`;
         } else {
-          // En lecture : disparaît complètement après 3s
           hookEl.style.display = inWindow ? 'block' : 'none';
-          hookEl.style.opacity = '1';
           hookEl.style.outline = 'none';
-          hookEl.style.background = 'rgba(0,0,0,0.55)';
+          const _hbg2 = opts.hookBg || '#000000'; const _hr2=parseInt(_hbg2.slice(1,3),16),_hg2=parseInt(_hbg2.slice(3,5),16),_hb2=parseInt(_hbg2.slice(5,7),16);
+          hookEl.style.background = `rgba(${_hr2},${_hg2},${_hb2},0.93)`;
         }
         hookEl.textContent = hookTxt;
         _applySubPosition(hookEl, opts.hookY ?? 10);
@@ -1241,83 +1338,204 @@ const V2 = (() => {
       }
     }
 
+    // Resize handles: positionner quand pause, masquer quand lecture
+    const _subH = document.getElementById('modal-sub-handle');
+    const _hookH = document.getElementById('modal-hook-handle');
+    const _wr = document.getElementById('modal-player-wrap');
+    if (_wr) {
+      const _wrR = _wr.getBoundingClientRect();
+      if (video.paused) {
+        if (_subH && subEl && subEl.style.display !== 'none') {
+          const _sR = subEl.getBoundingClientRect();
+          _subH.style.display = 'flex'; _subH.style.left = (_sR.right - _wrR.left - 24) + 'px'; _subH.style.top = (_sR.bottom - _wrR.top - 24) + 'px';
+        } else if (_subH) _subH.style.display = 'none';
+        if (_hookH && hookEl && hookEl.style.display !== 'none') {
+          const _hR = hookEl.getBoundingClientRect();
+          _hookH.style.display = 'flex'; _hookH.style.left = (_hR.right - _wrR.left - 24) + 'px'; _hookH.style.top = (_hR.bottom - _wrR.top - 24) + 'px';
+        } else if (_hookH) _hookH.style.display = 'none';
+      } else {
+        if (_subH) _subH.style.display = 'none';
+        if (_hookH) _hookH.style.display = 'none';
+      }
+    }
+
+    // Karaoke: highlight mot actuel chaque frame
+    if (opts.style === 'karaoke' && seg && subEl && subEl.style.display !== 'none') {
+      const segStart = seg.start ?? seg.offset ?? 0;
+      const segEnd   = seg.end ?? (segStart + (seg.duration ?? 2));
+      const segDur   = Math.max(0.01, segEnd - segStart);
+      const words    = Array.from(subEl.querySelectorAll('span[data-wi]'));
+      if (words.length > 0) {
+        const progress = Math.max(0, t - segStart);
+        const wordIdx  = Math.min(words.length - 1, Math.floor(progress / segDur * words.length));
+        const _kColors = ['#FFE000', '#10b981'];
+        const _segIdx = _segments.indexOf(seg);
+        const ct = _kColors[Math.max(0, _segIdx) % _kColors.length];
+        words.forEach((sp, ii) => {
+          if (ii === wordIdx)    { sp.style.color = ct; sp.style.transform = 'scale(1.12)'; }
+          else if (ii < wordIdx) { sp.style.color = '#ffffff'; sp.style.transform = 'scale(1)'; }
+          else                   { sp.style.color = 'rgba(255,255,255,0.35)'; sp.style.transform = 'scale(1)'; }
+        });
+      }
+    }
+
     _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
   }
 
+  function _previewScale() {
+    const wrap = document.getElementById('modal-player-wrap');
+    return wrap ? Math.max(0.15, wrap.offsetWidth / 720) : 0.24;
+  }
+
   function _renderSubText(el, text, opts) {
-    const fs = Math.round((opts.fontSize || 70) * 0.24);
+    const sc = _previewScale();
+    const fs = Math.round((opts.fontSize || 70) * sc);
     const ct = opts.colorText || '#ffffff';
     const cb = opts.colorBg || '#000000';
     const style = opts.style || 'bold';
 
+    // Simule ASS BorderStyle=1 Outline=N px avec 8 text-shadows directionnels
+    function _ol(color, n) {
+      const p = Math.max(1, Math.round(n * sc));
+      const d = Math.round(p * 0.71);
+      return `0 ${p}px 0 ${color},0 -${p}px 0 ${color},${p}px 0 0 ${color},-${p}px 0 0 ${color},${d}px ${d}px 0 ${color},-${d}px -${d}px 0 ${color},${d}px -${d}px 0 ${color},-${d}px ${d}px 0 ${color}`;
+    }
+    function _sh(color, n) {
+      const p = Math.max(1, Math.round(n * sc));
+      return `${p}px ${p}px ${p}px ${color}`;
+    }
+    const bp = `${Math.round(4*sc)}px ${Math.round(12*sc)}px`;
+
+    el.innerHTML = '';
+    // Max 2 lignes: 7 mots
+    const wArr = text.split(' ').filter(Boolean); if (wArr.length > 7) text = wArr.slice(0, 7).join(' ');
+
     switch(style) {
-      case 'typewriter': {
-        el.innerHTML = '';
-        const words = text.split(' ');
-        words.forEach((word, wi) => {
-          const span = document.createElement('span');
-          span.textContent = word + (wi < words.length - 1 ? ' ' : '');
-          span.style.cssText = `display:inline;opacity:0;animation:typeChar 0.12s forwards;animation-delay:${wi * 0.09}s`;
-          el.appendChild(span);
-        });
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;text-shadow:2px 2px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
-        break;
-      }
-      case 'wordpop': {
-        el.innerHTML = '';
-        const wpWords = text.split(' ');
-        wpWords.forEach((word, wi) => {
-          const span = document.createElement('span');
-          span.textContent = word;
-          span.style.cssText = `display:inline-block;opacity:0;animation:wordPop 0.2s cubic-bezier(.175,.885,.32,1.275) forwards;animation-delay:${wi * 0.12}s`;
-          el.appendChild(span);
-          // Espace comme TextNode séparé — inline-block mange les espaces dans textContent
-          if (wi < wpWords.length - 1) el.appendChild(document.createTextNode(' '));
-        });
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:1px 1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
-        break;
-      }
-      case 'slide': {
-        el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:700;background:${cb}BB;padding:5px 18px;border-radius:4px;animation:slideUp 0.3s ease forwards;cursor:grab;pointer-events:all`;
-        break;
-      }
+      case 'bold':
+      case 'wordpop':
       case 'shake': {
         el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 4px ${cb};animation:shakeTxt 0.4s ease infinite;background:none;padding:0;cursor:grab;pointer-events:all`;
-        break;
-      }
-      case 'wave': {
-        el.textContent = text;
-        el.style.cssText = `font-size:${fs}px;font-weight:900;background:linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#ff6b6b);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:waveGrad 1.5s linear infinite;padding:0;background-clip:text;cursor:grab;pointer-events:all`;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
         break;
       }
       case 'minimal': {
         el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${Math.round(fs*0.85)}px;font-weight:500;background:${cb}88;padding:3px 14px;border-radius:20px;text-shadow:none;cursor:grab;pointer-events:all`;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '700';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'rgba(0,0,0,0.60)';
+        el.style.padding = bp;
+        el.style.borderRadius = '0';
+        el.style.textShadow = 'none';
         break;
       }
       case 'karaoke': {
-        el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;background:${cb}44;padding:2px 8px;border-radius:4px;text-shadow:1px 1px 3px #000;cursor:grab;pointer-events:all`;
+        // Karaoke mot par mot: spans avec data-wi, highlight animé dans _subLoop
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 3) + ',' + _sh('rgba(0,0,0,0.5)', 1);
+        text.split(' ').forEach((word, wi) => {
+          const span = document.createElement('span');
+          span.textContent = word;
+          span.style.marginRight = '0.28em';
+          span.dataset.wi = wi;
+          span.style.display = 'inline-block';
+          span.style.transition = 'transform 0.09s ease, color 0.09s ease';
+          span.style.color = 'rgba(255,255,255,0.35)';
+          el.appendChild(span);
+        });
         break;
       }
       case 'neon': {
         el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:800;text-shadow:0 0 10px ${ct},0 0 20px ${ct};background:none;padding:0;cursor:grab;pointer-events:all`;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        const np = Math.round(6 * sc);
+        el.style.textShadow = _ol(cb, 6) + `,0 0 ${np*2}px ${cb},0 0 ${np*3}px ${cb}`;
         break;
       }
       case 'spotlight': {
         el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${Math.round(fs*0.9)}px;font-weight:700;background:${cb}CC;padding:6px 22px;border-radius:4px;text-shadow:none;cursor:grab;pointer-events:all`;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '700';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'rgba(0,0,0,0.816)';
+        el.style.padding = bp;
+        el.style.borderRadius = '0';
+        el.style.textShadow = 'none';
         break;
       }
-      default: { // bold
+      case 'typewriter': {
+        el.style.fontFamily = 'monospace';
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '800';
+        el.style.color = ct;
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 3) + ',' + _sh('rgba(0,0,0,0.5)', 1);
+        text.split(' ').forEach((word, wi, arr) => {
+          const span = document.createElement('span');
+          span.textContent = word + (wi < arr.length - 1 ? ' ' : '');
+          span.style.cssText = `display:inline;opacity:0;animation:typeChar 0.12s forwards;animation-delay:${wi * 0.09}s`;
+          el.appendChild(span);
+        });
+        break;
+      }
+      case 'slide': {
         el.textContent = text;
-        el.style.cssText = `color:${ct};font-size:${fs}px;font-weight:900;text-shadow:2px 2px 5px ${cb},-1px -1px 4px ${cb};background:none;padding:0;cursor:grab;pointer-events:all`;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '700';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'rgba(0,0,0,0.749)';
+        el.style.padding = bp;
+        el.style.borderRadius = '0';
+        el.style.textShadow = 'none';
+        break;
+      }
+      case 'wave': {
+        el.textContent = text;
+        el.style.color = '#6BFF6B';
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
+        break;
+      }
+      default: {
+        el.textContent = text;
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
       }
     }
-    // Commun — left:4% + right:4% + width:auto = centrage sans transform (pas de conflit avec animations)
     el.style.position = 'absolute';
     el.style.left = '4%';
     el.style.right = '4%';
@@ -1328,7 +1546,9 @@ const V2 = (() => {
     el.style.wordWrap = 'break-word';
     el.style.maxWidth = '92%';
     el.style.display = text ? 'block' : 'none';
-    el.title = 'Glisser pour déplacer · Cliquer pour modifier';
+    el.style.cursor = 'grab';
+    el.style.pointerEvents = 'all';
+    el.title = 'Glisser pour déplacer';
   }
 
   function _applySubPosition(el, yPct) {
@@ -1339,33 +1559,84 @@ const V2 = (() => {
   function _setupDraggable(el, wrap, yKey) {
     // Bloquer TOUTE propagation de clic — empêche le play/pause du wrapper
     el.addEventListener('click', e => e.stopPropagation());
-    el.addEventListener('mousedown', e => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-      e.preventDefault(); // empêche la sélection de texte pendant le drag
+
+    const startDrag = (startY) => {
       _isDragging = false;
-      const startY = e.clientY;
       const wrapRect = wrap.getBoundingClientRect();
       const curY = _clipSettings[_modalIdx]?.[yKey] ?? (yKey === 'subY' ? 82 : 10);
       let moved = false;
 
-      const onMove = ev => {
+      const onMove = (clientY) => {
         moved = true;
         _isDragging = true;
-        const dy = (ev.clientY - startY) / wrapRect.height * 100;
+        const dy = (clientY - startY) / wrapRect.height * 100;
         const newY = Math.max(2, Math.min(92, curY + dy));
         if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
         _clipSettings[_modalIdx][yKey] = newY;
       };
-      const onUp = () => {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
+      const onEnd = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
         if (!moved) _makeEditable(el, yKey);
         setTimeout(() => { _isDragging = false; }, 150);
       };
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
+
+      const onMouseMove = ev => onMove(ev.clientY);
+      const onMouseUp = () => onEnd();
+      const onTouchMove = ev => { ev.preventDefault(); onMove(ev.touches[0].clientY); };
+      const onTouchEnd = () => onEnd();
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+    };
+
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      e.preventDefault();
+      startDrag(e.clientY);
     });
+
+    el.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      startDrag(e.touches[0].clientY);
+    }, { passive: false });
+  }
+
+  function _setupResizeHandle(handleEl, sizeKey) {
+    handleEl.addEventListener('click', e => e.stopPropagation());
+    let startY = 0, startSize = 55;
+    const start = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      startY = e.touches ? e.touches[0].clientY : e.clientY;
+      startSize = getClipOpts(_modalIdx)[sizeKey] || (sizeKey === "hookFontSize" ? 50 : 55);
+      document.addEventListener('mousemove', move);
+      document.addEventListener('touchmove', move, {passive:false});
+      document.addEventListener('mouseup', end);
+      document.addEventListener('touchend', end);
+    };
+    const move = (e) => {
+      e.preventDefault();
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+      const dy = startY - y;
+      const newSize = Math.min(110, Math.max(30, Math.round(startSize + dy * 0.5)));
+      if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = Object.assign({}, getClipOpts(_modalIdx));
+      _clipSettings[_modalIdx][sizeKey] = newSize;
+      _lastSegKey = null;
+    };
+    const end = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('mouseup', end);
+      document.removeEventListener('touchend', end);
+    };
+    handleEl.addEventListener('mousedown', start);
+    handleEl.addEventListener('touchstart', start, {passive:false});
   }
 
   function _makeEditable(el, yKey) {
@@ -1446,17 +1717,20 @@ const V2 = (() => {
     const hookOn = document.getElementById('modal-hook-on')?.checked || false;
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
+    const presetsEl = document.getElementById('hook-presets');
+    if (presetsEl) presetsEl.style.display = hookOn ? 'flex' : 'none';
     // Préserver subY/hookY/segEdits existants
     const prev = _clipSettings[_modalIdx] || {};
     _lastSegKey = null; // force re-render (couleur/taille changée)
     _clipSettings[_modalIdx] = {
       style: document.querySelector('#modal-style-btns .ms-pill.active')?.dataset.style || _currentStyle,
-      fontSize: parseInt(document.getElementById('modal-fontsize')?.value || '70'),
+      fontSize: parseInt(document.getElementById('modal-fontsize')?.value || '55'),
       colorText: document.getElementById('modal-color-text')?.value || '#ffffff',
       colorBg: document.getElementById('modal-color-bg')?.value || '#000000',
       hookEnabled: hookOn,
       hookText: hookTxt?.value || '',
-      hookColor: prev.hookColor || '#ffffff',
+      hookColor: document.getElementById('modal-hook-fg')?.value || prev.hookColor || '#ffffff',
+      hookBg: document.getElementById('modal-hook-bg')?.value || prev.hookBg || '#000000',
       hookPos: prev.hookPos || 'top',
       wmEnabled: prev.wmEnabled || false,
       wmPos: prev.wmPos || 'tr',
@@ -1529,8 +1803,8 @@ const V2 = (() => {
     if (panel) panel.style.display = _transcriptOpen ? 'flex' : 'none';
     const btn = document.getElementById('btn-transcript');
     if (btn) {
-      btn.style.borderColor = _transcriptOpen ? 'var(--vert)' : 'var(--bordure)';
-      btn.style.color = _transcriptOpen ? 'var(--vert)' : 'var(--texte)';
+      btn.style.borderColor = _transcriptOpen ? 'rgba(255,255,255,0.5)' : 'var(--bordure)';
+      btn.style.color = _transcriptOpen ? 'var(--texte)' : 'var(--texte)';
     }
   }
 
@@ -1630,8 +1904,10 @@ const V2 = (() => {
     if (_modalIdx === null) return;
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
+    const mobBtn = document.getElementById('mob-dl-btn');
     const status = document.getElementById('modal-dl-status');
     if (btn) { btn.disabled = true; btn.onclick = null; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
+    if (mobBtn) { mobBtn.disabled = true; mobBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;width:20px;height:20px"><path d="M12 2v10m0 0l-3-3m3 3l3-3"/><circle cx="12" cy="12" r="10" stroke-dasharray="30 10"/></svg>…'; }
     if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
     try {
       const opts = getClipOpts(i);
@@ -1641,17 +1917,15 @@ const V2 = (() => {
         if (status) status.textContent = msg;
       });
 
+      const _resetMobBtn = () => {
+        if (mobBtn) { mobBtn.disabled = false; mobBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export'; }
+      };
       if (_isIOS() && navigator.canShare) {
-        // iOS : blob déjà en mémoire (dans result.blob) — 2e tap juste pour le gesture share
         _pendingDownload = { blob: result.blob, filename: result.filename };
         if (status) status.textContent = 'Prêt ! Appuie sur le bouton ↓';
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = '📲 Enregistrer dans Photos';
-          btn.onclick = () => V2._iosSharePending();
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = '📲 Enregistrer dans Photos'; btn.onclick = () => V2._iosSharePending(); }
+        if (mobBtn) { mobBtn.disabled = false; mobBtn.innerHTML = '📲'; mobBtn.onclick = () => V2._iosSharePending(); }
       } else {
-        // Desktop / Android : objectURL + téléchargement direct
         const objUrl = URL.createObjectURL(result.blob);
         const a = document.createElement('a');
         a.href = objUrl; a.download = result.filename;
@@ -1660,6 +1934,7 @@ const V2 = (() => {
         if (status) status.textContent = '✅ Téléchargé !';
         toast('✅ Clip téléchargé !', 'succes', 3000);
         _resetModalBtn(btn);
+        _resetMobBtn();
       }
     } catch(err) {
       if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé.'; }
@@ -1668,6 +1943,8 @@ const V2 = (() => {
         toast(`❌ ${err.message}`, 'erreur', 6000);
       }
       _resetModalBtn(btn);
+      const mobBtnEl = document.getElementById('mob-dl-btn');
+      if (mobBtnEl) { mobBtnEl.disabled = false; mobBtnEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export'; }
     }
   }
 
@@ -1883,7 +2160,7 @@ const V2 = (() => {
   function getExportOptions() {
     return {
       style: _currentStyle,
-      fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '70'),
+      fontSize: parseInt(document.getElementById('opt-fontsize')?.value || '55'),
       position: document.getElementById('opt-position')?.value || 'low',
       colorText: document.getElementById('opt-color-text')?.value || '#ffffff',
       colorBg: document.getElementById('opt-color-bg')?.value || '#000000',
@@ -1959,13 +2236,15 @@ const V2 = (() => {
     form.append('file', segmentBlob, 'segment.mp4');
     form.append('segments', JSON.stringify(patchedSegments));
     form.append('style', opts.style || 'bold');
-    form.append('font_size', String(opts.fontSize || 70));
+    form.append('font_size', String(opts.fontSize || 55));
+    form.append('hook_font_size', String(opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)));
     form.append('color_text', opts.colorText || '#ffffff');
     form.append('color_bg',   opts.colorBg   || '#000000');
     form.append('sub_y',      String(opts.subY ?? 82));
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText  || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
+    form.append('hook_bg',    opts.hookBg    || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
     form.append('reframe_mode', opts.reframeMode || 'center');
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
@@ -2448,7 +2727,7 @@ const V2 = (() => {
     if (_isIOS() && navigator.canShare) {
       // Étape 1 : changer le bouton (gesture A, synchrone — pas d'async ici)
       btn.textContent = '📲 Appuie ici → Photos';
-      btn.style.background = '#0d9488';
+      btn.style.background = '#222';
       btn.onclick = async () => {
         btn.disabled = true;
         btn.textContent = '⏳ Récupération…';
@@ -2500,7 +2779,24 @@ const V2 = (() => {
     setState('upload');
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript };
+  function mobPanel(id) {
+    const sections = ['subs', 'hook', 'face', 'edit'];
+    sections.forEach(s => {
+      const sec = document.getElementById('mob-sec-' + s);
+      const btn = document.getElementById('mob-btn-' + s);
+      if (sec) sec.classList.toggle('mob-open', s === id);
+      if (btn) btn.classList.toggle('mob-active', s === id);
+    });
+  }
+
+  function setSzBtn(val) {
+    const sel = document.getElementById('modal-fontsize');
+    if (sel) sel.value = String(val);
+    document.querySelectorAll('.sz-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sz) === val));
+    updateClipOpt();
+  }
+
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
