@@ -1402,13 +1402,14 @@ async def process_clip_endpoint(
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
-        # hook_bg -> ASS BackColour avec alpha 12 (93% opaque, identique au preview rgba(r,g,b,0.93))
         def hex_to_ass_bg(h, alpha="12"):
             h = h.lstrip("#").upper().zfill(6)
             return f"&H{alpha}{h[4:6]}{h[2:4]}{h[0:2]}"
-        hbg = hex_to_ass_bg(hook_bg)
+        hbg       = hex_to_ass_bg(hook_bg, "12")   # 93% opaque — fond de la boite
+        hbg_solid = hex_to_ass_bg(hook_bg, "00")   # 100% opaque — OutlineColour = meme couleur que fond
+        # OutlineColour = meme couleur que BackColour → les 18px d'outline = padding invisible (pas de noir qui deborde)
         hook_margin_v = max(20, int(hook_y / 100 * 1280))
-        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},&H00000000,{hbg},-1,0,0,0,100,100,0,0,3,18,10,8,30,30,{hook_margin_v},1"
+        hook_style = f"Style: Hook,{F},{int(font_size*0.9)},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
 
         overlay_vf = ""
         if has_subs and style != "none":
