@@ -1458,16 +1458,20 @@ async def process_clip_endpoint(
                             line_txt = " ".join(words[:wi + 1])
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
                     elif style == "karaoke":
+                        # 1 ligne par mot : mot courant=accent, passés=blanc, futurs=dim
                         words = txt.split()
-                        n = max(len(words), 1)
-                        total_cs = max(1, int((t1 - t0) * 100))
-                        dt_cs = max(1, total_cs // n)
-                        remainder = total_cs - dt_cs * (n - 1)
-                        karaoke_txt = "{\\1c" + seg_color + "}" + "".join(
-                            f"{{\\k{dt_cs if i < n-1 else remainder}}}{w} "
-                            for i, w in enumerate(words)
-                        ).rstrip()
-                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{karaoke_txt}")
+                        n_w = max(len(words), 1)
+                        dt = (t1 - t0) / n_w
+                        for wi in range(n_w):
+                            wt0 = t0 + wi * dt
+                            wt1 = t0 + (wi + 1) * dt if wi < n_w - 1 else t1
+                            parts = []; cur_clr = None
+                            for j, w in enumerate(words):
+                                clr = ct if j < wi else (seg_color if j == wi else ct_dim)
+                                if clr != cur_clr:
+                                    parts.append(f"{{\\1c{clr}}}"); cur_clr = clr
+                                parts.append(w + (" " if j < n_w - 1 else ""))
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{''.join(parts)}")
                     else:
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
