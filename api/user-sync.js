@@ -8,37 +8,43 @@ const crypto = require('crypto');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
-// TODO: configurer META_PIXEL_ID et META_CAPI_TOKEN dans Vercel → Settings → Environment Variables
-const META_PIXEL_ID = (process.env.META_PIXEL_ID || '').trim();
-const META_CAPI_TOKEN = (process.env.META_CAPI_TOKEN || '').trim();
+const META_PIXEL_ID = (process.env.META_PIXEL_ID || '953153460847578').trim();
+const META_CAPI_TOKEN = (process.env.META_ACCESS_TOKEN || process.env.META_CAPI_TOKEN || '').trim();
 
 async function envoyerEmailBienvenue(email) {
-  if (!process.env.BREVO_API_KEY) return;
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('[Email] BREVO_API_KEY manquante — bienvenue non envoyé à', email);
+    return;
+  }
+  // Ajout contact Brevo (non bloquant — échec ignoré)
+  fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': (process.env.BREVO_API_KEY || '').trim() },
+    body: JSON.stringify({ email, attributes: { PLAN: 'gratuit' }, listIds: [3], updateEnabled: true })
+  }).catch(e => console.warn('[Email] Ajout contact Brevo échoué:', e.message));
+
+  // Envoi email de bienvenue
   try {
-    await fetch('https://api.brevo.com/v3/contacts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
-      body: JSON.stringify({ email, attributes: { PLAN: 'gratuit' }, updateEnabled: true })
-    });
     const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'api-key': (process.env.BREVO_API_KEY || '').trim() },
       body: JSON.stringify({
         sender: { email: 'contact@creatis.app', name: 'Créatis' },
         to: [{ email }],
-        subject: '🚀 Bienvenue sur Créatis — ta génération gratuite t\'attend',
-        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;"><div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div><p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Votre assistant YouTube IA</p><h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 12px;">Bienvenue ! 👋</h1><p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">1 génération gratuite</strong> pour découvrir Créatis — aucune carte bancaire requise.</p><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;"><p style="color:#10b981;font-weight:600;margin:0 0 12px;">Pour commencer :</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">1. Connecte ton @handle YouTube</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">2. Choisis un agent IA (YouTube Complet, Short, Idées…)</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">3. Génère ton contenu en 30 secondes</p></div><a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Démarrer avec Créatis →</a><p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p></div>`
+        subject: 'Bienvenue sur Creatis - ton contenu viral commence ici',
+        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;"><div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:4px;">Creatis<span style="color:#10b981;">.</span></div><p style="color:#6b7280;font-size:14px;margin:0 0 32px;">L'outil IA pour createurs francophones</p><h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 12px;">Bienvenue !</h1><p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est cree. Voici ce que tu peux faire des maintenant :</p><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:16px;"><p style="color:#10b981;font-weight:700;margin:0 0 8px;font-size:15px;">Clips Viraux</p><p style="color:#d1d5db;font-size:14px;margin:0;line-height:1.6;">Uploade une video, l'IA identifie les 10 meilleurs moments et les coupe en Shorts 9:16 prets a poster.</p></div><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;"><p style="color:#10b981;font-weight:700;margin:0 0 8px;font-size:15px;">Agents IA</p><p style="color:#d1d5db;font-size:14px;margin:0;line-height:1.6;">Titres YouTube, scripts, idees de videos, descriptions SEO — tout en quelques secondes.</p></div><a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Acceder a Creatis</a><p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p></div>`
       })
     });
     const emailData = await emailRes.json().catch(() => ({}));
     if (!emailRes.ok) {
-      console.error('[Email] Brevo erreur:', emailRes.status, JSON.stringify(emailData));
-    } else {
-      console.log('[Email] Brevo OK:', emailData.messageId);
-      return emailData.messageId;
+      console.error('[Email] Brevo SMTP erreur', emailRes.status, 'pour', email, ':', JSON.stringify(emailData));
+      return null;
     }
+    console.log('[Email] Bienvenue envoyé à', email, '— messageId:', emailData.messageId);
+    return emailData.messageId;
   } catch (e) {
-    console.warn('[Email] Bienvenue non envoyé:', e.message);
+    console.error('[Email] Bienvenue exception pour', email, ':', e.message);
+    return null;
   }
 }
 
@@ -68,7 +74,14 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
+
+  // Crons Vercel envoient GET — autoriser GET uniquement pour email_cron
+  const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
+  if (req.method === 'GET' && actionFromQuery === 'email_cron') {
+    req.body = { action: 'email_cron' };
+  } else if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Méthode non autorisée' });
+  }
 
   const { userId, email, plan, chaine, action, metadata } = req.body || {};
 
@@ -104,17 +117,8 @@ module.exports = async (req, res) => {
         const result = await supabase('/users?on_conflict=email', 'POST', userData);
 
         // Email de bienvenue uniquement pour les nouveaux inscrits
-        let emailStatus = 'skipped';
-        let emailMessageId = null;
-        if (email && process.env.BREVO_API_KEY) {
-          if (isNewUser) {
-            emailMessageId = await envoyerEmailBienvenue(email);
-            emailStatus = emailMessageId ? 'delivered' : 'error';
-          } else {
-            emailStatus = 'existing_user';
-          }
-        } else if (!process.env.BREVO_API_KEY) {
-          emailStatus = 'no_api_key';
+        if (isNewUser && email) {
+          await envoyerEmailBienvenue(email);
         }
 
         return res.status(200).json({ user: Array.isArray(result) ? result[0] : result });
@@ -231,7 +235,6 @@ module.exports = async (req, res) => {
             action_source: 'website',
             user_data: { em: [emailHash] }
           }]
-          // test_event_code: 'TEST_XXXXX' // décommenter pour tester dans Events Manager Meta
         };
         const capiRes = await fetch(
           `https://graph.facebook.com/v18.0/${META_PIXEL_ID}/events?access_token=${META_CAPI_TOKEN}`,
@@ -261,6 +264,76 @@ module.exports = async (req, res) => {
           console.warn('[update_profile] PATCH échoué (colonnes manquantes ?):', e.message);
         }
         return res.status(200).json({ success: true });
+      }
+
+      case 'email_cron': {
+        // Cron serveur-side : envoie J2/J5/J10/J14 aux utilisateurs gratuits
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret;
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: true, sent: 0, note: 'BREVO_API_KEY manquante' });
+
+        const origin = 'https://creatis.app';
+        const now = new Date();
+        let totalSent = 0;
+        const cronLog = [];
+
+        const EMAIL_SEQS = [
+          { key: 'j1', days: 1, subject: 'Ton clip viral t\'attend — 2 minutes suffisent',
+            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:22px;margin:0 0 16px">Salut ${n} 👋</h2><p style="line-height:1.7;margin:0 0 16px">Tu t'es inscrit sur Créatis hier mais tu n'as pas encore créé ton premier clip viral.</p><p style="line-height:1.7;margin:0 0 20px">C'est simple : <strong>uploade une vidéo YouTube</strong>, l'IA détecte les 10 meilleurs moments et les coupe en Shorts 9:16 prêts à poster sur TikTok, Instagram et YouTube.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px"><p style="margin:0 0 10px;font-weight:700;font-size:15px">Ce que tu obtiens en 2 minutes :</p><p style="margin:0;line-height:2;color:#333">✂️ Clips découpés automatiquement<br>📝 Sous-titres brûlés dans la vidéo<br>🎯 Hooks percutants générés par IA<br>📐 Format 9:16 prêt à publier</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Créer mes clips maintenant →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
+          { key: 'j3', days: 3, subject: 'Comment transformer 1 vidéo en 10 clips viraux',
+            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une vidéo YouTube de 10 minutes = 10 clips TikTok potentiels. La plupart des créateurs ne le font pas parce que ça prend des heures à la main.</p><p style="line-height:1.7;margin:0 0 20px">Créatis le fait en 2 minutes. L'IA analyse ta vidéo, identifie les moments les plus forts, les coupe et ajoute les sous-titres automatiquement.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px;border-left:4px solid #000"><p style="margin:0;font-style:italic;line-height:1.7;color:#333">"Une seule vidéo = un mois de contenu court format. C'est exactement ce que fait Créatis."</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Essayer gratuitement →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
+          { key: 'j7', days: 7, subject: 'Tu n\'as pas encore essayé — je t\'offre un accès guidé',
+            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Ça fait une semaine que tu es inscrit sur Créatis. Si tu n'as pas encore testé, c'est peut-être qu'il manque quelque chose.</p><p style="line-height:1.7;margin:0 0 20px">Dis-moi si je peux t'aider — réponds directement à cet email. En attendant, voici les 3 étapes pour créer ton premier clip :</p><div style="margin:0 0 24px"><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">1</div><p style="margin:0;line-height:1.6"><strong>Upload ta vidéo</strong> — depuis ton ordinateur ou colle une URL YouTube</p></div><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">2</div><p style="margin:0;line-height:1.6"><strong>L'IA analyse</strong> — 2 minutes, elle détecte les 10 meilleurs moments</p></div><div style="display:flex;align-items:flex-start;gap:12px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">3</div><p style="margin:0;line-height:1.6"><strong>Télécharge tes clips</strong> — sous-titres inclus, format 9:16 prêt à poster</p></div></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Commencer maintenant →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
+          { key: 'j14', days: 14, subject: '-50% le 1er mois — offre de lancement',
+            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Tu fais partie des premiers utilisateurs de Créatis. En tant qu'early adopter, je te réserve une offre spéciale.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px;text-align:center"><p style="font-size:28px;font-weight:900;margin:0 0 8px">-50% le 1er mois</p><p style="color:#666;margin:0 0 16px;font-size:15px">Créatis Pro à 7,50€ au lieu de 15€</p><p style="margin:0;line-height:2;color:#333;font-size:14px">✂️ Clips viraux illimités · 📝 Sous-titres automatiques<br>🎯 Hooks IA · 🎬 Scripts YouTube · 🖼️ Miniatures</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 16px">Profiter de l'offre →</a><p style="color:#999;font-size:13px;margin:0 0 24px">Offre valable 7 jours.</p><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
+        ];
+
+        for (const seq of EMAIL_SEQS) {
+          try {
+            const d = new Date(now);
+            d.setDate(d.getDate() - seq.days);
+            const from = new Date(d); from.setHours(0,0,0,0);
+            const to = new Date(d); to.setHours(23,59,59,999);
+            const users = await supabase(`/users?select=id,email,nom,plan&created_at=gte.${from.toISOString()}&created_at=lte.${to.toISOString()}&plan=eq.gratuit`);
+            if (!Array.isArray(users)) continue;
+            for (const u of users) {
+              const nom = u.nom || u.email?.split('@')[0] || 'Créateur';
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Créatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: seq.subject, htmlContent: seq.body(nom) })
+              });
+              if (r.ok) { totalSent++; cronLog.push(`${seq.key} → ${u.email}`); }
+            }
+          } catch(e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
+        }
+        console.log('[EmailCron]', cronLog);
+        return res.status(200).json({ ok: true, sent: totalSent, log: cronLog });
+      }
+
+      case 'log_clip_export': {
+        const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
+        const users = await supabase(`/users?${identifier}&select=id,plan,repurpose_count`, 'GET');
+        const user = users?.[0];
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        const nb = Math.max(1, parseInt(metadata?.nb) || 1);
+        await supabase(`/users?${identifier}`, 'PATCH', {
+          repurpose_count: (user.repurpose_count || 0) + nb,
+          last_generation_at: new Date().toISOString()
+        });
+        for (let i = 0; i < nb; i++) {
+          await supabase('/generations', 'POST', {
+            user_id: user.id,
+            agent_id: 'clips-viraux',
+            agent_type: 'repurpose',
+            plan: user.plan,
+            created_at: new Date().toISOString()
+          }).catch(() => {});
+        }
+        return res.status(200).json({ success: true, logged: nb });
       }
 
       default:

@@ -1931,6 +1931,7 @@ const V2 = (() => {
         a.href = objUrl; a.download = result.filename;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
+        logClipExport(1);
         if (status) status.textContent = '✅ Téléchargé !';
         toast('✅ Clip téléchargé !', 'succes', 3000);
         _resetModalBtn(btn);
@@ -2153,7 +2154,7 @@ const V2 = (() => {
     }
     if (totalBar) totalBar.style.width = '100%';
 
-    if (results.length > 0) renderResults(results);
+    if (results.length > 0) { logClipExport(results.length); renderResults(results); }
     else { toast('❌ Aucun clip exporté', 'erreur', 5000); setState('studio'); }
   }
 
@@ -2789,6 +2790,18 @@ const V2 = (() => {
     });
   }
 
+  async function logClipExport(nb = 1) {
+    try {
+      const user = await Auth.getUser();
+      if (!user?.email) return;
+      fetch('/api/user-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, action: 'log_clip_export', metadata: { nb } })
+      }).catch(() => {});
+    } catch (e) { /* silencieux */ }
+  }
+
   function setSzBtn(val) {
     const sel = document.getElementById('modal-fontsize');
     if (sel) sel.value = String(val);
@@ -2796,7 +2809,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
