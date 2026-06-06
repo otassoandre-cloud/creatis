@@ -8,7 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css?v=20260523c">
   <link rel="stylesheet" href="css/app-r4.css">
   <script defer src="/_vercel/insights/script.js"></script>
@@ -604,7 +605,6 @@
       <div class="onb-dots">
         <span class="onb-dot actif" id="onb-dot-1"></span>
         <span class="onb-dot" id="onb-dot-2"></span>
-        <span class="onb-dot" id="onb-dot-3"></span>
         <span class="onb-dot" id="onb-dot-4"></span>
         <span class="onb-dot" id="onb-dot-5"></span>
       </div>
@@ -625,7 +625,7 @@
         <p class="onb-texte">Ça aide Créatis à personnaliser tes scripts, titres et idées.</p>
         <input type="text" id="onb-niche" class="input" placeholder="Finance, gaming, cuisine…" style="width:100%;margin-bottom:16px;" />
         <button class="btn btn-primaire" style="width:100%;" onclick="app._onbSauvegarderNiche()">Suivant →</button>
-        <button class="onb-passer" onclick="app._onbEtape(3)">Passer cette étape →</button>
+        <button class="onb-passer" onclick="app._onbEtape(4)">Passer cette étape →</button>
       </div>
 
       <!-- Étape 3 : Plateformes -->
@@ -675,11 +675,10 @@
       <!-- Étape 5 : Premier agent -->
       <div class="onb-step" id="onb-step-5">
         <div class="onb-emoji"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-        <h2 class="onb-titre">Génère ton premier contenu</h2>
-        <p class="onb-texte">Clique sur un agent — ton contenu est prêt en 30 secondes.</p>
-        <div class="onb-agents" id="onb-agents"></div>
-        <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="app._onbLancerAgent('youtube-complet')">
-          Lancer YouTube Complet →
+        <h2 class="onb-titre">Génère tes premiers clips viraux</h2>
+        <p class="onb-texte">Uploade une vidéo — tes clips shorts sont prêts en 30 secondes.</p>
+        <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="app._onbLancerAgent('clips-viraux')">
+          Créer mes clips viraux →
         </button>
         <button class="onb-passer" onclick="app._onbTerminer()">Voir le tableau de bord</button>
       </div>
@@ -691,38 +690,41 @@
   <div class="modal-fond" id="modal-post-gen">
     <div class="modal modal-post-gen">
       <div class="mpg-header">
-        <div class="mpg-emoji"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-        <h2 class="mpg-titre">Premier contenu généré !</h2>
-        <p class="mpg-sous">Tu viens de gagner 2h de travail créatif.</p>
+        <div class="mpg-emoji">✂️</div>
+        <h2 class="mpg-titre">Ton essai gratuit est utilisé.</h2>
+        <p class="mpg-sous">Passe Pro pour continuer à créer des clips viraux sans limite.</p>
       </div>
       <div class="mpg-benefits">
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+          <span class="mpg-b-ico">✂️</span>
           <div>
-            <div class="mpg-b-titre">Miniature Pro</div>
-            <div class="mpg-b-desc">Génère des visuels YouTube avec IA (gpt-image-1)</div>
+            <div class="mpg-b-titre">Clips viraux illimités</div>
+            <div class="mpg-b-desc">Traite autant de vidéos que tu veux, chaque semaine</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          <span class="mpg-b-ico">💬</span>
           <div>
-            <div class="mpg-b-titre">6 agents supplémentaires</div>
-            <div class="mpg-b-desc">Recyclage, sponsors, analyse vidéo, réponses…</div>
+            <div class="mpg-b-titre">Sous-titres + hook personnalisés</div>
+            <div class="mpg-b-desc">Style, position, texte — tout est modifiable</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z"/><path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z"/></svg></span>
+          <span class="mpg-b-ico">🎬</span>
           <div>
-            <div class="mpg-b-titre">Générations illimitées</div>
-            <div class="mpg-b-desc">Plus de limite mensuelle — crée autant que tu veux</div>
+            <div class="mpg-b-titre">Script, titres, miniatures IA</div>
+            <div class="mpg-b-desc">Tous les outils créateur débloqués en un seul plan</div>
           </div>
         </div>
       </div>
-      <button class="btn btn-primaire" style="width:100%;margin-top:20px;" onclick="window.location.href='index.html#tarifs'">
-        Voir le plan Pro — 9,50€ le 1er mois →
+      <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 14px;margin-top:16px;text-align:center;font-size:13px;color:#f59e0b;font-weight:600;">
+        🎁 -50% le 1er mois · Offre de lancement limitée
+      </div>
+      <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="window.location.href='index.html#tarifs'">
+        Passer Pro — 7,50€ le 1er mois →
       </button>
-      <button class="onb-passer" onclick="document.getElementById('modal-post-gen').classList.remove('visible')">
-        Continuer avec le plan gratuit
+      <button class="onb-passer" onclick="document.getElementById('modal-post-gen').classList.remove('visible')" style="opacity:0.5;font-size:12px;">
+        Rester bloqué en gratuit
       </button>
     </div>
   </div>

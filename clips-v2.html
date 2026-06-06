@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Studio Clips V2 — Créatis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     :root {
       --bg: #050505;
       --bg-card: #0d0d0d;
@@ -446,7 +449,7 @@
         </div>
         <span class="v1-bar-sep">ou</span>
         <span class="v1-bar-btn">Charger des fichiers</span>
-        <input type="file" id="file-input" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
+        <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
       </label>
 
       <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
@@ -683,9 +686,9 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/auth.js" defer></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 //  CRÉATIS STUDIO V2 — Clips Viraux avec sous-titres personnalisables
