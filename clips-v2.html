@@ -436,20 +436,18 @@
       <h1 class="v1-hero-title">1 longue vidéo,<br>10 clips viraux.</h1>
       <p class="v1-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
 
-      <div class="v1-bar" id="drop-zone"
+      <label class="v1-bar" id="drop-zone" style="cursor:pointer"
         ondragover="event.preventDefault();this.classList.add('drag-over')"
         ondragleave="this.classList.remove('drag-over')"
         ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)">
         <div class="v1-bar-left">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span id="v1-upload-name" class="v1-bar-placeholder">Déposer une vidéo ici</span>
+          <span id="v1-upload-name" class="v1-bar-placeholder">Cliquer ou déposer une vidéo ici</span>
         </div>
         <span class="v1-bar-sep">ou</span>
-        <label class="v1-bar-btn">
-          Charger des fichiers
-          <input type="file" id="file-input" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
-        </label>
-      </div>
+        <span class="v1-bar-btn">Charger des fichiers</span>
+        <input type="file" id="file-input" accept="video/*" style="display:none" onchange="V2.onFileSelect(this)">
+      </label>
 
       <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -485,27 +483,9 @@
       <button onclick="V2.restart()" class="btn-restart">↩ Nouvelle vidéo</button>
     </div>
 
-    <!-- Clip selection -->
-    <div class="section-label">Sélectionner les clips à exporter</div>
-    <div class="clips-toolbar">
-      <div class="clips-toolbar-left">
-        <span class="sel-count" id="sel-count">0 sélectionné</span>
-        <button class="btn-sel-all" onclick="V2.selectAll()">Tout sélectionner</button>
-        <button class="btn-sel-top" onclick="V2.selectTop5()">Top 5</button>
-        <button class="btn-sel-none" onclick="V2.deselectAll()">Tout désélectionner</button>
-      </div>
-      <span style="font-size:12px;color:var(--texte-muted)" id="clips-time-total"></span>
-    </div>
-
+    <!-- Clips grid -->
+    <div class="section-label" style="margin-bottom:16px">Clique sur un clip pour le personnaliser et télécharger</div>
     <div class="clips-grid" id="clips-grid"></div>
-
-    <!-- Sticky export bar -->
-    <div class="export-bar">
-      <button class="btn-export" id="btn-export" onclick="V2.startExport()" disabled>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span id="btn-export-txt">Exporter les clips sélectionnés</span>
-      </button>
-    </div>
   </div>
 
   <!-- ═══════════════ STATE: EXPORT ═══════════════ -->
@@ -684,13 +664,6 @@
           <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:12px;color:var(--texte-muted);margin-top:6px"></div>
         </div>
 
-        <!-- Desktop only: séparateur + export groupé -->
-        <div class="mob-desktop-extra">
-          <div style="height:1px;background:var(--bordure)"></div>
-          <button onclick="V2.toggleSelectFromModal()" id="modal-sel-btn" style="font-size:13px;font-weight:600;color:var(--texte-doux);background:transparent;border:1px solid var(--bordure);border-radius:8px;padding:8px 14px;cursor:pointer;width:100%;text-align:center">
-            ☐ Ajouter à l'export groupé
-          </button>
-        </div>
 
       </div>
     </div>
@@ -1086,27 +1059,18 @@ const V2 = (() => {
       const tags = autoTags(clip);
       const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
       return `
-      <div class="clip-card" id="clip-card-${i}">
-        <div class="clip-thumb-wrap" id="clip-thumb-${i}" onclick="V2.showModal(${i})">
+      <div class="clip-card" id="clip-card-${i}" onclick="V2.showModal(${i})">
+        <div class="clip-thumb-wrap" id="clip-thumb-${i}">
           <div class="clip-thumb-empty">🎬</div>
           <div class="clip-dur-badge">${fmt(clip.start_time ?? clip.start)}&nbsp;·&nbsp;${dur}s</div>
-          <div class="clip-check" onclick="event.stopPropagation();V2.toggleClip(${i})">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
           <div class="clip-thumb-caption">${captionPreview}</div>
         </div>
         <div class="clip-bottom">
           <div class="clip-score-row">
             <span class="clip-score-num" style="color:${sc}">${clip.score}</span>
             <div class="clip-action-icons">
-              <span class="clip-action-icon" onclick="V2.showModal(${i})" title="Détails">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              </span>
-              <span class="clip-action-icon" onclick="event.stopPropagation();V2._downloadClipDirect(${i})" title="Télécharger">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </span>
-              <span class="clip-action-icon" onclick="event.stopPropagation();V2.toggleClip(${i})" title="Sélectionner">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span class="clip-action-icon" title="Ouvrir">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </span>
             </div>
           </div>
@@ -1116,11 +1080,6 @@ const V2 = (() => {
       </div>`;
     }).join('');
 
-    // Auto-select top 5
-    _selectedIds.clear();
-    const sorted = [..._clips].map((c, i) => ({ i, score: c.score })).sort((a,b) => b.score - a.score);
-    sorted.slice(0, 5).forEach(({ i }) => _selectedIds.add(i));
-    refreshSelection();
   }
 
   // ── Modal — per-clip settings + video player ──
