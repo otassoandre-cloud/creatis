@@ -1328,8 +1328,6 @@ async def process_clip_endpoint(
     color_text: str = Form("#ffffff"),
     color_bg: str = Form("#000000"),
     sub_y: float = Form(82.0),
-    sub_x: float = Form(50.0),
-    sub_align: int = Form(2),
     hook_enabled: str = Form("false"),
     hook_text: str = Form(""),
     hook_color: str = Form("#ffffff"),
@@ -1392,12 +1390,6 @@ async def process_clip_endpoint(
             return f"&HA6{h[4:6]}{h[2:4]}{h[0:2]}"
         ct_dim = hex_to_ass_dim(color_text)
         margin_v = int((1 - sub_y / 100) * 1280)
-        # Position absolue pour placement libre — \pos(x,y)\an{align}
-        _sub_x_px = int(max(0, min(100, sub_x)) / 100 * 720)
-        _sub_y_px = int(max(0, min(100, sub_y)) / 100 * 1280)
-        _sub_an   = sub_align if sub_align in (1, 2, 3) else 2
-        # tag ASS: \pos(x,y) + \an{align} override par ligne
-        _pos_tag  = "{" + f"\\pos({_sub_x_px},{_sub_y_px})\\an{_sub_an}" + "}"
 
         has_subs = bool(segs) or (hook_bool and hook_text)
         logger.info(f"[subs] style={style} has_subs={has_subs} segs={len(segs)} hook={hook_bool} hook_text={repr(hook_text[:30]) if hook_text else ''}")
@@ -1465,8 +1457,9 @@ async def process_clip_endpoint(
                             step_t0 = t0 + wi * dt
                             step_t1 = t0 + (wi + 1) * dt if wi < len(words) - 1 else t1
                             line_txt = " ".join(words[:wi + 1])
-                            ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{_pos_tag}{line_txt}")
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(step_t0)},{to_ass_time(step_t1)},Default,,0,0,0,,{line_txt}")
                     elif style == "karaoke":
+                        # 1 ligne par mot : courant=accent+scale112%, passés=blanc, futurs=dim
                         words = txt.split()
                         n_w = max(len(words), 1)
                         dt = (t1 - t0) / n_w
@@ -1484,9 +1477,9 @@ async def process_clip_endpoint(
                                     parts.append(w)
                                 if j < n_w - 1:
                                     parts.append(" ")
-                            ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{_pos_tag}{''.join(parts)}")
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{''.join(parts)}")
                     else:
-                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{_pos_tag}{txt}")
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{txt}")
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
