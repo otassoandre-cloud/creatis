@@ -5,6 +5,10 @@
   "outputDirectory": ".",
   "crons": [
     {
+      "path": "/api/daily-report",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/user-sync?action=email_cron",
       "schedule": "0 9 * * *"
     },
