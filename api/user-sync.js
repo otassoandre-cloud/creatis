@@ -314,6 +314,77 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, sent: totalSent, log: cronLog });
       }
 
+      case 'daily_report': {
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: false, note: 'BREVO_API_KEY manquante' });
+
+        const now = new Date();
+        const yd = new Date(now); yd.setDate(yd.getDate() - 1);
+        const hier      = yd.toISOString().slice(0, 10);
+        const hierStart = hier + 'T00:00:00.000Z';
+        const hierEnd   = hier + 'T23:59:59.999Z';
+
+        const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier] = await Promise.all([
+          supabase(`/users?select=id,email,plan&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/users?select=id`, 'GET').catch(() => []),
+          supabase(`/users?select=id&plan=neq.gratuit`, 'GET').catch(() => []),
+          supabase(`/generations?select=agent_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/generations?select=id&agent_id=eq.clips-viraux&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => [])
+        ]);
+
+        const nbInscrits = usersHier?.length || 0;
+        const nbTotal    = usersTotal?.length || 0;
+        const nbPro      = usersPro?.length || 0;
+        const nbGens     = gensHier?.length || 0;
+        const nbClips    = clipsHier?.length || 0;
+        const nbActifs   = new Set((actifsHier || []).map(g => g.user_id)).size;
+
+        const agentCount = {};
+        (gensHier || []).forEach(g => { agentCount[g.agent_id] = (agentCount[g.agent_id] || 0) + 1; });
+        const topAgents = Object.entries(agentCount).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id,n]) => `${n}× ${id}`).join('<br>') || '—';
+        const inscritsList = (usersHier || []).slice(0,10).map(u => `• ${u.email} (${u.plan})`).join('<br>') || '— aucun';
+
+        const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#e5e7eb;padding:32px;border-radius:12px">
+  <div style="margin-bottom:4px"><span style="font-size:22px;font-weight:800;color:#fff">Créatis<span style="color:#10b981">.</span></span>&nbsp;<span style="font-size:11px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);padding:2px 8px;border-radius:20px">RAPPORT ${hier}</span></div>
+  <p style="font-size:13px;color:#555;margin:0 0 24px">Résumé de la journée d'hier</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#10b981">${nbInscrits}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Nouveaux inscrits</div></div>
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#fff">${nbClips}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Clips exportés</div></div>
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#f0a500">${nbActifs}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Users actifs</div></div>
+  </div>
+  <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">STATS GLOBALES</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tr><td style="color:#9ca3af;padding:3px 0">Total inscrits</td><td style="text-align:right;font-weight:700;color:#fff">${nbTotal}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Abonnés Pro/Studio</td><td style="text-align:right;font-weight:700;color:#10b981">${nbPro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Générations IA hier</td><td style="text-align:right;font-weight:700;color:#fff">${nbGens}</td></tr>
+    </table>
+  </div>
+  <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">TOP AGENTS (hier)</div>
+    <div style="font-size:13px;color:#d1d5db;line-height:2">${topAgents}</div>
+  </div>
+  ${nbInscrits > 0 ? `<div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">NOUVEAUX INSCRITS</div><div style="font-size:13px;color:#d1d5db;line-height:2">${inscritsList}</div></div>` : ''}
+  <p style="color:#374151;font-size:12px;text-align:center;margin-top:20px">Créatis · <a href="https://creatis.app" style="color:#10b981">creatis.app</a></p>
+</div>`;
+
+        const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+          body: JSON.stringify({
+            sender: { name: 'Créatis Analytics', email: 'contact@creatis.app' },
+            to: [{ email: 'creatis.app.contact@gmail.com', name: 'Créatis' }],
+            subject: `📊 Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${nbActifs} actifs`,
+            htmlContent: html
+          })
+        });
+        const emailData = await emailRes.json().catch(() => ({}));
+        if (!emailRes.ok) console.error('[DailyReport] Brevo erreur:', JSON.stringify(emailData));
+        console.log(`[DailyReport] ${hier} — ${nbInscrits} inscrits, ${nbClips} clips, ${nbActifs} actifs`);
+        return res.status(200).json({ ok: emailRes.ok, date: hier, inscrits: nbInscrits, clips: nbClips, actifs: nbActifs });
+      }
+
       case 'log_clip_export': {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
         const users = await supabase(`/users?${identifier}&select=id,plan,repurpose_count`, 'GET');

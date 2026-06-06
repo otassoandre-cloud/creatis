@@ -5,7 +5,7 @@
   "outputDirectory": ".",
   "crons": [
     {
-      "path": "/api/daily-report",
+      "path": "/api/user-sync?action=daily_report",
       "schedule": "0 7 * * *"
     },
     {
