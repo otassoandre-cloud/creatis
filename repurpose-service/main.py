@@ -1435,16 +1435,24 @@ async def process_clip_endpoint(
             ]
             if hook_bool and hook_text:
                 ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{hook_text}")
-            def split_seg(t0, t1, txt, max_w=7):
+            # Max 2 lignes : ~2400 / font_size caractères par chunk (canvas 720px, 92% width)
+            _max_chars = max(18, int(2400 / max(font_size, 30)))
+            def split_seg(t0, t1, txt):
                 words = txt.split()
-                if len(words) <= max_w:
-                    yield (t0, t1, txt); return
-                dur = t1 - t0; n = len(words)
-                for i in range(0, n, max_w):
-                    chunk = words[i:i+max_w]
-                    ct0 = t0 + dur * i / n
-                    ct1 = t0 + dur * min(i + max_w, n) / n
-                    yield (ct0, ct1, " ".join(chunk))
+                if not words: return
+                chunks, cur, cur_len = [], [], 0
+                for w in words:
+                    add = len(w) + (1 if cur else 0)
+                    if cur and cur_len + add > _max_chars:
+                        chunks.append(cur); cur = [w]; cur_len = len(w)
+                    else:
+                        cur.append(w); cur_len += add
+                if cur: chunks.append(cur)
+                total = len(words); dur = t1 - t0; wi = 0
+                for ch in chunks:
+                    ct0 = t0 + dur * wi / total
+                    wi += len(ch)
+                    yield (ct0, t0 + dur * wi / total, " ".join(ch))
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
             _karo_idx = 0
