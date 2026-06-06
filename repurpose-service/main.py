@@ -706,7 +706,8 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
         "-vf", final_vf,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
         "-pix_fmt", "yuv420p",
-        "-threads", "4",
+        "-threads", "0",
+        "-movflags", "+faststart",
         "-c:a", "aac", "-b:a", "128k",
         out_path,
     ]
