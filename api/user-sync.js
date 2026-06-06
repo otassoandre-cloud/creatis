@@ -328,7 +328,6 @@ module.exports = async (req, res) => {
           await supabase('/generations', 'POST', {
             user_id: user.id,
             agent_id: 'clips-viraux',
-            agent_type: 'repurpose',
             plan: user.plan,
             created_at: new Date().toISOString()
           }).catch(() => {});
