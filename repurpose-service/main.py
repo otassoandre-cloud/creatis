@@ -1321,7 +1321,8 @@ def clip_export_file(job_id: str, filename: str):
 
 @app.post("/process-clip")
 async def process_clip_endpoint(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    video_id: str = Form(""),
     segments: str = Form(""),
     style: str = Form("bold"),
     font_size: int = Form(55),
@@ -1351,10 +1352,19 @@ async def process_clip_endpoint(
     ass_path     = tmp_dir / "subs.ass"
     out_path     = tmp_dir / "clip_final.mp4"
     try:
-        with open(in_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+        if video_id:
+            upload_source = UPLOAD_DIR / video_id / "source.mp4"
+            if not upload_source.exists():
+                raise HTTPException(400, f"Fichier pré-uploadé introuvable: {video_id}")
+            shutil.copy2(str(upload_source), str(in_path))
+            logger.info(f"[process-clip] pré-upload {video_id} ({in_path.stat().st_size/1_048_576:.1f} MB)")
+        elif file:
+            with open(in_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+        else:
+            raise HTTPException(400, "Fichier requis (upload direct ou video_id)")
 
-        # Coupe côté serveur si start/end fournis (iOS : évite FFmpeg.wasm client)
+        # Coupe côté serveur si start/end fournis (iOS ou pré-upload : évite FFmpeg.wasm client)
         if clip_start >= 0 and clip_end > clip_start:
             cut_path = tmp_dir / "cut.mp4"
             cut_cmd = ["ffmpeg", "-y", "-loglevel", "error",
