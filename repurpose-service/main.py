@@ -1512,16 +1512,22 @@ async def process_clip_endpoint(
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
 
-        # Filigrane simple pour plan gratuit : C + Creatis, sans fond
+        # Filigrane : pill sombre + icône ronde verte (style OpusClip) pour plan gratuit
         if plan == "gratuit":
             _font = ""
             for _fp in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
                         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]:
                 if os.path.exists(_fp):
                     _font = f":fontfile={_fp}"; break
+            # Pill sombre (fond) : x=10 y=68, w=148 h=44
+            # Cercle vert (icône) : x=16 y=73, w=32 h=32 → carré = cercle à petite taille
+            # "C" blanc centré dans le cercle : x=22 y=74
+            # "Créatis" blanc à droite : x=56 y=77
             wm = (
-                f"drawtext=text='C':fontsize=24:fontcolor=0x10b981:x=18:y=75{_font}"
-                f",drawtext=text='Creatis':fontsize=17:fontcolor=white:x=46:y=79{_font}"
+                "drawbox=x=10:y=68:w=152:h=44:color=black@0.72:t=fill"
+                ",drawbox=x=17:y=74:w=32:h=32:color=0x10b981:t=fill"
+                f",drawtext=text='C':fontsize=18:fontcolor=white:x=22:y=75{_font}"
+                f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=57:y=78{_font}"
             )
             overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
 
