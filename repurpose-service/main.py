@@ -743,10 +743,9 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
         else:
             logger.info(f"[reframe] mode={reframe_mode} — crop centré")
 
-        # Pre-scale uniquement pour les vraies 4K (> 2× la résolution 1080p)
-        # Évite de déclencher ce chemin sur des vidéos portrait 1080x1920 standard
-        if src_w * src_h > 2 * 1920 * 1080:
-            sx = min(1920 / src_w, 1080 / src_h)
+        # Pre-scale pour tout contenu > 720p (évite OOM sur Railway avec gaming/1080p)
+        if src_w > 1280 or src_h > 720:
+            sx = min(1280 / src_w, 720 / src_h)
             pw = int(src_w * sx / 2) * 2
             ph = int(src_h * sx / 2) * 2
             cw = max(2, int(crop_w * sx / 2) * 2)
@@ -754,7 +753,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             xc = max(0, min(pw - cw, int(x_crop * sx)))
             yy = max(0, int(y0 * sx))
             vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
-            logger.info(f"[reframe] 4K→pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
+            logger.info(f"[reframe] pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
         else:
             vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
@@ -768,7 +767,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
         "-vf", final_vf,
         "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
         "-pix_fmt", "yuv420p",
-        "-threads", "0",
+        "-threads", "2",
         "-movflags", "+faststart",
         "-c:a", "aac", "-b:a", "128k",
         out_path,
