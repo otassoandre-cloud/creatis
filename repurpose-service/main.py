@@ -1506,7 +1506,7 @@ async def process_clip_endpoint(
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
 
-        # Filigrane style OpusClip pour plan gratuit (fond + icône + texte)
+        # Filigrane simple pour plan gratuit : C + Creatis, sans fond
         if plan == "gratuit":
             _font = ""
             for _fp in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -1514,10 +1514,8 @@ async def process_clip_endpoint(
                 if os.path.exists(_fp):
                     _font = f":fontfile={_fp}"; break
             wm = (
-                "drawbox=x=10:y=10:w=176:h=44:color=black@0.72:t=fill"
-                ",drawbox=x=18:y=16:w=32:h=32:color=0x10b981:t=fill"
-                f",drawtext=text='C':fontsize=19:fontcolor=white:x=23:y=17{_font}"
-                f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=58:y=19{_font}"
+                f"drawtext=text='C':fontsize=24:fontcolor=0x10b981:x=18:y=75{_font}"
+                f",drawtext=text='Creatis':fontsize=17:fontcolor=white:x=46:y=79{_font}"
             )
             overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
 
