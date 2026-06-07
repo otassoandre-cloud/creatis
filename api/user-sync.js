@@ -287,7 +287,8 @@ module.exports = async (req, res) => {
 
       case 'email_cron': {
         // Cron serveur-side : envoie J2/J5/J10/J14 aux utilisateurs gratuits
-        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret;
+        const authHeader = req.headers['authorization'] || '';
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || authHeader.replace('Bearer ', '');
         if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
           return res.status(401).json({ error: 'Non autorisé' });
         }
