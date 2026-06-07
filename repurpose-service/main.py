@@ -1339,6 +1339,7 @@ async def process_clip_endpoint(
     reframe_mode: str = Form("center"),
     clip_start: float = Form(-1.0),
     clip_end: float = Form(-1.0),
+    plan: str = Form("gratuit"),
     _=Depends(auth)
 ):
     """Reframe 9:16 (face tracking) + burn sous-titres en une seule passe. Retourne URL directe.
@@ -1504,6 +1505,11 @@ async def process_clip_endpoint(
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
+
+        # Filigrane pour plan gratuit
+        if plan == "gratuit":
+            wm = "drawtext=text='creatis.app':fontsize=26:fontcolor=white@0.65:x=w-tw-14:y=h-th-14:box=1:boxcolor=black@0.4:boxborderw=6"
+            overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
 
         # Passe unique : reframe + sous-titres en une seule commande FFmpeg
         async with _get_ffmpeg_sem():
