@@ -1521,10 +1521,9 @@ async def process_clip_endpoint(
             # Icône ronde : drawtext "C" avec box+boxradius élevé → cercle vert
             # "Creatis" blanc à droite sur fond transparent
             wm = (
-                "drawbox=x=10:y=68:w=152:h=44:color=black@0.72:t=fill"
-                f",drawtext=text='C':fontsize=18:fontcolor=white:x=21:y=76"
+                f"drawtext=text='C':fontsize=18:fontcolor=white:x=18:y=76"
                 f":box=1:boxcolor=0x10b981:boxborderw=9:boxradius=20{_font}"
-                f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=57:y=78{_font}"
+                f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=54:y=78{_font}"
             )
             overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
 
