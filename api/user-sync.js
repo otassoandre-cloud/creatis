@@ -103,7 +103,8 @@ module.exports = async (req, res) => {
 
   const { userId, email, plan, chaine, action, metadata } = req.body || {};
 
-  if (!userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
+  const isCronAction = action === 'email_cron' || action === 'daily_report';
+  if (!isCronAction && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
     switch (action) {
