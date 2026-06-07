@@ -1321,6 +1321,7 @@ def clip_export_file(job_id: str, filename: str):
 
 @app.post("/process-clip")
 async def process_clip_endpoint(
+    request: Request,
     file: Optional[UploadFile] = File(None),
     video_id: str = Form(""),
     segments: str = Form(""),
@@ -1343,6 +1344,11 @@ async def process_clip_endpoint(
     _=Depends(auth)
 ):
     """Reframe 9:16 (face tracking) + burn sous-titres en une seule passe. Retourne URL directe.
+    Le plan est vérifié côté Vercel et injecté en query param (priorité sur le champ form)."""
+    # Query param `plan` = valeur de confiance injectée par Vercel (non falsifiable)
+    plan_q = request.query_params.get("plan", "")
+    if plan_q in ("gratuit", "pro", "studio", "agence"):
+        plan = plan_q
     clip_start/clip_end : si fournis, coupe le fichier côté serveur (évite FFmpeg.wasm sur iOS)."""
     import shutil, json as _json, subprocess
     job_id = uuid.uuid4().hex[:10]
