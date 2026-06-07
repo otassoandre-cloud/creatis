@@ -468,16 +468,31 @@ async def _transcribe_groq(media_path: str) -> Dict:
                 r = await c.post(
                     "https://api.groq.com/openai/v1/audio/transcriptions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
+                    data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
+                          "timestamp_granularities[]": "word"},
                     files={"file": ("audio.mp3", f, "audio/mpeg")},
                 )
         r.raise_for_status()
         data = r.json()
-        segments = [
-            {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
-            for s in data.get("segments", [])
-        ]
-        duration = float(data.get("duration", 0)) or (segments[-1]["end"] if segments else 0.0)
+        duration = float(data.get("duration", 0))
+        raw_words = data.get("words", [])
+        if raw_words:
+            WORDS_PER_LINE = 4
+            segments = []
+            for i in range(0, len(raw_words), WORDS_PER_LINE):
+                chunk = raw_words[i:i + WORDS_PER_LINE]
+                t0 = float(chunk[0].get("start", 0))
+                t1 = float(chunk[-1].get("end", t0 + 1))
+                text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
+                if text.strip():
+                    segments.append({"start": t0, "end": t1, "text": text})
+        else:
+            segments = [
+                {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+                for s in data.get("segments", [])
+            ]
+        if not duration and segments:
+            duration = segments[-1]["end"]
         logger.info(f"[groq-whisper] {len(segments)} segments {duration:.0f}s")
         return {"duration": duration, "segments": segments}
     finally:
@@ -1155,16 +1170,34 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth
                     r = await c.post(
                         "https://api.groq.com/openai/v1/audio/transcriptions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
+                        data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
+                              "timestamp_granularities[]": "word"},
                         files={"file": ("audio.mp3", af, "audio/mpeg")},
                     )
             r.raise_for_status()
             data = r.json()
-            segments = [
-                {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
-                for s in data.get("segments", [])
-            ]
-            duration = float(data.get("duration", 0)) or (segments[-1]["end"] if segments else 0.0)
+            duration = float(data.get("duration", 0))
+            raw_words = data.get("words", [])
+            if raw_words:
+                # Regrouper les mots en lignes de 4 mots avec timing précis par mot
+                WORDS_PER_LINE = 4
+                segments = []
+                for i in range(0, len(raw_words), WORDS_PER_LINE):
+                    chunk = raw_words[i:i + WORDS_PER_LINE]
+                    t0 = float(chunk[0].get("start", 0))
+                    t1 = float(chunk[-1].get("end", t0 + 1))
+                    text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
+                    if text.strip():
+                        segments.append({"start": t0, "end": t1, "text": text})
+                logger.info(f"[transcribe-audio] word-level: {len(raw_words)} mots → {len(segments)} lignes")
+            else:
+                # Fallback : timestamps par segment
+                segments = [
+                    {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+                    for s in data.get("segments", [])
+                ]
+            if not duration and segments:
+                duration = segments[-1]["end"]
             result = {"segments": segments, "duration": duration}
         else:
             loop = asyncio.get_event_loop()
@@ -1583,7 +1616,7 @@ async def process_clip_endpoint(
             # "Creatis" blanc à droite sur fond transparent
             wm = (
                 f"drawtext=text='C':fontsize=18:fontcolor=white:x=18:y=76"
-                f":box=1:boxcolor=0x10b981:boxborderw=9:boxradius=20{_font}"
+                f":box=1:boxcolor=0x10b981:boxborderw=9{_font}"
                 f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=54:y=78{_font}"
             )
             overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
