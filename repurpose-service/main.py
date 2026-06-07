@@ -1517,14 +1517,13 @@ async def process_clip_endpoint(
                         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]:
                 if os.path.exists(_fp):
                     _font = f":fontfile={_fp}"; break
-            # Pill sombre (fond) : x=10 y=68, w=148 h=44
-            # Cercle vert (icône) : x=16 y=73, w=32 h=32 → carré = cercle à petite taille
-            # "C" blanc centré dans le cercle : x=22 y=74
-            # "Créatis" blanc à droite : x=56 y=77
+            # Pill sombre (fond) : x=10 y=68, w=152 h=44
+            # Icône ronde : drawtext "C" avec box+boxradius élevé → cercle vert
+            # "Creatis" blanc à droite sur fond transparent
             wm = (
                 "drawbox=x=10:y=68:w=152:h=44:color=black@0.72:t=fill"
-                ",drawbox=x=17:y=74:w=32:h=32:color=0x10b981:t=fill"
-                f",drawtext=text='C':fontsize=18:fontcolor=white:x=22:y=75{_font}"
+                f",drawtext=text='C':fontsize=18:fontcolor=white:x=21:y=76"
+                f":box=1:boxcolor=0x10b981:boxborderw=9:boxradius=20{_font}"
                 f",drawtext=text='Creatis':fontsize=16:fontcolor=white:x=57:y=78{_font}"
             )
             overlay_vf = f"{overlay_vf},{wm}" if overlay_vf else wm
