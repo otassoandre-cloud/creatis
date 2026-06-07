@@ -109,7 +109,7 @@ const Auth = (() => {
       const redirectTo = window.location.origin + '/auth/callback';
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo, queryParams: { access_type: 'offline', prompt: 'consent' } }
+        options: { redirectTo }
       });
       if (error) throw new Error(error.message);
     },
@@ -214,7 +214,7 @@ const Auth = (() => {
         const { user } = await res.json();
         if (!user) return 'gratuit';
         // Retourner l'objet complet pour que app.js puisse sync le compteur mensuel
-        return { plan: user.plan || 'gratuit', generations_used: user.generations_used || 0, generations_reset_at: user.generations_reset_at || null };
+        return { plan: user.plan || 'gratuit', generations_used: user.generations_used || 0, generations_reset_at: user.generations_reset_at || null, repurpose_count: user.repurpose_count || 0 };
       } catch { return null; }
     }
   };

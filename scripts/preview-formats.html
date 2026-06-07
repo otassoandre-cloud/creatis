@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Preview Multi-formats — Créatis Ads</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a1a; font-family: -apple-system, Arial, sans-serif; padding: 24px; color: #fff; }
+
+    h1 { text-align: center; font-size: 18px; margin-bottom: 6px; color: #fff; }
+    .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 32px; }
+
+    .visuel-section { margin-bottom: 48px; }
+    .visuel-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #10b981; margin-bottom: 16px;
+      padding-left: 4px; border-left: 3px solid #10b981;
+      padding: 4px 0 4px 10px;
+    }
+
+    .formats-row {
+      display: flex; gap: 24px; align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .format-card {
+      background: #222; border-radius: 12px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    .format-label {
+      padding: 8px 12px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px;
+      background: #333; color: #aaa;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .format-label span { color: #fff; }
+
+    /* Format paysage 16:9 */
+    .card-landscape { width: 480px; }
+    .card-landscape img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+
+    /* Format carré 1:1 */
+    .card-square { width: 300px; }
+    .card-square img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+
+    /* Format vertical 9:16 */
+    .card-vertical { width: 180px; }
+    .card-vertical img { width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block; }
+
+    /* Mockup phone pour vertical */
+    .phone-wrap {
+      background: #000; border-radius: 24px; padding: 8px;
+      border: 2px solid #444; position: relative;
+    }
+    .phone-wrap img { border-radius: 16px; width: 100%; display: block; }
+    .phone-notch {
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+      width: 60px; height: 6px; background: #222; border-radius: 3px; z-index: 2;
+    }
+
+    /* Mockup FB post pour paysage */
+    .fb-wrap { background: #fff; border-radius: 8px; overflow: hidden; }
+    .fb-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+    .fb-avatar { width: 36px; height: 36px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; color: #fff; flex-shrink: 0; }
+    .fb-page { font-size: 13px; font-weight: 700; color: #1c1e21; line-height: 1.2; }
+    .fb-sponsored { font-size: 11px; color: #65676b; }
+    .fb-footer { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e4e6eb; }
+    .fb-domain { font-size: 10px; color: #65676b; text-transform: uppercase; }
+    .fb-headline { font-size: 13px; font-weight: 700; color: #1c1e21; }
+    .fb-cta { background: #e4e6eb; border: none; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: #1c1e21; }
+
+    /* Mockup IG pour carré */
+    .ig-wrap { background: #fff; border-radius: 8px; overflow: hidden; }
+    .ig-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+    .ig-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: #fff; flex-shrink: 0; }
+    .ig-username { font-size: 12px; font-weight: 700; color: #000; }
+    .ig-sponsored { font-size: 10px; color: #737373; }
+    .ig-footer { padding: 8px 12px; }
+    .ig-footer-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .ig-cta { background: transparent; border: 1px solid #dbdbdb; border-radius: 4px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #000; }
+    .ig-caption { font-size: 12px; color: #000; }
+    .ig-caption b { font-weight: 700; }
+
+    /* Reel mockup */
+    .reel-wrap { position: relative; background: #000; border-radius: 16px; overflow: hidden; }
+    .reel-wrap img { width: 100%; display: block; }
+    .reel-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 10px; background: linear-gradient(transparent, rgba(0,0,0,.7)); }
+    .reel-username { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .reel-caption { font-size: 11px; color: rgba(255,255,255,.9); line-height: 1.4; }
+    .reel-cta { margin-top: 8px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.4); border-radius: 20px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #fff; display: inline-block; }
+    .reel-right { position: absolute; right: 8px; bottom: 80px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+    .reel-icon { font-size: 20px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .reel-icon span { font-size: 10px; color: #fff; }
+
+    .format-note { font-size: 11px; color: #888; text-align: center; padding: 6px; }
+  </style>
+</head>
+<body>
+
+<h1>Preview Multi-formats — Créatis Ads</h1>
+<p class="subtitle">Facebook Feed · Instagram Feed · Reels/Stories — 4 visuels</p>
+
+<!-- ════════════ VISUEL 1 — FOMO ════════════ -->
+<div class="visuel-section">
+  <div class="visuel-title">Visuel 1 — FOMO "Pendant que tu cherches ton script"</div>
+  <div class="formats-row">
+
+    <div class="format-card card-landscape">
+      <div class="format-label">📘 Facebook Feed <span>1200×628</span></div>
+      <div class="fb-wrap">
+        <div class="fb-header">
+          <div class="fb-avatar">C</div>
+          <div><div class="fb-page">Créatis</div><div class="fb-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/slide1.jpg" alt="">
+        <div class="fb-footer">
+          <div><div class="fb-domain">creatis.app</div><div class="fb-headline">Pendant que tu prépares, ils publient.</div></div>
+          <button class="fb-cta">S'inscrire</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-square">
+      <div class="format-label">📷 Instagram Feed <span>1080×1080</span></div>
+      <div class="ig-wrap">
+        <div class="ig-header">
+          <div class="ig-avatar">C</div>
+          <div><div class="ig-username">creatis.app.contact</div><div class="ig-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/fomo-square.jpg" alt="">
+        <div class="ig-footer">
+          <div class="ig-footer-top"><span></span><button class="ig-cta">S'inscrire</button></div>
+          <div class="ig-caption"><b>creatis.app.contact</b> Pendant que tu cherches ton script, les autres ont déjà publié. → 1 essai gratuit.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-vertical">
+      <div class="format-label">🎬 Reels/Stories <span>1080×1920</span></div>
+      <div class="reel-wrap">
+        <img src="../images/ads/fomo-vertical.jpg" alt="">
+        <div class="reel-overlay">
+          <div class="reel-username">creatis.app.contact · Sponsorisé</div>
+          <div class="reel-caption">Pendant que tu cherches ton script, les autres ont déjà publié.</div>
+          <div class="reel-cta">S'inscrire</div>
+        </div>
+        <div class="reel-right">
+          <div class="reel-icon">❤️<span>12k</span></div>
+          <div class="reel-icon">💬<span>84</span></div>
+          <div class="reel-icon">↗️<span>Partager</span></div>
+        </div>
+      </div>
+      <div class="format-note">⚠️ Image horizontale → bandes noires</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ VISUEL 2 — 50% OFF ════════════ -->
+<div class="visuel-section">
+  <div class="visuel-title">Visuel 2 — 50% OFF</div>
+  <div class="formats-row">
+
+    <div class="format-card card-landscape">
+      <div class="format-label">📘 Facebook Feed <span>1200×628</span></div>
+      <div class="fb-wrap">
+        <div class="fb-header">
+          <div class="fb-avatar">C</div>
+          <div><div class="fb-page">Créatis</div><div class="fb-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/50off-dark.png" alt="">
+        <div class="fb-footer">
+          <div><div class="fb-domain">creatis.app</div><div class="fb-headline">Plan Pro à 9,50€/mois — Offre limitée</div></div>
+          <button class="fb-cta" style="background:#1877f2;color:#fff">Acheter</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-square">
+      <div class="format-label">📷 Instagram Feed <span>1080×1080</span></div>
+      <div class="ig-wrap">
+        <div class="ig-header">
+          <div class="ig-avatar">C</div>
+          <div><div class="ig-username">creatis.app.contact</div><div class="ig-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/50off-square.jpg" alt="">
+        <div class="ig-footer">
+          <div class="ig-footer-top"><span></span><button class="ig-cta">Acheter</button></div>
+          <div class="ig-caption"><b>creatis.app.contact</b> Plan Pro à 9,50€/mois au lieu de 19€. Offre limitée.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-vertical">
+      <div class="format-label">🎬 Reels/Stories <span>1080×1920</span></div>
+      <div class="reel-wrap">
+        <img src="../images/ads/50off-vertical.jpg" alt="">
+        <div class="reel-overlay">
+          <div class="reel-username">creatis.app.contact · Sponsorisé</div>
+          <div class="reel-caption">Plan Pro à 9,50€/mois au lieu de 19€. Offre limitée.</div>
+          <div class="reel-cta">Acheter</div>
+        </div>
+      </div>
+      <div class="format-note">⚠️ Image centrée → bandes noires</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ VISUEL 3 — GIF ════════════ -->
+<div class="visuel-section">
+  <div class="visuel-title">Visuel 3 — GIF Shorts viraux</div>
+  <div class="formats-row">
+
+    <div class="format-card card-landscape">
+      <div class="format-label">📘 Facebook Feed <span>Vidéo/GIF</span></div>
+      <div class="fb-wrap">
+        <div class="fb-header">
+          <div class="fb-avatar">C</div>
+          <div><div class="fb-page">Créatis</div><div class="fb-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/shorts-gif.gif" alt="" style="width:100%;display:block;">
+        <div class="fb-footer">
+          <div><div class="fb-domain">creatis.app</div><div class="fb-headline">Une vidéo. Dix Shorts. Trente secondes.</div></div>
+          <button class="fb-cta">S'inscrire</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-square">
+      <div class="format-label">📷 Instagram Feed <span>1080×1080</span></div>
+      <div class="ig-wrap">
+        <div class="ig-header">
+          <div class="ig-avatar">C</div>
+          <div><div class="ig-username">creatis.app.contact</div><div class="ig-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/gif-thumbnail.jpg" style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block;" alt="">
+        <div class="ig-footer">
+          <div class="ig-footer-top"><span>▶ Vidéo</span><button class="ig-cta">S'inscrire</button></div>
+          <div class="ig-caption"><b>creatis.app.contact</b> Une vidéo. Dix Shorts. Trente secondes. → 1 essai gratuit.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-vertical">
+      <div class="format-label">🎬 Reels <span>1080×1920</span></div>
+      <div class="reel-wrap">
+        <img src="../images/ads/gif-vertical.jpg" alt="">
+        <div class="reel-overlay">
+          <div class="reel-username">creatis.app.contact · Sponsorisé</div>
+          <div class="reel-caption">Une vidéo → 10 Shorts viraux automatiquement.</div>
+          <div class="reel-cta">S'inscrire</div>
+        </div>
+      </div>
+      <div class="format-note">💡 Version verticale native = meilleur résultat</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ VISUEL 4 — FAMILLE ════════════ -->
+<div class="visuel-section">
+  <div class="visuel-title">Visuel 4 — Tu filmes tes moments</div>
+  <div class="formats-row">
+
+    <div class="format-card card-landscape">
+      <div class="format-label">📘 Facebook Feed <span>1200×628</span></div>
+      <div class="fb-wrap">
+        <div class="fb-header">
+          <div class="fb-avatar">C</div>
+          <div><div class="fb-page">Créatis</div><div class="fb-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/tu-filmes.png" alt="">
+        <div class="fb-footer">
+          <div><div class="fb-domain">creatis.app</div><div class="fb-headline">Tes moments en famille → prêts à partager en 30s</div></div>
+          <button class="fb-cta">S'inscrire</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-square">
+      <div class="format-label">📷 Instagram Feed <span>1080×1080</span></div>
+      <div class="ig-wrap">
+        <div class="ig-header">
+          <div class="ig-avatar">C</div>
+          <div><div class="ig-username">creatis.app.contact</div><div class="ig-sponsored">Sponsorisé</div></div>
+        </div>
+        <img src="../images/ads/famille-square.jpg" alt="">
+        <div class="ig-footer">
+          <div class="ig-footer-top"><span></span><button class="ig-cta">S'inscrire</button></div>
+          <div class="ig-caption"><b>creatis.app.contact</b> Ces moments avec tes proches méritent d'être vus. → 1 essai gratuit.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-card card-vertical">
+      <div class="format-label">🎬 Reels/Stories <span>1080×1920</span></div>
+      <div class="reel-wrap">
+        <img src="../images/ads/famille-vertical.jpg" alt="">
+        <div class="reel-overlay">
+          <div class="reel-username">creatis.app.contact · Sponsorisé</div>
+          <div class="reel-caption">Ces moments avec tes proches méritent d'être vus. Prêts à partager en 30s.</div>
+          <div class="reel-cta">S'inscrire</div>
+        </div>
+        <div class="reel-right">
+          <div class="reel-icon">❤️<span>8.4k</span></div>
+          <div class="reel-icon">💬<span>61</span></div>
+          <div class="reel-icon">↗️<span>Partager</span></div>
+        </div>
+      </div>
+      <div class="format-note">⚠️ Image centrée → bandes noires</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

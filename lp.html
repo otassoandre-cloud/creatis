@@ -22,6 +22,21 @@
   </script>
   <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
   <script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","wqzt6m475j");</script>
+  <script>
+  // Stubs préventifs — évite "not defined" si clic avant que le script du bas soit parsé
+  (function(){var _p=null,_pi=null;
+    window.lancerDemo=function(){_p='url';};
+    window.lancerDemoFichier=function(i){_p='file';_pi=i;};
+    window.ouvrirModal=function(){_p=_p||'modal';};
+    window.fermerModal=function(){};
+    window.soumettreLead=function(){};
+    window._lpFlush=function(){
+      if(_p==='url'){window.lancerDemo();}
+      else if(_p==='file'&&_pi){window.lancerDemoFichier(_pi);}
+      else if(_p==='modal'){window.ouvrirModal();}
+    };
+  })();
+  </script>
 
 <style>
 /* ── override hero centré, sans min-height ── */
@@ -68,10 +83,11 @@
   background:rgba(255,255,255,.06); border:1.5px solid var(--bordure);
   border-radius:999px; padding:11px 22px; font-size:14px; font-weight:600;
   color:var(--texte-doux); cursor:pointer; flex-shrink:0; font-family:inherit;
-  transition:border-color .15s, color .15s;
+  transition:border-color .15s, color .15s; position:relative; overflow:hidden;
+  touch-action:manipulation;
 }
 .lp-upload:hover { border-color:rgba(16,185,129,.5); color:var(--texte); }
-#lp-file { position:absolute; width:1px; height:1px; opacity:0; clip:rect(0,0,0,0); }
+#lp-file { position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
 
 /* ── Carte démo animée ── */
 .lp-demo-card {
@@ -203,9 +219,10 @@
 .lp-cta-block p { font-size:14px; color:var(--texte-doux); margin-bottom:22px; max-width:380px; margin-left:auto; margin-right:auto; }
 
 /* ── Modal ── */
-.lp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+.lp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); z-index:1000; align-items:flex-end; justify-content:center; padding:16px; }
 .lp-modal-bg.visible { display:flex; }
-.lp-modal { background:var(--bg-surface); border:1px solid var(--bordure); border-radius:20px; padding:36px 32px; max-width:420px; width:100%; text-align:center; position:relative; }
+@media(min-width:480px){ .lp-modal-bg { align-items:center; } }
+.lp-modal { background:var(--bg-surface); border:1px solid var(--bordure); border-radius:20px; padding:36px 32px; max-width:420px; width:100%; text-align:center; position:relative; max-height:90vh; overflow-y:auto; }
 .lp-modal-close { position:absolute; top:14px; right:16px; background:none; border:none; color:var(--texte-doux); font-size:18px; cursor:pointer; line-height:1; }
 .lp-modal h3 { font-size:22px; font-weight:900; margin-bottom:8px; }
 .lp-modal-desc { font-size:14px; color:var(--texte-doux); line-height:1.6; margin-bottom:24px; }
@@ -245,6 +262,104 @@
   .carte-tarif { min-width:calc(100vw - 48px) !important; max-width:340px !important; flex-shrink:0 !important; scroll-snap-align:start; transform:none !important; box-sizing:border-box !important; }
   .carte-tarif p, .carte-tarif-desc { white-space:normal !important; overflow-wrap:break-word; }
   .carte-tarif .garanties, .carte-tarif [style*="flex-wrap"] { flex-wrap:wrap !important; }
+  /* Carousel demo cards */
+  .main-car-slide{width:calc(100vw - 60px);}
+  .main-car-track{padding-left:20px;}
+  .mct-tabs{padding-left:20px;}
+  .main-car-prev{left:6px;}.main-car-next{right:6px;}
+  .ad-cnt{flex-direction:column;}
+  .ad-form{width:100%;border-right:none;border-bottom:1px solid #181818;max-height:220px;}
+  .ad-res{max-height:160px;}
+}
+
+/* ── Agent Demo ── */
+.ad-tab{padding:5px 13px;border-radius:20px;border:1px solid #222;background:transparent;color:#555;font-size:10.5px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.ad-tab.on{background:#10b981;color:#000;border-color:#10b981;}
+.ad-nav-item.on{background:#111!important;color:#10b981!important;border-left-color:#10b981!important;}
+.ad-nav-item.on svg{stroke:#10b981;}
+.ad-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.ad-panel.on{display:flex;}
+.ad-hdr{padding:11px 16px;border-bottom:1px solid #181818;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ad-hdr-ico{width:24px;height:24px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ad-hdr-ico svg{width:12px;height:12px;stroke:#10b981;}
+.ad-hdr-t{font-size:12px;font-weight:700;color:#eee;}
+.ad-hdr-d{font-size:9.5px;color:#333;margin-top:1px;}
+.ad-cnt{flex:1;display:flex;overflow:hidden;}
+.ad-form{width:285px;padding:12px 14px;border-right:1px solid #181818;overflow-y:auto;flex-shrink:0;}
+.ad-fld{margin-bottom:10px;}
+.ad-lbl{font-size:9px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.ad-inp{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 8px;font-size:10px;color:#bbb;font-family:inherit;outline:none;resize:none;}
+.ad-inp.on{border-color:rgba(16,185,129,.45);}
+.ad-sel{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 8px;font-size:10px;color:#444;font-family:inherit;outline:none;appearance:none;}
+.ad-sel.on{color:#ddd;border-color:rgba(16,185,129,.3);}
+.ad-btn{width:100%;background:#10b981;color:#000;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;cursor:pointer;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:5px;}
+.ad-btn svg{width:11px;height:11px;}
+.ad-btn.ld{opacity:.65;}
+.ad-res{flex:1;padding:12px 14px;overflow-y:auto;}
+.ad-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;}
+.ad-ph svg{width:26px;height:26px;stroke:#1e1e1e;}
+.ad-ph p{font-size:10px;color:#2a2a2a;}
+.ad-rc{display:none;}.ad-rc.on{display:block;}
+.ad-thk{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.ad-dot{width:5px;height:5px;background:#10b981;border-radius:50%;animation:adpulse 1s infinite;}
+.ad-dot:nth-child(2){animation-delay:.2s;}.ad-dot:nth-child(3){animation-delay:.4s;}
+@keyframes adpulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.ad-thk-lbl{font-size:9.5px;color:#10b981;}
+.ad-item{background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:8px 10px;margin-bottom:6px;opacity:0;transform:translateY(4px);transition:all .3s;}
+.ad-item.on{opacity:1;transform:translateY(0);}
+.ad-item.bl{filter:blur(5px);}
+.ad-item-lbl{font-size:8px;font-weight:700;color:#10b981;margin-bottom:2px;text-transform:uppercase;}
+.ad-item-t{font-size:10.5px;font-weight:700;color:#ddd;line-height:1.4;}
+.ad-item-t.dim{color:#555;font-weight:400;}
+.ad-item-d{font-size:9px;color:#3a3a3a;margin-top:2px;line-height:1.4;}
+.ad-item-body{font-size:9.5px;color:#666;line-height:1.55;}
+.ad-item-body strong{color:#aaa;}
+.ad-cmt-orig{font-size:9px;color:#444;border-left:2px solid #252525;padding-left:6px;margin-bottom:5px;line-height:1.4;}
+.ad-cmt-rep{font-size:10px;color:#bbb;line-height:1.45;margin-bottom:3px;}
+.ad-cmt-strat{font-size:8.5px;color:#333;font-style:italic;}
+.ad-mini-preview{width:100%;aspect-ratio:16/9;border-radius:7px;overflow:hidden;margin-bottom:6px;position:relative;background:#111;border:1px solid #1e1e1e;opacity:0;transition:opacity .5s;}
+.ad-mini-preview.on{opacity:1;}
+.ad-mini-preview img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+.ad-mini-ov{position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(to top,rgba(0,0,0,.88) 60%,transparent);}
+.ad-mini-t1{font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.9);line-height:1.2;}
+.ad-mini-t2{font-size:9px;color:rgba(255,255,255,.6);margin-bottom:2px;}
+.ad-chat-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.ad-chat-msgs{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.ad-msg{max-width:86%;padding:8px 11px;border-radius:11px;font-size:10px;line-height:1.5;opacity:0;transform:translateY(3px);transition:all .3s;}
+.ad-msg.on{opacity:1;transform:translateY(0);}
+.ad-msg.u{background:#1a1a1a;color:#bbb;align-self:flex-end;border-radius:11px 11px 2px 11px;}
+.ad-msg.a{background:#0e1a0e;color:#c0e0c0;align-self:flex-start;border-radius:11px 11px 11px 2px;border:1px solid #1a2a1a;}
+.ad-msg.a strong{color:#10b981;}
+.ad-chat-row{padding:8px 12px;border-top:1px solid #181818;display:flex;gap:6px;flex-shrink:0;}
+.ad-chat-inp{flex:1;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 9px;font-size:10px;color:#bbb;font-family:inherit;outline:none;}
+.ad-chat-inp.on{border-color:rgba(16,185,129,.4);}
+.ad-chat-send{background:#10b981;color:#000;border:none;border-radius:6px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;}
+
+/* ── Main Carousel (style OpusClip) ── */
+.main-car-wrap{margin:12px 0 0;}
+/* Tabs navigation */
+.mct-tabs{display:flex;gap:6px;padding:0 max(28px,calc(50% - 430px)) 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.mct-tabs::-webkit-scrollbar{display:none;}
+.mct-tab{flex-shrink:0;padding:7px 16px;border-radius:999px;border:1px solid #252525;background:transparent;color:#555;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;}
+.mct-tab.act{background:rgba(16,185,129,.1);border-color:#10b981;color:#10b981;}
+/* Carousel region */
+.main-car-region{position:relative;overflow:hidden;}
+.main-car-outer{overflow:hidden;}
+.main-car-track{display:flex;gap:20px;transition:transform .45s cubic-bezier(.25,.1,.25,1);padding-left:max(24px,calc(50% - 430px));}
+.main-car-slide{flex-shrink:0;width:min(860px,82vw);background:#0e0e10;border:1px solid var(--bordure);border-radius:20px;overflow:hidden;}
+.main-car-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:44px;height:44px;border-radius:50%;background:rgba(20,20,20,.92);border:1px solid rgba(255,255,255,.07);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(8px);}
+.main-car-btn:hover:not(:disabled){background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#10b981;}
+.main-car-btn:disabled{opacity:.12;cursor:default;}
+.main-car-prev{left:max(12px,calc(50% - 455px));}
+.main-car-next{right:max(12px,calc(50% - 455px));}
+/* Feature tags */
+.feat-tags-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:22px 24px 0;}
+.feat-tag{padding:6px 14px;border-radius:999px;border:1px solid #252525;font-size:11.5px;font-weight:600;color:#555;white-space:nowrap;}
+@media(max-width:640px){
+  .main-car-slide{width:calc(100vw - 60px);}
+  .main-car-track{padding-left:20px;}
+  .mct-tabs{padding-left:20px;}
+  .main-car-prev{left:6px;}.main-car-next{right:6px;}
 }
 </style>
 </head>
@@ -254,14 +369,7 @@
 <nav class="navbar" id="navbar">
   <div class="nav-conteneur">
     <a href="/" class="logo">Créatis<span class="logo-point">.</span></a>
-    <div class="nav-liens" id="nav-liens">
-      <a href="/#fonctionnalites" class="lien">Fonctionnalités</a>
-      <a href="/#comment-ca-marche" class="lien">Comment ça marche</a>
-      <a href="/#tarifs" class="lien">Tarifs</a>
-      <a href="/auth.html" class="btn-ghost btn-sm">Se connecter</a>
-      <a href="/auth.html?ref=lp" class="btn-primaire btn-sm">Commencer gratuitement</a>
-    </div>
-    <button class="nav-burger" id="nav-burger" onclick="document.getElementById('nav-liens').classList.toggle('open')" aria-label="Menu">☰</button>
+    <a href="/auth.html?ref=lp" class="btn-primaire btn-sm">Commencer gratuitement</a>
   </div>
 </nav>
 
@@ -278,19 +386,15 @@
         Créatis transforme tes longues vidéos en Shorts, Reels et TikToks viraux prêts à publier sur toutes tes plateformes en un clic.
       </p>
 
-      <!-- Input row horizontal (OpusClip) -->
-      <div class="lp-input-row">
-        <div class="lp-pill">
-          <input type="text" id="lp-url" class="lp-pill-hint" placeholder="Colle une URL YouTube…" style="background:none;border:none;outline:none;color:var(--texte-doux);font-size:14px;flex:1;min-width:0;" onkeydown="if(event.key==='Enter')lancerDemo()">
-          <button class="lp-pill-cta" onclick="lancerDemo()">Obtenez des clips gratuits</button>
-        </div>
-        <span class="lp-ou">ou</span>
-        <label class="lp-upload">
+      <!-- CTA upload uniquement -->
+      <div class="lp-input-row" style="justify-content:center">
+        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:var(--vert);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
           <input type="file" id="lp-file" accept="video/*,video/mp4,video/quicktime,video/mov" onchange="lancerDemoFichier(this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Téléverser des fichiers
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Uploader ma vidéo — Gratuit →
         </label>
       </div>
+      <input type="hidden" id="lp-url" value="">
 
       <div class="hero-cta" style="margin-top:8px">
         <p class="hero-note"><span>Gratuit</span> · Sans carte bancaire · <span>1 essai gratuit</span></p>
@@ -310,21 +414,61 @@
   </div>
 </section>
 
-<!-- CARTE DÉMO ANIMÉE -->
-<div class="lp-demo-card" id="lp-demo-card">
-  <div id="la-vid" class="lp-anim-vid">
-    <div id="la-bg" style="position:absolute;inset:0;transition:background .5s;"></div>
-    <svg id="la-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" style="position:relative;z-index:1;transition:opacity .4s;"></svg>
-    <span id="la-label" class="lp-anim-label"></span>
-    <span id="la-dur" class="lp-anim-dur"></span>
+<!-- CAROUSEL PRINCIPAL (style OpusClip) -->
+<div class="main-car-wrap" id="main-car-wrap">
+  <!-- Tabs au-dessus du carousel -->
+  <div class="mct-tabs" id="mct-tabs">
+    <button class="mct-tab act" onclick="goSlide(0)">✂️ Clips Viraux</button>
+    <button class="mct-tab" onclick="goSlide(1)">💡 Idées de Vidéos <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(2)">🎬 YouTube Complet <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(3)">💬 Réponses Comm. <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(4)">♻️ Recyclage <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(5)">🖼️ Miniature Pro <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(6)">🤖 Assistant IA <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
   </div>
-  <div class="lp-anim-url" id="la-url">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-    <span id="la-txt">Colle une vidéo longue et…</span>
-    <button onclick="laStart()">Get clips</button>
+
+  <!-- Région carousel avec flèches -->
+  <div class="main-car-region">
+    <button class="main-car-btn main-car-prev" id="main-car-prev" onclick="goSlide(slidePos-1)" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="main-car-btn main-car-next" id="main-car-next" onclick="goSlide(slidePos+1)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  <div class="main-car-outer">
+    <div class="main-car-track" id="main-car-track">
+
+      <!-- Slide 0 : Demo clips animée -->
+      <div class="main-car-slide" id="lp-demo-card" style="padding:28px 24px 20px;text-align:center;">
+        <div id="la-vid" class="lp-anim-vid">
+          <div id="la-bg" style="position:absolute;inset:0;transition:background .5s;"></div>
+          <img id="la-thumb" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;transition:opacity .5s;opacity:0;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:1;border-radius:inherit;"></div>
+          <svg id="la-play" viewBox="0 0 24 24" width="40" height="40" style="position:absolute;z-index:2;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));transition:opacity .4s;"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.55)"/><polygon points="10,8 18,12 10,16" fill="#fff"/></svg>
+          <svg id="la-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" style="position:absolute;z-index:2;transition:opacity .4s;opacity:0;"></svg>
+          <span id="la-label" class="lp-anim-label" style="z-index:3;"></span>
+          <span id="la-dur" class="lp-anim-dur" style="z-index:3;"></span>
+        </div>
+        <div class="lp-anim-url" id="la-url">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span id="la-txt">Colle une vidéo longue et…</span>
+          <button onclick="laStart()">Get clips</button>
+        </div>
+        <div class="lp-anim-shorts" id="la-shorts"></div>
+        <div class="lp-anim-st" id="la-st"></div>
+      </div>
+
+      <!-- Slides 1-6 : un agent par slide -->
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-idees"><div id="ad-ws-idees" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-yt"><div id="ad-ws-yt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-cmt"><div id="ad-ws-cmt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-rec"><div id="ad-ws-rec" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-mini"><div id="ad-ws-mini" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-chat"><div id="ad-ws-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+
+    </div>
   </div>
-  <div class="lp-anim-shorts" id="la-shorts"></div>
-  <div class="lp-anim-st" id="la-st"></div>
+  </div><!-- /main-car-region -->
 </div>
 
 <!-- ICÔNES PLATEFORMES -->
@@ -351,44 +495,7 @@
   <p style="font-size:12px;color:var(--texte-muted);margin-top:12px">1 essai gratuit · Aucune carte bancaire</p>
 </div>
 
-<!-- CLIPS DÉMO STATIQUES -->
-<section class="clips-section" id="clips-demo">
-  <p class="clips-label">Exemples de clips générés automatiquement</p>
-  <div class="clips-row">
-    <div class="cc in">
-      <div class="cc-bg" style="background-image:url(images/clips/ad-finance.webp);background-size:cover;background-position:center top;"></div>
-      <div class="cc-ov"></div><div class="cc-score">🔥 99</div><div class="cc-dur">0:47</div>
-      <div class="cc-plats"><span class="cc-plat">TikTok</span><span class="cc-plat">Reels</span></div>
-      <div class="cc-hook"><div class="cc-hook-txt">La vérité sur l'argent que personne ne dit</div></div>
-    </div>
-    <div class="cc in">
-      <div class="cc-bg" style="background-image:url(images/clips/ad-podcast.webp);background-size:cover;background-position:center top;"></div>
-      <div class="cc-ov"></div><div class="cc-score">🔥 97</div><div class="cc-dur">0:52</div>
-      <div class="cc-plats"><span class="cc-plat">Shorts</span><span class="cc-plat">Reels</span></div>
-      <div class="cc-hook"><div class="cc-hook-txt">L'erreur que font 99% des créateurs</div></div>
-    </div>
-    <div class="cc in">
-      <div class="cc-bg" style="background-image:url(images/clips/ad-gaming.webp);background-size:cover;background-position:center top;"></div>
-      <div class="cc-ov"></div><div class="cc-score">🔥 95</div><div class="cc-dur">0:38</div>
-      <div class="cc-plats"><span class="cc-plat">TikTok</span><span class="cc-plat">Shorts</span></div>
-      <div class="cc-hook"><div class="cc-hook-txt">Ce que j'aurais aimé savoir plus tôt</div></div>
-    </div>
-    <div class="cc in blurred">
-      <div class="cc-bg" style="background-image:url(images/clips/ad-creator.webp);background-size:cover;background-position:center top;"></div>
-      <div class="cc-ov"></div><div class="cc-score">🔥 93</div><div class="cc-dur">0:44</div>
-      <div class="cc-plats"><span class="cc-plat">Reels</span></div>
-      <div class="cc-hook"><div class="cc-hook-txt">La méthode qui change tout</div></div>
-      <div class="cc-lock">🔒</div>
-    </div>
-    <div class="cc in blurred">
-      <div class="cc-bg" style="background-image:url(images/clips/ad-speaker.webp);background-size:cover;background-position:center top;"></div>
-      <div class="cc-ov"></div><div class="cc-score">🔥 91</div><div class="cc-dur">0:58</div>
-      <div class="cc-plats"><span class="cc-plat">Shorts</span></div>
-      <div class="cc-hook"><div class="cc-hook-txt">Pourquoi tu dois arrêter ça maintenant</div></div>
-      <div class="cc-lock">🔒</div>
-    </div>
-  </div>
-</section>
+
 
 <!-- LOADER -->
 <div id="lp-loader">
@@ -534,9 +641,9 @@ function renderRes(clips){
 
 function hideHero(){
   document.getElementById('lp-hero-section').style.display='none';
-  document.getElementById('lp-demo-card').style.display='none';
+  document.getElementById('main-car-wrap').style.display='none';
   document.querySelector('.lp-platforms').style.display='none';
-  document.getElementById('clips-demo').style.display='none';
+  const ft=document.querySelector('.feat-tags-row');if(ft)ft.style.display='none';
   document.getElementById('lp-loader').style.display='block';
 }
 
@@ -566,14 +673,33 @@ window.lancerDemo=async function(){
   ouvrirModal();
 };
 
-window.lancerDemoFichier=async function(input){
+function _lpSaveIDB(file){
+  return new Promise((resolve)=>{
+    try{
+      const req=indexedDB.open('creatis_lp',1);
+      req.onupgradeneeded=e=>e.target.result.createObjectStore('videos');
+      req.onsuccess=e=>{
+        const tx=e.target.result.transaction('videos','readwrite');
+        tx.objectStore('videos').put({file,ts:Date.now()},'pending');
+        tx.oncomplete=()=>resolve(true);
+        tx.onerror=()=>resolve(false);
+      };
+      req.onerror=()=>resolve(false);
+    }catch(e){resolve(false);}
+  });
+}
+window.lancerDemoFichier=function(input){
   const f=input.files[0];if(!f)return;
   videoTitle=f.name.replace(/\.[^.]+$/,'')||'ta vidéo';
   videoUrl='';
+  _lpSaveIDB(f); // arrière-plan, non-bloquant
   localStorage.setItem('creatis_lp_file_name', videoTitle);
+  localStorage.setItem('creatis_lp_pending_ts', Date.now().toString());
   if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_file'});
-  document.getElementById('modal-vid-title').textContent=videoTitle;
+  const t=document.getElementById('modal-vid-title');
+  if(t)t.textContent=videoTitle;
   ouvrirModal();
+  setTimeout(()=>{input.value='';},100);
 };
 
 window.ouvrirModal=function(){
@@ -593,40 +719,32 @@ window.soumettreLead=function(){
   if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
   window.location.href=`/auth.html?ref=lp-clips&returnUrl=app.html#email=${encodeURIComponent(email)}`;
 };
+// Flush si clic survenu avant ce script
+if(typeof window._lpFlush==='function')window._lpFlush();
 })();
 </script>
 <script>
 (function(){
   const VIDEOS=[
-    {label:'Podcast',dur:'1:24:32',bg:'linear-gradient(135deg,#2a1800,#0d0a00)',
-     icon:`<path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#10b981" stroke="none"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#10b981" stroke-width="1.5" fill="none"/><line x1="12" y1="19" x2="12" y2="23" stroke="#10b981" stroke-width="1.5"/><line x1="8" y1="23" x2="16" y2="23" stroke="#10b981" stroke-width="1.5"/>`,
-     url:'podcast-interview.mp4',
-     shorts:[
-       {score:99,hook:"Je n'aurais JAMAIS dû dire ça…",ts:'2:14',tint:'rgba(255,140,50,.05)',img:'images/clips/ad-podcast.webp'},
-       {score:97,hook:'La vérité que personne ne dit',ts:'8:47',tint:'rgba(255,110,30,.04)',img:'images/clips/podcast2.webp'},
-       {score:95,hook:"Sa réponse m'a laissé sans mots",ts:'34:22',tint:'rgba(240,90,20,.04)',img:'images/clips/podcast3.webp'},
-       {score:93,hook:'Le moment qui a tout changé',ts:'48:05',tint:'rgba(200,70,10,.04)',img:'images/clips/podcast4.webp'},
-       {score:91,hook:'Il a finalement tout avoué',ts:'1:12:30',tint:'rgba(180,50,5,.03)',img:'images/clips/podcast5.webp'}
-     ]},
-    {label:'Finance',dur:'18:47',bg:'linear-gradient(135deg,#001220,#000810)',
-     icon:`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#3b82f6" stroke-width="1.5" fill="none"/>`,
-     url:'vlog-finance-2024.mp4',
-     shorts:[
-       {score:98,hook:'CHOC : +340% en 6 mois',ts:'0:58',tint:'rgba(16,185,129,.06)',img:'images/clips/ad-finance.webp'},
-       {score:96,hook:"L'erreur qui ruine ton épargne",ts:'4:22',tint:'rgba(239,68,68,.05)',img:'images/clips/finance2.webp'},
-       {score:94,hook:'Ce que ta banque te cache',ts:'9:15',tint:'rgba(59,130,246,.05)',img:'images/clips/ad-creator.webp'},
-       {score:92,hook:'La stratégie des millionnaires',ts:'12:40',tint:'rgba(245,158,11,.04)',img:'images/clips/finance4.webp'},
-       {score:90,hook:'Mon secret sur les crypto',ts:'17:08',tint:'rgba(139,92,246,.04)',img:'images/clips/finance5.webp'}
-     ]},
-    {label:'Gaming',dur:'42:10',bg:'linear-gradient(135deg,#1a0533,#0d0117)',
+    {label:'Gaming',dur:'42:10',bg:'linear-gradient(135deg,#1a0533,#0d0117)',thumb:'/images/clips/demo-gaming.webp',
      icon:`<rect x="2" y="6" width="20" height="12" rx="2" stroke="#a855f7" stroke-width="1.5" fill="none"/><line x1="6" y1="12" x2="10" y2="12" stroke="#a855f7" stroke-width="1.5"/><line x1="8" y1="10" x2="8" y2="14" stroke="#a855f7" stroke-width="1.5"/><circle cx="16" cy="11" r="1" fill="#a855f7"/><circle cx="18" cy="13" r="1" fill="#a855f7"/>`,
      url:'gaming-stream-live.mp4',
      shorts:[
-       {score:99,hook:'IMPOSSIBLE ??? Je viens de le faire',ts:'7:42',tint:'rgba(168,85,247,.08)',img:'images/clips/ad-gaming.webp'},
-       {score:97,hook:'Le clutch du siècle 🏆',ts:'15:30',tint:'rgba(139,92,246,.07)',img:'images/clips/gaming2.webp'},
-       {score:95,hook:"Comment j'ai trompé tout le monde",ts:'23:15',tint:'rgba(124,58,237,.06)',img:'images/clips/ad-speaker.webp'},
-       {score:93,hook:'GG WP les gars',ts:'31:08',tint:'rgba(109,40,217,.05)',img:'images/clips/gaming4.webp'},
-       {score:91,hook:"Le move qui m'a coûté la game",ts:'39:55',tint:'rgba(91,33,182,.04)',img:'images/clips/gaming5.webp'}
+       {score:99,hook:'IMPOSSIBLE ??? Je viens de le faire',ts:'7:42',tint:'rgba(168,85,247,.08)',img:'/images/clips/short-gaming-1.webp'},
+       {score:97,hook:'Le clutch du siècle 🏆',ts:'15:30',tint:'rgba(139,92,246,.07)',img:'/images/clips/short-gaming-2.webp'},
+       {score:95,hook:"Comment j'ai trompé tout le monde",ts:'23:15',tint:'rgba(124,58,237,.06)',img:'/images/clips/short-gaming-3.webp'},
+       {score:93,hook:'GG WP les gars',ts:'31:08',tint:'rgba(109,40,217,.05)',img:'/images/clips/short-gaming-4.webp'},
+       {score:91,hook:"Le move qui m'a coûté la game",ts:'39:55',tint:'rgba(91,33,182,.04)',img:'/images/clips/short-gaming-5.webp'}
+     ]},
+    {label:'Podcast',dur:'1:24:32',bg:'linear-gradient(135deg,#2a1800,#0d0a00)',thumb:'/images/clips/demo-podcast.webp',
+     icon:`<path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#10b981" stroke="none"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#10b981" stroke-width="1.5" fill="none"/><line x1="12" y1="19" x2="12" y2="23" stroke="#10b981" stroke-width="1.5"/><line x1="8" y1="23" x2="16" y2="23" stroke="#10b981" stroke-width="1.5"/>`,
+     url:'podcast-interview.mp4',
+     shorts:[
+       {score:99,hook:"Je n'aurais JAMAIS dû dire ça…",ts:'2:14',tint:'rgba(255,140,50,.05)',img:'/images/clips/short-podcast-1.webp'},
+       {score:97,hook:'La vérité que personne ne dit',ts:'8:47',tint:'rgba(255,110,30,.04)',img:'/images/clips/short-podcast-2.webp'},
+       {score:95,hook:"Sa réponse m'a laissé sans mots",ts:'34:22',tint:'rgba(240,90,20,.04)',img:'/images/clips/short-podcast-3.webp'},
+       {score:93,hook:'Le moment qui a tout changé',ts:'48:05',tint:'rgba(200,70,10,.04)',img:'/images/clips/short-podcast-4.webp'},
+       {score:91,hook:'Il a finalement tout avoué',ts:'1:12:30',tint:'rgba(180,50,5,.03)',img:'/images/clips/short-podcast-5.webp'}
      ]}
   ];
   const PLATS=[
@@ -641,7 +759,8 @@ window.soumettreLead=function(){
         elIcon=document.getElementById('la-icon'),elLabel=document.getElementById('la-label'),
         elDur=document.getElementById('la-dur'),elUrl=document.getElementById('la-url'),
         elTxt=document.getElementById('la-txt'),elShorts=document.getElementById('la-shorts'),
-        elSt=document.getElementById('la-st');
+        elSt=document.getElementById('la-st'),
+        elThumb=document.getElementById('la-thumb'),elPlay=document.getElementById('la-play');
 
   function setSt(t){elSt.style.opacity=0;setTimeout(()=>{elSt.textContent=t;elSt.style.opacity=1;},150);}
 
@@ -664,8 +783,10 @@ window.soumettreLead=function(){
 
   function prep(v){
     elVid.style.width='280px';elVid.style.height='157px';elVid.style.borderRadius='14px';elVid.style.opacity='1';
-    elBg.style.background=v.bg;elIcon.innerHTML=v.icon;elIcon.style.opacity='1';
+    elBg.style.background=v.bg;elIcon.innerHTML=v.icon;elIcon.style.opacity='0';
     elLabel.textContent=v.label;elDur.textContent=v.dur;elDur.style.opacity='1';
+    if(v.thumb){elThumb.src=v.thumb;elThumb.style.opacity='1';}else{elThumb.style.opacity='0';}
+    if(elPlay)elPlay.style.opacity='1';
     elTxt.textContent='Colle une vidéo longue et…';elTxt.style.color='#555';
     elUrl.style.borderColor='#2a2a2a';
     elShorts.style.opacity='0';elShorts.style.transform='translateY(20px)';
@@ -676,7 +797,7 @@ window.soumettreLead=function(){
     if(running)return;running=true;clearTimeout(loopT);
     const v=VIDEOS[idx];prep(v);
     setTimeout(()=>{elTxt.textContent=v.url;elTxt.style.color='#888';elUrl.style.borderColor='rgba(16,185,129,.4)';setSt('Analyse en cours…');},400);
-    setTimeout(()=>{setSt('Détection des moments viraux…');elVid.style.width='200px';elVid.style.height='112px';elIcon.style.opacity='.3';elDur.style.opacity='.3';},1000);
+    setTimeout(()=>{setSt('Détection des moments viraux…');elVid.style.width='200px';elVid.style.height='112px';elIcon.style.opacity='.3';elDur.style.opacity='.3';if(elPlay)elPlay.style.opacity='0';},1000);
     setTimeout(()=>{setSt('Formatage en 9:16…');elVid.style.width='70px';elVid.style.height='124px';elVid.style.borderRadius='10px';},2100);
     setTimeout(()=>{elVid.style.opacity='0';},3000);
     setTimeout(()=>{buildShorts(v);elShorts.style.opacity='1';elShorts.style.transform='translateY(0)';setSt('10 clips viraux prêts !');elTxt.style.color='#10b981';elUrl.style.borderColor='rgba(16,185,129,.5)';},3400);
@@ -684,9 +805,351 @@ window.soumettreLead=function(){
   }
 
   prep(VIDEOS[0]);
-  setTimeout(run,800);
+  // Clips animation — lazy start quand le slide est visible
+  (function(){
+    const _t=document.getElementById('lp-demo-card');
+    if('IntersectionObserver' in window&&_t){
+      const _io=new IntersectionObserver(e=>{if(e[0].isIntersecting){_io.disconnect();setTimeout(run,400);}},{threshold:0.1,rootMargin:'100px'});
+      _io.observe(_t);
+    }else{setTimeout(run,800);}
+  })();
   window.laStart=run;
 })();
+</script>
+<script>
+/* ── AGENTS DEMO ── */
+(function(){
+const $=id=>document.getElementById(id);
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+async function tp(el,txt,spd=40){el.value='';el.classList.add('on');for(let c of txt){el.value+=c;await sl(spd+Math.random()*18);}el.classList.remove('on');}
+function sv(el,v){el.value=v;el.classList.add('on');}
+const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+
+const AGENTS=[
+  {id:'idees',lbl:'Idées de Vidéos',navId:'ad-n-idees'},
+  {id:'yt',lbl:'YouTube Complet',navId:'ad-n-yt'},
+  {id:'cmt',lbl:'Réponses Comm.',navId:'ad-n-cmt'},
+  {id:'rec',lbl:'Recyclage',navId:'ad-n-rec'},
+  {id:'mini',lbl:'Miniature Pro',navId:'ad-n-mini'},
+  {id:'chat',lbl:'Assistant IA',navId:'ad-n-chat'},
+];
+
+// Injecter les onglets (navigation via mct-tabs, ad-tabs optionnel)
+const tabsEl=document.querySelector('.ad-tabs');
+if(tabsEl)AGENTS.forEach(a=>{
+  const b=document.createElement('button');
+  b.className='ad-tab'+(a.id==='idees'?' on':'');
+  b.textContent=a.lbl;b.dataset.agent=a.id;
+  b.onclick=()=>adGo(a.id);
+  tabsEl.appendChild(b);
+});
+
+// Injection lazy — exécutée seulement quand le carousel entre en vue
+let _panelsReady=false;
+function _doInjectPanels(){
+  if(_panelsReady)return;_panelsReady=true;
+  const _ws0=document.getElementById('ad-ws-idees');
+if(_ws0){_ws0.innerHTML=`
+<!-- IDÉES -->
+<div class="ad-panel on" id="ad-p-idees">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></div><div><div class="ad-hdr-t">Idées de Vidéos</div><div class="ad-hdr-d">30 idées personnalisées basées sur ta niche</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Ta niche *</div><input class="ad-inp" id="ad-i-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Format *</div><select class="ad-sel" id="ad-i-fmt"><option value="">Sélectionner…</option><option>Listes / Top 10</option><option>Tutoriels / How-to</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Objectif *</div><select class="ad-sel" id="ad-i-obj"><option value="">Sélectionner…</option><option>Gagner des abonnés rapidement</option><option>Augmenter les revenus</option></select></div>
+    <button class="ad-btn" id="ad-i-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-i-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-i-res"><div class="ad-thk" id="ad-i-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération de 30 idées…</span></div><div id="ad-i-list"></div></div></div></div>
+</div>
+<!-- YT COMPLET -->
+<div class="ad-panel" id="ad-p-yt">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div><div class="ad-hdr-t">YouTube Complet</div><div class="ad-hdr-d">Titres, script, description SEO et tags</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Sujet *</div><input class="ad-inp" id="ad-y-sujet" type="text" placeholder="ex : Investir 1000€ en bourse" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Niche *</div><input class="ad-inp" id="ad-y-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Durée *</div><select class="ad-sel" id="ad-y-dur"><option value="">Sélectionner…</option><option>10 à 15 minutes</option><option>5 à 10 minutes</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton *</div><select class="ad-sel" id="ad-y-ton"><option value="">Sélectionner…</option><option>Éducatif et pédagogue</option><option>Expert et professionnel</option></select></div>
+    <button class="ad-btn" id="ad-y-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-y-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-y-res"><div class="ad-thk" id="ad-y-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération du package…</span></div><div id="ad-y-list"></div></div></div></div>
+</div>
+<!-- RÉPONSES -->
+<div class="ad-panel" id="ad-p-cmt">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><div class="ad-hdr-t">Réponses Commentaires</div><div class="ad-hdr-d">Réponses personnalisées pour ta communauté</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">URL vidéo</div><input class="ad-inp" id="ad-c-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton de ta chaîne *</div><select class="ad-sel" id="ad-c-ton"><option value="">Sélectionner…</option><option>Décontracté et proche</option><option>Professionnel et bienveillant</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton prénom</div><input class="ad-inp" id="ad-c-nom" type="text" placeholder="ex : Alex" readonly></div>
+    <button class="ad-btn" id="ad-c-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-c-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-c-res"><div class="ad-thk" id="ad-c-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Analyse des commentaires…</span></div><div id="ad-c-list"></div></div></div></div>
+</div>
+<!-- RECYCLAGE -->
+<div class="ad-panel" id="ad-p-rec">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div><div class="ad-hdr-t">Recyclage Contenu</div><div class="ad-hdr-d">LinkedIn, Twitter/X, Instagram depuis ta vidéo</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">URL vidéo</div><input class="ad-inp" id="ad-r-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Titre vidéo</div><input class="ad-inp" id="ad-r-titre" type="text" placeholder="ex : Comment investir 1000€" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Plateformes *</div><select class="ad-sel" id="ad-r-plat"><option value="">Sélectionner…</option><option>Toutes (LinkedIn + X + Instagram)</option><option>LinkedIn uniquement</option></select></div>
+    <button class="ad-btn" id="ad-r-btn">${ICON}Recycler ma vidéo</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-r-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-r-res"><div class="ad-thk" id="ad-r-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Recyclage en cours…</span></div><div id="ad-r-list"></div></div></div></div>
+</div>
+<!-- MINIATURE -->
+<div class="ad-panel" id="ad-p-mini">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="ad-hdr-t">Miniature Pro</div><div class="ad-hdr-d">Génère un fond réaliste sur-mesure</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Décris ta miniature *</div><textarea class="ad-inp" id="ad-m-desc" rows="3" placeholder="ex : Dessin réaliste au crayon..." readonly></textarea></div>
+    <div class="ad-fld"><div class="ad-lbl">Texte overlay</div><input class="ad-inp" id="ad-m-t1" type="text" placeholder="ex : YEUX RÉALISTE" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Style *</div><select class="ad-sel" id="ad-m-style"><option value="">Sélectionner…</option><option>Cinématique</option><option>Lifestyle luxe</option></select></div>
+    <button class="ad-btn" id="ad-m-btn">${ICON}Générer la miniature</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-m-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-m-res"><div class="ad-thk" id="ad-m-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération image IA…</span></div>
+  <div id="ad-m-imgwrap" style="display:none"><div class="ad-mini-preview" id="ad-m-prev"><img src="/images/showcase/mini-mains-16x9.webp" alt=""><div class="ad-mini-ov"><div class="ad-mini-t2">Tuto dessin</div><div class="ad-mini-t1">Mains Manga</div></div></div><div style="font-size:9px;color:#333;text-align:center;">✅ Miniature générée — prête à télécharger</div></div>
+  </div></div></div>
+</div>
+<!-- ASSISTANT -->
+<div class="ad-panel" id="ad-p-chat">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div><div><div class="ad-hdr-t">Assistant IA</div><div class="ad-hdr-d">Support, stratégie, questions — répond à tout</div></div></div>
+  <div class="ad-cnt" style="flex-direction:column;"><div class="ad-chat-wrap"><div class="ad-chat-msgs" id="ad-ch-msgs"></div><div class="ad-chat-row"><input class="ad-chat-inp" id="ad-ch-inp" placeholder="Pose une question…" readonly><button class="ad-chat-send">Envoyer</button></div></div></div>
+</div>`;
+// Distribuer chaque panel dans sa propre slide
+['yt','cmt','rec','mini','chat'].forEach(id=>{
+  const p=document.getElementById('ad-p-'+id);
+  const ws=document.getElementById('ad-ws-'+id);
+  if(p&&ws){p.className='ad-panel on';ws.appendChild(p);}
+});
+const _pi=document.getElementById('ad-p-idees');if(_pi)_pi.className='ad-panel on';
+}} // fin _doInjectPanels
+
+let adCurrent='idees';
+
+function adGo(agent){
+  adCurrent=agent;
+  // Chaque panel est dans sa propre slide — on lance juste l'animation
+  ({idees:adIdees,yt:adYT,cmt:adCmt,rec:adRec,mini:adMini,chat:adChat}[agent])();
+}
+
+function adReset(btnId,listId,phId,resId,thkId,extraIds=[]){
+  const b=$('ad-'+btnId+'-btn');if(b){b.innerHTML=ICON+"Générer avec l'IA";b.classList.remove('ld');}
+  const l=$('ad-'+listId);if(l)l.innerHTML='';
+  const ph=$('ad-'+phId+'-ph');if(ph)ph.style.display='flex';
+  const res=$('ad-'+resId+'-res');if(res)res.className='ad-rc';
+  const thk=$('ad-'+thkId+'-thk');if(thk)thk.style.display='flex';
+  extraIds.forEach(id=>{const e=$(id);if(e)e.style.display='none';});
+}
+
+async function addItems(listId,items,cls='ad-item'){
+  const l=$(listId);
+  for(let item of items){
+    const d=document.createElement('div');
+    d.className=cls+(item.bl?' bl':'');
+    d.innerHTML=item.html;
+    l.appendChild(d);await sl(50);d.classList.add('on');await sl(130);
+  }
+}
+
+// IDÉES
+async function adIdees(){
+  $('ad-i-niche').value='';$('ad-i-fmt').value='';$('ad-i-fmt').className='ad-sel';$('ad-i-obj').value='';$('ad-i-obj').className='ad-sel';
+  adReset('i','i-list','i','i','i');
+  await sl(600);
+  await tp($('ad-i-niche'),'Finance personnelle · jeunes actifs');
+  await sl(280);sv($('ad-i-fmt'),'Listes / Top 10');await sl(220);sv($('ad-i-obj'),'Gagner des abonnés rapidement');
+  await sl(280);$('ad-i-btn').innerHTML=ICON+'Génération…';$('ad-i-btn').classList.add('ld');
+  $('ad-i-ph').style.display='none';$('ad-i-res').className='ad-rc on';
+  await sl(1400);$('ad-i-thk').style.display='none';
+  await addItems('ad-i-list',[
+    {html:`<div class="ad-item-lbl">Idée #1</div><div class="ad-item-t">J'ai investi 1€/jour pendant 1 an — résultat</div><div class="ad-item-d">💡 Résultat concret + curiosité → fort CTR</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #2</div><div class="ad-item-t">Les 5 erreurs des débutants en bourse</div><div class="ad-item-d">💡 Format liste éducatif — très partageable</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #3</div><div class="ad-item-t">Pourquoi ton salaire ne te rendra jamais riche</div><div class="ad-item-d">💡 Angle controversé — fort potentiel viral</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #4</div><div class="ad-item-t">J'ai testé la méthode des riches pendant 30 jours</div><div class="ad-item-d">💡 Challenge personnel — fort engagement</div>`,bl:true},
+    {html:`<div class="ad-item-lbl">Idée #5</div><div class="ad-item-t">Ce que les riches font différemment</div><div class="ad-item-d">💡 Exclusivité perçue — fort taux de clic</div>`,bl:true},
+  ]);
+  $('ad-i-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-i-btn').classList.remove('ld');
+  await sl(4000);if(adCurrent==='idees')adIdees();
+}
+
+// YT COMPLET
+async function adYT(){
+  $('ad-y-sujet').value='';$('ad-y-niche').value='';$('ad-y-dur').value='';$('ad-y-dur').className='ad-sel';$('ad-y-ton').value='';$('ad-y-ton').className='ad-sel';
+  adReset('y','y-list','y','y','y');
+  await sl(600);
+  await tp($('ad-y-sujet'),'Comment investir 1000€ en bourse',46);
+  await sl(220);await tp($('ad-y-niche'),'Finance personnelle',46);
+  await sl(220);sv($('ad-y-dur'),'10 à 15 minutes');await sl(200);sv($('ad-y-ton'),'Éducatif et pédagogue');
+  await sl(280);$('ad-y-btn').innerHTML=ICON+'Génération…';$('ad-y-btn').classList.add('ld');
+  $('ad-y-ph').style.display='none';$('ad-y-res').className='ad-rc on';
+  await sl(1600);$('ad-y-thk').style.display='none';
+  await addItems('ad-y-list',[
+    {html:`<div class="ad-item-lbl">Titres optimisés</div><div class="ad-item-t">Comment investir 1000€ en bourse quand on est débutant (2025)</div><div class="ad-item-t dim" style="margin-top:3px">1000€ en bourse : la méthode que j'aurais voulu connaître à 20 ans</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Introduction (hook)</div><div class="ad-item-body"><strong>Hook :</strong> "Si tu as 1000€ de côté, cette vidéo va changer ta façon de voir l'argent."<br><strong>Intro :</strong> Je te montre pas à pas comment investir depuis zéro…</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Description SEO</div><div class="ad-item-body">💰 Dans cette vidéo, je t'explique comment investir 1000€...<br>⏱️ 0:00 Intro · 1:30 Pourquoi · 4:00 Plateforme...<br>#investissement #bourse #financeperso</div>`,bl:true},
+  ]);
+  $('ad-y-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-y-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='yt')adYT();
+}
+
+// RÉPONSES
+async function adCmt(){
+  $('ad-c-url').value='';$('ad-c-ton').value='';$('ad-c-ton').className='ad-sel';$('ad-c-nom').value='';
+  adReset('c','c-list','c','c','c');$('ad-c-btn').innerHTML=ICON+"Générer avec l'IA";
+  await sl(600);
+  await tp($('ad-c-url'),'youtube.com/watch?v=dQw4w9WgXcQ',32);
+  await sl(250);sv($('ad-c-ton'),'Décontracté et proche');
+  await sl(220);await tp($('ad-c-nom'),'Alex',55);
+  await sl(280);$('ad-c-btn').innerHTML=ICON+'Analyse…';$('ad-c-btn').classList.add('ld');
+  $('ad-c-ph').style.display='none';$('ad-c-res').className='ad-rc on';
+  await sl(1600);$('ad-c-thk').style.display='none';
+  await addItems('ad-c-list',[
+    {html:`<div class="ad-cmt-orig">💬 "Super vidéo ! Tu peux faire un tuto sur les ETF ?"</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">Merci ! 🙏 Les ETF c'est prévu — dis-moi en commentaire si tu préfères ETF monde ou thématiques, ça m'aide à prioriser !</div><div class="ad-cmt-strat">🧠 Engagement + teasing → booste les commentaires</div>`,bl:false},
+    {html:`<div class="ad-cmt-orig">💬 "Encore une arnaque ces conseils..."</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">Je comprends le scepticisme ! 💯 Je montre mes vrais résultats avec preuves. Regarde jusqu'à la fin — si pas convaincu, dis-moi ce qui t'a semblé faux.</div><div class="ad-cmt-strat">🧠 Gestion crise → transforme un détracteur en spectateur</div>`,bl:false},
+    {html:`<div class="ad-cmt-orig">💬 "+18% en 3 mois avec ta méthode 🚀"</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">INCROYABLE ! 🚀 +18% en 3 mois c'est vraiment solide, partage ça avec la communauté !</div><div class="ad-cmt-strat">🧠 Fidélisation → crée de la preuve sociale</div>`,bl:true},
+  ]);
+  $('ad-c-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-c-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='cmt')adCmt();
+}
+
+// RECYCLAGE
+async function adRec(){
+  $('ad-r-url').value='';$('ad-r-titre').value='';$('ad-r-plat').value='';$('ad-r-plat').className='ad-sel';
+  adReset('r','r-list','r','r','r');$('ad-r-btn').innerHTML=ICON+'Recycler ma vidéo';
+  await sl(600);
+  await tp($('ad-r-url'),'youtube.com/watch?v=abc123',32);
+  await sl(250);await tp($('ad-r-titre'),'Comment investir 1000€ en bourse',46);
+  await sl(220);sv($('ad-r-plat'),'Toutes (LinkedIn + X + Instagram)');
+  await sl(280);$('ad-r-btn').innerHTML=ICON+'Recyclage…';$('ad-r-btn').classList.add('ld');
+  $('ad-r-ph').style.display='none';$('ad-r-res').className='ad-rc on';
+  await sl(1500);$('ad-r-thk').style.display='none';
+  await addItems('ad-r-list',[
+    {html:`<div class="ad-item-lbl" style="color:#0077b5">LinkedIn</div><div class="ad-item-body">💰 J'ai investi 1000€ en bourse à 23 ans. Résultat aujourd'hui : +340%.<br><br>Voici les 3 décisions qui ont tout changé :<br>1️⃣ J'ai arrêté de timer le marché...</div>`,bl:false},
+    {html:`<div class="ad-item-lbl" style="color:#1d9bf0">Twitter/X</div><div class="ad-item-body">Thread 🧵 — Comment investir 1000€ quand on est débutant<br><br>1/ La plupart des gens attendent "le bon moment". C'est leur plus grosse erreur...</div>`,bl:false},
+    {html:`<div class="ad-item-lbl" style="color:#e1306c">Instagram</div><div class="ad-item-body">POV : tu découvres que 1000€ investis à 20 ans → 25 000€ à 45 ans 🤯<br>Save ce post et commence MAINTENANT...</div>`,bl:true},
+  ]);
+  $('ad-r-btn').innerHTML=ICON+'Recycler ma vidéo';$('ad-r-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='rec')adRec();
+}
+
+// MINIATURE
+async function adMini(){
+  $('ad-m-desc').value='';$('ad-m-t1').value='';$('ad-m-style').value='';$('ad-m-style').className='ad-sel';
+  adReset('m','m-list','m','m','m',['ad-m-imgwrap']);
+  $('ad-m-btn').innerHTML=ICON+'Générer la miniature';
+  await sl(600);
+  await tp($('ad-m-desc'),"Dessin au crayon graphite hyperréaliste d'un œil humain, main tenant un crayon, fond blanc épuré",36);
+  await sl(280);await tp($('ad-m-t1'),'Yeux Réaliste',52);
+  await sl(220);sv($('ad-m-style'),'Cinématique');
+  await sl(280);$('ad-m-btn').innerHTML=ICON+'Génération IA…';$('ad-m-btn').classList.add('ld');
+  $('ad-m-ph').style.display='none';$('ad-m-res').className='ad-rc on';
+  await sl(2000);$('ad-m-thk').style.display='none';
+  $('ad-m-imgwrap').style.display='block';
+  await sl(50);$('ad-m-prev').classList.add('on');
+  $('ad-m-btn').innerHTML=ICON+'Générer la miniature';$('ad-m-btn').classList.remove('ld');
+  await sl(4000);$('ad-m-prev').classList.remove('on');
+  await sl(400);if(adCurrent==='mini')adMini();
+}
+
+// CHAT
+const AD_CHAT=[
+  {r:'u',t:'Comment augmenter mon taux de clic sur mes miniatures ?'},
+  {r:'a',t:'<strong>3 leviers qui marchent :</strong><br><br>1️⃣ <strong>Visage + émotion forte</strong> — +38% de CTR en moyenne<br>2️⃣ <strong>Texte 3-5 mots max</strong> — lisible en 1 seconde sur mobile<br>3️⃣ <strong>Contraste fort</strong> — fond sombre + texte clair<br><br>Tu veux que je génère 3 concepts pour ta prochaine vidéo ? 🎨'},
+  {r:'u',t:'Oui ! Ma prochaine vidéo parle de dessin réaliste'},
+  {r:'a',t:'🔥 <strong>Concept 1 :</strong> Ton œil redessiné au crayon, texte "TU PEUX LE FAIRE"<br>💡 <strong>Concept 2 :</strong> Split avant/après croquis, texte "30 JOURS DE PRATIQUE"<br>🚀 <strong>Concept 3 :</strong> Gros plan crayon sur papier, texte "MA TECHNIQUE SECRÈTE"<br><br>→ Utilise Miniature Pro pour les générer en 30s !'},
+];
+async function adChat(){
+  $('ad-ch-msgs').innerHTML='';$('ad-ch-inp').value='';$('ad-ch-inp').className='ad-chat-inp';
+  await sl(700);
+  for(let i=0;i<AD_CHAT.length;i++){
+    const m=AD_CHAT[i];
+    if(m.r==='u'){
+      await tp($('ad-ch-inp'),m.t,36);await sl(350);
+      const d=document.createElement('div');d.className='ad-msg u';d.textContent=m.t;
+      $('ad-ch-msgs').appendChild(d);await sl(40);d.classList.add('on');
+      $('ad-ch-inp').value='';$('ad-ch-inp').classList.remove('on');
+    } else {
+      const d=document.createElement('div');d.className='ad-msg a';
+      d.innerHTML='<div class="ad-thk" style="margin:0"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div></div>';
+      $('ad-ch-msgs').appendChild(d);await sl(40);d.classList.add('on');
+      await sl(1300);d.innerHTML=m.t;
+    }
+    $('ad-ch-msgs').scrollTop=$('ad-ch-msgs').scrollHeight;
+    await sl(i<AD_CHAT.length-1?1600:4500);
+  }
+  if(adCurrent==='chat')adChat();
+}
+
+// Activer nav items au click
+document.querySelectorAll('.ad-nav-item').forEach(n=>{
+  const agent=n.id.replace('ad-n-','');
+  n.onclick=()=>adGo(agent);
+});
+
+// Démarre — IntersectionObserver pour ne charger qu'en vue
+const _n=document.getElementById('ad-n-idees');if(_n)_n.classList.add('on');
+(function(){
+  function _startAgents(){_doInjectPanels();adIdees();}
+  const _t=document.getElementById('main-car-wrap');
+  if('IntersectionObserver' in window&&_t){
+    const _io=new IntersectionObserver(e=>{if(e[0].isIntersecting){_io.disconnect();_startAgents();}},{threshold:0.1,rootMargin:'200px'});
+    _io.observe(_t);
+  }else{_startAgents();}
+})();
+
+// Carousel principal — 7 positions (0=clips, 1-6=agents)
+const MCT_AGENTS=['idees','yt','cmt','rec','mini','chat'];
+window.slidePos=0;
+window.goSlide=function(n){
+  window.slidePos=Math.max(0,Math.min(n,6));
+  // Mettre à jour les tabs
+  document.querySelectorAll('.mct-tab').forEach((t,i)=>t.classList.toggle('act',i===window.slidePos));
+  // 7 slides physiques — navigation directe
+  const slides=document.querySelectorAll('.main-car-slide');
+  if(!slides.length)return;
+  const w=slides[0].offsetWidth+20;
+  document.getElementById('main-car-track').style.transform=`translateX(-${window.slidePos*w}px)`;
+  // Démarrer l'animation de l'agent si on entre dans un slide agent
+  if(window.slidePos>0)adGo(MCT_AGENTS[window.slidePos-1]);
+  // Mettre à jour les flèches
+  const p=document.getElementById('main-car-prev'),nx=document.getElementById('main-car-next');
+  if(p)p.disabled=window.slidePos===0;
+  if(nx)nx.disabled=window.slidePos===6;
+};
+window.mainCarIdx=0;
+(function(){
+  const outer=document.querySelector('.main-car-outer');
+  if(!outer)return;
+  let sx=0;
+  outer.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+  outer.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>40)window.goSlide(window.slidePos+(dx<0?1:-1));},{passive:true});
+})();
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a[href*="auth.html"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (btn.dataset.loading) return e.preventDefault();
+      btn.dataset.loading = '1';
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.75';
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<svg style="animation:rotation .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Chargement…';
+      setTimeout(function() {
+        if (btn.dataset.loading) {
+          btn.innerHTML = orig;
+          btn.style.pointerEvents = '';
+          btn.style.opacity = '';
+          delete btn.dataset.loading;
+        }
+      }, 8000);
+    });
+  });
+});
 </script>
 </body>
 </html>

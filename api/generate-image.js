@@ -262,6 +262,7 @@ module.exports = async (req, res) => {
       const errData = await editRes.json().catch(() => ({}));
       console.warn('[Image Edit] Fallback génération classique:', editRes.status, errData?.error?.message);
       // Fall through to regular generation
+      // Fall through to regular generation
     } catch (err) {
       console.warn('[Image Edit] Erreur, fallback:', err.message);
       // Fall through to regular generation
@@ -291,11 +292,14 @@ module.exports = async (req, res) => {
       }
 
       const errData = await openaiRes.json().catch(() => ({}));
-      const isQuotaErr = openaiRes.status === 429 || openaiRes.status === 402;
+      const errMsg = (errData.error?.message || errData.error?.code || '').toLowerCase();
+      const isQuotaErr = openaiRes.status === 429 || openaiRes.status === 402 ||
+                         errMsg.includes('billing') || errMsg.includes('quota') ||
+                         errMsg.includes('hard_limit') || errMsg.includes('insufficient');
       if (!isQuotaErr) {
         return res.status(openaiRes.status).json({ error: errData.error?.message || 'Erreur OpenAI' });
       }
-      console.warn('[Image Proxy] OpenAI quota — fallback Together AI');
+      console.warn('[Image Proxy] OpenAI quota/billing — fallback Together AI');
     } catch (err) {
       console.warn('[Image Proxy] OpenAI indisponible — fallback Together AI:', err.message);
     }
@@ -309,7 +313,7 @@ module.exports = async (req, res) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${togetherKey}` },
         body: JSON.stringify({
-          model: 'black-forest-labs/FLUX.1-schnell-Free',
+          model: 'black-forest-labs/FLUX.1-schnell',
           prompt,
           width: Math.min(width, 1440),
           height: Math.min(height, 1440),

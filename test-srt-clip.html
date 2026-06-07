@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test — Sous-titres clip</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0f0a; color: #e2e8f0; font-family: -apple-system, sans-serif; padding: 2rem; }
+    h2 { color: #10b981; margin-bottom: 1.5rem; }
+
+    .short-card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      width: 340px;
+      margin-bottom: 2rem;
+    }
+    .short-card-preview {
+      width: 80px; height: 140px;
+      background: #1f2937;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; flex-shrink: 0;
+    }
+    .short-card-meta { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .short-card-num { font-size: 0.75rem; color: #6b7280; }
+    .short-card-hook { font-size: 0.85rem; font-weight: 600; line-height: 1.4; }
+    .short-card-dur { font-size: 0.75rem; color: #6b7280; }
+
+    .btn-dl-short {
+      width: 100%;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .section { margin-bottom: 2rem; }
+    label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; }
+    textarea {
+      width: 100%; max-width: 600px;
+      background: #111827; border: 1px solid #374151; border-radius: 8px;
+      color: #e2e8f0; padding: 0.75rem; font-family: monospace; font-size: 0.8rem;
+      resize: vertical;
+    }
+    .btn-load {
+      background: #10b981; color: #0a0f0a; border: none; border-radius: 8px;
+      padding: 0.6rem 1.5rem; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      margin-top: 0.75rem;
+    }
+    .info { font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem; }
+    .badge { background: rgba(251,191,36,0.15); color: #fbbf24; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; margin-left: 0.4rem; }
+  </style>
+</head>
+<body>
+
+<h2>Test — Bouton Sous-titres <span class="badge">TEST LOCAL</span></h2>
+
+<div class="section">
+  <label>Segments Whisper (JSON) — colle des segments réels ou garde l'exemple</label>
+  <textarea id="segInput" rows="8">[
+  {"start": 0.5,  "end": 3.2,  "text": "Bienvenue sur ma chaîne YouTube"},
+  {"start": 3.4,  "end": 6.1,  "text": "aujourd'hui on parle de manga"},
+  {"start": 6.3,  "end": 9.8,  "text": "et plus précisément de One Piece"},
+  {"start": 10.1, "end": 13.5, "text": "le meilleur manga de tous les temps"},
+  {"start": 13.7, "end": 17.2, "text": "je vais vous expliquer pourquoi"},
+  {"start": 17.5, "end": 21.0, "text": "restez bien jusqu'à la fin"}
+]</textarea>
+  <br>
+  <label style="margin-top:1rem">Clip (début / fin en secondes)</label>
+  <div style="display:flex;gap:1rem;max-width:300px">
+    <div style="flex:1"><label>Début</label><input id="clipStart" type="number" value="3" step="0.1" style="width:100%;background:#111827;border:1px solid #374151;border-radius:6px;color:#e2e8f0;padding:0.5rem;font-size:0.9rem"></div>
+    <div style="flex:1"><label>Fin</label><input id="clipEnd" type="number" value="17" step="0.1" style="width:100%;background:#111827;border:1px solid #374151;border-radius:6px;color:#e2e8f0;padding:0.5rem;font-size:0.9rem"></div>
+  </div>
+  <button class="btn-load" onclick="chargerClip()">Charger le clip</button>
+  <p class="info">Les timestamps sont relatifs au clip (départ = 0s)</p>
+</div>
+
+<div id="clipZone" style="display:none">
+  <label style="margin-bottom:0.75rem;display:block">Aperçu carte clip :</label>
+  <div class="short-card">
+    <div class="short-card-preview">🎬</div>
+    <div class="short-card-meta">
+      <div class="short-card-num">Clip 1</div>
+      <div class="short-card-hook" id="hookTxt">Hook du clip ici</div>
+      <div class="short-card-dur" id="durTxt">00:03 → 00:17</div>
+      <button class="btn-dl-short" style="background:#10b981;color:#0a0f0a">
+        ↓ Télécharger 9:16
+      </button>
+      <button class="btn-dl-short" id="btnSRT" style="background:#1f2937;color:#9ca3af;border:1px solid #374151;margin-top:6px" onclick="genererSRT()">
+        CC Sous-titres .srt
+      </button>
+    </div>
+  </div>
+
+  <div id="preview" style="display:none;margin-top:1rem">
+    <label>Aperçu SRT (20 premières lignes) :</label>
+    <pre id="previewBox" style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:1rem;font-size:0.75rem;color:#9ca3af;max-height:300px;overflow-y:auto;margin-top:0.5rem;line-height:1.7"></pre>
+  </div>
+</div>
+
+<script>
+let _clip = null;
+let _segments = [];
+
+function fmt(s) {
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+}
+
+function toSRTTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.round((s % 1) * 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')},${String(ms).padStart(3,'0')}`;
+}
+
+function chargerClip() {
+  try {
+    _segments = JSON.parse(document.getElementById('segInput').value);
+  } catch(e) {
+    alert('JSON invalide dans les segments : ' + e.message);
+    return;
+  }
+  const start = parseFloat(document.getElementById('clipStart').value);
+  const end = parseFloat(document.getElementById('clipEnd').value);
+  if (isNaN(start) || isNaN(end) || end <= start) {
+    alert('Début/Fin invalides');
+    return;
+  }
+  _clip = { start, end, hook: 'Moment viral identifié' };
+  document.getElementById('durTxt').textContent = `${fmt(start)} → ${fmt(end)}`;
+  document.getElementById('hookTxt').textContent = _clip.hook;
+  document.getElementById('clipZone').style.display = 'block';
+  document.getElementById('preview').style.display = 'none';
+}
+
+function genererSRT() {
+  if (!_clip) return;
+
+  const offset = _clip.start;
+  let segs = _segments
+    .filter(s => s.start >= _clip.start - 0.5 && s.end <= _clip.end + 0.5)
+    .map(s => ({ start: +(s.start - offset).toFixed(3), end: +(s.end - offset).toFixed(3), text: s.text }));
+
+  // Fallback si aucun segment dans la plage
+  if (!segs.length) {
+    const dur = _clip.end - _clip.start;
+    segs = [{ start: 0, end: dur, text: _clip.hook }];
+  }
+
+  const srt = segs.map((s, i) =>
+    `${i + 1}\n${toSRTTime(s.start)} --> ${toSRTTime(s.end)}\n${s.text.trim()}\n`
+  ).join('\n');
+
+  // Aperçu
+  document.getElementById('previewBox').textContent = srt.split('\n').slice(0, 30).join('\n');
+  document.getElementById('preview').style.display = 'block';
+
+  // Téléchargement
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([srt], { type: 'text/plain' }));
+  a.download = 'sous-titres-clip-1.srt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  document.getElementById('btnSRT').textContent = '✅ Téléchargé !';
+  setTimeout(() => { document.getElementById('btnSRT').textContent = 'CC Sous-titres .srt'; }, 2500);
+}
+</script>
+</body>
+</html>

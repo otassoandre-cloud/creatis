@@ -15,11 +15,12 @@ const OPENAI_KEY = getEnv('OPENAI_API_KEY');
 
 // ── Contexte réel Créatis (ne pas inventer) ───────────────────────
 const CONTEXT = `
-PRODUCT: Créatis (creatis.app) — AI tool for French YouTube creators.
-In 30 seconds from a topic, it generates: full script with timecodes, 5 CTR-optimized titles, SEO description + 30 tags, AI thumbnail (16:9 or 9:16), 30 video ideas for your niche.
-Stack: Groq llama-3.3-70b for scripts, HuggingFace FLUX.1 for thumbnails, YouTube OAuth for channel context.
+PRODUCT: Créatis (creatis.app) — AI tool for French content creators (YouTube, TikTok, Instagram Reels, Shorts).
+Main feature — Clips Viraux: upload a long video → AI auto-detects best moments → generates 10 viral 9:16 clips with face tracking + burned captions → ready to publish on TikTok, Instagram Reels, YouTube Shorts, Snapchat. In 30 seconds.
+Also generates: full YouTube script with timecodes, 5 CTR-optimized titles, SEO description + 30 tags, AI thumbnail (16:9).
+Stack: Groq llama-3.3-70b for scripts, FFmpeg WASM for in-browser video processing, YouTube OAuth for channel context.
 FOUNDER: Solo builder. Also a YouTube creator (manga drawing channel, 6,600 subscribers). One 18-second AI-scripted short → 2.6M views.
-REAL METRICS (day 1): Cold email outreach to 50 YouTube creators/day (automated via Brevo). 15 Twitter follows of French YT creators. Daily tweet automation live. Just launched.
+REAL METRICS: Cold email outreach to 50 creators/day (automated). Active paying users. Affiliate program 30% recurring.
 DO NOT INVENT metrics. Use only the numbers above.
 `;
 

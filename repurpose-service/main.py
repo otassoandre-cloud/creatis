@@ -110,6 +110,52 @@ app.add_middleware(CORSMiddleware,
     expose_headers=["Content-Disposition"],
 )
 
+# ── Global exception handler — empêche tout crash non catchée de tuer le worker ──
+from fastapi import Request as _Request
+from fastapi.responses import JSONResponse as _JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class _CatchAllMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            logger.error(f"[middleware] exception non catchée: {exc}", exc_info=True)
+            return _JSONResponse(status_code=500, content={"error": "Erreur interne", "detail": str(exc)})
+
+app.add_middleware(_CatchAllMiddleware)
+
+# ── Nettoyage périodique mémoire + disque (toutes les 2h) ─────────────────────
+import time as _time
+
+_LAST_CLEANUP = 0
+
+def _cleanup_old_jobs():
+    global _LAST_CLEANUP
+    now = _time.time()
+    if now - _LAST_CLEANUP < 7200:
+        return
+    _LAST_CLEANUP = now
+    cutoff = now - 7200  # 2h
+
+    for store in (JOBS, CLIPS, CLIP_EXPORTS, UPLOAD_JOBS):
+        stale = [k for k, v in list(store.items())
+                 if isinstance(v, dict) and v.get("status") in ("done", "error")
+                 and v.get("_ts", now) < cutoff]
+        for k in stale:
+            store.pop(k, None)
+        if stale:
+            logger.info(f"[cleanup] {len(stale)} jobs expirés supprimés")
+
+    # Supprime les dossiers temp > 2h
+    try:
+        for d in WORK_DIR.iterdir():
+            if d.is_dir() and (now - d.stat().st_mtime) > 7200:
+                import shutil as _sh
+                _sh.rmtree(d, ignore_errors=True)
+    except Exception as e:
+        logger.warning(f"[cleanup] disk: {e}")
+
 
 @app.on_event("startup")
 async def startup():
@@ -117,6 +163,7 @@ async def startup():
     if BGUTIL_URL:
         _bgutil_ok = await _check_bgutil()
         logger.info(f"[bgutil] URL={BGUTIL_URL} joignable={_bgutil_ok}")
+
 security = HTTPBearer(auto_error=False)
 
 
@@ -421,7 +468,7 @@ async def _transcribe_groq(media_path: str) -> Dict:
                 r = await c.post(
                     "https://api.groq.com/openai/v1/audio/transcriptions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    data={"model": "whisper-large-v3", "response_format": "verbose_json"},
+                    data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
                     files={"file": ("audio.mp3", f, "audio/mpeg")},
                 )
         r.raise_for_status()
@@ -801,13 +848,14 @@ async def run_generate_shorts(
         if not clips:
             raise RuntimeError("Tous les shorts ont échoué")
 
-        JOBS[job_id] = {"status": "done", "clips": clips}
+        JOBS[job_id] = {"status": "done", "clips": clips, "_ts": _time.time()}
+        _cleanup_old_jobs()
 
     except Exception as e:
         logger.error(f"Job {job_id[:8]} fatal: {e}")
         if source:
             Path(source).unlink(missing_ok=True)
-        JOBS[job_id] = {"status": "error", "error": str(e)}
+        JOBS[job_id] = {"status": "error", "error": str(e), "_ts": _time.time()}
 
 
 # ── /clips — identify viral moments (transcript + Gemini, no video render) ────
@@ -859,17 +907,25 @@ async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
         transcript_text = "\n".join(
             f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in transcript["segments"]
         )
-        prompt = f"""Tu es un expert YouTube Shorts. Analyse cette transcription et identifie les {n} meilleurs moments pour en faire des Shorts viraux.
+        prompt = f"""Tu es un expert en contenu viral TikTok/Shorts/Reels pour créateurs francophones.
 
-Pour chaque moment :
-- start_time : timestamp début (secondes)
-- end_time : timestamp fin (secondes, max 90s après start)
-- title : titre accrocheur (max 8 mots)
-- hook : première phrase d'accroche
-- score : score viralité 0-100
+Analyse cette transcription et identifie les {n} meilleurs segments à extraire en clips courts viraux.
 
-Réponds UNIQUEMENT en JSON valide :
-{{"clips":[{{"start_time":12.5,"end_time":67.0,"title":"...","hook":"...","score":88}}]}}
+Critères de sélection (score chaque critère sur 20, total sur 100) :
+1. ACCROCHE (0-20) : le segment commence par quelque chose qui accroche immédiatement (question, chiffre, affirmation forte, paradoxe)
+2. AUTONOMIE (0-20) : le segment se comprend sans contexte — on peut le regarder sans avoir vu la vidéo entière
+3. RÉTENTION (0-20) : rythme soutenu, pas de silence ou digression, le spectateur reste jusqu'à la fin
+4. VALEUR (0-20) : conseil concret, révélation, moment émotionnel fort, ou information surprenante
+5. VIRALITÉ (0-20) : suscite une réaction (surprise, émotion, désaccord, envie de partager)
+
+Règles strictes :
+- Durée : entre 30 et 90 secondes (OBLIGATOIRE)
+- Pas de chevauchement entre les segments
+- Privilégier les moments avec une conclusion claire (pas coupé au milieu d'une idée)
+- Le hook doit être la première phrase prononcée dans le segment
+
+Réponds UNIQUEMENT en JSON valide, sans markdown :
+{{"clips":[{{"start_time":12.5,"end_time":67.0,"title":"Titre accrocheur max 8 mots","hook":"Première phrase exacte du segment","score":88,"virality_reason":"Pourquoi ce moment va performer"}}]}}
 
 Transcription :
 {transcript_text[:8000]}"""
@@ -925,11 +981,12 @@ async def run_clips(
             raise RuntimeError("Impossible d'obtenir la transcription")
 
         clips = await _identify_clips(transcript, n_clips)
-        CLIPS[session_id] = {"status": "done", "result": clips}
+        CLIPS[session_id] = {"status": "done", "result": clips, "_ts": _time.time()}
+        _cleanup_old_jobs()
 
     except Exception as e:
         logger.error(f"Clips {session_id[:8]} fatal: {e}")
-        CLIPS[session_id] = {"status": "error", "error": str(e)}
+        CLIPS[session_id] = {"status": "error", "error": str(e), "_ts": _time.time()}
 
 
 # ── /clip-export — download + cut + crop a specific moment ────────────────────
@@ -992,7 +1049,11 @@ async def run_clip_export(job_id: str, video_id: str, start: float, end: float, 
 @app.get("/")
 @app.get("/health")
 def health():
-    return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL}
+    _cleanup_old_jobs()
+    import shutil as _shu
+    disk = _shu.disk_usage(WORK_DIR)
+    free_gb = round(disk.free / 1_073_741_824, 1)
+    return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL, "disk_free_gb": free_gb}
 
 
 async def _run_upload_transcription(job_id: str, file_path: Path) -> None:
@@ -1094,7 +1155,7 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth
                     r = await c.post(
                         "https://api.groq.com/openai/v1/audio/transcriptions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        data={"model": "whisper-large-v3", "response_format": "verbose_json"},
+                        data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
                         files={"file": ("audio.mp3", af, "audio/mpeg")},
                     )
             r.raise_for_status()

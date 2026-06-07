@@ -15,21 +15,21 @@
   <!-- ===== OPEN GRAPH ===== -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Créatis">
-  <meta property="og:title" content="Créatis — L'IA pour créateurs YouTube">
-  <meta property="og:description" content="Transforme tes vidéos en 10 Shorts viraux 9:16 automatiquement. Clips, scripts, miniatures et SEO YouTube en 30 secondes grâce à l'IA.">
-  <meta property="og:image" content="https://creatis.app/images/higgsfield/hero-landing.png">
+  <meta property="og:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
+  <meta property="og:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1376">
-  <meta property="og:image:height" content="768">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:url" content="https://creatis.app/">
   <meta property="og:locale" content="fr_FR">
 
   <!-- ===== TWITTER CARD ===== -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@creatisapp">
-  <meta name="twitter:title" content="Créatis — L'IA pour créateurs YouTube">
-  <meta name="twitter:description" content="Génère titres YouTube viraux, scripts complets et miniatures à fort CTR en 30 secondes. Essai gratuit.">
-  <meta name="twitter:image" content="https://creatis.app/images/higgsfield/hero-landing.png">
+  <meta name="twitter:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
+  <meta name="twitter:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta name="twitter:image" content="https://creatis.app/images/og-clips-viraux.png">
 
   <!-- ===== SCHEMA.ORG SaaS ===== -->
   <script type="application/ld+json">
@@ -132,9 +132,13 @@
   (function(){var _p=null,_pi=null;
     window.lancerDemo=function(){_p='url';};
     window.lancerDemoFichier=function(i){_p='file';_pi=i;};
+    window.ouvrirModal=function(){_p=_p||'modal';};
+    window.fermerModal=function(){};
+    window.soumettreLead=function(){};
     window._lpFlush=function(){
       if(_p==='url'){window.lancerDemo();}
       else if(_p==='file'&&_pi){window.lancerDemoFichier(_pi);}
+      else if(_p==='modal'){window.ouvrirModal();}
     };
   })();
   </script>
@@ -190,10 +194,11 @@
   background:rgba(255,255,255,.06); border:1.5px solid var(--bordure);
   border-radius:999px; padding:11px 22px; font-size:14px; font-weight:600;
   color:var(--texte-doux); cursor:pointer; flex-shrink:0; font-family:inherit;
-  transition:border-color .15s, color .15s;
+  transition:border-color .15s, color .15s; position:relative; overflow:hidden;
+  touch-action:manipulation;
 }
 .lp-upload:hover { border-color:rgba(16,185,129,.5); color:var(--texte); }
-#lp-file { position:absolute; width:1px; height:1px; opacity:0; clip:rect(0,0,0,0); }
+#lp-file { position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
 
 /* ── Carte démo animée ── */
 .lp-demo-card {
@@ -290,6 +295,9 @@
   .main-car-track{padding-left:20px;}
   .mct-tabs{padding-left:20px;}
   .main-car-prev{left:6px;}.main-car-next{right:6px;}
+  .ad-cnt{flex-direction:column;}
+  .ad-form{width:100%;border-right:none;border-bottom:1px solid #181818;max-height:220px;}
+  .ad-res{max-height:160px;}
 }
 
 .lp-anim-vid {
@@ -417,9 +425,10 @@
 .lp-cta-block p { font-size:14px; color:var(--texte-doux); margin-bottom:22px; max-width:380px; margin-left:auto; margin-right:auto; }
 
 /* ── Modal ── */
-.lp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+.lp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); z-index:1000; align-items:flex-end; justify-content:center; padding:16px; }
 .lp-modal-bg.visible { display:flex; }
-.lp-modal { background:var(--bg-surface); border:1px solid var(--bordure); border-radius:20px; padding:36px 32px; max-width:420px; width:100%; text-align:center; position:relative; }
+@media(min-width:480px){ .lp-modal-bg { align-items:center; } }
+.lp-modal { background:var(--bg-surface); border:1px solid var(--bordure); border-radius:20px; padding:36px 32px; max-width:420px; width:100%; text-align:center; position:relative; max-height:90vh; overflow-y:auto; }
 .lp-modal-close { position:absolute; top:14px; right:16px; background:none; border:none; color:var(--texte-doux); font-size:18px; cursor:pointer; line-height:1; }
 .lp-modal h3 { font-size:22px; font-weight:900; margin-bottom:8px; }
 .lp-modal-desc { font-size:14px; color:var(--texte-doux); line-height:1.6; margin-bottom:24px; }
@@ -516,17 +525,12 @@
         Créatis transforme tes longues vidéos en Shorts, Reels et TikToks viraux prêts à publier sur toutes tes plateformes en un clic.
       </p>
 
-      <!-- Input row horizontal (OpusClip) -->
-      <div class="lp-input-row">
-        <div class="lp-pill">
-          <span class="lp-pill-hint">Glisse ta vidéo ici…</span>
-          <button class="lp-pill-cta" onclick="lancerDemo()">Obtenez des clips gratuits</button>
-        </div>
-        <span class="lp-ou">ou</span>
-        <label class="lp-upload">
+      <!-- CTA upload uniquement -->
+      <div class="lp-input-row" style="justify-content:center">
+        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:var(--vert);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
           <input type="file" id="lp-file" accept="video/*,video/mp4,video/quicktime,video/mov" onchange="lancerDemoFichier(this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Téléverser des fichiers
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Uploader ma vidéo — Gratuit →
         </label>
       </div>
 
@@ -546,19 +550,119 @@
 
     </div>
   </div>
+  <!-- Flèche scroll vers tarifs — desktop uniquement -->
+  <div style="text-align:center;padding:18px 0 0;display:none;" class="arr-tarifs-wrap">
+    <a href="#tarifs" style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:var(--texte-doux);font-size:12px;font-weight:600;letter-spacing:.06em;opacity:.6;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.6'">
+      VOIR LES TARIFS
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:bounce-arr .9s ease-in-out infinite alternate"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </a>
+  </div>
 </section>
+<style>
+@keyframes bounce-arr{from{transform:translateY(0)}to{transform:translateY(5px)}}
+@media(min-width:768px){.arr-tarifs-wrap{display:block!important;}}
+</style>
+
+<!-- PREUVE SOCIALE réelle — Polaroïds style -->
+<div style="max-width:960px;margin:0 auto 8px;padding:0 24px;">
+
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#10b981;text-transform:uppercase;margin-bottom:6px;">Résultats réels · TikTok Creator Programme</div>
+    <div style="font-size:22px;font-weight:900;color:#fff;">4 clips générés avec Créatis</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-top:4px;">5,4M de vues · 1 049€ de revenus directs</div>
+  </div>
+
+  <!-- Polaroïds desktop / grille mobile -->
+  <style>
+    .polaroid-wrap { display:flex; align-items:center; justify-content:center; gap:0; }
+    .pol { border-radius:10px; overflow:hidden; border:4px solid #fff; background:#fff; flex-shrink:0; }
+    .pol img { width:100%; display:block; height:200px; object-fit:cover; object-position:top; }
+    .pol-label { padding:8px 8px 12px; text-align:center; }
+    .pol-eur { font-size:22px; font-weight:900; color:#10b981; line-height:1; }
+    .pol-vues { font-size:10px; color:#999; margin-top:3px; }
+    @media(min-width:601px){
+      .polaroid-wrap { height:310px; }
+      .pol-1 { transform:rotate(-6deg) translateX(20px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:150px; z-index:1; }
+      .pol-2 { transform:rotate(-1.5deg); border-color:#10b981!important; box-shadow:0 16px 50px rgba(16,185,129,.35); width:170px; z-index:3; position:relative; }
+      .pol-2 img { height:218px; }
+      .pol-2 .pol-eur { font-size:28px; }
+      .pol-3 { transform:rotate(4deg) translateX(-10px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:150px; z-index:2; }
+      .pol-4 { transform:rotate(8deg) translateX(-20px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:145px; z-index:1; }
+    }
+    @media(max-width:600px){
+      .polaroid-wrap { height:200px; }
+      .pol-1 { transform:rotate(-6deg) translateX(14px)!important; width:100px!important; }
+      .pol-2 { transform:rotate(-1.5deg)!important; width:115px!important; }
+      .pol-2 img { height:130px!important; }
+      .pol-2 .pol-eur { font-size:18px!important; }
+      .pol-3 { transform:rotate(4deg) translateX(-8px)!important; width:100px!important; }
+      .pol-4 { transform:rotate(8deg) translateX(-14px)!important; width:96px!important; }
+      .pol img { height:120px!important; }
+      .pol-eur { font-size:15px!important; }
+      .pol-label { padding:5px 5px 8px!important; }
+      .pol-vues { font-size:8px!important; }
+    }
+  </style>
+
+  <div class="polaroid-wrap">
+
+    <div class="pol pol-1">
+      <img src="images/IMG_2383.PNG" alt="Sasuke 339€">
+      <div class="pol-label">
+        <div class="pol-eur">339€</div>
+        <div class="pol-vues">1,28M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-2">
+      <div style="position:absolute;top:8px;right:8px;background:#10b981;color:#000;font-size:8px;font-weight:900;padding:3px 8px;border-radius:20px;z-index:4;letter-spacing:.06em;">MEILLEUR</div>
+      <img src="images/IMG_2382.PNG" alt="Hitachi 532€">
+      <div class="pol-label">
+        <div class="pol-eur">532€</div>
+        <div class="pol-vues">1,28M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-3">
+      <img src="images/IMG_2380.PNG" alt="Gojo 78€">
+      <div class="pol-label">
+        <div class="pol-eur">78€</div>
+        <div class="pol-vues">1,69M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-4">
+      <img src="images/IMG_2381.PNG" alt="Batman 98€">
+      <div class="pol-label">
+        <div class="pol-eur">98€</div>
+        <div class="pol-vues">142K vues</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Totaux -->
+  <div class="proof-totaux" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;margin-top:20px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:10px;overflow:hidden;">
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">5,4M</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">vues au total</div></div>
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">1 049€</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">revenus générés</div></div>
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">4 clips</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">détectés par l'IA</div></div>
+    <div style="text-align:center;padding:12px 8px;"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">4,35x</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">RPM multiplié</div></div>
+  </div>
+  <style>@media(max-width:480px){.proof-totaux{grid-template-columns:1fr 1fr!important;}}</style>
+
+</div>
 
 <!-- CAROUSEL PRINCIPAL (style OpusClip) -->
 <div class="main-car-wrap" id="main-car-wrap">
   <!-- Tabs au-dessus du carousel -->
   <div class="mct-tabs" id="mct-tabs">
     <button class="mct-tab act" onclick="goSlide(0)">✂️ Clips Viraux</button>
-    <button class="mct-tab" onclick="goSlide(1)">💡 Idées de Vidéos</button>
-    <button class="mct-tab" onclick="goSlide(2)">🎬 YouTube Complet</button>
-    <button class="mct-tab" onclick="goSlide(3)">💬 Réponses Comm.</button>
-    <button class="mct-tab" onclick="goSlide(4)">♻️ Recyclage</button>
-    <button class="mct-tab" onclick="goSlide(5)">🖼️ Miniature Pro</button>
-    <button class="mct-tab" onclick="goSlide(6)">🤖 Assistant IA</button>
+    <button class="mct-tab" onclick="goSlide(1)">💡 Idées de Vidéos <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(2)">🎬 YouTube Complet <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(3)">💬 Réponses Comm. <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(4)">♻️ Recyclage <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(5)">🖼️ Miniature Pro <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(6)">🤖 Assistant IA <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
   </div>
 
   <!-- Région carousel avec flèches -->
@@ -605,21 +709,6 @@
   </div><!-- /main-car-region -->
 </div>
 
-<!-- ICÔNES PLATEFORMES -->
-<div class="lp-platforms">
-  <!-- YouTube -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5a3 3 0 0 0-2.1 2.1C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.7 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg></div>
-  <!-- Instagram -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/></svg></div>
-  <!-- LinkedIn -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="#fff"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></div>
-  <!-- TikTok -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.73a4.85 4.85 0 0 1-1.01-.04z"/></svg></div>
-  <!-- Facebook -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="#fff"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></div>
-  <!-- X -->
-  <div class="lp-plat"><svg viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></div>
-</div>
 
 <!-- CTA sous les plateformes -->
 <div style="text-align:center;padding:32px 24px 72px">
@@ -709,7 +798,7 @@ window.addEventListener('scroll',()=>{
 
 // oEmbed preview
 let oT=null;
-document.getElementById('lp-url').addEventListener('input',function(){
+document.getElementById('lp-url')?.addEventListener('input',function(){
   clearTimeout(oT);
   if(isYT(this.value.trim()))
     oT=setTimeout(async()=>{
@@ -805,13 +894,33 @@ window.lancerDemo=async function(){
   await showRes(videoTitle);
 };
 
-window.lancerDemoFichier=async function(input){
+function _lpSaveIDB(file){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('creatis_lp',1);
+      req.onupgradeneeded=e=>e.target.result.createObjectStore('videos');
+      req.onsuccess=e=>{
+        const tx=e.target.result.transaction('videos','readwrite');
+        tx.objectStore('videos').put(file,'pending');
+        tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false);
+      };
+      req.onerror=()=>resolve(false);
+    }catch(e){resolve(false);}
+  });
+}
+
+window.lancerDemoFichier=function(input){
   const f=input.files[0];if(!f)return;
   videoTitle=f.name.replace(/\.[^.]+$/,'')||'ta vidéo';
+  videoUrl='';
+  _lpSaveIDB(f); // arrière-plan, non-bloquant
+  localStorage.setItem('creatis_lp_file_name',videoTitle);
+  localStorage.setItem('creatis_lp_pending_ts',Date.now().toString());
   if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_file'});
-  hideHero();
-  await animer();
-  await showRes(videoTitle);
+  const t=document.getElementById('modal-vid-title');
+  if(t)t.textContent=videoTitle;
+  window.ouvrirModal();
+  setTimeout(()=>{input.value='';},100); // reset après ouverture modal
 };
 
 window.ouvrirModal=function(){
@@ -826,6 +935,7 @@ window.soumettreLead=function(){
     err.textContent='Entre un email valide';err.style.display='block';return;
   }
   err.style.display='none';btn.disabled=true;btn.textContent='Redirection…';
+  localStorage.setItem('creatis_lp_ref','clips-viraux');
   if(videoUrl)localStorage.setItem('creatis_clips_pending',videoUrl);
   if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
   const p=new URLSearchParams({ref:'lp-clips',returnUrl:'app.html'});
@@ -1420,14 +1530,14 @@ Flemo</div>
       </div>
       <div class="etape actif">
         <div class="etape-numero">02.</div>
-        <h3>Choisis un agent IA</h3>
-        <p>Sélectionne l'un des 8 agents selon ton besoin du moment. Remplis le formulaire en 30 secondes — pas de prompt à écrire.</p>
-        <a href="auth.html" class="etape-lien">Voir les agents →</a>
+        <h3>L'IA détecte les moments viraux</h3>
+        <p>Créatis analyse ta vidéo, identifie les 10 meilleurs moments à fort potentiel viral et les découpe automatiquement en 9:16.</p>
+        <a href="auth.html" class="etape-lien">Voir la démo →</a>
       </div>
       <div class="etape">
         <div class="etape-numero">03.</div>
-        <h3>Génère ton contenu</h3>
-        <p>Script, titre, miniature prêts en quelques secondes. Copie, ajuste si nécessaire, et publie sur tous tes réseaux.</p>
+        <h3>Télécharge tes clips prêts à publier</h3>
+        <p>Sous-titres brûlés, format 9:16, hook optimisé — prêts pour TikTok, Reels et Shorts en un clic.</p>
         <a href="auth.html" class="etape-lien">Essayer gratuitement →</a>
       </div>
     </div>
@@ -1580,19 +1690,19 @@ Flemo</div>
           <span class="prix-montant gratuit">0€</span>
           <span class="prix-periode">pour toujours</span>
         </div>
-        <p class="carte-tarif-desc">Pour découvrir Créatis et tester tes premiers contenus.</p>
+        <p class="carte-tarif-desc">Pour découvrir Créatis et générer ton premier clip viral.</p>
         <div class="tarif-garanties">
           <span>✓ Sans carte bancaire</span>
           <span>✓ Accès immédiat</span>
         </div>
         <ul class="fonctionnalites-liste">
-          <li><span class="check">✓</span> <strong>1 essai Clips Viraux</strong> offert</li>
-          <li><span class="check">✓</span> <strong>1 génération gratuite</strong> pour découvrir</li>
-          <li><span class="check">✓</span> 3 agents IA (YouTube, Idées, Chat)</li>
-          <li><span class="check">✓</span> Connexion YouTube personnalisée</li>
-          <li><span class="croix">✗</span> Clips Viraux illimités</li>
-          <li><span class="croix">✗</span> Miniatures HD</li>
-          <li><span class="croix">✗</span> Agents Pro (Miniature, Recyclage, Analyse…)</li>
+          <li><span class="check">✓</span> <strong>1 clip viral</strong> gratuit, sans CB</li>
+          <li><span class="check">✓</span> Sous-titres automatiques brûlés</li>
+          <li><span class="check">✓</span> Format 9:16 prêt TikTok / Reels / Shorts</li>
+          <li><span class="check">✓</span> Détection IA des moments viraux</li>
+          <li><span class="croix">✗</span> Clips illimités</li>
+          <li><span class="croix">✗</span> Miniatures HD, Script, Titres, Idées…</li>
+          <li><span class="croix">✗</span> Tous les outils créateur Pro</li>
         </ul>
         <a href="auth.html" class="btn-secondaire w-100 texte-centre">Commencer gratuitement</a>
       </div>
@@ -1603,10 +1713,10 @@ Flemo</div>
         <h3>Pro</h3>
         <div class="prix">
           <span class="prix-devise">€</span>
-          <span class="prix-montant" id="prix-pro">9,50</span>
+          <span class="prix-montant" id="prix-pro">9,90</span>
           <span class="prix-periode">le 1er mois</span>
         </div>
-        <p style="font-size:12px;color:var(--texte-muted);margin:-8px 0 12px">puis <span id="prix-pro-normal">19€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</p>
+        <p style="font-size:12px;color:var(--texte-muted);margin:-8px 0 12px">puis <span id="prix-pro-normal">19,90€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</p>
         <p class="carte-tarif-desc">Pour les créateurs sérieux qui veulent scaler leur contenu.</p>
         <div class="tarif-garanties">
           <span>✓ Essai 7 jours</span>
@@ -1614,10 +1724,10 @@ Flemo</div>
           <span>✓ Garantie 30 jours</span>
         </div>
         <ul class="fonctionnalites-liste">
-          <li><span class="check">✓</span> <strong>50 générations</strong> / mois</li>
-          <li><span class="check">✓</span> Les <strong>8 agents IA</strong> débloqués</li>
-          <li><span class="check">✓</span> <strong>30 crédits image</strong> / mois</li>
           <li><span class="check">✓</span> Clips Viraux <strong>illimités</strong></li>
+          <li><span class="check">✓</span> Script, titres, miniatures, idées IA</li>
+          <li><span class="check">✓</span> <strong>Tous les outils créateur</strong> débloqués</li>
+          <li><span class="check">✓</span> <strong>30 crédits image</strong> / mois</li>
           <li><span class="check">✓</span> Recyclage multiplateforme</li>
           <li><span class="check">✓</span> Support prioritaire</li>
         </ul>
@@ -1638,8 +1748,8 @@ Flemo</div>
         </div>
         <p class="carte-tarif-desc">Pour les agences et créateurs qui gèrent 2-3 chaînes YouTube.</p>
         <ul class="fonctionnalites-liste">
-          <li><span class="check">✓</span> Générations <strong>illimitées</strong></li>
-          <li><span class="check">✓</span> Les 8 agents IA débloqués</li>
+          <li><span class="check">✓</span> Clips Viraux + tous outils <strong>illimités</strong></li>
+          <li><span class="check">✓</span> Tous les outils créateur débloqués</li>
           <li><span class="check">✓</span> <strong>100 crédits image</strong> / mois</li>
           <li><span class="check">✓</span> <strong>3 chaînes YouTube</strong> indépendantes</li>
           <li><span class="check">✓</span> Recyclage multiplateforme</li>
@@ -1664,9 +1774,9 @@ Flemo</div>
             </tr>
           </thead>
           <tbody>
-            <tr><td>Générations IA</td><td>1 gratuite</td><td class="col-populaire">50/mois</td><td>Illimitées</td></tr>
-            <tr><td>Agents disponibles</td><td>3 / 8</td><td class="col-populaire">8 / 8</td><td>8 / 8</td></tr>
-            <tr><td>Clips Viraux 9:16</td><td>1 essai</td><td class="col-populaire">Illimités</td><td>Illimités</td></tr>
+            <tr><td>Clips Viraux</td><td>1 essai</td><td class="col-populaire">Illimités</td><td>Illimités</td></tr>
+            <tr><td>Outils créateur (script, titres, idées…)</td><td>—</td><td class="col-populaire">✅ Tous</td><td>✅ Tous</td></tr>
+            <tr><td>Générations IA totales</td><td>1 gratuite</td><td class="col-populaire">50/mois</td><td>Illimitées</td></tr>
             <tr><td>Miniatures HD / mois</td><td>5</td><td class="col-populaire">30</td><td>100</td></tr>
             <tr><td>Connexion YouTube</td><td>✅</td><td class="col-populaire">✅</td><td>✅</td></tr>
             <tr><td>Recyclage contenu</td><td>—</td><td class="col-populaire">✅</td><td>✅</td></tr>
@@ -1776,6 +1886,7 @@ Flemo</div>
     let annuel = false;
     const prixMens = { pro: 19, studio: 49 };
     const prixAnn  = { pro: 15, studio: 39 };
+    document.addEventListener('DOMContentLoaded', toggleFacturation);
 
     function toggleFacturation() {
       annuel = !annuel;
@@ -1791,9 +1902,9 @@ Flemo</div>
       const elProNormal = document.getElementById('prix-pro-normal');
       const elProSub = elProNormal ? elProNormal.closest('p') : null;
       const elProPeriode = elPro ? elPro.closest('.prix').querySelector('.prix-periode') : null;
-      if (elPro) elPro.textContent = annuel ? '7,50' : '9,50';
+      if (elPro) elPro.textContent = annuel ? '7,90' : '9,90';
       if (elProPeriode) elProPeriode.textContent = 'le 1er mois';
-      if (elProNormal) elProNormal.textContent = annuel ? '15€' : '19€';
+      if (elProNormal) elProNormal.textContent = annuel ? '15,90€' : '19,90€';
       const elProNormalPeriode = document.getElementById('prix-pro-normal-periode');
       if (elProNormalPeriode) elProNormalPeriode.textContent = annuel ? '/mois, facturé annuellement' : '/mois';
       if (elProSub) elProSub.style.display = '';
@@ -1842,14 +1953,13 @@ Flemo</div>
   </script>
 
   <!-- ===== BANDEAU COOKIES RGPD ===== -->
-  <div id="bandeau-cookies" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--bg-card);border-top:1px solid var(--bordure);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-    <p style="margin:0;font-size:14px;color:var(--texte-doux);max-width:640px;">
-      Créatis utilise des cookies fonctionnels pour mémoriser ta session et tes préférences. Aucun cookie publicitaire ni tracker tiers.
-      <a href="confidentialite.html" style="color:var(--vert);">En savoir plus</a>
+  <div id="bandeau-cookies" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--bg-card);border-top:1px solid var(--bordure);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <p style="margin:0;font-size:12px;color:var(--texte-doux);flex:1;min-width:0;">
+      Cookies fonctionnels uniquement — <a href="confidentialite.html" style="color:var(--vert);">En savoir plus</a>
     </p>
-    <div style="display:flex;gap:8px;flex-shrink:0;">
-      <button onclick="accepterCookies()" class="btn-primaire btn-sm">Accepter</button>
-      <button onclick="refuserCookies()" class="btn-ghost btn-sm">Refuser</button>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button onclick="accepterCookies()" class="btn-primaire btn-sm" style="padding:5px 12px;font-size:12px;">Accepter</button>
+      <button onclick="refuserCookies()" class="btn-ghost btn-sm" style="padding:5px 12px;font-size:12px;">Refuser</button>
     </div>
   </div>
 
@@ -2552,6 +2662,28 @@ window.mainCarIdx=0;
   outer.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>40)window.goSlide(window.slidePos+(dx<0?1:-1));},{passive:true});
 })();
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a[href*="auth.html"], a[href*="auth.html?"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (btn.dataset.loading) return e.preventDefault();
+      btn.dataset.loading = '1';
+      const orig = btn.innerHTML;
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.75';
+      btn.innerHTML = '<svg style="animation:rotation .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Chargement…';
+      setTimeout(function() {
+        if (btn.dataset.loading) {
+          btn.innerHTML = orig;
+          btn.style.pointerEvents = '';
+          btn.style.opacity = '';
+          delete btn.dataset.loading;
+        }
+      }, 8000);
+    });
+  });
+});
 </script>
 </body>
 </html>

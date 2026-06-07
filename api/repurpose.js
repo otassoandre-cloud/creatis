@@ -108,6 +108,8 @@ async function getUserPlan(userId) {
 async function incrementRepurposeCount(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return;
   try {
+    // Récupérer le count avant increment pour détecter la 1ère analyse
+    const before = await getUserPlan(userId);
     await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {
@@ -116,6 +118,49 @@ async function incrementRepurposeCount(userId) {
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
       body: JSON.stringify({ repurpose_count: `repurpose_count + 1` })
+    });
+    // Email de relance 1h après la 1ère analyse gratuite
+    if ((before?.repurpose_count || 0) === 0 && before?.plan === 'gratuit') {
+      _scheduleClipsRelanceEmail(userId).catch(() => {});
+    }
+  } catch {}
+}
+
+async function _scheduleClipsRelanceEmail(userId) {
+  if (!process.env.SUPABASE_SERVICE_KEY || !process.env.BREVO_API_KEY) return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=email,nom`, {
+      headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+    });
+    const rows = await r.json();
+    const user = rows?.[0];
+    if (!user?.email) return;
+    const nom = user.nom || user.email.split('@')[0] || 'Créateur';
+    // Délai 1h (Vercel serverless ne peut pas sleep — on envoie après 1h via scheduled email)
+    // Pour l'instant : envoi immédiat avec messaging "dans 1h" → à remplacer par un cron
+    await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY.trim() },
+      body: JSON.stringify({
+        sender: { email: 'contact@creatis.app', name: 'Créatis' },
+        to: [{ email: user.email, name: nom }],
+        subject: `${nom}, tes clips viraux sont prêts 🎬`,
+        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#fff;padding:32px;border-radius:12px;">
+          <div style="font-size:22px;font-weight:900;margin-bottom:8px;">Créatis<span style="color:#10b981;">.</span></div>
+          <h2 style="font-size:20px;margin:0 0 12px;">Tes 3 clips sont prêts, ${nom} 🎬</h2>
+          <p style="color:#aaa;font-size:15px;line-height:1.6;margin:0 0 20px;">
+            Tu viens de créer tes premiers clips viraux. Mais ta vidéo contient encore <strong style="color:#fff;">7+ moments forts</strong> que l'IA a identifiés — et que tu n'as pas encore débloqués.
+          </p>
+          <div style="background:#111;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <div style="font-size:13px;color:#10b981;font-weight:700;margin-bottom:8px;">🔒 Clips encore disponibles dans ta vidéo</div>
+            <div style="color:#aaa;font-size:13px;">Score 94 · Score 91 · Score 89 · Score 87…</div>
+          </div>
+          <a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;margin-bottom:20px;">
+            Débloquer tous mes clips — 9,50€ →
+          </a>
+          <p style="color:#555;font-size:12px;">Offre -50% le 1er mois · Annulable à tout moment</p>
+        </div>`
+      })
     });
   } catch {}
 }
@@ -697,7 +742,13 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Endpoint invalide' });
     }
     try {
-      const railwayRes = await fetch(`${REPURPOSE_SERVICE_URL}/${railwayEndpoint}`, {
+      // Pour reframe-clip : injecter le plan vérifié côté serveur (le client ne peut pas le falsifier)
+      let railwayTarget = `${REPURPOSE_SERVICE_URL}/${railwayEndpoint}`;
+      if (railwayEndpoint === 'reframe-clip' && authUser2) {
+        const planInfo = await getUserPlan(authUser2.id);
+        railwayTarget += `?plan=${planInfo?.plan || 'gratuit'}`;
+      }
+      const railwayRes = await fetch(railwayTarget, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`, 'Content-Type': contentType },
         body: rawBody,
@@ -754,12 +805,19 @@ module.exports = async (req, res) => {
   // Clips depuis fichier uploadé (segments déjà transcrits, pas d'URL YouTube)
   if (mode === 'clips' && body.segments?.length && body.video_id) {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const _au = await verifyToken(token);
+    if (_au) {
+      const _ui = await getUserPlan(_au.id);
+      if (_ui?.plan === 'gratuit' && (_ui?.repurpose_count || 0) > 0) {
+        return res.status(403).json({ ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' });
+      }
+    }
     try {
       const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       const _debug = clips[0]?._dbg || null;
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
-        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
+        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}`, segments: body.segments }
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });
@@ -1011,6 +1069,13 @@ module.exports = async (req, res) => {
   // ── Mode CLIPS : traitement synchrone sur Vercel ──
   if (mode === 'clips') {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const _au2 = await verifyToken(token);
+    if (_au2) {
+      const _ui2 = await getUserPlan(_au2.id);
+      if (_ui2?.plan === 'gratuit' && (_ui2?.repurpose_count || 0) > 0) {
+        return res.status(403).json({ ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' });
+      }
+    }
     const { n_clips } = body;
     const videoId = extractVideoId(url);
     if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });

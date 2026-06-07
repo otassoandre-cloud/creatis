@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test sous-titres clips</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0f0a; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 2rem; }
+    h2 { color: #10b981; margin-bottom: 1.5rem; font-size: 1.2rem; }
+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; max-width: 600px; }
+    label { display: block; font-size: 0.82rem; color: #9ca3af; margin-bottom: 0.4rem; }
+    input[type=file], input[type=number], input[type=text] {
+      width: 100%; background: #0a0f0a; border: 1px solid #374151; border-radius: 6px;
+      color: #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.9rem; outline: none;
+    }
+    .row { display: flex; gap: 1rem; margin-top: 0.75rem; }
+    .row > div { flex: 1; }
+    .btn { width: 100%; border: none; border-radius: 7px; padding: 0.7rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 1rem; }
+    .btn-green { background: #10b981; color: #0a0f0a; }
+    .btn-grey  { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .log { background: #0a0f0a; border: 1px solid #1f2937; border-radius: 6px; padding: 0.75rem; font-family: monospace; font-size: 0.75rem; color: #6b7280; min-height: 60px; max-height: 200px; overflow-y: auto; margin-top: 0.75rem; white-space: pre-wrap; }
+    .log .ok  { color: #10b981; }
+    .log .err { color: #f87171; }
+    .log .inf { color: #60a5fa; }
+    video { width: 100%; border-radius: 6px; margin-top: 0.75rem; max-height: 300px; background: #000; }
+  </style>
+</head>
+<body>
+
+<h2>Test — Sous-titres gravés dans le clip</h2>
+
+<div class="card">
+  <label>1. Charge une vidéo</label>
+  <input type="file" id="videoFile" accept="video/*">
+  <video id="preview" controls style="display:none"></video>
+</div>
+
+<div class="card">
+  <label>2. Début / Fin du clip (secondes)</label>
+  <div class="row">
+    <div><label>Début</label><input type="number" id="start" value="5" step="0.1" min="0"></div>
+    <div><label>Fin</label><input type="number" id="end" value="20" step="0.1" min="0"></div>
+  </div>
+  <div style="margin-top:0.75rem">
+    <label>Texte des sous-titres (une ligne = un segment, format: debut-fin texte)</label>
+    <textarea id="subsInput" rows="5" style="width:100%;background:#0a0f0a;border:1px solid #374151;border-radius:6px;color:#e2e8f0;padding:0.6rem;font-size:0.8rem;font-family:monospace;resize:vertical">0-3 Bienvenue sur ma chaine
+3-6 Aujourd hui on parle de manga
+6-9 et plus precisement de One Piece
+9-13 le meilleur manga de tous les temps
+13-15 restez jusqu a la fin</textarea>
+  </div>
+</div>
+
+<div class="card">
+  <label>3. Graver les sous-titres</label>
+  <button class="btn btn-green" id="btnGraver" disabled>Graver sous-titres dans le clip</button>
+  <div class="log" id="log">En attente d'une vidéo...</div>
+</div>
+
+<script type="module">
+const log = (msg, type = '') => {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${type}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+};
+
+// Charge la vidéo
+document.getElementById('videoFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const vid = document.getElementById('preview');
+  vid.src = URL.createObjectURL(file);
+  vid.style.display = 'block';
+  document.getElementById('btnGraver').disabled = false;
+  log(`Vidéo chargée : ${file.name} (${(file.size/1e6).toFixed(1)} Mo)`, 'ok');
+});
+
+// Parse les sous-titres
+function parseSubs(text, clipStart) {
+  return text.trim().split('\n').filter(l => l.trim()).map(line => {
+    const m = line.match(/^(\d+\.?\d*)-(\d+\.?\d*)\s+(.+)/);
+    if (!m) return null;
+    return { start: parseFloat(m[1]), end: parseFloat(m[2]), text: m[3].trim() };
+  }).filter(Boolean);
+}
+
+// Escape pour drawtext ffmpeg — ASCII uniquement
+function escDrawtext(t) {
+  return t
+    .replace(/\\/g, '')
+    .replace(/'/g, '')
+    .replace(/:/g, ' ')
+    .replace(/[,[\]]/g, '')
+    .replace(/[^\x20-\x7E]/g, c => {
+      // Garde les caractères latins étendus courants, remplace le reste
+      const code = c.charCodeAt(0);
+      return (code >= 0xC0 && code <= 0x17E) ? c : ' ';
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+document.getElementById('btnGraver').addEventListener('click', async () => {
+  const fileInput = document.getElementById('videoFile');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const startSec = parseFloat(document.getElementById('start').value);
+  const endSec   = parseFloat(document.getElementById('end').value);
+  const duration = endSec - startSec;
+
+  if (duration <= 0) { log('Durée invalide (fin <= début)', 'err'); return; }
+
+  const subs = parseSubs(document.getElementById('subsInput').value, startSec);
+  if (!subs.length) { log('Aucun sous-titre valide parsé', 'err'); return; }
+
+  const btn = document.getElementById('btnGraver');
+  btn.disabled = true;
+  btn.textContent = 'Chargement ffmpeg...';
+  document.getElementById('log').innerHTML = '';
+
+  try {
+    // Charger ffmpeg.wasm
+    log('Chargement ffmpeg.wasm...', 'inf');
+    const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+    const base   = 'https://unpkg.com/@ffmpeg/core@0.12.9/dist/esm';
+    const ffBase = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm';
+
+    const [coreURL, wasmURL, workerSrc] = await Promise.all([
+      toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+      toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+      fetch(`${ffBase}/worker.js`).then(r => r.text()),
+    ]);
+    const workerFixed = workerSrc
+      .replace(/import\s+"\.\/([^"]+)"/g, `import "${ffBase}/$1"`)
+      .replace(/import "\.\//g, `import "${ffBase}/`);
+    const workerURL = URL.createObjectURL(new Blob([workerFixed], { type: 'text/javascript' }));
+
+    const { FFmpeg } = await import(`${ffBase}/index.js`);
+    const ffmpeg = new FFmpeg();
+    ffmpeg.on('log', ({ message }) => { if (message && !message.startsWith('frame=')) log(message); });
+    await ffmpeg.load({ classWorkerURL: workerURL, coreURL, wasmURL });
+    log('ffmpeg.wasm OK', 'ok');
+
+    // Ecrire la video dans le FS virtuel
+    btn.textContent = 'Lecture fichier...';
+    log('Lecture de la video...', 'inf');
+    const data = new Uint8Array(await file.arrayBuffer());
+    await ffmpeg.writeFile('/input.mp4', data);
+
+    // Construire le filtre drawtext
+    const dtFilters = subs.map(s => {
+      const txt = escDrawtext(s.text);
+      const t0  = s.start.toFixed(2);
+      const t1  = s.end.toFixed(2);
+      return `drawtext=text='${txt}':enable='between(t\\,${t0}\\,${t1})':fontsize=40:fontcolor=white:borderw=3:bordercolor=black:x=(w-text_w)/2:y=h-90`;
+    }).join(',');
+
+    const vf = `scale=540:960:force_original_aspect_ratio=increase,crop=540:960,setsar=1,${dtFilters}`;
+
+    btn.textContent = 'Encodage en cours...';
+    log(`Encodage clip ${startSec}s -> ${endSec}s + ${subs.length} sous-titres...`, 'inf');
+
+    await ffmpeg.exec([
+      '-ss', String(startSec),
+      '-i', '/input.mp4',
+      '-t', String(duration),
+      '-vf', vf,
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
+      '-c:a', 'aac', '-b:a', '96k',
+      '/output.mp4'
+    ]);
+
+    const out = await ffmpeg.readFile('/output.mp4');
+    const blob = new Blob([out], { type: 'video/mp4' });
+
+    log(`OK - ${(blob.size / 1e6).toFixed(1)} Mo`, 'ok');
+
+    // Telecharger
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'clip_sous_titres.mp4';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+
+    log('Telecharge ! Ouvre le fichier pour verifier.', 'ok');
+
+    // Cleanup
+    await ffmpeg.deleteFile('/input.mp4');
+    await ffmpeg.deleteFile('/output.mp4');
+    URL.revokeObjectURL(workerURL);
+
+  } catch (e) {
+    log('ERREUR : ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Graver sous-titres dans le clip';
+  }
+});
+</script>
+</body>
+</html>

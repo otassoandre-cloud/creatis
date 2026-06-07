@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Créatis — Variantes UI</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#060606; font-family:'Inter',system-ui,sans-serif; color:#fff; padding:40px 20px; }
+  h1 { text-align:center; font-size:15px; color:#666; letter-spacing:2px; text-transform:uppercase; margin-bottom:40px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:32px; max-width:1100px; margin:0 auto; }
+  .variant { border-radius:16px; overflow:hidden; }
+  .label { font-size:11px; color:#555; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+
+  /* ── OPTION A — Linear/Vercel ── */
+  .a { background:#0d0d0d; border:1px solid #1e1e1e; }
+  .a .header { padding:20px 22px 16px; border-bottom:1px solid #1a1a1a; }
+  .a .title { font-size:14px; font-weight:600; color:#fff; }
+  .a .sub { font-size:11px; color:#444; margin-top:2px; }
+  .a .score { display:inline-block; background:#0d0d0d; border:1px solid #2a2a2a; color:#10b981; font-size:22px; font-weight:700; padding:6px 12px; border-radius:6px; }
+  .a .body { padding:18px 22px; }
+  .a .section-label { font-size:10px; color:#3a3a3a; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; margin-top:16px; }
+  .a .pills { display:flex; flex-wrap:wrap; gap:6px; }
+  .a .pill { font-size:11px; color:#555; padding:5px 12px; border-radius:4px; cursor:pointer; border:none; background:none; }
+  .a .pill.active { color:#fff; background:#1a1a1a; }
+  .a .row { display:flex; gap:10px; margin-top:14px; }
+  .a .field { flex:1; }
+  .a .field label { font-size:10px; color:#3a3a3a; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px; }
+  .a .slider-track { height:2px; background:#1e1e1e; border-radius:1px; position:relative; margin-top:8px; }
+  .a .slider-fill { height:2px; width:35%; background:#10b981; border-radius:1px; }
+  .a .slider-thumb { width:10px; height:10px; background:#fff; border-radius:50%; position:absolute; top:-4px; left:35%; }
+  .a .toggle-row { display:flex; align-items:center; gap:10px; margin-top:16px; }
+  .a .toggle { width:32px; height:18px; background:#10b981; border-radius:9px; position:relative; }
+  .a .toggle-knob { width:14px; height:14px; background:#fff; border-radius:50%; position:absolute; top:2px; right:2px; }
+  .a .toggle-label { font-size:11px; color:#555; }
+  .a .hook-input { width:100%; background:none; border:none; border-bottom:1px solid #1e1e1e; padding:8px 0; font-size:13px; color:#aaa; outline:none; margin-top:4px; }
+  .a .btn-export { width:100%; margin-top:20px; padding:11px; background:#fff; color:#000; font-size:12px; font-weight:600; border:none; border-radius:6px; cursor:pointer; letter-spacing:0.5px; }
+  .a .btn-edit { width:100%; margin-top:8px; padding:10px; background:none; color:#333; font-size:11px; border:1px solid #1e1e1e; border-radius:6px; cursor:pointer; }
+  .a .colors { display:flex; gap:8px; margin-top:14px; }
+  .a .color-chip { width:26px; height:26px; border-radius:5px; border:1px solid #222; }
+
+  /* ── OPTION B — Glassmorphism ── */
+  .b-wrap { background:linear-gradient(135deg,#0a1a12 0%,#060c10 50%,#110a1a 100%); padding:2px; border-radius:16px; }
+  .b { background:rgba(255,255,255,0.03); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.07); border-radius:14px; }
+  .b .header { padding:20px 22px 16px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .b .title { font-size:14px; font-weight:600; }
+  .b .sub { font-size:11px; color:#3a4a40; margin-top:2px; }
+  .b .score-box { display:inline-flex; align-items:center; gap:8px; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); border-radius:8px; padding:6px 14px; }
+  .b .score-num { font-size:26px; font-weight:700; color:#10b981; }
+  .b .score-grades { font-size:10px; color:#10b981; opacity:0.7; line-height:1.6; }
+  .b .body { padding:18px 22px; }
+  .b .section-label { font-size:10px; color:rgba(255,255,255,0.2); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; margin-top:16px; }
+  .b .pills { display:flex; flex-wrap:wrap; gap:6px; }
+  .b .pill { font-size:11px; color:rgba(255,255,255,0.35); padding:6px 13px; border-radius:20px; border:1px solid rgba(255,255,255,0.07); background:rgba(255,255,255,0.03); }
+  .b .pill.active { color:#10b981; border-color:rgba(16,185,129,0.4); background:rgba(16,185,129,0.08); box-shadow:0 0 12px rgba(16,185,129,0.15); }
+  .b .row { display:flex; gap:10px; margin-top:14px; }
+  .b .field { flex:1; }
+  .b .field label { font-size:10px; color:rgba(255,255,255,0.2); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px; }
+  .b .select { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:8px; color:#aaa; font-size:12px; }
+  .b .color-row { display:flex; gap:8px; }
+  .b .color-btn { width:28px; height:28px; border-radius:7px; border:1px solid rgba(255,255,255,0.1); }
+  .b .toggle-row { display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; }
+  .b .toggle { width:32px; height:18px; background:rgba(16,185,129,0.8); border-radius:9px; position:relative; box-shadow:0 0 8px rgba(16,185,129,0.4); }
+  .b .toggle-knob { width:14px; height:14px; background:#fff; border-radius:50%; position:absolute; top:2px; right:2px; }
+  .b .toggle-label { font-size:11px; color:rgba(255,255,255,0.5); }
+  .b .hook-input { width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); padding:9px 12px; font-size:12px; color:#aaa; outline:none; border-radius:8px; margin-top:8px; }
+  .b .btn-export { width:100%; margin-top:20px; padding:12px; background:linear-gradient(135deg,#10b981,#0ea472); color:#000; font-size:12px; font-weight:700; border:none; border-radius:10px; cursor:pointer; box-shadow:0 4px 20px rgba(16,185,129,0.3); }
+  .b .btn-edit { width:100%; margin-top:8px; padding:10px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); font-size:11px; border:1px solid rgba(255,255,255,0.07); border-radius:10px; cursor:pointer; }
+
+  /* ── OPTION C — CapCut Style ── */
+  .c { background:#111; border:1px solid #1c1c1c; border-radius:16px; }
+  .c .header { padding:18px 20px 14px; border-bottom:1px solid #1c1c1c; display:flex; align-items:center; justify-content:space-between; }
+  .c .title { font-size:13px; font-weight:700; }
+  .c .score-badge { background:#10b981; color:#000; font-size:12px; font-weight:800; padding:3px 10px; border-radius:20px; }
+  .c .body { padding:16px 20px; }
+  .c .section-label { font-size:10px; color:#444; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px; margin-top:14px; }
+  .c .style-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .c .style-card { background:#1a1a1a; border:1.5px solid transparent; border-radius:10px; padding:10px 6px; text-align:center; cursor:pointer; }
+  .c .style-card.active { border-color:#10b981; background:#0d1f18; }
+  .c .style-icon { font-size:18px; display:block; margin-bottom:4px; }
+  .c .style-name { font-size:9px; color:#666; }
+  .c .style-card.active .style-name { color:#10b981; }
+  .c .controls-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .c .control-block { background:#1a1a1a; border-radius:10px; padding:10px 12px; }
+  .c .control-label { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .c .size-pills { display:flex; gap:4px; }
+  .c .sp { font-size:10px; padding:4px 8px; border-radius:5px; background:#222; color:#555; }
+  .c .sp.active { background:#10b981; color:#000; font-weight:700; }
+  .c .hook-block { background:#1a1a1a; border-radius:10px; padding:12px; margin-top:10px; }
+  .c .hook-label { font-size:10px; color:#555; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+  .c .toggle-sm { width:28px; height:16px; background:#10b981; border-radius:8px; position:relative; }
+  .c .toggle-sm-k { width:12px; height:12px; background:#fff; border-radius:50%; position:absolute; top:2px; right:2px; }
+  .c .hook-text { font-size:12px; color:#777; }
+  .c .color-dots { display:flex; gap:6px; margin-top:10px; }
+  .c .dot { width:22px; height:22px; border-radius:50%; }
+  .c .btn-export { width:100%; margin-top:16px; padding:13px; background:#10b981; color:#000; font-size:13px; font-weight:800; border:none; border-radius:12px; cursor:pointer; letter-spacing:0.3px; }
+
+  /* ── OPTION D — Toolbar flottante ── */
+  .d { background:#0c0c0c; border:1px solid #1a1a1a; border-radius:16px; overflow:hidden; }
+  .d .video-zone { background:#000; height:180px; position:relative; display:flex; align-items:center; justify-content:center; }
+  .d .video-bg { position:absolute; inset:0; background:linear-gradient(180deg,#0a1a0e 0%,#060606 100%); opacity:0.6; }
+  .d .video-sub { position:absolute; bottom:20px; left:0; right:0; text-align:center; }
+  .d .sub-line { display:inline-flex; gap:8px; font-size:14px; font-weight:800; }
+  .d .sw { color:rgba(255,255,255,0.35); }
+  .d .sy { color:#FFE000; transform:scale(1.12); display:inline-block; }
+  .d .sf { color:rgba(255,255,255,0.35); }
+  .d .score-corner { position:absolute; top:10px; right:10px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#10b981; font-size:13px; font-weight:700; padding:3px 9px; border-radius:20px; }
+  .d .hook-overlay { position:absolute; top:0; left:0; right:0; background:rgba(220,30,30,0.9); padding:8px 14px; font-size:12px; font-weight:800; text-align:center; }
+  .d .toolbar { padding:12px 16px; border-top:1px solid #1a1a1a; display:flex; gap:6px; align-items:center; }
+  .d .tb-btn { display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 12px; border-radius:8px; background:#161616; border:none; color:#666; cursor:pointer; flex:1; }
+  .d .tb-btn.active { background:#0d1f18; color:#10b981; }
+  .d .tb-icon { font-size:16px; }
+  .d .tb-label { font-size:8px; letter-spacing:0.5px; text-transform:uppercase; }
+  .d .style-scroll { padding:10px 16px; display:flex; gap:8px; overflow:hidden; border-top:1px solid #161616; }
+  .d .ss { font-size:10px; padding:6px 14px; border-radius:20px; background:#161616; color:#555; white-space:nowrap; }
+  .d .ss.active { background:#10b981; color:#000; font-weight:700; }
+  .d .prop-row { padding:12px 16px; border-top:1px solid #161616; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .d .prop { background:#161616; border-radius:8px; padding:8px 10px; }
+  .d .prop-label { font-size:8px; color:#444; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; }
+  .d .prop-val { font-size:11px; color:#aaa; }
+  .d .color-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:middle; }
+  .d .btn-export { margin:10px 16px 14px; width:calc(100% - 32px); padding:12px; background:#fff; color:#000; font-size:12px; font-weight:700; border:none; border-radius:10px; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>Créatis — Variantes Interface Studio</h1>
+<div class="grid">
+
+  <!-- A -->
+  <div>
+    <div class="label">A — Linear / Vercel</div>
+    <div class="variant a">
+      <div class="a header">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div class="a title">Réaction de frustration</div>
+            <div class="a sub">11:52 → 12:52 · 60s</div>
+          </div>
+          <div class="a score">95</div>
+        </div>
+      </div>
+      <div class="a body">
+        <div class="a section-label">Style</div>
+        <div class="a pills">
+          <button class="a pill">Aucun</button>
+          <button class="a pill">Bold</button>
+          <button class="a pill">Minimal</button>
+          <button class="a pill active">Karaoke</button>
+          <button class="a pill">Néon</button>
+          <button class="a pill">Word Pop</button>
+          <button class="a pill">Slide</button>
+        </div>
+        <div class="a section-label">Taille</div>
+        <div class="a slider-track"><div class="a slider-fill"></div><div class="a slider-thumb"></div></div>
+        <div class="a colors" style="margin-top:14px">
+          <div class="a field"><label>Texte</label><div class="a color-chip" style="background:#fff"></div></div>
+          <div class="a field"><label>Fond</label><div class="a color-chip" style="background:#111"></div></div>
+        </div>
+        <div class="a toggle-row">
+          <div class="a toggle"><div class="a toggle-knob"></div></div>
+          <span class="a toggle-label">Hook sur les 3 premières secondes</span>
+        </div>
+        <input class="a hook-input" value="Oh putain" readonly>
+        <button class="a btn-export">↓ Télécharger ce clip 9:16</button>
+        <button class="a btn-edit">✏ Modifier les sous-titres</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div>
+    <div class="label">B — Glassmorphism</div>
+    <div class="variant b-wrap">
+      <div class="b">
+        <div class="b header">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div class="b title">Réaction de frustration</div>
+              <div class="b sub">11:52 → 12:52 · 60s</div>
+            </div>
+            <div class="b score-box">
+              <div class="b score-num">95</div>
+              <div class="b score-grades">A Accroche<br>A+ Flux<br>A+ Valeur</div>
+            </div>
+          </div>
+        </div>
+        <div class="b body">
+          <div class="b section-label">Style sous-titres</div>
+          <div class="b pills">
+            <span class="b pill">Aucun</span>
+            <span class="b pill">Bold</span>
+            <span class="b pill">Minimal</span>
+            <span class="b pill active">Karaoke</span>
+            <span class="b pill">Néon</span>
+            <span class="b pill">Word Pop</span>
+          </div>
+          <div class="b row">
+            <div class="b field">
+              <label>Taille</label>
+              <div class="b select" style="display:flex;align-items:center;justify-content:space-between">Petit <span style="color:#333">▾</span></div>
+            </div>
+            <div class="b field">
+              <label>Couleurs</label>
+              <div class="b color-row">
+                <div class="b color-btn" style="background:#fff"></div>
+                <div class="b color-btn" style="background:#e03030"></div>
+              </div>
+            </div>
+          </div>
+          <div class="b toggle-row">
+            <div class="b toggle"><div class="b toggle-knob"></div></div>
+            <span class="b toggle-label">Hook sur les 3 premières secondes</span>
+          </div>
+          <input class="b hook-input" value="Oh putain" readonly>
+          <button class="b btn-export">↓ Télécharger ce clip 9:16</button>
+          <button class="b btn-edit">✏ Modifier les sous-titres</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div>
+    <div class="label">C — CapCut Style (Cards)</div>
+    <div class="variant c">
+      <div class="c header">
+        <div>
+          <div class="c title">Réaction de frustration</div>
+          <div style="font-size:10px;color:#444;margin-top:2px">11:52 → 12:52 · 60s</div>
+        </div>
+        <div class="c score-badge">95</div>
+      </div>
+      <div class="c body">
+        <div class="c section-label">Style sous-titres</div>
+        <div class="c style-grid">
+          <div class="c style-card"><span class="c style-icon">—</span><span class="c style-name">Aucun</span></div>
+          <div class="c style-card"><span class="c style-icon">𝗕</span><span class="c style-name">Bold</span></div>
+          <div class="c style-card active"><span class="c style-icon" style="color:#FFE000">K</span><span class="c style-name">Karaoke</span></div>
+          <div class="c style-card"><span class="c style-icon">✨</span><span class="c style-name">Néon</span></div>
+          <div class="c style-card"><span class="c style-icon">💥</span><span class="c style-name">Word Pop</span></div>
+          <div class="c style-card"><span class="c style-icon">↑</span><span class="c style-name">Slide</span></div>
+          <div class="c style-card"><span class="c style-icon">🌊</span><span class="c style-name">Wave</span></div>
+          <div class="c style-card"><span class="c style-icon">🔦</span><span class="c style-name">Spot</span></div>
+        </div>
+        <div class="c controls-row">
+          <div class="c control-block">
+            <div class="c control-label">Taille</div>
+            <div class="c size-pills"><span class="c sp active">S</span><span class="c sp">M</span><span class="c sp">L</span><span class="c sp">XL</span></div>
+          </div>
+          <div class="c control-block">
+            <div class="c control-label">Couleurs</div>
+            <div class="c color-dots">
+              <div class="c dot" style="background:#fff;border:1.5px solid #333"></div>
+              <div class="c dot" style="background:#FFE000"></div>
+              <div class="c dot" style="background:#10b981"></div>
+              <div class="c dot" style="background:#e03030"></div>
+            </div>
+          </div>
+        </div>
+        <div class="c hook-block">
+          <div class="c hook-label">Hook <div class="c toggle-sm"><div class="c toggle-sm-k"></div></div></div>
+          <div class="c hook-text">Oh putain</div>
+        </div>
+        <button class="c btn-export">↓ Télécharger 9:16</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div>
+    <div class="label">D — Toolbar flottante (Video-first)</div>
+    <div class="variant d">
+      <div class="d video-zone">
+        <div class="d video-bg"></div>
+        <div class="d hook-overlay">Oh putain</div>
+        <div class="d score-corner">95</div>
+        <div class="d video-sub">
+          <div class="d sub-line">
+            <span class="d sw">qu'on</span>
+            <span class="d sw">vient</span>
+            <span class="d sy">de</span>
+            <span class="d sf">chercher</span>
+          </div>
+        </div>
+      </div>
+      <div class="d toolbar">
+        <button class="d tb-btn active"><span class="d tb-icon">Aa</span><span class="d tb-label">Style</span></button>
+        <button class="d tb-btn"><span class="d tb-icon">📏</span><span class="d tb-label">Taille</span></button>
+        <button class="d tb-btn"><span class="d tb-icon">🎨</span><span class="d tb-label">Couleur</span></button>
+        <button class="d tb-btn"><span class="d tb-icon">⚡</span><span class="d tb-label">Hook</span></button>
+        <button class="d tb-btn"><span class="d tb-icon">✏️</span><span class="d tb-label">Éditer</span></button>
+      </div>
+      <div class="d style-scroll">
+        <span class="d ss">Aucun</span>
+        <span class="d ss">Bold</span>
+        <span class="d ss active">Karaoke</span>
+        <span class="d ss">Néon</span>
+        <span class="d ss">Word Pop</span>
+        <span class="d ss">Slide</span>
+      </div>
+      <div class="d prop-row">
+        <div class="d prop"><div class="d prop-label">Taille</div><div class="d prop-val">Petit</div></div>
+        <div class="d prop"><div class="d prop-label">Texte</div><div class="d prop-val"><span class="d color-dot" style="background:#fff;border:1px solid #333"></span> Blanc</div></div>
+        <div class="d prop"><div class="d prop-label">Fond</div><div class="d prop-val"><span class="d color-dot" style="background:#e03030"></span> Rouge</div></div>
+      </div>
+      <button class="d btn-export">↓ Télécharger ce clip 9:16</button>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

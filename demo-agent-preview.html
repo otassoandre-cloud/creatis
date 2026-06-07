@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo Agents Créatis</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0f0a;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Inter',-apple-system,sans-serif;gap:14px;padding:20px 0;}
+
+.demo-tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.demo-tab{padding:6px 14px;border-radius:20px;border:1px solid #222;background:transparent;color:#555;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.demo-tab.active{background:#10b981;color:#000;border-color:#10b981;}
+
+.demo-wrap{width:860px;height:490px;background:#0d0d0d;border:1px solid #1c1c1c;border-radius:16px;overflow:hidden;display:flex;box-shadow:0 24px 80px rgba(0,0,0,.9);}
+
+/* Sidebar */
+.demo-sidebar{width:195px;background:#0a0a0a;border-right:1px solid #181818;padding:14px 0;flex-shrink:0;}
+.demo-logo{padding:0 14px 14px;font-size:14px;font-weight:800;color:#fff;border-bottom:1px solid #181818;margin-bottom:10px;}
+.demo-logo span{color:#10b981;}
+.nav-lbl{padding:5px 14px;font-size:9px;font-weight:700;color:#2a2a2a;text-transform:uppercase;letter-spacing:.1em;}
+.nav-i{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:11px;color:#4a4a4a;cursor:pointer;transition:all .15s;}
+.nav-i svg{width:13px;height:13px;flex-shrink:0;stroke:#4a4a4a;}
+.nav-i.active{background:#111;color:#10b981;border-left:2px solid #10b981;}
+.nav-i.active svg{stroke:#10b981;}
+
+/* Workspace */
+.demo-workspace{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.panel.on{display:flex;}
+
+/* Header */
+.hdr{padding:12px 18px;border-bottom:1px solid #181818;display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.hdr-ico{width:26px;height:26px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hdr-ico svg{width:13px;height:13px;stroke:#10b981;}
+.hdr-t{font-size:12.5px;font-weight:700;color:#eee;}
+.hdr-d{font-size:10px;color:#3a3a3a;margin-top:1px;}
+
+/* Content */
+.cnt{flex:1;display:flex;overflow:hidden;}
+.form-col{width:300px;padding:14px 16px;border-right:1px solid #181818;overflow-y:auto;flex-shrink:0;}
+.fld{margin-bottom:11px;}
+.lbl{font-size:9.5px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.inp{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:7px 9px;font-size:10.5px;color:#bbb;font-family:inherit;outline:none;resize:none;}
+.inp.on{border-color:rgba(16,185,129,.45);}
+.sel{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:7px 9px;font-size:10.5px;color:#444;font-family:inherit;outline:none;appearance:none;}
+.sel.on{color:#ddd;border-color:rgba(16,185,129,.3);}
+.btn{width:100%;background:#10b981;color:#000;border:none;border-radius:9px;padding:9px;font-size:11.5px;font-weight:700;cursor:pointer;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn svg{width:12px;height:12px;}
+.btn.ld{opacity:.65;}
+
+/* Result col */
+.res-col{flex:1;padding:14px 16px;overflow-y:auto;position:relative;}
+.res-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:7px;}
+.res-ph svg{width:28px;height:28px;stroke:#1e1e1e;}
+.res-ph p{font-size:10.5px;color:#2a2a2a;}
+.res-cnt{display:none;}
+.res-cnt.on{display:block;}
+.thk{display:flex;align-items:center;gap:7px;margin-bottom:10px;}
+.dot{width:5px;height:5px;background:#10b981;border-radius:50%;animation:pulse 1s infinite;}
+.dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.thk-lbl{font-size:10px;color:#10b981;}
+
+/* Idées */
+.idea{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:9px 11px;margin-bottom:7px;opacity:0;transform:translateY(5px);transition:all .3s;}
+.idea.on{opacity:1;transform:translateY(0);}
+.idea.bl{filter:blur(5px);}
+.idea-n{font-size:8.5px;font-weight:700;color:#10b981;margin-bottom:2px;}
+.idea-t{font-size:11px;font-weight:700;color:#ddd;line-height:1.4;}
+.idea-h{font-size:9.5px;color:#3a3a3a;margin-top:2px;}
+
+/* YT Complet blocks */
+.blk{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:0;transform:translateY(5px);transition:all .35s;}
+.blk.on{opacity:1;transform:translateY(0);}
+.blk.bl{filter:blur(5px);}
+.blk-lbl{font-size:8.5px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
+.blk-titre{font-size:11px;font-weight:700;color:#eee;line-height:1.4;margin-bottom:3px;}
+.blk-titre.dim{color:#666;font-weight:400;}
+.blk-txt{font-size:10px;color:#666;line-height:1.6;}
+.blk-txt strong{color:#aaa;}
+
+/* Réponses commentaires */
+.cmt-block{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:0;transform:translateY(5px);transition:all .3s;}
+.cmt-block.on{opacity:1;transform:translateY(0);}
+.cmt-block.bl{filter:blur(5px);}
+.cmt-original{font-size:9.5px;color:#555;border-left:2px solid #2a2a2a;padding-left:8px;margin-bottom:7px;line-height:1.5;}
+.cmt-label{font-size:8px;font-weight:700;color:#10b981;text-transform:uppercase;margin-bottom:3px;}
+.cmt-reponse{font-size:10.5px;color:#ccc;line-height:1.5;margin-bottom:5px;}
+.cmt-strat{font-size:9px;color:#444;font-style:italic;}
+
+/* Recyclage */
+.rec-block{background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:10px 12px;margin-bottom:8px;opacity:0;transform:translateY(5px);transition:all .3s;}
+.rec-block.on{opacity:1;transform:translateY(0);}
+.rec-block.bl{filter:blur(5px);}
+.rec-plat{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.rec-plat-ico{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rec-plat-name{font-size:9px;font-weight:700;color:#888;text-transform:uppercase;}
+.rec-txt{font-size:10px;color:#bbb;line-height:1.55;}
+
+/* Miniature */
+.mini-preview{width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative;background:#111;border:1px solid #1e1e1e;opacity:0;transition:opacity .5s;}
+.mini-preview.on{opacity:1;}
+.mini-preview img{width:100%;height:100%;object-fit:cover;}
+.mini-overlay{position:absolute;bottom:0;left:0;right:0;padding:10px 12px;background:linear-gradient(to top,rgba(0,0,0,.85) 60%,transparent);}
+.mini-txt1{font-size:15px;font-weight:900;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.9);line-height:1.2;}
+.mini-txt2{font-size:10px;font-weight:500;color:rgba(255,255,255,.7);margin-bottom:2px;}
+.mini-info{font-size:9.5px;color:#444;text-align:center;}
+
+/* Chat */
+.chat-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.msg{max-width:85%;padding:9px 12px;border-radius:12px;font-size:10.5px;line-height:1.5;opacity:0;transform:translateY(4px);transition:all .3s;}
+.msg.on{opacity:1;transform:translateY(0);}
+.msg.user{background:#1a1a1a;color:#ccc;align-self:flex-end;border-radius:12px 12px 2px 12px;}
+.msg.ai{background:#0e1a0e;color:#c8e8c8;align-self:flex-start;border-radius:12px 12px 12px 2px;border:1px solid #1a2a1a;}
+.msg.ai strong{color:#10b981;}
+.chat-input-row{padding:10px 14px;border-top:1px solid #181818;display:flex;gap:7px;align-items:center;flex-shrink:0;}
+.chat-inp{flex:1;background:#111;border:1px solid #1e1e1e;border-radius:8px;padding:7px 10px;font-size:10.5px;color:#bbb;font-family:inherit;outline:none;}
+.chat-inp.on{border-color:rgba(16,185,129,.4);}
+.chat-send{background:#10b981;color:#000;border:none;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div class="demo-tabs">
+  <button class="demo-tab active" onclick="go('idees')">Idées de Vidéos</button>
+  <button class="demo-tab" onclick="go('yt')">YouTube Complet</button>
+  <button class="demo-tab" onclick="go('cmt')">Réponses Commentaires</button>
+  <button class="demo-tab" onclick="go('rec')">Recyclage Contenu</button>
+  <button class="demo-tab" onclick="go('mini')">Miniature Pro</button>
+  <button class="demo-tab" onclick="go('chat')">Assistant IA</button>
+</div>
+
+<div class="demo-wrap">
+  <div class="demo-sidebar">
+    <div class="demo-logo">Créatis<span>.</span></div>
+    <div class="nav-lbl">Agents IA</div>
+    <div class="nav-i" id="n-dash"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Tableau de bord</div>
+    <div class="nav-i active" id="n-idees"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>Idées de Vidéos</div>
+    <div class="nav-i" id="n-yt"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>YouTube Complet</div>
+    <div class="nav-i" id="n-cmt"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Réponses Comm.</div>
+    <div class="nav-i" id="n-rec"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Recyclage Contenu</div>
+    <div class="nav-i" id="n-mini"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Miniature Pro</div>
+    <div class="nav-i" id="n-chat"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>Assistant IA</div>
+  </div>
+
+  <div class="demo-workspace">
+
+    <!-- IDÉES -->
+    <div class="panel on" id="p-idees">
+      <div class="hdr"><div class="hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></div><div><div class="hdr-t">Idées de Vidéos</div><div class="hdr-d">30 idées personnalisées basées sur ta niche et les tendances</div></div></div>
+      <div class="cnt">
+        <div class="form-col">
+          <div class="fld"><div class="lbl">Ta niche *</div><input class="inp" id="i-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+          <div class="fld"><div class="lbl">Format *</div><select class="sel" id="i-fmt"><option value="">Sélectionner…</option><option>Listes / Top 10</option><option>Tutoriels / How-to</option><option>Storytelling personnel</option></select></div>
+          <div class="fld"><div class="lbl">Objectif *</div><select class="sel" id="i-obj"><option value="">Sélectionner…</option><option>Gagner des abonnés rapidement</option><option>Augmenter les revenus publicitaires</option></select></div>
+          <button class="btn" id="i-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Générer avec l'IA</button>
+        </div>
+        <div class="res-col"><div class="res-ph" id="i-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg><p>Remplis et génère</p></div>
+        <div class="res-cnt" id="i-res"><div class="thk" id="i-thk"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="thk-lbl">Génération de 30 idées…</span></div><div id="i-list"></div></div></div>
+      </div>
+    </div>
+
+    <!-- YOUTUBE COMPLET -->
+    <div class="panel" id="p-yt">
+      <div class="hdr"><div class="hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div><div class="hdr-t">YouTube Complet</div><div class="hdr-d">Titres, script complet, description SEO et tags optimisés</div></div></div>
+      <div class="cnt">
+        <div class="form-col">
+          <div class="fld"><div class="lbl">Sujet *</div><input class="inp" id="y-sujet" type="text" placeholder="ex : Comment investir 1000€" readonly></div>
+          <div class="fld"><div class="lbl">Niche *</div><input class="inp" id="y-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+          <div class="fld"><div class="lbl">Durée *</div><select class="sel" id="y-dur"><option value="">Sélectionner…</option><option>10 à 15 minutes</option><option>5 à 10 minutes</option></select></div>
+          <div class="fld"><div class="lbl">Ton *</div><select class="sel" id="y-ton"><option value="">Sélectionner…</option><option>Éducatif et pédagogue</option><option>Divertissant et dynamique</option></select></div>
+          <button class="btn" id="y-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Générer avec l'IA</button>
+        </div>
+        <div class="res-col"><div class="res-ph" id="y-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><p>Remplis et génère</p></div>
+        <div class="res-cnt" id="y-res"><div class="thk" id="y-thk"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="thk-lbl">Génération du package…</span></div><div id="y-list"></div></div></div>
+      </div>
+    </div>
+
+    <!-- RÉPONSES COMMENTAIRES -->
+    <div class="panel" id="p-cmt">
+      <div class="hdr"><div class="hdr-ico" style="--c:#ec4899"><svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><div class="hdr-t">Réponses Commentaires</div><div class="hdr-d">Génère des réponses personnalisées pour ta communauté</div></div></div>
+      <div class="cnt">
+        <div class="form-col">
+          <div class="fld"><div class="lbl">URL vidéo YouTube</div><input class="inp" id="c-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+          <div class="fld"><div class="lbl">Ton de ta chaîne *</div><select class="sel" id="c-ton"><option value="">Sélectionner…</option><option>Décontracté et proche de ma communauté</option><option>Professionnel et bienveillant</option><option>Expert et pédagogue</option></select></div>
+          <div class="fld"><div class="lbl">Ton prénom</div><input class="inp" id="c-nom" type="text" placeholder="ex : Alex" readonly></div>
+          <button class="btn" id="c-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Générer avec l'IA</button>
+        </div>
+        <div class="res-col"><div class="res-ph" id="c-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Remplis et génère</p></div>
+        <div class="res-cnt" id="c-res"><div class="thk" id="c-thk"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="thk-lbl">Analyse des commentaires…</span></div><div id="c-list"></div></div></div>
+      </div>
+    </div>
+
+    <!-- RECYCLAGE -->
+    <div class="panel" id="p-rec">
+      <div class="hdr"><div class="hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div><div class="hdr-t">Recyclage Contenu</div><div class="hdr-d">LinkedIn, Twitter/X, Instagram et Newsletter depuis ta vidéo</div></div></div>
+      <div class="cnt">
+        <div class="form-col">
+          <div class="fld"><div class="lbl">URL vidéo YouTube</div><input class="inp" id="r-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+          <div class="fld"><div class="lbl">Titre vidéo</div><input class="inp" id="r-titre" type="text" placeholder="ex : Comment investir 1000€" readonly></div>
+          <div class="fld"><div class="lbl">Plateformes *</div><select class="sel" id="r-plat"><option value="">Sélectionner…</option><option>Toutes (LinkedIn + X + Instagram + Newsletter)</option><option>LinkedIn uniquement</option><option>Twitter/X uniquement</option></select></div>
+          <button class="btn" id="r-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Recycler ma vidéo</button>
+        </div>
+        <div class="res-col"><div class="res-ph" id="r-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><p>Remplis et génère</p></div>
+        <div class="res-cnt" id="r-res"><div class="thk" id="r-thk"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="thk-lbl">Recyclage en cours…</span></div><div id="r-list"></div></div></div>
+      </div>
+    </div>
+
+    <!-- MINIATURE -->
+    <div class="panel" id="p-mini">
+      <div class="hdr"><div class="hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="hdr-t">Miniature Pro</div><div class="hdr-d">Génère un fond réaliste sur-mesure pour ta miniature YouTube</div></div></div>
+      <div class="cnt">
+        <div class="form-col">
+          <div class="fld"><div class="lbl">Décris ta miniature *</div><textarea class="inp" id="m-desc" rows="3" placeholder="ex : Vue aérienne d'une ville la nuit, lumières, buildings..." readonly></textarea></div>
+          <div class="fld"><div class="lbl">Texte ligne 1</div><input class="inp" id="m-t1" type="text" placeholder="ex : MA TECHNIQUE SECRÈTE" readonly></div>
+          <div class="fld"><div class="lbl">Style photo *</div><select class="sel" id="m-style"><option value="">Sélectionner…</option><option>Cinématique</option><option>Lifestyle luxe</option><option>Réaliste naturel</option></select></div>
+          <button class="btn" id="m-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Générer la miniature</button>
+        </div>
+        <div class="res-col"><div class="res-ph" id="m-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>Remplis et génère</p></div>
+        <div class="res-cnt" id="m-res"><div class="thk" id="m-thk"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span class="thk-lbl">Génération de l'image IA…</span></div>
+        <div id="m-img-wrap" style="display:none">
+          <div class="mini-preview" id="m-preview"><img src="/images/showcase/mini-yeux-9x16.webp" alt="" style="object-position:center top;"><div class="mini-overlay"><div class="mini-txt1" id="m-overlay-t1"></div><div class="mini-txt2" id="m-overlay-t2"></div></div></div>
+          <div class="mini-info">✅ Miniature générée — prête à télécharger</div>
+        </div></div></div>
+      </div>
+    </div>
+
+    <!-- ASSISTANT -->
+    <div class="panel" id="p-chat">
+      <div class="hdr"><div class="hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div><div><div class="hdr-t">Assistant IA</div><div class="hdr-d">Support, stratégie, questions — répond à tout avec mémoire</div></div></div>
+      <div class="cnt" style="flex-direction:column;">
+        <div class="chat-wrap">
+          <div class="chat-msgs" id="ch-msgs"></div>
+          <div class="chat-input-row"><input class="chat-inp" id="ch-inp" placeholder="Pose une question…" readonly><button class="chat-send">Envoyer</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+async function type(el,txt,spd=42){el.value='';el.classList.add('on');for(let c of txt){el.value+=c;await sleep(spd+Math.random()*20);}el.classList.remove('on');}
+function sel(el,val){el.value=val;el.classList.add('on');}
+function btn(el,txt){el.textContent=txt;el.classList.add('ld');}
+function btnReset(el,icon,txt){el.innerHTML=`${icon}${txt}`;el.classList.remove('ld');}
+const ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+
+// ── IDÉES ──
+async function runIdees(){
+  $('i-niche').value='';$('i-fmt').value='';$('i-fmt').className='sel';$('i-obj').value='';$('i-obj').className='sel';
+  btnReset($('i-btn'),ICON,"Générer avec l'IA");
+  $('i-ph').style.display='flex';$('i-res').className='res-cnt';$('i-thk').style.display='flex';$('i-list').innerHTML='';
+  await sleep(600);
+  await type($('i-niche'),'Finance personnelle · jeunes actifs');
+  await sleep(300);sel($('i-fmt'),'Listes / Top 10');await sleep(250);sel($('i-obj'),'Gagner des abonnés rapidement');
+  await sleep(300);btn($('i-btn'),'Génération…');
+  $('i-ph').style.display='none';$('i-res').className='res-cnt on';
+  await sleep(1500);$('i-thk').style.display='none';
+  const ideas=[
+    ['1',"J'ai investi 1€/jour pendant 1 an — résultat","Résultat concret + curiosité → fort CTR"],
+    ['2',"Les 5 erreurs des débutants en bourse","Format liste éducatif — très partageable"],
+    ['3',"Pourquoi ton salaire ne te rendra jamais riche","Angle controversé — fort potentiel viral"],
+    ['4',"J'ai testé la méthode des riches pendant 30 jours","Challenge personnel — fort engagement"],
+    ['5',"Ce que les riches font (que l'école ne t'apprend pas)","Exclusivité perçue — fort taux de clic"],
+  ];
+  for(let [n,t,h] of ideas){
+    const d=document.createElement('div');
+    d.className='idea'+(parseInt(n)>=4?' bl':'');
+    d.innerHTML=`<div class="idea-n">Idée #${n}</div><div class="idea-t">${t}</div><div class="idea-h">💡 ${h}</div>`;
+    $('i-list').appendChild(d);await sleep(50);d.classList.add('on');await sleep(130);
+  }
+  btnReset($('i-btn'),ICON,"Générer avec l'IA");
+  await sleep(4000);if(current==='idees')runIdees();
+}
+
+// ── YT COMPLET ──
+async function runYT(){
+  $('y-sujet').value='';$('y-niche').value='';$('y-dur').value='';$('y-dur').className='sel';$('y-ton').value='';$('y-ton').className='sel';
+  btnReset($('y-btn'),ICON,"Générer avec l'IA");
+  $('y-ph').style.display='flex';$('y-res').className='res-cnt';$('y-thk').style.display='flex';$('y-list').innerHTML='';
+  await sleep(600);
+  await type($('y-sujet'),'Comment investir 1000€ en bourse',48);
+  await sleep(250);await type($('y-niche'),'Finance personnelle',48);
+  await sleep(250);sel($('y-dur'),'10 à 15 minutes');await sleep(220);sel($('y-ton'),'Éducatif et pédagogue');
+  await sleep(300);btn($('y-btn'),'Génération…');
+  $('y-ph').style.display='none';$('y-res').className='res-cnt on';
+  await sleep(1700);$('y-thk').style.display='none';
+  const blocks=[
+    {lbl:'Titres optimisés',html:`<div class="blk-titre">Comment investir 1000€ en bourse quand on est débutant (2025)</div><div class="blk-titre dim">1000€ en bourse : la méthode que j'aurais voulu connaître à 20 ans</div><div class="blk-titre dim">Je place 1000€ — voici exactement comment je fais</div>`,bl:false},
+    {lbl:'Introduction (hook)',html:`<div class="blk-txt"><strong>Hook :</strong> "Si tu as 1000€ de côté et que tu ne sais pas quoi en faire, cette vidéo va changer ta façon de voir l'argent."<br><br><strong>Intro :</strong> Aujourd'hui je te montre pas à pas comment j'aurais investi mes premiers 1000€ si je recommençais depuis zéro…</div>`,bl:false},
+    {lbl:'Description SEO',html:`<div class="blk-txt">💰 Dans cette vidéo, je t'explique comment investir 1000€ avec une stratégie simple pour débutants...<br><br>⏱️ 0:00 Intro · 1:30 Pourquoi investir · 4:00 Quelle plateforme...<br><br>#investissement #bourse #financeperso</div>`,bl:true},
+  ];
+  for(let b of blocks){
+    const d=document.createElement('div');
+    d.className='blk'+(b.bl?' bl':'');
+    d.innerHTML=`<div class="blk-lbl">${b.lbl}</div>${b.html}`;
+    $('y-list').appendChild(d);await sleep(70);d.classList.add('on');await sleep(180);
+  }
+  btnReset($('y-btn'),ICON,"Générer avec l'IA");
+  await sleep(4500);if(current==='yt')runYT();
+}
+
+// ── RÉPONSES COMMENTAIRES ──
+async function runCmt(){
+  $('c-url').value='';$('c-ton').value='';$('c-ton').className='sel';$('c-nom').value='';
+  btnReset($('c-btn'),ICON,"Générer avec l'IA");
+  $('c-ph').style.display='flex';$('c-res').className='res-cnt';$('c-thk').style.display='flex';$('c-list').innerHTML='';
+  await sleep(600);
+  await type($('c-url'),'youtube.com/watch?v=dQw4w9WgXcQ',35);
+  await sleep(300);sel($('c-ton'),'Décontracté et proche de ma communauté');
+  await sleep(250);await type($('c-nom'),'Alex',60);
+  await sleep(300);btn($('c-btn'),'Analyse en cours…');
+  $('c-ph').style.display='none';$('c-res').className='res-cnt on';
+  await sleep(1800);$('c-thk').style.display='none';
+  const cmts=[
+    {orig:'Super vidéo Alex ! Tu peux faire un tuto sur les ETF ? 🙏',rep:'Merci beaucoup ! 🙏 Les ETF c\'est prévu, j\'ai déjà le plan — tu vas kiffer. Dis-moi en commentaire si tu préfères les ETF monde ou thématiques, ça m\'aide à prioriser !',strat:'Engagement + teasing prochaine vidéo → booste les commentaires'},
+    {orig:'Encore une arnaque ces "conseils" sur internet...',rep:'Je comprends le scepticisme, c\'est sain ! 💯 La différence c\'est que je montre mes vrais résultats avec preuves à l\'appui. Regarde jusqu\'à la fin — si t\'es pas convaincu, dis-moi ce qui t\'a semblé faux.',strat:'Gestion crise → transforme un détracteur en spectateur actif'},
+    {orig:'J\'ai commencé avec ta méthode il y a 3 mois, +18% 🚀',rep:'',rep2:'INCROYABLE ! 🚀 +18% en 3 mois c\'est vraiment solide.',strat:'Fidélisation → crée de la preuve sociale visible'},
+  ];
+  for(let i=0;i<cmts.length;i++){
+    const c=cmts[i];
+    const d=document.createElement('div');
+    d.className='cmt-block'+(i>=2?' bl':'');
+    d.innerHTML=`<div class="cmt-original">💬 "${c.orig}"</div><div class="cmt-label">✅ Réponse suggérée</div><div class="cmt-reponse">${c.rep||c.rep2}</div><div class="cmt-strat">🧠 ${c.strat}</div>`;
+    $('c-list').appendChild(d);await sleep(60);d.classList.add('on');await sleep(160);
+  }
+  btnReset($('c-btn'),ICON,"Générer avec l'IA");
+  await sleep(4500);if(current==='cmt')runCmt();
+}
+
+// ── RECYCLAGE ──
+async function runRec(){
+  $('r-url').value='';$('r-titre').value='';$('r-plat').value='';$('r-plat').className='sel';
+  btnReset($('r-btn'),ICON,'Recycler ma vidéo');
+  $('r-ph').style.display='flex';$('r-res').className='res-cnt';$('r-thk').style.display='flex';$('r-list').innerHTML='';
+  await sleep(600);
+  await type($('r-url'),'youtube.com/watch?v=abc123',35);
+  await sleep(300);await type($('r-titre'),'Comment investir 1000€ en bourse',48);
+  await sleep(250);sel($('r-plat'),'Toutes (LinkedIn + X + Instagram + Newsletter)');
+  await sleep(300);btn($('r-btn'),'Recyclage…');
+  $('r-ph').style.display='none';$('r-res').className='res-cnt on';
+  await sleep(1600);$('r-thk').style.display='none';
+  const posts=[
+    {plat:'LinkedIn',color:'#0077b5',txt:'💰 J\'ai investi 1000€ en bourse quand j\'avais 23 ans. Résultat aujourd\'hui : +340%.\n\nVoici les 3 décisions qui ont tout changé :\n\n1️⃣ J\'ai arrêté de timer le marché...',bl:false},
+    {plat:'Twitter/X',color:'#1d9bf0',txt:'Thread 🧵 — Comment investir 1000€ quand on est débutant\n\n1/ La plupart des gens attendent "le bon moment". C\'est leur plus grosse erreur...',bl:false},
+    {plat:'Instagram',color:'#e1306c',txt:'POV : tu découvres que 1000€ investis à 20 ans → 25 000€ à 45 ans 🤯\n\nSave ce post et commence MAINTENANT...',bl:true},
+  ];
+  for(let p of posts){
+    const d=document.createElement('div');
+    d.className='rec-block'+(p.bl?' bl':'');
+    d.innerHTML=`<div class="rec-plat"><div class="rec-plat-ico" style="background:${p.color}22"><svg viewBox="0 0 10 10" width="10" height="10"><circle cx="5" cy="5" r="4" fill="${p.color}"/></svg></div><div class="rec-plat-name">${p.plat}</div></div><div class="rec-txt">${p.txt.replace(/\n/g,'<br>')}</div>`;
+    $('r-list').appendChild(d);await sleep(60);d.classList.add('on');await sleep(160);
+  }
+  btnReset($('r-btn'),ICON,'Recycler ma vidéo');
+  await sleep(4500);if(current==='rec')runRec();
+}
+
+// ── MINIATURE ──
+async function runMini(){
+  $('m-desc').value='';$('m-t1').value='';$('m-style').value='';$('m-style').className='sel';
+  btnReset($('m-btn'),ICON,'Générer la miniature');
+  $('m-ph').style.display='flex';$('m-res').className='res-cnt';$('m-thk').style.display='flex';$('m-img-wrap').style.display='none';
+  await sleep(600);
+  await type($('m-desc'),'Dessin au crayon graphite hyperréaliste d\'un œil humain, main tenant un crayon, fond blanc épuré, style artistique professionnel',38);
+  await sleep(300);await type($('m-t1'),'Yeux Réaliste',55);
+  await sleep(250);sel($('m-style'),'Cinématique');
+  await sleep(300);btn($('m-btn'),'Génération IA…');
+  $('m-ph').style.display='none';$('m-res').className='res-cnt on';
+  await sleep(2200);$('m-thk').style.display='none';
+  $('m-overlay-t1').textContent='Yeux Réaliste';
+  $('m-overlay-t2').textContent='Tuto dessin';
+  $('m-img-wrap').style.display='block';
+  await sleep(50);$('m-preview').classList.add('on');
+  await sleep(4000);$('m-preview').classList.remove('on');
+  btnReset($('m-btn'),ICON,'Générer la miniature');
+  await sleep(500);if(current==='mini')runMini();
+}
+
+// ── ASSISTANT ──
+const CHAT=[
+  {role:'user',txt:'Comment augmenter mon taux de clic sur mes miniatures ?'},
+  {role:'ai',txt:'<strong>3 leviers qui marchent vraiment :</strong><br><br>1️⃣ <strong>Visage + émotion forte</strong> — les miniatures avec un visage expressif ont +38% de CTR en moyenne<br>2️⃣ <strong>Texte 3-5 mots max</strong> — lisible en 1 seconde sur mobile<br>3️⃣ <strong>Contraste fort</strong> — fond sombre + texte clair ou inverse<br><br>Tu veux que je génère 3 concepts de miniature pour ta prochaine vidéo ? 🎨'},
+  {role:'user',txt:'Oui ! Ma prochaine vidéo parle de crypto pour débutants'},
+  {role:'ai',txt:'Parfait ! Voici 3 concepts :<br><br>🔥 <strong>Concept 1 :</strong> Toi choqué, texte "JE NE SAVAIS PAS ÇA" + Bitcoin flou derrière<br>💡 <strong>Concept 2 :</strong> Split avant/après portefeuille, texte "1000€ → 4800€"<br>🚀 <strong>Concept 3 :</strong> Toi souriant, texte "ENFIN EXPLIQUÉ" sur fond néon bleu<br><br>→ Utilise l\'agent Miniature Pro pour générer ces visuels en 30 sec !'},
+];
+async function runChat(){
+  $('ch-msgs').innerHTML='';$('ch-inp').value='';$('ch-inp').className='chat-inp';
+  await sleep(700);
+  for(let i=0;i<CHAT.length;i++){
+    const m=CHAT[i];
+    if(m.role==='user'){
+      await type($('ch-inp'),m.txt,38);
+      await sleep(400);
+      const d=document.createElement('div');d.className='msg user';d.textContent=m.txt;
+      $('ch-msgs').appendChild(d);await sleep(40);d.classList.add('on');
+      $('ch-inp').value='';$('ch-inp').classList.remove('on');
+    } else {
+      const thk=document.createElement('div');thk.className='msg ai';thk.innerHTML='<div class="thk" style="margin:0"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+      $('ch-msgs').appendChild(thk);await sleep(40);thk.classList.add('on');
+      await sleep(1400);thk.innerHTML=m.txt;
+    }
+    $('ch-msgs').scrollTop=$('ch-msgs').scrollHeight;
+    await sleep(i<CHAT.length-1?1800:4500);
+  }
+  if(current==='chat')runChat();
+}
+
+// ── Routing ──
+const RUNNERS={idees:runIdees,yt:runYT,cmt:runCmt,rec:runRec,mini:runMini,chat:runChat};
+const NAV_IDS={idees:'n-idees',yt:'n-yt',cmt:'n-cmt',rec:'n-rec',mini:'n-mini',chat:'n-chat'};
+const PANEL_IDS={idees:'p-idees',yt:'p-yt',cmt:'p-cmt',rec:'p-rec',mini:'p-mini',chat:'p-chat'};
+let current='idees';
+
+function go(agent){
+  current=agent;
+  document.querySelectorAll('.demo-tab').forEach((t,i)=>{
+    t.classList.toggle('active',t.textContent.toLowerCase().includes(agent==='idees'?'idées':agent==='yt'?'youtube':agent==='cmt'?'réponses':agent==='rec'?'recyclage':agent==='mini'?'miniature':'assistant'));
+  });
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  $(NAV_IDS[agent]).classList.add('active');
+  $(PANEL_IDS[agent]).classList.add('on');
+  RUNNERS[agent]();
+}
+
+runIdees();
+</script>
+</body>
+</html>

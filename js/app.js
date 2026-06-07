@@ -484,14 +484,24 @@ class AppCreatis {
     const nav = document.getElementById('agents-nav');
     const chatNav = document.getElementById('chat-nav');
 
-    const renderBtn = agent => `
-      <button class="agent-btn" id="btn-${agent.id}" onclick="app.selectionnerAgent('${agent.id}')" title="${agent.description}">
+    const user = this.getUtilisateur();
+    const plan = user?.plan || 'gratuit';
+    const autorisés = CONFIG.PLANS[plan]?.agents || CONFIG.PLANS.gratuit.agents;
+
+    const renderBtn = agent => {
+      const actif = autorisés === 'tous' || autorisés.includes(agent.id);
+      const onClick = actif
+        ? `app.selectionnerAgent('${agent.id}')`
+        : `document.getElementById('modal-upgrade').classList.add('visible')`;
+      return `
+      <button class="agent-btn${actif ? '' : ' agent-btn-locked'}" id="btn-${agent.id}" onclick="${onClick}" title="${agent.description}">
         <span class="agent-btn-icone">${agent.icone}</span>
         <span class="agent-btn-info">
-          <span class="agent-btn-nom">${agent.nom}</span>
+          <span class="agent-btn-nom">${agent.nom}${actif ? '' : ' <small style="color:var(--texte-muted);font-weight:400">Pro</small>'}</span>
           <span class="agent-btn-desc">${agent.description.substring(0, 45)}${agent.description.length > 45 ? '…' : ''}</span>
         </span>
       </button>`;
+    };
 
     const agentsPrincipaux = AGENTS.filter(a => a.id !== 'chat-libre');
     const chatLibre = AGENTS.find(a => a.id === 'chat-libre');
@@ -3650,7 +3660,7 @@ class AppCreatis {
         }).catch(() => {});
       }
     }
-    this._onbEtape(3);
+    this._onbEtape(4);
   }
 
   _onbSauvegarderPlateformes() {

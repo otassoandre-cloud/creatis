@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test — Agent Sous-Titres | Créatis</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0f0a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { color: #10b981; font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .subtitle { color: #6b7280; font-size: 0.85rem; margin-bottom: 2rem; }
+    .badge {
+      background: rgba(251,191,36,0.15);
+      color: #fbbf24;
+      border-radius: 4px;
+      padding: 0.1rem 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+    }
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; }
+    input[type="url"] {
+      width: 100%;
+      background: #0a0f0a;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    input:focus { border-color: #10b981; }
+
+    .options { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      user-select: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .toggle.on { border-color: #10b981; background: rgba(16,185,129,0.08); color: #10b981; }
+    .toggle input { display: none; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      background: #10b981;
+      color: #0a0f0a;
+      border: none;
+      border-radius: 8px;
+      padding: 0.8rem 2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1.25rem;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-dl {
+      flex: 1;
+      min-width: 150px;
+      margin-top: 0;
+      font-size: 0.9rem;
+      padding: 0.65rem 1rem;
+    }
+    .btn-sec {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #374151;
+    }
+
+    .progress {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.9rem 1rem;
+      background: rgba(16,185,129,0.05);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #10b981;
+    }
+    .progress.on { display: flex; }
+    .spin {
+      width: 18px; height: 18px;
+      border: 2px solid #1f2937;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error {
+      display: none;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      color: #fca5a5;
+      font-size: 0.88rem;
+      margin-top: 1rem;
+    }
+    .error.on { display: block; }
+
+    .result { display: none; }
+    .result.on { display: block; }
+
+    .stats { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .stat {
+      background: #0a0f0a;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+    .stat b { color: #10b981; font-weight: 600; }
+
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .tab {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 0.35rem 1rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: #9ca3af;
+    }
+    .tab.on { background: rgba(16,185,129,0.1); border-color: #10b981; color: #10b981; }
+
+    .preview {
+      background: #0a0f0a;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      max-height: 380px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      white-space: pre;
+    }
+    .ln-idx { color: #4b5563; }
+    .ln-time { color: #10b981; }
+    .ln-text { color: #d1d5db; }
+    .ln-empty { color: transparent; }
+
+    .dl-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .note {
+      font-size: 0.78rem;
+      color: #4b5563;
+      margin-top: 0.75rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Agent Sous-Titres <span class="badge">TEST</span></h1>
+  <p class="subtitle">Transcription YouTube → SRT/VTT — page de test avant intégration dans l'app Créatis</p>
+
+  <div class="card">
+    <label>URL de la vidéo YouTube</label>
+    <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=..." />
+
+    <div class="options">
+      <label class="toggle" id="tClean">
+        <input type="checkbox" id="cleanAI">
+        ✨ Nettoyer avec l'IA (Groq)
+      </label>
+      <label class="toggle on" id="tSRT">
+        <input type="checkbox" id="fmtSRT" checked>
+        Format SRT
+      </label>
+      <label class="toggle on" id="tVTT">
+        <input type="checkbox" id="fmtVTT" checked>
+        Format VTT
+      </label>
+    </div>
+
+    <button class="btn" id="btnGen">Générer les sous-titres</button>
+
+    <div class="progress" id="prog">
+      <div class="spin"></div>
+      <span id="progTxt">Téléchargement + transcription en cours (30-90s selon la durée)…</span>
+    </div>
+    <div class="error" id="err"></div>
+
+    <p class="note">
+      Nécessite <code>vercel dev</code> (ou déploiement) — le serveur local ne route pas /api/*<br>
+      Fonctionne aussi directement sur <strong>creatis.app/test-subtitles.html</strong> après déploiement
+    </p>
+  </div>
+
+  <div class="result card" id="result">
+    <div class="stats" id="stats"></div>
+    <div class="tabs">
+      <button class="tab on" onclick="switchTab('srt',this)">SRT</button>
+      <button class="tab" onclick="switchTab('vtt',this)">VTT</button>
+    </div>
+    <div class="preview" id="preview"></div>
+    <div class="dl-row" id="dlRow"></div>
+  </div>
+</div>
+
+<script>
+let _srt = '', _vtt = '', _tab = 'srt';
+
+// Toggles
+['tClean','tSRT','tVTT'].forEach(id => {
+  const el = document.getElementById(id);
+  const cb = el.querySelector('input');
+  el.addEventListener('click', e => {
+    cb.checked = !cb.checked;
+    el.classList.toggle('on', cb.checked);
+  });
+});
+
+function switchTab(tab, btn) {
+  _tab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  renderPreview();
+}
+
+function formatDuration(s) {
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}m${sec}s`;
+}
+
+function renderPreview() {
+  const raw = _tab === 'srt' ? _srt : _vtt;
+  const lines = raw.split('\n').slice(0, 100);
+  const html = lines.map(line => {
+    if (/^\d+$/.test(line.trim())) return `<span class="ln-idx">${escHtml(line)}</span>`;
+    if (/-->/.test(line)) return `<span class="ln-time">${escHtml(line)}</span>`;
+    if (line.trim() === '' || line === 'WEBVTT') return `<span class="ln-empty">.</span>`;
+    return `<span class="ln-text">${escHtml(line)}</span>`;
+  }).join('\n');
+  document.getElementById('preview').innerHTML = html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function dlFile(content, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('btnGen').addEventListener('click', async () => {
+  const url = document.getElementById('url').value.trim();
+  if (!url) { alert('Colle une URL YouTube'); return; }
+
+  const cleanAI = document.getElementById('cleanAI').checked;
+  const btn = document.getElementById('btnGen');
+  const prog = document.getElementById('prog');
+  const progTxt = document.getElementById('progTxt');
+  const errEl = document.getElementById('err');
+  const resultEl = document.getElementById('result');
+
+  btn.disabled = true;
+  errEl.classList.remove('on');
+  resultEl.classList.remove('on');
+  prog.classList.add('on');
+  progTxt.textContent = 'Téléchargement + transcription en cours (30-90s selon la durée)…';
+
+  if (cleanAI) {
+    setTimeout(() => { progTxt.textContent = 'Transcription OK — nettoyage IA (Groq) en cours…'; }, 25000);
+  }
+
+  try {
+    const res = await fetch('/api/subtitle-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ youtube_url: url, clean_with_ai: cleanAI }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+
+    _srt = data.srt;
+    _vtt = data.vtt;
+
+    // Stats
+    const title = data.title ? `<div class="stat">${escHtml(data.title.substring(0,45))}…</div>` : '';
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><b>${data.count}</b> segments</div>
+      <div class="stat"><b>${formatDuration(data.duration)}</b> durée</div>
+      ${title}
+      <div class="stat">${cleanAI ? '✨ <b>nettoyé IA</b>' : '🎤 <b>Whisper brut</b>'}</div>
+    `;
+
+    // Boutons DL
+    const dlRow = document.getElementById('dlRow');
+    dlRow.innerHTML = '';
+    if (document.getElementById('fmtSRT').checked) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-dl'; b.textContent = 'Télécharger .srt';
+      b.onclick = () => dlFile(_srt, 'sous-titres.srt');
+      dlRow.appendChild(b);
+    }
+    if (document.getElementById('fmtVTT').checked) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-dl btn-sec'; b.textContent = 'Télécharger .vtt';
+      b.onclick = () => dlFile(_vtt, 'sous-titres.vtt');
+      dlRow.appendChild(b);
+    }
+
+    renderPreview();
+    resultEl.classList.add('on');
+  } catch (e) {
+    errEl.textContent = `Erreur : ${e.message}`;
+    errEl.classList.add('on');
+  } finally {
+    btn.disabled = false;
+    prog.classList.remove('on');
+  }
+});
+</script>
+</body>
+</html>

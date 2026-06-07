@@ -142,8 +142,14 @@ async function supaGet(table, select, filter) {
   if (!SUPA_BASE || !key) return null;
   const url = `${SUPA_BASE}/rest/v1/${table}?select=${select || '*'}${filter ? `&${filter}` : ''}`;
   try {
-    const r = await fetch(url, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } });
-    return r.ok ? await r.json() : null;
+    const r = await fetch(url, {
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Range': '0-99999'  // récupère jusqu'à 100k lignes (déduplication complète)
+      }
+    });
+    return (r.ok || r.status === 206) ? await r.json() : null;
   } catch { return null; }
 }
 
@@ -160,9 +166,78 @@ async function supaInsert(table, rows) {
   } catch { return false; }
 }
 
+// Réserve atomiquement un email avant envoi — retourne true si nouveau, false si doublon
+// Garantit qu'aucun doublon n'est possible même en cas de run simultané CRON + BATCH
+async function supaReserve(email, nom, abonnes, source) {
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  if (!SUPA_BASE || !key) return true; // sans Supabase, on laisse passer (pas de protection possible)
+  try {
+    const r = await fetch(`${SUPA_BASE}/rest/v1/prospects_contacted`, {
+      method: 'POST',
+      headers: {
+        'apikey': key, 'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=ignore-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ email: email.toLowerCase(), nom, abonnes, source, date_contact: new Date().toISOString().split('T')[0] })
+    });
+    return r.status === 201; // 201 = nouveau, 200/409 = doublon ignoré
+  } catch { return false; }
+}
+
+// Keywords ciblés clippeurs
+const CLIPPER_KEYWORDS = [
+  "best of squeezie youtube","meilleurs moments amixem","clips gaming twitch france",
+  "highlights twitch fr youtube","best of streamer france","compilation gaming france youtube",
+  "best moments youtube france","clipper gaming france youtube","best of gotaga youtube",
+  "meilleurs moments twitch france","highlight reel france youtube","clips viraux tiktok france",
+  "best of zqsd youtube","meilleurs moments domingo youtube","clips foot france youtube",
+  "compilation sport france youtube","best of michou youtube","clips humor france youtube",
+  "best moments podcast france","highlights interview france youtube","best of norman youtube",
+  "clips reaction france youtube","meilleurs moments mcfly carlito","best of cyprien youtube",
+  "compilation vlog france youtube","best of natoo youtube","clips comedie france youtube",
+  "best moments gaming fr","clips tiktok creators france","compilation shorts france youtube"
+];
+
+// Email spécifique clippeurs
+async function sendClipperOutreach(ch, appUrl) {
+  const key = (process.env.BREVO_API_KEY || '').trim();
+  if (!key) return false;
+  const r = await fetch(`${BREVO_BASE}/smtp/email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': key },
+    body: JSON.stringify({
+      to: [{ email: ch.email, name: ch.nom }],
+      subject: `${ch.nom} — tu clippes encore à la main ?`,
+      sender: { name: 'Créatis', email: 'contact@creatis.app' },
+      htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;color:#111">
+        <a href="${appUrl}" style="display:block">
+          <img src="${appUrl}/images/email-banner.png" alt="Créatis — Clips Viraux" width="600" style="width:100%;display:block;border:0"/>
+        </a>
+        <div style="padding:32px">
+          <p style="margin-top:0">Bonjour,</p>
+          <p>J'ai vu tes clips (${ch.abonnesFormat} abonnés) — tu passes combien d'heures par semaine à découper, recadrer et sous-titrer tes vidéos ?</p>
+          <p>J'ai développé <strong>Clips Viraux</strong> dans <strong>Créatis</strong> : tu uploades une vidéo longue, l'IA détecte automatiquement les meilleurs moments et génère <strong>10 clips 9:16</strong> avec face tracking et captions burnées — en 30 secondes.</p>
+          <p style="color:#444;line-height:1.6">
+            🎯 Détection auto des moments les plus viraux<br>
+            ✂️ Recadrage 9:16 automatique + face tracking<br>
+            💬 Captions burnées prêtes à publier<br>
+            📲 TikTok · Instagram Reels · YouTube Shorts · Snapchat
+          </p>
+          <p>Fini le clipping à la main. 1 essai gratuit :</p>
+          <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer gratuitement →</a>
+          <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part. Pour ne plus être contacté : <a href="mailto:contact@creatis.app?subject=Désabonnement&body=Merci%20de%20me%20retirer%20de%20votre%20liste%20:%20${encodeURIComponent(ch.email)}" style="color:#aaa">se désabonner</a>.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="color:#aaa;font-size:12px;margin:0">Créatis · <a href="${appUrl}" style="color:#10b981">creatis.app</a></p>
+        </div>
+      </div>`
+    })
+  }).catch(() => ({ ok: false }));
+  return r.ok;
+}
+
 // ---- Brevo outreach ----
 async function sendOutreach(ch, appUrl) {
-  return false; // EMAILS DÉSACTIVÉS — arrêt suite plaintes harcèlement
   const key = (process.env.BREVO_API_KEY || '').trim();
   if (!key) return false;
 
@@ -171,24 +246,27 @@ async function sendOutreach(ch, appUrl) {
     headers: { 'Content-Type': 'application/json', 'api-key': key },
     body: JSON.stringify({
       to: [{ email: ch.email, name: ch.nom }],
-      subject: `${ch.nom} — une idée en vidéo YouTube prête à publier en 30s`,
+      subject: `${ch.nom} — une vidéo. dix Shorts. trente secondes.`,
       sender: { name: 'Créatis', email: 'contact@creatis.app' },
       htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;color:#111">
         <!-- Banner -->
         <a href="${appUrl}" style="display:block">
-          <img src="${appUrl}/images/email-banner.png" alt="Créatis — Ton script YouTube en 30 secondes" width="600" style="width:100%;display:block;border:0"/>
+          <img src="${appUrl}/images/email-banner.png" alt="Créatis — Clips Viraux" width="600" style="width:100%;display:block;border:0"/>
         </a>
         <!-- Corps -->
         <div style="padding:32px">
           <p style="margin-top:0">Bonjour,</p>
-          <p>J'ai vu ta chaîne${ch.niche ? ' ' + ch.niche : ''} (${ch.abonnesFormat} abonnés) — ta niche a un énorme potentiel en ce moment.</p>
-          <p>Je viens de lancer <strong>Créatis</strong> : en 30 secondes, il transforme une idée en vidéo YouTube prête à publier.</p>
-          <p style="color:#444">Titres CTR, script complet, miniature IA — tout d'un coup.</p>
-          <p>Gratuit à tester — 50 générations, sans carte bancaire :</p>
-          <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer Créatis →</a>
+          <p>J'ai vu ta chaîne${ch.niche ? ' ' + ch.niche : ''} (${ch.abonnesFormat} abonnés) — tu crées du contenu long, mais tu l'exploites sur toutes les plateformes ?</p>
+          <p>J'ai développé <strong>Clips Viraux</strong> dans <strong>Créatis</strong> : tu uploades une vidéo, l'IA détecte les meilleurs moments et génère automatiquement <strong>10 clips 9:16</strong> avec face tracking et captions burnées.</p>
+          <p style="color:#444;line-height:1.6">
+            🚀 Détection auto des moments les plus forts<br>
+            ✂️ Découpage 9:16 avec tracking de visage<br>
+            💬 Captions automatiques prêts à publier<br>
+            📲 TikTok · Instagram Reels · YouTube Shorts · Snapchat
+          </p>
+          <p>1 essai gratuit — sans carte bancaire :</p>
+          <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer Clips Viraux →</a>
           <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part. Pour ne plus être contacté : <a href="mailto:contact@creatis.app?subject=Désabonnement&body=Merci%20de%20me%20retirer%20de%20votre%20liste%20:%20${encodeURIComponent(ch.email)}" style="color:#aaa">se désabonner</a>.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="color:#444;font-size:13px;margin:0"><strong>PS :</strong> Si tu connais d'autres créateurs YouTube, notre programme affilié verse <strong>30% récurrent à vie</strong> (5,70€/mois par abonné Pro). Ton lien sur <a href="${appUrl}/affiliation" style="color:#10b981">${appUrl}/affiliation</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p style="color:#aaa;font-size:12px;margin:0">Créatis · <a href="${appUrl}" style="color:#10b981">creatis.app</a></p>
         </div>
@@ -408,11 +486,46 @@ module.exports = async (req, res) => {
   // ACTION : CRON — prospection quotidienne automatique (GET)
   // =====================================================
   if (req.method === 'GET' || body.action === 'cron') {
-    // Vérification secret
     const cronSecret = process.env.CRON_SECRET || '';
     const authHeader = req.headers['authorization'] || '';
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Cron clipper (14h UTC) — déclenché via ?type=clipper
+    if (req.query?.type === 'clipper' || body.action === 'clipper_cron') {
+      const existingC = await supaGet('prospects_contacted', 'email');
+      const blacklistC = await getBlacklist();
+      const alreadySentC = new Set([
+        ...(existingC || []).map(r => r.email?.toLowerCase()).filter(Boolean),
+        ...blacklistC
+      ]);
+      const foundC = [];
+      for (let i = 0; i < CLIPPER_KEYWORDS.length; i += 5) {
+        const batch = CLIPPER_KEYWORDS.slice(i, i + 5);
+        const results = await Promise.all(batch.map(kw => searchKeyword(kw, 50, 1000, 500000)));
+        for (const channels of results) {
+          for (const ch of channels) {
+            if (ch.email && !alreadySentC.has(ch.email.toLowerCase())) {
+              alreadySentC.add(ch.email.toLowerCase());
+              foundC.push(ch);
+            }
+          }
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      let sentC = 0, errorsC = 0;
+      for (const ch of foundC) {
+        if (!ch.email || sentC >= 50) break;
+        const reserved = await supaReserve(ch.email, ch.nom, ch.abonnes, 'clipper_cron');
+        if (!reserved) continue;
+        try {
+          const ok = await sendClipperOutreach(ch, APP_URL);
+          if (ok) { sentC++; } else { errorsC++; }
+        } catch { errorsC++; }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return res.status(200).json({ ok: true, found: foundC.length, sent: sentC, errors: errorsC, type: 'clipper' });
     }
 
     const now = new Date();
@@ -443,24 +556,23 @@ module.exports = async (req, res) => {
 
     const DAILY_LIMIT = 50;
     let sent = 0, errors = 0;
-    const newContacts = [];
     for (const ch of found) {
       if (!ch.email) continue;
       if (sent >= DAILY_LIMIT) break;
+      // Réservation atomique — si doublon (autre process déjà passé), on skip
+      const reserved = await supaReserve(ch.email, ch.nom, ch.abonnes, 'cron');
+      if (!reserved) continue;
       try {
         const ok = await sendOutreach(ch, APP_URL);
-        if (ok) {
-          sent++;
-          newContacts.push({ email: ch.email.toLowerCase(), nom: ch.nom, abonnes: ch.abonnes, source: 'cron', date_contact: now.toISOString().split('T')[0] });
-        } else { errors++; }
+        if (ok) { sent++; } else { errors++; }
       } catch { errors++; }
       await new Promise(r => setTimeout(r, 50));
     }
 
-    if (newContacts.length > 0) await supaInsert('prospects_contacted', newContacts);
-
     return res.status(200).json({ ok: true, date: now.toISOString(), keywordSet: baseIndex, found: found.length, sent, errors });
   }
+
+
 
   // =====================================================
   // ACTION : BATCH — prospection manuelle (POST par défaut)
@@ -480,9 +592,18 @@ module.exports = async (req, res) => {
 
   if (!keywords.length) return res.status(400).json({ error: 'keywords requis' });
 
-  const sentSet = new Set(alreadySent.map(e => e.toLowerCase()));
+  // Charger les emails déjà contactés depuis Supabase + blacklist + body
+  const existing = await supaGet('prospects_contacted', 'email');
+  const blacklist = await getBlacklist();
+  const sentSet = new Set([
+    ...(existing || []).map(r => r.email?.toLowerCase()).filter(Boolean),
+    ...blacklist,
+    ...alreadySent.map(e => e.toLowerCase())
+  ]);
+
   const found = [];
   let sent = 0, errors = 0;
+  const now = new Date();
 
   for (let i = 0; i < keywords.length; i += 5) {
     const batch = keywords.slice(i, i + 5);
@@ -503,6 +624,9 @@ module.exports = async (req, res) => {
 
     for (const ch of found) {
       if (!ch.email) continue;
+      // Réservation atomique — si doublon (autre process déjà passé), on skip
+      const reserved = await supaReserve(ch.email, ch.nom, ch.abonnes, 'batch');
+      if (!reserved) continue;
       try {
         let ok = false;
         if (useLemlist && lemlistKey && lemlistCampaignId) {
@@ -510,7 +634,7 @@ module.exports = async (req, res) => {
         } else {
           ok = await sendOutreach(ch, APP_URL);
         }
-        if (ok) sent++; else errors++;
+        if (ok) { sent++; } else { errors++; }
       } catch { errors++; }
       await new Promise(r => setTimeout(r, 150));
     }

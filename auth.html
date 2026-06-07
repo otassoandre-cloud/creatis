@@ -465,6 +465,9 @@
   const urlParams = new URLSearchParams(window.location.search);
   const planCible = urlParams.get('plan');
   let modeConnexion = false;
+  if (urlParams.get('ref') === 'lp-clips') {
+    document.getElementById('demo-block').style.display = 'none';
+  }
 
   document.addEventListener('DOMContentLoaded', async () => {
     // Flow reset password (lien Supabase avec type=recovery dans le hash)

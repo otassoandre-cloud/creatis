@@ -169,6 +169,14 @@
     .clip-tags { display: flex; flex-wrap: wrap; gap: 4px; }
     .clip-tag { font-size: 10px; font-weight: 600; color: var(--texte-muted); background: rgba(255,255,255,0.05); border: 1px solid var(--bordure); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
 
+    /* Clips verrouillés (Pro) */
+    .clip-card.locked { opacity: 0.5; cursor: default; }
+    .clip-card.locked:hover { border-color: var(--bordure); transform: none; box-shadow: none; }
+    .clip-lock-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 4; flex-direction: column; gap: 6px; }
+    .clip-lock-icon { font-size: 26px; }
+    .clip-lock-pro { font-size: 10px; font-weight: 800; color: #10b981; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); border-radius: 20px; padding: 3px 10px; letter-spacing: .08em; }
+
+
     /* ─── CLIP EDITOR MODAL ─── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(8px); }
     .modal-overlay.open { display: flex; }
@@ -184,7 +192,7 @@
     .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
 
     /* Live subtitle overlay */
-    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; }
+    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; line-height: 1.25; max-height: 2.6em; overflow: hidden; }
 
     /* Play button overlay */
     .modal-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; transition: opacity .2s; }
@@ -486,6 +494,12 @@
       <button onclick="V2.restart()" class="btn-restart">↩ Nouvelle vidéo</button>
     </div>
 
+    <!-- Bannière gratuit : watermark + clips limités -->
+    <div id="studio-gratuit-banner" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--texte-doux);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span>🔒 Plan gratuit — 3 clips exportables · filigrane Créatis sur les vidéos</span>
+      <button onclick="V2.showUpgradeModal()" style="background:var(--vert);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Passer au Pro →</button>
+    </div>
+
     <!-- Clips grid -->
     <div class="section-label" style="margin-bottom:16px">Clique sur un clip pour le personnaliser et télécharger</div>
     <div class="clips-grid" id="clips-grid"></div>
@@ -697,6 +711,10 @@ const V2 = (() => {
 
   // ── State ──
   let _file = null;           // File object (uploaded video)
+  let _clipSegmentIds = {};   // key → Railway video_id (segment pré-uploadé par clip)
+  let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
+  let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
+  const FREE_CLIP_LIMIT = 3; // clips exportables en gratuit
   let _ytUrl = '';            // YouTube URL (if any)
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
@@ -709,12 +727,17 @@ const V2 = (() => {
   let _currentState = 'upload';
 
   // ── Init ──
-  function init() {
-    // Auth check
+  async function init() {
+    // Auth check + récupération plan (Auth.init() requis pour restaurer la session Supabase dans l'iframe)
     if (typeof Auth !== 'undefined') {
+      await Auth.init().catch(() => {});
       Auth.getUser().then(user => {
         const el = document.getElementById('nav-user');
         if (el && user) el.textContent = user.email?.split('@')[0] || user.nom || '';
+      }).catch(() => {});
+      Auth.getPlanDistant().then(data => {
+        if (data?.plan) _userPlan = data.plan;
+        if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
       }).catch(() => {});
     }
     // Watermark opacity display
@@ -760,6 +783,7 @@ const V2 = (() => {
   function setFile(f) {
     _file = f;
     _ytUrl = '';
+    _clipSegmentIds = {};
     const zone = document.getElementById('drop-zone');
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
@@ -768,6 +792,49 @@ const V2 = (() => {
     const nameEl = document.getElementById('v1-upload-name');
     if (nameEl) { nameEl.textContent = f.name.replace(/\.[^.]+$/, ''); nameEl.style.color = 'var(--texte)'; }
 
+    // Précharger ffmpeg.wasm en arrière-plan dès la sélection du fichier
+    // → quand l'user clique "Créer", ffmpeg est déjà prêt, extraction commence immédiatement
+    loadFFmpeg().catch(() => {});
+  }
+
+  // Après transcription : découpe chaque segment et l'uploade en arrière-plan
+  // → export quasi-instantané quand l'utilisateur clique
+  async function _precacheSegmentsAsync(clips) {
+    if (!_file || !clips?.length) return;
+    try {
+      const authH = {};
+      if (typeof Auth !== 'undefined' && Auth.getToken()) authH['Authorization'] = `Bearer ${Auth.getToken()}`;
+      const tokRes = await fetch('/api/repurpose', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authH }, body: JSON.stringify({ mode: 'upload-token' }) });
+      const tokData = await tokRes.json();
+      if (!tokData.ok) return;
+      for (const clip of clips) {
+        const s = clip.start_time ?? clip.start ?? 0;
+        const e = clip.end_time ?? clip.end ?? (s + 30);
+        const key = `${Math.round(s)}_${Math.round(e)}`;
+        if (_clipSegmentIds[key]) continue;
+        try {
+          const blob = await cutClipFFmpeg(_file, s, e);
+          const vid = await _uploadSegmentBlob(blob, tokData);
+          if (vid) { _clipSegmentIds[key] = vid; console.log('[precache] ✅', key, vid); }
+        } catch(ex) { console.warn('[precache]', key, ex.message); }
+      }
+    } catch {}
+  }
+
+  async function _uploadSegmentBlob(blob, tokData) {
+    return new Promise((resolve) => {
+      const fd = new FormData();
+      fd.append('file', blob, 'source.mp4');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${tokData.railway_url}/upload-video?token=${encodeURIComponent(tokData.token)}`);
+      xhr.timeout = 300000;
+      xhr.onload = () => {
+        try { const d = JSON.parse(xhr.responseText); resolve(d.video_id || null); }
+        catch { resolve(null); }
+      };
+      xhr.onerror = xhr.ontimeout = () => resolve(null);
+      xhr.send(fd);
+    });
   }
 
   function onUrlInput(val) {} // YouTube URL supprimé
@@ -843,6 +910,18 @@ const V2 = (() => {
   // ── Analyze pipeline ──
   async function startAnalyze() {
     if (!_file && !_ytUrl) return;
+    // Vérification serveur au moment du clic (pas au chargement — timing)
+    if (typeof Auth !== 'undefined') {
+      try {
+        const data = await Auth.getPlanDistant();
+        if (data?.plan) _userPlan = data.plan;
+        if (data?.repurpose_count !== undefined) _repurposeCount = data.repurpose_count;
+      } catch {}
+    }
+    if (_userPlan === 'gratuit' && _repurposeCount > 0) {
+      showUpgradeModal();
+      return;
+    }
     setState('analyze');
 
     const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
@@ -871,7 +950,10 @@ const V2 = (() => {
           body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
         });
         const data = await res.json();
-        if (!data.ok) throw new Error(data.error || 'Erreur analyse YouTube');
+        if (!data.ok) {
+          if (data.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
+          throw new Error(data.error || 'Erreur analyse YouTube');
+        }
         setBar(100); setStep(5);
         _clips = data.result.clips || [];
         _segments = data.result.segments || [];
@@ -881,15 +963,17 @@ const V2 = (() => {
         // Upload flow
         setStep(1); setBar(3);
         document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
-        setMsg('Chargement ffmpeg.wasm (~30 MB)…');
-        await loadFFmpeg();
+        setMsg('Préparation… ⚡');
+        await loadFFmpeg(); // déjà préchargé si l'user a attendu après sélection
         setBar(10); setStep(2);
 
         // Extract audio
-        setMsg(`Extraction audio de ${(_file.size / 1e9).toFixed(1)} GB…`);
+        const fileSizeMB = (_file.size / 1e6).toFixed(0);
+        setMsg(`Extraction audio (${fileSizeMB} MB) — ne quitte pas la page ⏳`);
         const audioData = await extractAudio(_file, (pct, msg) => {
           setBar(10 + Math.round(pct * 0.3));
-          if (msg) setMsg(msg);
+          const pctDisplay = Math.round(Math.min(pct, 100));
+          setMsg(`Extraction audio… ${pctDisplay}% — encore quelques secondes ⏳`);
         });
         setBar(40); setStep(3);
 
@@ -947,10 +1031,14 @@ const V2 = (() => {
           title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: 10
         }) });
         const clipsData = await clipsRes.json();
-        if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+        if (!clipsData.ok) {
+          if (clipsData.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
+          throw new Error(clipsData.error || 'Erreur identification clips');
+        }
         _clips = clipsData.result.clips || [];
         setBar(100); setStep(5);
         renderStudio(_file.name.replace(/\.[^.]+$/, ''));
+        _precacheSegmentsAsync(_clips).catch(() => {});
       }
 
     } catch(err) {
@@ -986,6 +1074,8 @@ const V2 = (() => {
   function renderStudio(title) {
     document.getElementById('studio-title').textContent = `${_clips.length} clips viraux trouvés`;
     document.getElementById('studio-meta').textContent = `"${title.substring(0, 60)}"`;
+    const banner = document.getElementById('studio-gratuit-banner');
+    if (banner) banner.style.display = _userPlan === 'gratuit' ? 'flex' : 'none';
     renderClipsGrid();
     updateExportBtn();
     setState('studio');
@@ -1061,6 +1151,28 @@ const V2 = (() => {
       const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
       const tags = autoTags(clip);
       const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
+      const locked = _userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT;
+
+      if (locked) return `
+      <div class="clip-card locked" id="clip-card-${i}" onclick="V2.showUpgradeModal()" style="cursor:pointer;">
+        <div class="clip-thumb-wrap" style="filter:blur(2px);opacity:0.5;">
+          <div class="clip-thumb-empty">🎬</div>
+          <div class="clip-dur-badge">${fmt(clip.start_time ?? clip.start)}&nbsp;·&nbsp;${dur}s</div>
+        </div>
+        <div class="clip-bottom" style="filter:blur(2px);opacity:0.5;">
+          <div class="clip-score-row"><span class="clip-score-num" style="color:${sc}">${clip.score}</span></div>
+          <div class="clip-title">${escHtml(clip.title || clip.hook || `Moment ${i+1}`)}</div>
+          <div class="clip-tags">${tags.map(t=>`<span class="clip-tag">${t}</span>`).join('')}</div>
+        </div>
+        <div class="clip-lock-badge">
+          <div style="background:rgba(0,0,0,0.85);border:1px solid rgba(16,185,129,0.4);border-radius:12px;padding:10px 16px;text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">🔒</div>
+            <div style="font-size:11px;font-weight:800;color:#10b981;letter-spacing:.08em;">PRO</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">Débloque ce clip</div>
+          </div>
+        </div>
+      </div>`;
+
       return `
       <div class="clip-card" id="clip-card-${i}" onclick="V2.showModal(${i})">
         <div class="clip-thumb-wrap" id="clip-thumb-${i}">
@@ -1107,8 +1219,8 @@ const V2 = (() => {
       hookText: globalOpts.hookText || '',
       hookColor: globalOpts.hookColor || '#ffffff',
       hookPos: globalOpts.hookPos || 'top',
-      subY: 82,
-      hookY: 10,
+      subY: 82, subX: 50,
+      hookY: 10, hookX: 50,
       reframeMode: 'center',
       wmEnabled: globalOpts.wmEnabled || false,
       wmPos: globalOpts.wmPos || 'tr',
@@ -1117,7 +1229,18 @@ const V2 = (() => {
     };
   }
 
+  function showUpgradeModal() {
+    // Si dans iframe app.html → déclenche la modale upgrade du parent
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'show_upgrade' }, '*');
+    } else {
+      window.location.href = '/paiement.html?plan=pro';
+    }
+  }
+  function closeUpgradeModal() {}
+
   function showModal(i) {
+    if (_userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT) { showUpgradeModal(); return; }
     const clip = _clips[i];
     if (!clip) return;
     _modalIdx = i;
@@ -1197,8 +1320,8 @@ const V2 = (() => {
       const wrap = document.getElementById('modal-player-wrap');
       const subOv = document.getElementById('modal-sub-overlay');
       const hookOv = document.getElementById('modal-hook-overlay');
-      if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY');
-      if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY');
+      if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
+      if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
       const subHandle = document.getElementById('modal-sub-handle');
       const hookHandle = document.getElementById('modal-hook-handle');
       if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
@@ -1259,7 +1382,7 @@ const V2 = (() => {
           _renderSubText(subEl, rawText, opts);
           if (segKey) highlightSeg(segKey);
         }
-        _applySubPosition(subEl, opts.subY ?? 82);
+        _applySubPosition(subEl, opts.subX ?? 50, opts.subY ?? 82);
       }
     }
 
@@ -1294,7 +1417,7 @@ const V2 = (() => {
           hookEl.style.background = `rgba(${_hr2},${_hg2},${_hb2},0.93)`;
         }
         hookEl.textContent = hookTxt;
-        _applySubPosition(hookEl, opts.hookY ?? 10);
+        _applySubPosition(hookEl, opts.hookX ?? 50, opts.hookY ?? 10);
       } else {
         hookEl.style.display = 'none';
       }
@@ -1369,8 +1492,8 @@ const V2 = (() => {
     const bp = `${Math.round(4*sc)}px ${Math.round(12*sc)}px`;
 
     el.innerHTML = '';
-    // Max 2 lignes: 7 mots
-    const wArr = text.split(' ').filter(Boolean); if (wArr.length > 7) text = wArr.slice(0, 7).join(' ');
+    // Tronque au max 5 mots (le CSS max-height: 2.6em assure les 2 lignes dans le preview)
+    { const wArr = text.split(' ').filter(Boolean); if (wArr.length > 5) text = wArr.slice(0, 5).join(' '); }
 
     switch(style) {
       case 'bold':
@@ -1513,28 +1636,32 @@ const V2 = (() => {
     el.title = 'Glisser pour déplacer';
   }
 
-  function _applySubPosition(el, yPct) {
+  function _applySubPosition(el, xPct, yPct) {
     el.style.top = `${yPct}%`;
     el.style.bottom = 'auto';
+    el.style.left = `${xPct}%`;
+    el.style.transform = 'translateX(-50%)';
   }
 
-  function _setupDraggable(el, wrap, yKey) {
-    // Bloquer TOUTE propagation de clic — empêche le play/pause du wrapper
+  function _setupDraggable(el, wrap, yKey, xKey) {
     el.addEventListener('click', e => e.stopPropagation());
 
-    const startDrag = (startY) => {
+    const startDrag = (startX, startY) => {
       _isDragging = false;
       const wrapRect = wrap.getBoundingClientRect();
       const curY = _clipSettings[_modalIdx]?.[yKey] ?? (yKey === 'subY' ? 82 : 10);
+      const curX = _clipSettings[_modalIdx]?.[xKey] ?? 50;
       let moved = false;
 
-      const onMove = (clientY) => {
+      const onMove = (clientX, clientY) => {
         moved = true;
         _isDragging = true;
-        const dy = (clientY - startY) / wrapRect.height * 100;
-        const newY = Math.max(2, Math.min(92, curY + dy));
+        const newY = Math.max(2, Math.min(95, curY + (clientY - startY) / wrapRect.height * 100));
+        const newX = Math.max(5, Math.min(95, curX + (clientX - startX) / wrapRect.width * 100));
         if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
         _clipSettings[_modalIdx][yKey] = newY;
+        _clipSettings[_modalIdx][xKey] = newX;
+        _applySubPosition(el, newX, newY);
       };
       const onEnd = () => {
         document.removeEventListener('mousemove', onMouseMove);
@@ -1545,9 +1672,9 @@ const V2 = (() => {
         setTimeout(() => { _isDragging = false; }, 150);
       };
 
-      const onMouseMove = ev => onMove(ev.clientY);
+      const onMouseMove = ev => onMove(ev.clientX, ev.clientY);
       const onMouseUp = () => onEnd();
-      const onTouchMove = ev => { ev.preventDefault(); onMove(ev.touches[0].clientY); };
+      const onTouchMove = ev => { ev.preventDefault(); onMove(ev.touches[0].clientX, ev.touches[0].clientY); };
       const onTouchEnd = () => onEnd();
 
       document.addEventListener('mousemove', onMouseMove);
@@ -1558,15 +1685,12 @@ const V2 = (() => {
 
     el.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
-      e.stopPropagation();
-      e.preventDefault();
-      startDrag(e.clientY);
+      e.stopPropagation(); e.preventDefault();
+      startDrag(e.clientX, e.clientY);
     });
-
     el.addEventListener('touchstart', e => {
-      e.stopPropagation();
-      e.preventDefault();
-      startDrag(e.touches[0].clientY);
+      e.stopPropagation(); e.preventDefault();
+      startDrag(e.touches[0].clientX, e.touches[0].clientY);
     }, { passive: false });
   }
 
@@ -1697,8 +1821,8 @@ const V2 = (() => {
       wmEnabled: prev.wmEnabled || false,
       wmPos: prev.wmPos || 'tr',
       wmOpacity: prev.wmOpacity ?? 0.8,
-      subY: prev.subY ?? 82,
-      hookY: prev.hookY ?? 10,
+      subY: prev.subY ?? 82, subX: prev.subX ?? 50,
+      hookY: prev.hookY ?? 10, hookX: prev.hookX ?? 50,
       reframeMode: document.getElementById('modal-face-track')?.checked ? 'face' : 'center',
       segEdits: prev.segEdits || {},
     };
@@ -2169,15 +2293,18 @@ const V2 = (() => {
     if (onMsg) onMsg('Découpage…');
     if (onPct) onPct(5);
 
-    // Sur iOS : skip FFmpeg.wasm (trop lent/instable) → envoyer fichier brut + timestamps à Railway
-    // Sur desktop : couper localement d'abord (plus rapide)
-    const useServerSideCut = _isIOS() && _file;
-    let segmentBlob, clipStartParam = -1, clipEndParam = -1;
-    if (_file && !useServerSideCut) {
+    // Segment pré-uploadé ? → pas de découpage local ni d'upload, juste les timestamps
+    const _segKey = `${Math.round(start)}_${Math.round(end)}`;
+    const usePreUpload = !!_clipSegmentIds[_segKey];
+    const useServerSideCut = !usePreUpload && _isIOS() && _file;
+    let segmentBlob = null, clipStartParam = -1, clipEndParam = -1;
+    if (usePreUpload) {
+      // Segment déjà sur Railway — uniquement le traitement (~5-10s)
+      if (onMsg) onMsg('Traitement Railway…');
+    } else if (_file && !useServerSideCut) {
       if (onMsg) onMsg('Découpage local…');
       segmentBlob = await cutClipFFmpeg(_file, start, end);
     } else if (_file && useServerSideCut) {
-      // iOS : envoyer le fichier original, Railway coupe côté serveur
       segmentBlob = _file;
       clipStartParam = start;
       clipEndParam = end;
@@ -2196,7 +2323,11 @@ const V2 = (() => {
     if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
 
     const form = new FormData();
-    form.append('file', segmentBlob, 'segment.mp4');
+    if (usePreUpload) {
+      form.append('video_id', _clipSegmentIds[_segKey]);
+    } else {
+      form.append('file', segmentBlob, 'segment.mp4');
+    }
     form.append('segments', JSON.stringify(patchedSegments));
     form.append('style', opts.style || 'bold');
     form.append('font_size', String(opts.fontSize || 55));
@@ -2204,12 +2335,14 @@ const V2 = (() => {
     form.append('color_text', opts.colorText || '#ffffff');
     form.append('color_bg',   opts.colorBg   || '#000000');
     form.append('sub_y',      String(opts.subY ?? 82));
+    form.append('sub_x',      String(opts.subX ?? 50));
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText  || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
     form.append('hook_bg',    opts.hookBg    || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
     form.append('reframe_mode', opts.reframeMode || 'center');
+    form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
     // Railway renvoie le fichier vidéo directement (blob) — plus de temp URL
@@ -2304,16 +2437,8 @@ const V2 = (() => {
     try {
       try { await ffmpeg.deleteFile('/seg.mp4'); } catch {}
       const dur = String(endSec - startSec);
-      const needsScale = file.size > 40 * 1024 * 1024; // > 40MB → re-encode 1080p
-      if (needsScale) {
-        // Re-encoder à 1080p max — réduit ~10-20x la taille avant upload Railway
-        await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', dur,
-          '-vf', 'scale=1920:1080:flags=fast_bilinear:force_original_aspect_ratio=decrease',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
-          '-c:a', 'aac', '-b:a', '128k', '/seg.mp4']);
-      } else {
-        await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', dur, '-c', 'copy', '/seg.mp4']);
-      }
+      // Stream copy systématique — instantané quelle que soit la taille
+      await ffmpeg.exec(['-ss', String(startSec), '-i', `/input/${file.name}`, '-t', dur, '-c', 'copy', '/seg.mp4']);
       const data = await ffmpeg.readFile('/seg.mp4');
       await ffmpeg.deleteFile('/seg.mp4');
       return new Blob([data], { type: 'video/mp4' });
@@ -2731,7 +2856,7 @@ const V2 = (() => {
   }
 
   function restart() {
-    _file = null; _ytUrl = ''; _segments = []; _clips = [];
+    _file = null; _clipSegmentIds = {}; _ytUrl = ''; _segments = []; _clips = [];
     _selectedIds.clear(); _watermarkFile = null; _clipSettings = {};
     const fi = document.getElementById('file-input'); if (fi) fi.value = '';
     const fc = document.getElementById('file-input-change'); if (fc) fc.value = '';
@@ -2771,10 +2896,11 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);
 </script>
+
 </body>
 </html>

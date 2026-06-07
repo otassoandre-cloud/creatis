@@ -75,8 +75,8 @@ const CONFIG = {
       prix: 0,
       generations: 1, // 1 génération gratuite pour découvrir
       miniatures: 5,
-      agents: ['clips-viraux', 'youtube-complet', 'idees-videos', 'chat-libre'],
-      description: '10 générations/mois · 5 miniatures pour tester',
+      agents: ['clips-viraux'],
+      description: '1 essai gratuit · Clips viraux IA',
       stripeId: null
     },
     pro: {
