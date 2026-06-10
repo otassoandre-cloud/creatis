@@ -93,10 +93,10 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Crons Vercel envoient GET — autoriser GET uniquement pour email_cron
+  // Crons Vercel envoient GET — autoriser GET pour les actions cron
   const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
-  if (req.method === 'GET' && actionFromQuery === 'email_cron') {
-    req.body = { action: 'email_cron' };
+  if (req.method === 'GET' && (actionFromQuery === 'email_cron' || actionFromQuery === 'daily_report')) {
+    req.body = { action: actionFromQuery };
   } else if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
@@ -338,6 +338,8 @@ module.exports = async (req, res) => {
         const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
         if (!BREVO_KEY) return res.status(200).json({ ok: false, note: 'BREVO_API_KEY manquante' });
 
+        const TEST_EMAILS = ['otasso.andre@gmail.com', 'flemonosekai@gmail.com', 'flemonosekai2@gmail.com', 'flemonosekai+test1@gmail.com', 'flemonosekai+stripe@gmail.com'];
+
         const now = new Date();
         const yd = new Date(now); yd.setDate(yd.getDate() - 1);
         const hier      = yd.toISOString().slice(0, 10);
@@ -346,16 +348,17 @@ module.exports = async (req, res) => {
 
         const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier] = await Promise.all([
           supabase(`/users?select=id,email,plan&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
-          supabase(`/users?select=id`, 'GET').catch(() => []),
-          supabase(`/users?select=id&plan=neq.gratuit`, 'GET').catch(() => []),
+          supabase(`/users?select=id,email`, 'GET').catch(() => []),
+          supabase(`/users?select=id,email&plan=neq.gratuit`, 'GET').catch(() => []),
           supabase(`/generations?select=agent_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           supabase(`/generations?select=id&agent_id=eq.clips-viraux&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => [])
         ]);
 
-        const nbInscrits = usersHier?.length || 0;
-        const nbTotal    = usersTotal?.length || 0;
-        const nbPro      = usersPro?.length || 0;
+        const usersHierReels = (usersHier || []).filter(u => !TEST_EMAILS.includes(u.email));
+        const nbInscrits = usersHierReels.length;
+        const nbTotal    = (usersTotal || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
+        const nbPro      = (usersPro || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
         const nbGens     = gensHier?.length || 0;
         const nbClips    = clipsHier?.length || 0;
         const nbActifs   = new Set((actifsHier || []).map(g => g.user_id)).size;
@@ -363,7 +366,7 @@ module.exports = async (req, res) => {
         const agentCount = {};
         (gensHier || []).forEach(g => { agentCount[g.agent_id] = (agentCount[g.agent_id] || 0) + 1; });
         const topAgents = Object.entries(agentCount).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id,n]) => `${n}× ${id}`).join('<br>') || '—';
-        const inscritsList = (usersHier || []).slice(0,10).map(u => `• ${u.email} (${u.plan})`).join('<br>') || '— aucun';
+        const inscritsList = usersHierReels.slice(0,10).map(u => `• ${u.email} (${u.plan})`).join('<br>') || '— aucun';
 
         const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#e5e7eb;padding:32px;border-radius:12px">
   <div style="margin-bottom:4px"><span style="font-size:22px;font-weight:800;color:#fff">Créatis<span style="color:#10b981">.</span></span>&nbsp;<span style="font-size:11px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);padding:2px 8px;border-radius:20px">RAPPORT ${hier}</span></div>

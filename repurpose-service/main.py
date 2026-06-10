@@ -646,7 +646,8 @@ def _cut_subclip(source: str, start: float, end: float, out: str) -> None:
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", source,
         "-ss", f"{start:.3f}", "-to", f"{end:.3f}",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+        "-threads", "2",
         "-c:a", "aac", "-b:a", "128k",
         out,
     ]
