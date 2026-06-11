@@ -715,8 +715,11 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
                 import cv2
                 cap = cv2.VideoCapture(in_path)
                 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-                face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-                sample_frames = [int(total_frames * i / 4) for i in range(1, 4)]
+                cascades = [
+                    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
+                    cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
+                ]
+                sample_frames = [int(total_frames * i / 8) for i in range(1, 8)]
                 centers = []
                 for fi in sample_frames:
                     cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
@@ -728,7 +731,12 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
                     if scale < 1.0:
                         frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
+                    cv2.equalizeHist(gray, gray)
+                    faces = []
+                    for cas in cascades:
+                        faces = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
+                        if len(faces) > 0:
+                            break
                     if len(faces) > 0:
                         fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
                         centers.append(int((fx + fw // 2) / scale))
@@ -811,10 +819,13 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
     src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.release()
 
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    cascades = [
+        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
+        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
+    ]
 
-    # ── 1. Détecter 2 visages stables sur 10 frames ──
-    sample_count = 10
+    # ── 1. Détecter 2 visages stables sur 15 frames ──
+    sample_count = 15
     face_A_samples, face_B_samples = [], []
 
     cap = cv2.VideoCapture(in_path)
@@ -828,7 +839,12 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
         scale = min(1.0, 640 / w)
         small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1.0 else frame
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
+        cv2.equalizeHist(gray, gray)
+        faces = []
+        for cas in cascades:
+            faces = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
+            if len(faces) >= 2:
+                break
         if len(faces) >= 2:
             sorted_faces = sorted(faces, key=lambda f: f[0])
             fa = sorted_faces[0]
@@ -838,7 +854,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
             face_B_samples.append((int((fb[0]+fb[2]//2)*inv), int((fb[1]+fb[3]//2)*inv), int(fb[2]*inv), int(fb[3]*inv)))
     cap.release()
 
-    if len(face_A_samples) < 3:
+    if len(face_A_samples) < 2:
         logger.info("[split] < 2 visages stables — fallback face tracking")
         _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
         return
