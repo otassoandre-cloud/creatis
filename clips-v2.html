@@ -1211,6 +1211,7 @@ const V2 = (() => {
   let _clipSettings = {};
   let _subRaf = null;
   let _modalVideoUrl = null;
+  let _exportPreviewUrl = null;
   let _lastSegKey = null;
   let _isDragging = false;
 
@@ -1251,6 +1252,13 @@ const V2 = (() => {
     if (_userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT) { showUpgradeModal(); return; }
     const clip = _clips[i];
     if (!clip) return;
+    // Reset preview précédent si on change de clip
+    if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); _exportPreviewUrl = null; }
+    const prevBadge = document.getElementById('preview-9-16-badge');
+    if (prevBadge) prevBadge.remove();
+    const mvr = document.getElementById('modal-video');
+    if (mvr) mvr.style.objectFit = 'cover';
+    _resetModalBtn(document.getElementById('modal-dl-btn'));
     _modalIdx = i;
     const sc = scoreColor(clip.score);
     const start = clip.start_time ?? clip.start;
@@ -1863,6 +1871,11 @@ const V2 = (() => {
 
   function closeModal() {
     stopModalVideo();
+    if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); _exportPreviewUrl = null; }
+    const badge = document.getElementById('preview-9-16-badge');
+    if (badge) badge.remove();
+    const mv = document.getElementById('modal-video');
+    if (mv) mv.style.objectFit = 'cover';
     // Fermer le panneau transcription si ouvert
     if (_transcriptOpen) {
       _transcriptOpen = false;
@@ -2021,14 +2034,47 @@ const V2 = (() => {
         if (mobBtn) { mobBtn.disabled = false; mobBtn.innerHTML = '📲'; mobBtn.onclick = () => V2._iosSharePending(); }
       } else {
         const objUrl = URL.createObjectURL(result.blob);
-        const a = document.createElement('a');
-        a.href = objUrl; a.download = result.filename;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
         logClipExport(1);
-        if (status) status.textContent = '✅ Téléchargé !';
-        toast('✅ Clip téléchargé !', 'succes', 3000);
-        _resetModalBtn(btn);
+
+        // Afficher l'aperçu 9:16 dans le lecteur avant téléchargement
+        if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); }
+        _exportPreviewUrl = objUrl;
+        const modalVideo = document.getElementById('modal-video');
+        const modalPh = document.getElementById('modal-player-ph');
+        if (modalVideo) {
+          modalVideo.src = objUrl;
+          modalVideo.style.objectFit = 'contain';
+          modalVideo.style.display = 'block';
+          if (modalPh) modalPh.style.display = 'none';
+          modalVideo.load();
+          modalVideo.play().catch(() => {});
+        }
+        const wrap = document.getElementById('modal-player-wrap');
+        if (wrap && !document.getElementById('preview-9-16-badge')) {
+          const badge = document.createElement('div');
+          badge.id = 'preview-9-16-badge';
+          badge.style.cssText = 'position:absolute;top:8px;left:8px;background:#10b981;color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:5px;z-index:10;letter-spacing:0.06em;pointer-events:none';
+          badge.textContent = 'APERÇU 9:16';
+          wrap.appendChild(badge);
+        }
+        if (status) status.textContent = '✅ Aperçu prêt — clique pour télécharger';
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ⬇ Télécharger ce clip';
+          btn.onclick = () => {
+            const a = document.createElement('a');
+            a.href = objUrl; a.download = result.filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => { URL.revokeObjectURL(objUrl); _exportPreviewUrl = null; }, 5000);
+            if (status) status.textContent = '✅ Téléchargé !';
+            toast('✅ Clip téléchargé !', 'succes', 3000);
+            _resetModalBtn(btn);
+            _resetMobBtn();
+            const badge = document.getElementById('preview-9-16-badge');
+            if (badge) badge.remove();
+            if (modalVideo) modalVideo.style.objectFit = 'cover';
+          };
+        }
         _resetMobBtn();
       }
     } catch(err) {
