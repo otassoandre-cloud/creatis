@@ -791,6 +791,7 @@ const V2 = (() => {
 
   function setFile(f) {
     _file = f;
+    _faceCache = {}; // reset quand nouvelle vidéo
     _ytUrl = '';
     _clipSegmentIds = {};
     const zone = document.getElementById('drop-zone');
@@ -1214,6 +1215,8 @@ const V2 = (() => {
   let _modalVideoUrl = null;
   let _exportPreviewUrl = null;
   let _cropRaf = null;
+  let _faceDetector = null;   // FaceDetector API instance (null=uninit, false=unavailable)
+  let _faceCache = {};        // { [clipIdx]: { cx, splitLeftCx, splitRightCx } | null }
   let _lastSegKey = null;
   let _isDragging = false;
 
@@ -1817,6 +1820,59 @@ const V2 = (() => {
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
   }
 
+  async function _initFaceDetector() {
+    if (_faceDetector !== null) return _faceDetector !== false;
+    if (!('FaceDetector' in window)) { _faceDetector = false; return false; }
+    try { _faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 2 }); return true; }
+    catch(e) { _faceDetector = false; return false; }
+  }
+
+  async function _analyzeClipFaces(clipIdx) {
+    if (_faceCache.hasOwnProperty(clipIdx)) return;
+    _faceCache[clipIdx] = null; // marquer comme "en cours"
+    if (!_file) return;
+    const ok = await _initFaceDetector();
+    if (!ok) return;
+    const clip = _clips[clipIdx];
+    const clipStart = clip?.start_time ?? clip?.start ?? 0;
+    const clipEnd = clip?.end_time ?? clip?.end ?? 60;
+    const dur = clipEnd - clipStart;
+    // Vidéo cachée pour analyse sans perturber le lecteur visible
+    const url = URL.createObjectURL(_file);
+    const hv = document.createElement('video');
+    Object.assign(hv.style, { position:'fixed', opacity:'0', width:'320px', height:'180px', left:'-9999px', top:'0', pointerEvents:'none' });
+    hv.muted = true; hv.src = url;
+    document.body.appendChild(hv);
+    try {
+      await new Promise((res, rej) => { hv.addEventListener('loadedmetadata', res, { once: true }); hv.addEventListener('error', rej, { once: true }); setTimeout(rej, 8000); });
+      const median = arr => { if (!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(s.length/2)]; };
+      const cxArr = [], leftArr = [], rightArr = [];
+      for (let i = 0; i < 5; i++) {
+        const t = clipStart + dur * (i + 0.5) / 5;
+        hv.currentTime = t;
+        await new Promise(r => { hv.addEventListener('seeked', r, { once: true }); setTimeout(r, 2000); });
+        try {
+          const faces = await _faceDetector.detect(hv);
+          if (faces.length > 0) {
+            const bySize = [...faces].sort((a,b) => b.boundingBox.width*b.boundingBox.height - a.boundingBox.width*a.boundingBox.height);
+            cxArr.push(bySize[0].boundingBox.x + bySize[0].boundingBox.width / 2);
+            if (faces.length >= 2) {
+              const byX = [...faces].sort((a,b) => a.boundingBox.x - b.boundingBox.x);
+              leftArr.push(byX[0].boundingBox.x + byX[0].boundingBox.width / 2);
+              rightArr.push(byX[byX.length-1].boundingBox.x + byX[byX.length-1].boundingBox.width / 2);
+            }
+          }
+        } catch(e) {}
+      }
+      _faceCache[clipIdx] = { cx: median(cxArr), splitLeftCx: median(leftArr), splitRightCx: median(rightArr) };
+    } catch(e) {
+      _faceCache[clipIdx] = null;
+    } finally {
+      hv.src = ''; hv.remove(); URL.revokeObjectURL(url);
+    }
+    if (_modalIdx === clipIdx) _updateCropPreview(); // rafraîchir avec positions réelles
+  }
+
   function _updateCropPreview() {
     if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
     const canvas = document.getElementById('crop-canvas');
@@ -1827,33 +1883,35 @@ const V2 = (() => {
       canvas.style.display = 'none';
       return;
     }
+    // Lancer l'analyse visages en arrière-plan si pas encore fait
+    if (_modalIdx !== null && !_faceCache.hasOwnProperty(_modalIdx)) {
+      _analyzeClipFaces(_modalIdx).catch(() => {});
+    }
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
+    function getCropX(vw, cropW, cx, fallbackFrac) {
+      const c = (cx != null) ? cx : vw * fallbackFrac;
+      return Math.max(0, Math.min(vw - cropW, Math.floor(c - cropW / 2)));
+    }
     function drawFrame() {
       const vw = video.videoWidth, vh = video.videoHeight;
       const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
       if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
+      const cached = _faceCache[_modalIdx];
+      const cropW = Math.floor(vh * 9 / 16);
       if (mode === 'face') {
-        const cropW = Math.floor(vh * 9 / 16);
-        const cropX = Math.floor((vw - cropW) / 2);
+        const cropX = getCropX(vw, cropW, cached?.cx ?? null, 0.5);
         ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, cw, ch);
       } else if (mode === 'split') {
-        const cropW = Math.floor(vh * 9 / 16);
         const halfH = Math.floor(ch / 2);
-        const leftX = Math.max(0, Math.floor(vw / 4 - cropW / 2));
-        const rightX = Math.max(0, Math.min(vw - cropW, Math.floor(3 * vw / 4 - cropW / 2)));
-        ctx.drawImage(video, leftX, 0, cropW, vh, 0, 0, cw, halfH);
+        const leftX  = getCropX(vw, cropW, cached?.splitLeftCx  ?? null, 0.25);
+        const rightX = getCropX(vw, cropW, cached?.splitRightCx ?? null, 0.75);
+        ctx.drawImage(video, leftX,  0, cropW, vh, 0, 0,     cw, halfH);
         ctx.drawImage(video, rightX, 0, cropW, vh, 0, halfH, cw, halfH);
         ctx.fillStyle = 'rgba(16,185,129,0.9)';
         ctx.fillRect(0, halfH - 1, cw, 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, halfH + 1, cw, 15);
-        ctx.fillStyle = 'rgba(16,185,129,0.9)';
-        ctx.font = '9px Inter,Arial,sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText("Centrage réel sur visages à l'export", cw / 2, halfH + 12);
       }
       _cropRaf = requestAnimationFrame(drawFrame);
     }
