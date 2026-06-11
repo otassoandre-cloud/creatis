@@ -660,7 +660,7 @@
               <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Face tracking</div>
               <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Crop intelligent — idéal vlogs/IRL, désactive pour gaming</div>
             </div>
-            <label class="toggle"><input type="checkbox" id="modal-face-track" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+            <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
         </div>
 
@@ -1221,7 +1221,7 @@ const V2 = (() => {
       hookPos: globalOpts.hookPos || 'top',
       subY: 82, subX: 50,
       hookY: 10, hookX: 50,
-      reframeMode: 'center',
+      reframeMode: 'face',
       wmEnabled: globalOpts.wmEnabled || false,
       wmPos: globalOpts.wmPos || 'tr',
       wmOpacity: globalOpts.wmOpacity || 0.8,
@@ -2341,7 +2341,7 @@ const V2 = (() => {
     form.append('hook_color', opts.hookColor || '#ffffff');
     form.append('hook_bg',    opts.hookBg    || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
-    form.append('reframe_mode', opts.reframeMode || 'center');
+    form.append('reframe_mode', opts.reframeMode || 'face');
     form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
