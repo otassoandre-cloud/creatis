@@ -1979,9 +1979,9 @@ const V2 = (() => {
           _motionCtx = _motionCanvas.getContext('2d', { willReadFrequently: true });
         }
 
-        // Positions des 2 locuteurs (cache ou fallback géométrique)
-        const spLeftCx  = cache?.splitLeftCx  ?? (vw * 0.25);
-        const spRightCx = cache?.splitRightCx ?? (vw * 0.75);
+        // Positions des 2 locuteurs (cache → précis, sinon fallback 35%/65%)
+        const spLeftCx  = cache?.splitLeftCx  ?? (vw * 0.35);
+        const spRightCx = cache?.splitRightCx ?? (vw * 0.65);
 
         // Analyser le mouvement toutes les 100ms (seulement si la vidéo joue)
         if (!video.paused && now - _motionTs > 100) {
@@ -2008,13 +2008,15 @@ const V2 = (() => {
           } catch(e) {}
         }
 
-        // Crop sur le locuteur actif
-        const activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
+        // Centrage : BlazeFace live si disponible (1 visage) → sinon position du locuteur actif
+        let activeCx;
+        if (nLive > 0) {
+          const best = liveFaces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
+          activeCx = blazeCx(best);
+        } else {
+          activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
+        }
         ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
-
-        // Barre latérale verte — côté du locuteur actif
-        ctx.fillStyle = 'rgba(16,185,129,0.9)';
-        ctx.fillRect(_activeSpeaker === 'left' ? 0 : cw - 3, 0, 3, ch);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
