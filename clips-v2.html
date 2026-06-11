@@ -663,11 +663,11 @@
             </div>
             <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
-          <!-- Split screen podcast -->
+          <!-- Auto-speaker podcast -->
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Split screen podcast</div>
-              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">2 personnes — le locuteur actif toujours en haut</div>
+              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Auto-speaker podcast</div>
+              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Suit le locuteur actif — switch automatique entre les 2 personnes</div>
             </div>
             <label class="toggle"><input type="checkbox" id="modal-split-screen" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
@@ -1907,6 +1907,14 @@ const V2 = (() => {
   let _livePreds = null;
   let _liveDetectTs = 0;
 
+  // Auto-speaker motion detection state
+  let _motionCanvas = null;
+  let _motionCtx = null;
+  let _motionPrevData = null;
+  let _activeSpeaker = 'left';
+  let _speakerSwitchTs = 0;
+  let _motionTs = 0;
+
   function _updateCropPreview() {
     if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
     const canvas = document.getElementById('crop-canvas');
@@ -1960,22 +1968,53 @@ const V2 = (() => {
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
 
       } else if (mode === 'split') {
-        // Split toujours visible — face detection affine le centrage, fallback géométrique sinon
-        const halfH = Math.floor(ch / 2);
-        let leftCx = null, rightCx = null;
-        if (nLive >= 2) {
-          const byX = [...liveFaces].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
-          leftCx = blazeCx(byX[0]);
-          rightCx = blazeCx(byX[byX.length - 1]);
-        } else if (cache?.splitLeftCx != null && cache?.splitRightCx != null) {
-          leftCx = cache.splitLeftCx;
-          rightCx = cache.splitRightCx;
+        // Auto-speaker : détection mouvement → crop sur le locuteur actif
+        const SWITCH_DELAY = 1500; // ms minimum avant de changer de locuteur
+        const MW = 160, MH = 90;
+
+        // Canvas offscreen pour motion detection
+        if (!_motionCanvas) {
+          _motionCanvas = document.createElement('canvas');
+          _motionCanvas.width = MW; _motionCanvas.height = MH;
+          _motionCtx = _motionCanvas.getContext('2d', { willReadFrequently: true });
         }
-        // Fallback géométrique : 1/4 et 3/4 de la largeur vidéo
-        ctx.drawImage(video, getCropX(vw, cropW, leftCx, 0.25), 0, cropW, vh, 0, 0, cw, halfH);
-        ctx.drawImage(video, getCropX(vw, cropW, rightCx, 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
+
+        // Positions des 2 locuteurs (cache ou fallback géométrique)
+        const spLeftCx  = cache?.splitLeftCx  ?? (vw * 0.25);
+        const spRightCx = cache?.splitRightCx ?? (vw * 0.75);
+
+        // Analyser le mouvement toutes les 100ms (seulement si la vidéo joue)
+        if (!video.paused && now - _motionTs > 100) {
+          _motionTs = now;
+          try {
+            _motionCtx.drawImage(video, 0, 0, MW, MH);
+            const cur = _motionCtx.getImageData(0, 0, MW, MH).data;
+            if (_motionPrevData && cur.length === _motionPrevData.length) {
+              let mL = 0, mR = 0;
+              for (let p = 0; p < cur.length; p += 4) {
+                const x = Math.floor((p / 4) % MW);
+                const d = Math.abs(cur[p]   - _motionPrevData[p])
+                        + Math.abs(cur[p+1] - _motionPrevData[p+1])
+                        + Math.abs(cur[p+2] - _motionPrevData[p+2]);
+                if (x < MW / 2) mL += d; else mR += d;
+              }
+              const newSp = mL >= mR ? 'left' : 'right';
+              if (newSp !== _activeSpeaker && now - _speakerSwitchTs > SWITCH_DELAY) {
+                _activeSpeaker = newSp;
+                _speakerSwitchTs = now;
+              }
+            }
+            _motionPrevData = new Uint8ClampedArray(cur);
+          } catch(e) {}
+        }
+
+        // Crop sur le locuteur actif
+        const activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
+        ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+
+        // Barre latérale verte — côté du locuteur actif
         ctx.fillStyle = 'rgba(16,185,129,0.9)';
-        ctx.fillRect(0, halfH - 1, cw, 2);
+        ctx.fillRect(_activeSpeaker === 'left' ? 0 : cw - 3, 0, 3, ch);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
@@ -2029,6 +2068,7 @@ const V2 = (() => {
   function stopModalVideo() {
     cancelAnimationFrame(_subRaf); _subRaf = null;
     if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+    _motionPrevData = null; _activeSpeaker = 'left'; _speakerSwitchTs = 0; _motionTs = 0;
     const cc = document.getElementById('crop-canvas'); if (cc) cc.style.display = 'none';
     const video = document.getElementById('modal-video');
     if (video) { video.pause(); video.src = ''; video.style.display = 'none'; }

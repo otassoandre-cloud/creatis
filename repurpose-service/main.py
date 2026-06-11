@@ -974,10 +974,8 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
         x = (src_w - crop_w) // 2
         return f"crop={crop_w}:{src_h}:{x}:0,scale={out_w}:{out_h}"
 
-    vf_A_split = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 640)
-    vf_B_split = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 640)
-    vf_A_full  = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 1280)
-    vf_B_full  = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 1280)
+    vf_A_full = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 1280)
+    vf_B_full = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 1280)
 
     # ── 6. Générer les segments ──
     tmpdir = tempfile.mkdtemp()
@@ -998,13 +996,11 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
                     "-c:a", "aac", "-b:a", "128k", seg_out]
 
             if n_faces >= 2:
-                top_vf = vf_A_split if speaker == 0 else vf_B_split
-                bot_vf = vf_B_split if speaker == 0 else vf_A_split
-                top_final = f"{top_vf},{overlay_vf}" if overlay_vf else top_vf
-                fc = (f"[0:v]{top_final}[top];"
-                      f"[0:v]{bot_vf}[bot];"
-                      f"[top][bot]vstack=inputs=2[out]")
-                mode_str = "split"
+                # Auto-speaker : crop 9:16 sur le locuteur actif (pas de split)
+                vf_active = vf_A_full if speaker == 0 else vf_B_full
+                vf_final = f"{vf_active},{overlay_vf}" if overlay_vf else vf_active
+                fc = f"[0:v]{vf_final}[out]"
+                mode_str = f"speaker-{'A' if speaker == 0 else 'B'}"
             elif n_faces == 1:
                 # Trouver la face la plus proche de ce segment
                 seg_mid = (t0 + t1) / 2
