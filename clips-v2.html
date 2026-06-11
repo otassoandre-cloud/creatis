@@ -535,7 +535,7 @@
       <div class="modal-player-wrap" id="modal-player-wrap" onclick="V2.togglePlay()">
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
         <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
-        <canvas id="crop-canvas" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);aspect-ratio:9/16;max-height:100%;max-width:100%;z-index:2;pointer-events:none"></canvas>
+        <canvas id="crop-canvas" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;pointer-events:none"></canvas>
         <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
         <div id="modal-hook-overlay" style="position:absolute;top:14px;text-align:center;pointer-events:all;z-index:5;font-weight:900;color:#fff;display:none;border-radius:0;cursor:grab"></div>
         <div id="modal-sub-handle" style="display:none;position:absolute;width:24px;height:24px;background:#fff;border-radius:5px;z-index:20;cursor:nwse-resize;touch-action:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.6)"><svg width='11' height='11' viewBox='0 0 11 11' fill='none'><path d='M10 1L1 10M6 10H10V6' stroke='#222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg></div>
@@ -1937,10 +1937,16 @@ const V2 = (() => {
 
     function drawFrame() {
       const vw = video.videoWidth, vh = video.videoHeight;
-      const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
-      if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
-      if (canvas.width !== cw) canvas.width = cw;
-      if (canvas.height !== ch) canvas.height = ch;
+      const wrap = document.getElementById('modal-player-wrap');
+      const pw = wrap.clientWidth, ph = wrap.clientHeight;
+      if (!vw || !vh || !pw || !ph) { _cropRaf = requestAnimationFrame(drawFrame); return; }
+      // Canvas exactement 9:16, contenu dans le player (fond noir du player sur les côtés)
+      const cw = (pw / ph > 9/16) ? Math.floor(ph * 9/16) : pw;
+      const ch = Math.floor(cw * 16/9);
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw; canvas.style.width = cw + 'px';
+        canvas.height = ch; canvas.style.height = ch + 'px';
+      }
 
       // Détection live toutes les 500ms si BlazeFace chargé
       const now = performance.now();
