@@ -802,9 +802,9 @@ const V2 = (() => {
     const nameEl = document.getElementById('v1-upload-name');
     if (nameEl) { nameEl.textContent = f.name.replace(/\.[^.]+$/, ''); nameEl.style.color = 'var(--texte)'; }
 
-    // Précharger ffmpeg.wasm en arrière-plan dès la sélection du fichier
-    // → quand l'user clique "Créer", ffmpeg est déjà prêt, extraction commence immédiatement
+    // Précharger ffmpeg.wasm + BlazeFace en arrière-plan dès la sélection du fichier
     loadFFmpeg().catch(() => {});
+    _loadBlazeface().catch(() => {});
   }
 
   // Après transcription : découpe chaque segment et l'uploade en arrière-plan
@@ -1089,8 +1089,14 @@ const V2 = (() => {
     renderClipsGrid();
     updateExportBtn();
     setState('studio');
-    // Generate thumbnails in background
-    if (_file) setTimeout(() => generateThumbnails(), 200);
+    // Generate thumbnails + pré-analyser visages en arrière-plan
+    if (_file) {
+      setTimeout(() => generateThumbnails(), 200);
+      // Analyser les visages des 5 premiers clips (pour preview instantanée)
+      setTimeout(() => {
+        for (let i = 0; i < Math.min(5, _clips.length); i++) _analyzeClipFaces(i);
+      }, 500);
+    }
   }
 
   // ── Style picker ──
@@ -1264,6 +1270,8 @@ const V2 = (() => {
     if (mvr) mvr.style.objectFit = 'cover';
     _resetModalBtn(document.getElementById('modal-dl-btn'));
     _modalIdx = i;
+    _livePreds = null; // reset détection live pour ce nouveau clip
+    _analyzeClipFaces(i); // pré-analyser les visages en arrière-plan
     const sc = scoreColor(clip.score);
     const start = clip.start_time ?? clip.start;
     const end = clip.end_time ?? clip.end;
@@ -1909,12 +1917,11 @@ const V2 = (() => {
       canvas.style.display = 'none';
       return;
     }
-    // Charger BlazeFace en arrière-plan
     _loadBlazeface().catch(() => {});
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
 
-    function cx(pred) { return (pred.topLeft[0] + pred.bottomRight[0]) / 2; }
+    function blazeCx(pred) { return (pred.topLeft[0] + pred.bottomRight[0]) / 2; }
     function getCropX(vw, cropW, faceCx, fallbackFrac) {
       const c = (faceCx != null) ? faceCx : vw * fallbackFrac;
       return Math.max(0, Math.min(vw - cropW, Math.floor(c - cropW / 2)));
@@ -1935,38 +1942,46 @@ const V2 = (() => {
       }
 
       const cropW = Math.floor(vh * 9 / 16);
-      const faces = _livePreds || [];
-      const nFaces = faces.length;
+
+      // Source de données : live BlazeFace si dispo, sinon _faceCache pré-analysé
+      const cache = (_modalIdx !== null && _faceCache[_modalIdx] && _faceCache[_modalIdx] !== 'loading')
+                    ? _faceCache[_modalIdx] : null;
+      const liveFaces = _livePreds || [];
+      const nLive = liveFaces.length;
 
       if (mode === 'face') {
-        const best = nFaces > 0 ? faces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a) : null;
-        ctx.drawImage(video, getCropX(vw, cropW, best ? cx(best) : null, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+        let faceCx = null;
+        if (nLive > 0) {
+          const best = liveFaces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
+          faceCx = blazeCx(best);
+        } else if (cache?.cx != null) {
+          faceCx = cache.cx;
+        }
+        ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
 
       } else if (mode === 'split') {
-        if (nFaces >= 2) {
-          // 2 visages → split screen
-          const byX = [...faces].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
+        if (nLive >= 2) {
+          // 2 visages live → split
+          const byX = [...liveFaces].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
           const halfH = Math.floor(ch / 2);
-          ctx.drawImage(video, getCropX(vw, cropW, cx(byX[0]), 0.25), 0, cropW, vh, 0, 0, cw, halfH);
-          ctx.drawImage(video, getCropX(vw, cropW, cx(byX[byX.length-1]), 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
+          ctx.drawImage(video, getCropX(vw, cropW, blazeCx(byX[0]), 0.25), 0, cropW, vh, 0, 0, cw, halfH);
+          ctx.drawImage(video, getCropX(vw, cropW, blazeCx(byX[byX.length-1]), 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
+          ctx.fillStyle = 'rgba(16,185,129,0.9)';
+          ctx.fillRect(0, halfH - 1, cw, 2);
+        } else if (cache?.splitLeftCx != null && cache?.splitRightCx != null && nLive < 2) {
+          // Cache split dispo → split immédiat sans attendre BlazeFace live
+          const halfH = Math.floor(ch / 2);
+          ctx.drawImage(video, getCropX(vw, cropW, cache.splitLeftCx, 0.25), 0, cropW, vh, 0, 0, cw, halfH);
+          ctx.drawImage(video, getCropX(vw, cropW, cache.splitRightCx, 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
           ctx.fillStyle = 'rgba(16,185,129,0.9)';
           ctx.fillRect(0, halfH - 1, cw, 2);
         } else {
-          // 0 ou 1 visage → face tracking normal
-          const best = nFaces === 1 ? faces[0] : null;
-          ctx.drawImage(video, getCropX(vw, cropW, best ? cx(best) : null, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+          // 0 ou 1 visage → face tracking
+          let faceCx = nLive === 1 ? blazeCx(liveFaces[0]) : (cache?.cx ?? null);
+          ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
         }
       }
 
-      // Indicateur chargement BlazeFace
-      if (!_blazeModel) {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, ch - 18, cw, 18);
-        ctx.fillStyle = '#10b981';
-        ctx.font = '9px Inter,Arial,sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Chargement détection…', cw / 2, ch - 5);
-      }
       _cropRaf = requestAnimationFrame(drawFrame);
     }
     drawFrame();
