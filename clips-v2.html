@@ -1871,20 +1871,17 @@ const V2 = (() => {
         try {
           const preds = await model.estimateFaces(hv, false);
           if (preds.length > 0) {
-            // topLeft/bottomRight sont en px sur les dimensions CSS (320x180)
-            // On normalise par rapport aux dimensions réelles du video
-            const scaleX = hv.videoWidth / 320;
-            const scaleY = hv.videoHeight / 180;
+            // BlazeFace retourne les coords dans l'espace pixel natif de la vidéo — pas de scale
             const bySize = [...preds].sort((a,b) => {
               const sA = (a.bottomRight[0]-a.topLeft[0]) * (a.bottomRight[1]-a.topLeft[1]);
               const sB = (b.bottomRight[0]-b.topLeft[0]) * (b.bottomRight[1]-b.topLeft[1]);
               return sB - sA;
             });
-            cxArr.push(((bySize[0].topLeft[0] + bySize[0].bottomRight[0]) / 2) * scaleX);
+            cxArr.push((bySize[0].topLeft[0] + bySize[0].bottomRight[0]) / 2);
             if (preds.length >= 2) {
               const byX = [...preds].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
-              leftArr.push(((byX[0].topLeft[0] + byX[0].bottomRight[0]) / 2) * scaleX);
-              rightArr.push(((byX[byX.length-1].topLeft[0] + byX[byX.length-1].bottomRight[0]) / 2) * scaleX);
+              leftArr.push((byX[0].topLeft[0] + byX[0].bottomRight[0]) / 2);
+              rightArr.push((byX[byX.length-1].topLeft[0] + byX[byX.length-1].bottomRight[0]) / 2);
             }
           }
         } catch(e) {}
