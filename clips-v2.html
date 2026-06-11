@@ -1865,7 +1865,7 @@ const V2 = (() => {
     const dur = clipEnd - clipStart;
     const url = URL.createObjectURL(_file);
     const hv = document.createElement('video');
-    Object.assign(hv.style, { position:'fixed', opacity:'0.01', width:'320px', height:'180px', left:'-9999px', top:'0', pointerEvents:'none' });
+    Object.assign(hv.style, { position:'fixed', opacity:'0.01', width:'640px', height:'360px', left:'-9999px', top:'0', pointerEvents:'none' });
     hv.muted = true; hv.src = url;
     document.body.appendChild(hv);
     try {
@@ -1960,26 +1960,22 @@ const V2 = (() => {
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
 
       } else if (mode === 'split') {
+        // Split toujours visible — face detection affine le centrage, fallback géométrique sinon
+        const halfH = Math.floor(ch / 2);
+        let leftCx = null, rightCx = null;
         if (nLive >= 2) {
-          // 2 visages live → split
           const byX = [...liveFaces].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
-          const halfH = Math.floor(ch / 2);
-          ctx.drawImage(video, getCropX(vw, cropW, blazeCx(byX[0]), 0.25), 0, cropW, vh, 0, 0, cw, halfH);
-          ctx.drawImage(video, getCropX(vw, cropW, blazeCx(byX[byX.length-1]), 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
-          ctx.fillStyle = 'rgba(16,185,129,0.9)';
-          ctx.fillRect(0, halfH - 1, cw, 2);
-        } else if (cache?.splitLeftCx != null && cache?.splitRightCx != null && nLive < 2) {
-          // Cache split dispo → split immédiat sans attendre BlazeFace live
-          const halfH = Math.floor(ch / 2);
-          ctx.drawImage(video, getCropX(vw, cropW, cache.splitLeftCx, 0.25), 0, cropW, vh, 0, 0, cw, halfH);
-          ctx.drawImage(video, getCropX(vw, cropW, cache.splitRightCx, 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
-          ctx.fillStyle = 'rgba(16,185,129,0.9)';
-          ctx.fillRect(0, halfH - 1, cw, 2);
-        } else {
-          // 0 ou 1 visage → face tracking
-          let faceCx = nLive === 1 ? blazeCx(liveFaces[0]) : (cache?.cx ?? null);
-          ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+          leftCx = blazeCx(byX[0]);
+          rightCx = blazeCx(byX[byX.length - 1]);
+        } else if (cache?.splitLeftCx != null && cache?.splitRightCx != null) {
+          leftCx = cache.splitLeftCx;
+          rightCx = cache.splitRightCx;
         }
+        // Fallback géométrique : 1/4 et 3/4 de la largeur vidéo
+        ctx.drawImage(video, getCropX(vw, cropW, leftCx, 0.25), 0, cropW, vh, 0, 0, cw, halfH);
+        ctx.drawImage(video, getCropX(vw, cropW, rightCx, 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
+        ctx.fillStyle = 'rgba(16,185,129,0.9)';
+        ctx.fillRect(0, halfH - 1, cw, 2);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
