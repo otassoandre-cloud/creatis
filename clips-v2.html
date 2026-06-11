@@ -1848,6 +1848,12 @@ const V2 = (() => {
         ctx.drawImage(video, rightX, 0, cropW, vh, 0, halfH, cw, halfH);
         ctx.fillStyle = 'rgba(16,185,129,0.9)';
         ctx.fillRect(0, halfH - 1, cw, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, halfH + 1, cw, 15);
+        ctx.fillStyle = 'rgba(16,185,129,0.9)';
+        ctx.font = '9px Inter,Arial,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("Centrage réel sur visages à l'export", cw / 2, halfH + 12);
       }
       _cropRaf = requestAnimationFrame(drawFrame);
     }
