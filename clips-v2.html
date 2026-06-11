@@ -535,6 +535,7 @@
       <div class="modal-player-wrap" id="modal-player-wrap" onclick="V2.togglePlay()">
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
         <video id="modal-video" playsinline style="display:none;width:100%;height:100%;object-fit:cover"></video>
+        <canvas id="crop-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none"></canvas>
         <div class="modal-sub-overlay" id="modal-sub-overlay" style="bottom:70px"></div>
         <div id="modal-hook-overlay" style="position:absolute;top:14px;text-align:center;pointer-events:all;z-index:5;font-weight:900;color:#fff;display:none;border-radius:0;cursor:grab"></div>
         <div id="modal-sub-handle" style="display:none;position:absolute;width:24px;height:24px;background:#fff;border-radius:5px;z-index:20;cursor:nwse-resize;touch-action:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.6)"><svg width='11' height='11' viewBox='0 0 11 11' fill='none'><path d='M10 1L1 10M6 10H10V6' stroke='#222' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg></div>
@@ -1212,6 +1213,7 @@ const V2 = (() => {
   let _subRaf = null;
   let _modalVideoUrl = null;
   let _exportPreviewUrl = null;
+  let _cropRaf = null;
   let _lastSegKey = null;
   let _isDragging = false;
 
@@ -1330,6 +1332,7 @@ const V2 = (() => {
 
       video.addEventListener('loadedmetadata', () => {
         video.currentTime = clipStart;
+        _updateCropPreview();
       }, { once: true });
 
       // Drag & édition sur les overlays
@@ -1814,6 +1817,43 @@ const V2 = (() => {
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
   }
 
+  function _updateCropPreview() {
+    if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+    const canvas = document.getElementById('crop-canvas');
+    const video = document.getElementById('modal-video');
+    if (!canvas) return;
+    const mode = (_modalIdx !== null && !_exportPreviewUrl) ? (_clipSettings[_modalIdx]?.reframeMode || 'center') : 'center';
+    if (mode === 'center' || !video || video.style.display === 'none') {
+      canvas.style.display = 'none';
+      return;
+    }
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    function drawFrame() {
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+      if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
+      if (canvas.width !== cw) canvas.width = cw;
+      if (canvas.height !== ch) canvas.height = ch;
+      if (mode === 'face') {
+        const cropW = Math.floor(vh * 9 / 16);
+        const cropX = Math.floor((vw - cropW) / 2);
+        ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, cw, ch);
+      } else if (mode === 'split') {
+        const cropW = Math.floor(vh * 9 / 16);
+        const halfH = Math.floor(ch / 2);
+        const leftX = Math.max(0, Math.floor(vw / 4 - cropW / 2));
+        const rightX = Math.max(0, Math.min(vw - cropW, Math.floor(3 * vw / 4 - cropW / 2)));
+        ctx.drawImage(video, leftX, 0, cropW, vh, 0, 0, cw, halfH);
+        ctx.drawImage(video, rightX, 0, cropW, vh, 0, halfH, cw, halfH);
+        ctx.fillStyle = 'rgba(16,185,129,0.9)';
+        ctx.fillRect(0, halfH - 1, cw, 2);
+      }
+      _cropRaf = requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+  }
+
   function updateClipOpt() {
     if (_modalIdx === null) return;
     const hookOn = document.getElementById('modal-hook-on')?.checked || false;
@@ -1842,6 +1882,7 @@ const V2 = (() => {
       reframeMode: document.getElementById('modal-split-screen')?.checked ? 'split' : (document.getElementById('modal-face-track')?.checked ? 'face' : 'center'),
       segEdits: prev.segEdits || {},
     };
+    _updateCropPreview();
   }
 
   function autoHook() {
@@ -1857,8 +1898,9 @@ const V2 = (() => {
   }
 
   function stopModalVideo() {
-    cancelAnimationFrame(_subRaf);
-    _subRaf = null;
+    cancelAnimationFrame(_subRaf); _subRaf = null;
+    if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+    const cc = document.getElementById('crop-canvas'); if (cc) cc.style.display = 'none';
     const video = document.getElementById('modal-video');
     if (video) { video.pause(); video.src = ''; video.style.display = 'none'; }
     const ph = document.getElementById('modal-player-ph');
@@ -2036,7 +2078,9 @@ const V2 = (() => {
         const objUrl = URL.createObjectURL(result.blob);
         logClipExport(1);
 
-        // Afficher l'aperçu 9:16 dans le lecteur avant téléchargement
+        // Stopper le canvas preview et afficher le résultat export réel
+        if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+        const cc2 = document.getElementById('crop-canvas'); if (cc2) cc2.style.display = 'none';
         if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); }
         _exportPreviewUrl = objUrl;
         const modalVideo = document.getElementById('modal-video');
