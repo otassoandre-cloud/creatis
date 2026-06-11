@@ -1951,6 +1951,16 @@ const V2 = (() => {
 
       const cropW = Math.floor(vh * 9 / 16);
 
+      // Destination sans distorsion : crop 9:16 centré dans le canvas (pillarbox si besoin)
+      const srcAspect = cropW / vh;
+      const dstAspect = cw / ch;
+      let dw, dh, dx, dy;
+      if (dstAspect > srcAspect) {
+        dh = ch; dw = Math.floor(ch * srcAspect); dx = Math.floor((cw - dw) / 2); dy = 0;
+      } else {
+        dw = cw; dh = Math.floor(cw / srcAspect); dx = 0; dy = Math.floor((ch - dh) / 2);
+      }
+
       // Source de données : live BlazeFace si dispo, sinon _faceCache pré-analysé
       const cache = (_modalIdx !== null && _faceCache[_modalIdx] && _faceCache[_modalIdx] !== 'loading')
                     ? _faceCache[_modalIdx] : null;
@@ -1965,7 +1975,8 @@ const V2 = (() => {
         } else if (cache?.cx != null) {
           faceCx = cache.cx;
         }
-        ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
 
       } else if (mode === 'split') {
         // Auto-speaker : détection mouvement → crop sur le locuteur actif
@@ -2016,7 +2027,8 @@ const V2 = (() => {
         } else {
           activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
         }
-        ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
