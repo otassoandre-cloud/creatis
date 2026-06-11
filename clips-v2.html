@@ -1215,8 +1215,7 @@ const V2 = (() => {
   let _modalVideoUrl = null;
   let _exportPreviewUrl = null;
   let _cropRaf = null;
-  let _faceDetector = null;   // FaceDetector API instance (null=uninit, false=unavailable)
-  let _faceCache = {};        // { [clipIdx]: { cx, splitLeftCx, splitRightCx } | null }
+  let _faceCache = {};        // { [clipIdx]: { cx, splitLeftCx, splitRightCx } | null | 'loading' }
   let _lastSegKey = null;
   let _isDragging = false;
 
@@ -1820,27 +1819,45 @@ const V2 = (() => {
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
   }
 
-  async function _initFaceDetector() {
-    if (_faceDetector !== null) return _faceDetector !== false;
-    if (!('FaceDetector' in window)) { _faceDetector = false; return false; }
-    try { _faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 2 }); return true; }
-    catch(e) { _faceDetector = false; return false; }
+  // ── BlazeFace (TF.js) — détection visages cross-browser ──
+  let _blazeModel = null;
+  let _blazeLoading = false;
+
+  function _loadScript(src) {
+    return new Promise((res, rej) => {
+      if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+      const s = Object.assign(document.createElement('script'), { src, crossOrigin: 'anonymous' });
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function _loadBlazeface() {
+    if (_blazeModel) return _blazeModel;
+    if (_blazeLoading) { await new Promise(r => setTimeout(r, 500)); return _blazeModel; }
+    _blazeLoading = true;
+    try {
+      await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.21.0/dist/tf.min.js');
+      await _loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.js');
+      _blazeModel = await window.blazeface.load();
+      return _blazeModel;
+    } catch(e) { return null; }
+    finally { _blazeLoading = false; }
   }
 
   async function _analyzeClipFaces(clipIdx) {
-    if (_faceCache.hasOwnProperty(clipIdx)) return;
-    _faceCache[clipIdx] = null; // marquer comme "en cours"
-    if (!_file) return;
-    const ok = await _initFaceDetector();
-    if (!ok) return;
+    if (_faceCache.hasOwnProperty(clipIdx) && _faceCache[clipIdx] !== 'loading') return;
+    _faceCache[clipIdx] = 'loading';
+    if (!_file) { _faceCache[clipIdx] = null; return; }
+    const model = await _loadBlazeface();
+    if (!model) { _faceCache[clipIdx] = null; return; }
     const clip = _clips[clipIdx];
     const clipStart = clip?.start_time ?? clip?.start ?? 0;
     const clipEnd = clip?.end_time ?? clip?.end ?? 60;
     const dur = clipEnd - clipStart;
-    // Vidéo cachée pour analyse sans perturber le lecteur visible
     const url = URL.createObjectURL(_file);
     const hv = document.createElement('video');
-    Object.assign(hv.style, { position:'fixed', opacity:'0', width:'320px', height:'180px', left:'-9999px', top:'0', pointerEvents:'none' });
+    Object.assign(hv.style, { position:'fixed', opacity:'0.01', width:'320px', height:'180px', left:'-9999px', top:'0', pointerEvents:'none' });
     hv.muted = true; hv.src = url;
     document.body.appendChild(hv);
     try {
@@ -1852,14 +1869,22 @@ const V2 = (() => {
         hv.currentTime = t;
         await new Promise(r => { hv.addEventListener('seeked', r, { once: true }); setTimeout(r, 2000); });
         try {
-          const faces = await _faceDetector.detect(hv);
-          if (faces.length > 0) {
-            const bySize = [...faces].sort((a,b) => b.boundingBox.width*b.boundingBox.height - a.boundingBox.width*a.boundingBox.height);
-            cxArr.push(bySize[0].boundingBox.x + bySize[0].boundingBox.width / 2);
-            if (faces.length >= 2) {
-              const byX = [...faces].sort((a,b) => a.boundingBox.x - b.boundingBox.x);
-              leftArr.push(byX[0].boundingBox.x + byX[0].boundingBox.width / 2);
-              rightArr.push(byX[byX.length-1].boundingBox.x + byX[byX.length-1].boundingBox.width / 2);
+          const preds = await model.estimateFaces(hv, false);
+          if (preds.length > 0) {
+            // topLeft/bottomRight sont en px sur les dimensions CSS (320x180)
+            // On normalise par rapport aux dimensions réelles du video
+            const scaleX = hv.videoWidth / 320;
+            const scaleY = hv.videoHeight / 180;
+            const bySize = [...preds].sort((a,b) => {
+              const sA = (a.bottomRight[0]-a.topLeft[0]) * (a.bottomRight[1]-a.topLeft[1]);
+              const sB = (b.bottomRight[0]-b.topLeft[0]) * (b.bottomRight[1]-b.topLeft[1]);
+              return sB - sA;
+            });
+            cxArr.push(((bySize[0].topLeft[0] + bySize[0].bottomRight[0]) / 2) * scaleX);
+            if (preds.length >= 2) {
+              const byX = [...preds].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
+              leftArr.push(((byX[0].topLeft[0] + byX[0].bottomRight[0]) / 2) * scaleX);
+              rightArr.push(((byX[byX.length-1].topLeft[0] + byX[byX.length-1].bottomRight[0]) / 2) * scaleX);
             }
           }
         } catch(e) {}
@@ -1870,7 +1895,7 @@ const V2 = (() => {
     } finally {
       hv.src = ''; hv.remove(); URL.revokeObjectURL(url);
     }
-    if (_modalIdx === clipIdx) _updateCropPreview(); // rafraîchir avec positions réelles
+    if (_modalIdx === clipIdx) _updateCropPreview();
   }
 
   function _updateCropPreview() {
@@ -1900,14 +1925,24 @@ const V2 = (() => {
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
       const cached = _faceCache[_modalIdx];
+      const isLoading = cached === 'loading';
+      const fd = isLoading ? null : cached;
       const cropW = Math.floor(vh * 9 / 16);
       if (mode === 'face') {
-        const cropX = getCropX(vw, cropW, cached?.cx ?? null, 0.5);
+        const cropX = getCropX(vw, cropW, fd?.cx ?? null, 0.5);
         ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, cw, ch);
+        if (isLoading) {
+          ctx.fillStyle = 'rgba(0,0,0,0.45)';
+          ctx.fillRect(0, ch - 20, cw, 20);
+          ctx.fillStyle = '#10b981';
+          ctx.font = '9px Inter,Arial,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Détection visage…', cw / 2, ch - 7);
+        }
       } else if (mode === 'split') {
         const halfH = Math.floor(ch / 2);
-        const leftX  = getCropX(vw, cropW, cached?.splitLeftCx  ?? null, 0.25);
-        const rightX = getCropX(vw, cropW, cached?.splitRightCx ?? null, 0.75);
+        const leftX  = getCropX(vw, cropW, fd?.splitLeftCx  ?? null, 0.25);
+        const rightX = getCropX(vw, cropW, fd?.splitRightCx ?? null, 0.75);
         ctx.drawImage(video, leftX,  0, cropW, vh, 0, 0,     cw, halfH);
         ctx.drawImage(video, rightX, 0, cropW, vh, 0, halfH, cw, halfH);
         ctx.fillStyle = 'rgba(16,185,129,0.9)';
