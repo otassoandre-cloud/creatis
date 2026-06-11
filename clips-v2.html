@@ -1895,6 +1895,10 @@ const V2 = (() => {
     if (_modalIdx === clipIdx) _updateCropPreview();
   }
 
+  // Live face detection state
+  let _livePreds = null;
+  let _liveDetectTs = 0;
+
   function _updateCropPreview() {
     if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
     const canvas = document.getElementById('crop-canvas');
@@ -1905,45 +1909,63 @@ const V2 = (() => {
       canvas.style.display = 'none';
       return;
     }
-    // Lancer l'analyse visages en arrière-plan si pas encore fait
-    if (_modalIdx !== null && !_faceCache.hasOwnProperty(_modalIdx)) {
-      _analyzeClipFaces(_modalIdx).catch(() => {});
-    }
+    // Charger BlazeFace en arrière-plan
+    _loadBlazeface().catch(() => {});
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
-    function getCropX(vw, cropW, cx, fallbackFrac) {
-      const c = (cx != null) ? cx : vw * fallbackFrac;
+
+    function cx(pred) { return (pred.topLeft[0] + pred.bottomRight[0]) / 2; }
+    function getCropX(vw, cropW, faceCx, fallbackFrac) {
+      const c = (faceCx != null) ? faceCx : vw * fallbackFrac;
       return Math.max(0, Math.min(vw - cropW, Math.floor(c - cropW / 2)));
     }
+
     function drawFrame() {
       const vw = video.videoWidth, vh = video.videoHeight;
       const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
       if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
-      const cached = _faceCache[_modalIdx];
-      const isLoading = cached === 'loading';
-      const fd = isLoading ? null : cached;
+
+      // Détection live toutes les 500ms si BlazeFace chargé
+      const now = performance.now();
+      if (_blazeModel && now - _liveDetectTs > 500) {
+        _liveDetectTs = now;
+        _blazeModel.estimateFaces(video, false).then(p => { _livePreds = p; }).catch(() => {});
+      }
+
       const cropW = Math.floor(vh * 9 / 16);
+      const faces = _livePreds || [];
+      const nFaces = faces.length;
+
       if (mode === 'face') {
-        const cropX = getCropX(vw, cropW, fd?.cx ?? null, 0.5);
-        ctx.drawImage(video, cropX, 0, cropW, vh, 0, 0, cw, ch);
-        if (isLoading) {
-          ctx.fillStyle = 'rgba(0,0,0,0.45)';
-          ctx.fillRect(0, ch - 20, cw, 20);
-          ctx.fillStyle = '#10b981';
-          ctx.font = '9px Inter,Arial,sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Détection visage…', cw / 2, ch - 7);
-        }
+        const best = nFaces > 0 ? faces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a) : null;
+        ctx.drawImage(video, getCropX(vw, cropW, best ? cx(best) : null, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+
       } else if (mode === 'split') {
-        const halfH = Math.floor(ch / 2);
-        const leftX  = getCropX(vw, cropW, fd?.splitLeftCx  ?? null, 0.25);
-        const rightX = getCropX(vw, cropW, fd?.splitRightCx ?? null, 0.75);
-        ctx.drawImage(video, leftX,  0, cropW, vh, 0, 0,     cw, halfH);
-        ctx.drawImage(video, rightX, 0, cropW, vh, 0, halfH, cw, halfH);
-        ctx.fillStyle = 'rgba(16,185,129,0.9)';
-        ctx.fillRect(0, halfH - 1, cw, 2);
+        if (nFaces >= 2) {
+          // 2 visages → split screen
+          const byX = [...faces].sort((a,b) => a.topLeft[0] - b.topLeft[0]);
+          const halfH = Math.floor(ch / 2);
+          ctx.drawImage(video, getCropX(vw, cropW, cx(byX[0]), 0.25), 0, cropW, vh, 0, 0, cw, halfH);
+          ctx.drawImage(video, getCropX(vw, cropW, cx(byX[byX.length-1]), 0.75), 0, cropW, vh, 0, halfH, cw, halfH);
+          ctx.fillStyle = 'rgba(16,185,129,0.9)';
+          ctx.fillRect(0, halfH - 1, cw, 2);
+        } else {
+          // 0 ou 1 visage → face tracking normal
+          const best = nFaces === 1 ? faces[0] : null;
+          ctx.drawImage(video, getCropX(vw, cropW, best ? cx(best) : null, 0.5), 0, cropW, vh, 0, 0, cw, ch);
+        }
+      }
+
+      // Indicateur chargement BlazeFace
+      if (!_blazeModel) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, ch - 18, cw, 18);
+        ctx.fillStyle = '#10b981';
+        ctx.font = '9px Inter,Arial,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Chargement détection…', cw / 2, ch - 5);
       }
       _cropRaf = requestAnimationFrame(drawFrame);
     }

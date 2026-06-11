@@ -801,16 +801,21 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
             os.remove(cut_tmp)
 
 
-# ── 4b. SPLIT SCREEN DYNAMIQUE (podcast/interview) ────────────────────────────
+# ── 4b. SPLIT SCREEN DYNAMIQUE ADAPTATIF (podcast/interview) ─────────────────
 
 def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") -> None:
     """
-    Split screen 9:16 : 2 visages, le locuteur actif toujours en haut.
-    Fallback vers face tracking normal si < 2 visages détectés.
+    Split screen 9:16 adaptatif :
+    - 2 visages détectés → split top/bottom, locuteur actif en haut
+    - 1 visage → face tracking centré sur le visage
+    - 0 visage → crop centré
+    Analyse toutes les 0.5s pour switcher dynamiquement selon le nombre de visages.
     """
     import cv2
     import numpy as np
     import tempfile
+    import shutil
+    from collections import Counter
 
     cap = cv2.VideoCapture(in_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
@@ -819,178 +824,232 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
     src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.release()
 
+    if total_frames < 2:
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        return
+
     cascades = [
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
     ]
 
-    # ── 1. Détecter 2 visages stables sur 15 frames ──
-    sample_count = 15
-    face_A_samples, face_B_samples = [], []
-
-    cap = cv2.VideoCapture(in_path)
-    for i in range(sample_count):
-        fi = int(total_frames * (i + 0.5) / sample_count)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
-        ret, frame = cap.read()
-        if not ret:
-            continue
+    def detect_faces_scaled(frame):
+        """Retourne liste de (cx, cy, w, h) en pixels originaux."""
         h, w = frame.shape[:2]
-        scale = min(1.0, 640 / w)
-        small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1.0 else frame
+        scale = min(1.0, 640.0 / w)
+        small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1 else frame
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         cv2.equalizeHist(gray, gray)
-        faces = []
+        best = []
         for cas in cascades:
-            faces = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
-            if len(faces) >= 2:
-                break
-        if len(faces) >= 2:
-            sorted_faces = sorted(faces, key=lambda f: f[0])
-            fa = sorted_faces[0]
-            fb = sorted_faces[1]
-            inv = 1.0 / scale
-            face_A_samples.append((int((fa[0]+fa[2]//2)*inv), int((fa[1]+fa[3]//2)*inv), int(fa[2]*inv), int(fa[3]*inv)))
-            face_B_samples.append((int((fb[0]+fb[2]//2)*inv), int((fb[1]+fb[3]//2)*inv), int(fb[2]*inv), int(fb[3]*inv)))
-    cap.release()
+            detected = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
+            if len(detected) > len(best):
+                best = detected
+                if len(best) >= 2:
+                    break
+        inv = 1.0 / scale
+        return [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
+                 int(f[2] * inv), int(f[3] * inv)) for f in best]
 
-    if len(face_A_samples) < 2:
-        logger.info("[split] < 2 visages stables — fallback face tracking")
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
-        return
-
-    def avg(lst): return int(sum(lst) / len(lst))
-    face_A = (avg([c[0] for c in face_A_samples]), avg([c[1] for c in face_A_samples]),
-               avg([c[2] for c in face_A_samples]), avg([c[3] for c in face_A_samples]))
-    face_B = (avg([c[0] for c in face_B_samples]), avg([c[1] for c in face_B_samples]),
-               avg([c[2] for c in face_B_samples]), avg([c[3] for c in face_B_samples]))
-    logger.info(f"[split] Face A center=({face_A[0]},{face_A[1]}) Face B center=({face_B[0]},{face_B[1]})")
-
-    # ── 2. Détecter qui parle via mouvement de la bouche ──
-    def mouth_region(frame_gray, cx, cy, fw, fh):
-        x1 = max(0, cx - fw//2)
-        x2 = min(frame_gray.shape[1], cx + fw//2)
-        y1 = max(0, cy + fh//8)
-        y2 = min(frame_gray.shape[0], cy + fh//2 + 5)
-        return frame_gray[y1:y2, x1:x2]
-
-    sample_step = max(1, int(fps * 0.3))
-    raw_timeline = []  # (frame_idx, speaker: 0=A on top, 1=B on top)
-    prev_A = prev_B = None
+    # ── 1. Analyser chaque ~0.5s ──
+    sample_step = max(1, int(fps * 0.5))
+    frame_data = []  # [(fi, [(cx,cy,w,h), ...])]
 
     cap = cv2.VideoCapture(in_path)
     fi = 0
     while fi < total_frames:
         cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
         ret, frame = cap.read()
-        if not ret:
-            break
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        mA = mouth_region(gray, face_A[0], face_A[1], face_A[2], face_A[3])
-        mB = mouth_region(gray, face_B[0], face_B[1], face_B[2], face_B[3])
-        if prev_A is not None and prev_B is not None:
-            dA = float(np.mean(np.abs(mA.astype(float) - prev_A.astype(float)))) if mA.size > 0 and mA.shape == prev_A.shape else 0.0
-            dB = float(np.mean(np.abs(mB.astype(float) - prev_B.astype(float)))) if mB.size > 0 and mB.shape == prev_B.shape else 0.0
-            raw_timeline.append((fi, 0 if dA >= dB else 1))
-        if mA.size > 0: prev_A = mA.copy()
-        if mB.size > 0: prev_B = mB.copy()
+        if ret:
+            frame_data.append((fi, detect_faces_scaled(frame)))
         fi += sample_step
     cap.release()
 
-    if not raw_timeline:
-        logger.info("[split] timeline vide — fallback")
+    if not frame_data:
         _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
         return
 
-    # ── 3. Lisser : durée min 1.5s par locuteur ──
-    min_frames = int(fps * 1.5)
-    smoothed = []
-    cur_speaker = raw_timeline[0][1]
-    cur_start = raw_timeline[0][0]
-    run = 0
-    for fi, sp in raw_timeline:
-        if sp == cur_speaker:
-            run += 1
+    # ── 2. Positions globales face A / face B (moyennées sur frames 2-visages) ──
+    two_face_samples = [(fi, faces) for fi, faces in frame_data if len(faces) >= 2]
+
+    if len(two_face_samples) < 2:
+        logger.info("[split] < 2 frames avec 2 visages → fallback face tracking")
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        return
+
+    def avg_faces(samples_list):
+        a, b = [], []
+        for _, faces in samples_list:
+            sf = sorted(faces, key=lambda f: f[0])
+            a.append(sf[0]); b.append(sf[-1])
+        def avg(lst): return int(sum(lst) / len(lst))
+        fa = tuple(avg([s[i] for s in a]) for i in range(4))
+        fb = tuple(avg([s[i] for s in b]) for i in range(4))
+        return fa, fb
+
+    face_A, face_B = avg_faces(two_face_samples)
+    logger.info(f"[split] Face A=({face_A[0]},{face_A[1]}) Face B=({face_B[0]},{face_B[1]})")
+
+    # ── 3. Speaker detection via mouvement de la bouche ──
+    def mouth_region(gray, cx, cy, fw, fh):
+        x1 = max(0, cx - fw // 2); x2 = min(gray.shape[1], cx + fw // 2)
+        y1 = max(0, cy + fh // 8); y2 = min(gray.shape[0], cy + fh // 2 + 5)
+        return gray[y1:y2, x1:x2]
+
+    raw_speaker = {}  # fi → 0 (A parle) ou 1 (B parle)
+    prev_mA = prev_mB = None
+
+    cap = cv2.VideoCapture(in_path)
+    for fi, faces in frame_data:
+        if len(faces) < 2:
+            continue
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        mA = mouth_region(gray, face_A[0], face_A[1], face_A[2], face_A[3])
+        mB = mouth_region(gray, face_B[0], face_B[1], face_B[2], face_B[3])
+        if prev_mA is not None and prev_mB is not None:
+            dA = float(np.mean(np.abs(mA.astype(float) - prev_mA.astype(float)))) if mA.size > 0 and mA.shape == prev_mA.shape else 0.0
+            dB = float(np.mean(np.abs(mB.astype(float) - prev_mB.astype(float)))) if mB.size > 0 and mB.shape == prev_mB.shape else 0.0
+            raw_speaker[fi] = 0 if dA >= dB else 1
+        if mA.size > 0: prev_mA = mA.copy()
+        if mB.size > 0: prev_mB = mB.copy()
+    cap.release()
+
+    # ── 4. Timeline : (fi, n_faces, speaker) + lissage ──
+    timeline = []
+    for fi, faces in frame_data:
+        n = min(len(faces), 2)
+        sp = raw_speaker.get(fi, 0)
+        timeline.append([fi, n, sp])
+
+    # Supprimer les outliers isolés (1 sample différent entouré de même valeur)
+    for i in range(1, len(timeline) - 1):
+        if timeline[i][1] != timeline[i-1][1] and timeline[i][1] != timeline[i+1][1]:
+            timeline[i][1] = timeline[i-1][1]
+
+    # Grouper en segments consécutifs de même n_faces
+    groups = []  # [(t0, t1, n_faces, speaker)]
+    cur_n = timeline[0][1]; cur_start = timeline[0][0]; sp_votes = [timeline[0][2]]
+    for fi, n, sp in timeline[1:]:
+        if n == cur_n:
+            sp_votes.append(sp)
         else:
-            if run * sample_step >= min_frames:
-                smoothed.append((cur_start, cur_speaker))
-                cur_speaker = sp
-                cur_start = fi
-                run = 1
-    smoothed.append((cur_start, cur_speaker))
-    logger.info(f"[split] {len(smoothed)} segments locuteurs")
+            maj_sp = Counter(sp_votes).most_common(1)[0][0]
+            groups.append([cur_start / fps, fi / fps, cur_n, maj_sp])
+            cur_n = n; cur_start = fi; sp_votes = [sp]
+    maj_sp = Counter(sp_votes).most_common(1)[0][0]
+    groups.append([cur_start / fps, total_frames / fps, cur_n, maj_sp])
 
-    # ── 4. Crop VF pour chaque visage (720×640 = moitié de 720×1280) ──
-    half_w, half_h = 720, 640
+    # Fusionner les segments < 1s avec le voisin précédent
+    merged = []
+    for g in groups:
+        if merged and (g[1] - g[0]) < 1.0:
+            merged[-1][1] = g[1]
+        else:
+            merged.append(list(g))
+    groups = merged
 
-    def face_vf(cx, cy, fw, fh):
-        ratio = half_w / half_h  # 9/8
+    logger.info(f"[split] {len(groups)} groupes: {[(g[2], f'{g[1]-g[0]:.1f}s') for g in groups]}")
+
+    # ── 5. Helpers VF ──
+    def make_vf(cx, cy, fw, fh, out_w, out_h):
+        """Crop centré sur le visage puis scale."""
+        ratio = out_w / out_h
         crop_w = min(src_w, max(fw * 3, int(src_h * ratio)))
         crop_h = int(crop_w / ratio)
         if crop_h > src_h:
-            crop_h = src_h
-            crop_w = int(crop_h * ratio)
+            crop_h = src_h; crop_w = int(crop_h * ratio)
         crop_w = max(2, crop_w - crop_w % 2)
         crop_h = max(2, crop_h - crop_h % 2)
         x = max(0, min(src_w - crop_w, cx - crop_w // 2))
         y = max(0, min(src_h - crop_h, cy - crop_h // 2))
-        return f"crop={crop_w}:{crop_h}:{x}:{y},scale={half_w}:{half_h}"
+        return f"crop={crop_w}:{crop_h}:{x}:{y},scale={out_w}:{out_h}"
 
-    vf_A = face_vf(face_A[0], face_A[1], face_A[2], face_A[3])
-    vf_B = face_vf(face_B[0], face_B[1], face_B[2], face_B[3])
+    def center_vf(out_w=720, out_h=1280):
+        crop_w = int(src_h * out_w / out_h)
+        crop_w = max(2, crop_w - crop_w % 2)
+        x = (src_w - crop_w) // 2
+        return f"crop={crop_w}:{src_h}:{x}:0,scale={out_w}:{out_h}"
 
-    # ── 5. Générer les segments et concat ──
+    vf_A_split = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 640)
+    vf_B_split = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 640)
+    vf_A_full  = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 1280)
+    vf_B_full  = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 1280)
+
+    # ── 6. Générer les segments ──
     tmpdir = tempfile.mkdtemp()
     segment_files = []
     list_file = os.path.join(tmpdir, "concat.txt")
 
     try:
-        segments = []
-        for i, (start_fi, speaker) in enumerate(smoothed):
-            end_fi = smoothed[i+1][0] if i+1 < len(smoothed) else total_frames
-            segments.append((start_fi / fps, end_fi / fps, speaker))
+        for grp_idx, (t0, t1, n_faces, speaker) in enumerate(groups):
+            if t1 - t0 < 0.05:
+                continue
+            seg_out = os.path.join(tmpdir, f"seg_{grp_idx:04d}.mp4")
 
-        for idx, (t0, t1, speaker) in enumerate(segments):
-            seg_out = os.path.join(tmpdir, f"seg_{idx:04d}.mp4")
-            top_vf = vf_A if speaker == 0 else vf_B
-            bot_vf = vf_B if speaker == 0 else vf_A
-            top_final = f"{top_vf},{overlay_vf}" if overlay_vf else top_vf
-            fc = (f"[0:v]{top_final}[top];"
-                  f"[0:v]{bot_vf}[bot];"
-                  f"[top][bot]vstack=inputs=2[out]")
-            cmd = [
-                "ffmpeg", "-y", "-loglevel", "error",
-                "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}",
-                "-i", in_path,
-                "-filter_complex", fc,
-                "-map", "[out]", "-map", "0:a:0?",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
-                "-pix_fmt", "yuv420p", "-threads", "2",
-                "-c:a", "aac", "-b:a", "128k",
-                seg_out
-            ]
-            r = subprocess.run(cmd, capture_output=True, timeout=120)
+            base = ["ffmpeg", "-y", "-loglevel", "error",
+                    "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}", "-i", in_path]
+            tail = ["-map", "[out]", "-map", "0:a:0?",
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+                    "-pix_fmt", "yuv420p", "-threads", "2",
+                    "-c:a", "aac", "-b:a", "128k", seg_out]
+
+            if n_faces >= 2:
+                top_vf = vf_A_split if speaker == 0 else vf_B_split
+                bot_vf = vf_B_split if speaker == 0 else vf_A_split
+                top_final = f"{top_vf},{overlay_vf}" if overlay_vf else top_vf
+                fc = (f"[0:v]{top_final}[top];"
+                      f"[0:v]{bot_vf}[bot];"
+                      f"[top][bot]vstack=inputs=2[out]")
+                mode_str = "split"
+            elif n_faces == 1:
+                # Trouver la face la plus proche de ce segment
+                seg_mid = (t0 + t1) / 2
+                closest = min(frame_data, key=lambda x: abs(x[0] / fps - seg_mid))
+                if closest[1]:
+                    f1 = closest[1][0]
+                    vf = make_vf(f1[0], f1[1], f1[2], f1[3], 720, 1280)
+                else:
+                    vf = center_vf()
+                vf_final = f"{vf},{overlay_vf}" if overlay_vf else vf
+                fc = f"[0:v]{vf_final}[out]"
+                mode_str = "face"
+            else:
+                vf = center_vf()
+                vf_final = f"{vf},{overlay_vf}" if overlay_vf else vf
+                fc = f"[0:v]{vf_final}[out]"
+                mode_str = "center"
+
+            r = subprocess.run(base + ["-filter_complex", fc] + tail,
+                               capture_output=True, timeout=120)
             if r.returncode == 0 and os.path.exists(seg_out) and os.path.getsize(seg_out) > 0:
                 segment_files.append(seg_out)
-                logger.info(f"[split] seg {idx} ({t0:.1f}s-{t1:.1f}s) speaker={speaker} ✓")
+                logger.info(f"[split] grp {grp_idx} {mode_str} ({t0:.1f}s-{t1:.1f}s) ✓")
             else:
-                logger.warning(f"[split] seg {idx} echec: {(r.stdout+r.stderr).decode(errors='replace')[:200]}")
+                err = (r.stdout + r.stderr).decode(errors="replace")[:200]
+                logger.warning(f"[split] grp {grp_idx} échoué: {err}")
 
         if not segment_files:
-            raise RuntimeError("Aucun segment split généré — fallback")
+            raise RuntimeError("Aucun segment généré")
 
-        with open(list_file, "w") as f:
-            for seg in segment_files:
-                f.write(f"file '{seg}'\n")
+        if len(segment_files) == 1:
+            shutil.copy(segment_files[0], out_path)
+        else:
+            with open(list_file, "w") as f:
+                for seg in segment_files:
+                    f.write(f"file '{seg}'\n")
+            r = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                 "-i", list_file, "-c", "copy", out_path],
+                capture_output=True, timeout=300
+            )
+            if r.returncode != 0:
+                raise RuntimeError(f"concat: {(r.stdout+r.stderr).decode(errors='replace')[:300]}")
 
-        r = subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-             "-i", list_file, "-c", "copy", out_path],
-            capture_output=True, timeout=120
-        )
-        if r.returncode != 0:
-            raise RuntimeError(f"concat: {(r.stdout+r.stderr).decode(errors='replace')[:300]}")
-        logger.info(f"[split] ✓ split screen généré")
+        logger.info(f"[split] ✓ split adaptatif ({len(segment_files)} segments)")
 
     except Exception as e:
         logger.warning(f"[split] erreur ({e}) — fallback face tracking")
