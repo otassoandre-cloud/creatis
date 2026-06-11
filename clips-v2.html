@@ -662,6 +662,14 @@
             </div>
             <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
+          <!-- Split screen podcast -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Split screen podcast</div>
+              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">2 personnes — le locuteur actif toujours en haut</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="modal-split-screen" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+          </div>
         </div>
 
         <!-- Section : Modifier texte -->
@@ -1823,7 +1831,7 @@ const V2 = (() => {
       wmOpacity: prev.wmOpacity ?? 0.8,
       subY: prev.subY ?? 82, subX: prev.subX ?? 50,
       hookY: prev.hookY ?? 10, hookX: prev.hookX ?? 50,
-      reframeMode: document.getElementById('modal-face-track')?.checked ? 'face' : 'center',
+      reframeMode: document.getElementById('modal-split-screen')?.checked ? 'split' : (document.getElementById('modal-face-track')?.checked ? 'face' : 'center'),
       segEdits: prev.segEdits || {},
     };
   }

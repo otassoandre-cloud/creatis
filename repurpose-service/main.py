@@ -793,6 +793,202 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
             os.remove(cut_tmp)
 
 
+# ── 4b. SPLIT SCREEN DYNAMIQUE (podcast/interview) ────────────────────────────
+
+def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") -> None:
+    """
+    Split screen 9:16 : 2 visages, le locuteur actif toujours en haut.
+    Fallback vers face tracking normal si < 2 visages détectés.
+    """
+    import cv2
+    import numpy as np
+    import tempfile
+
+    cap = cv2.VideoCapture(in_path)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    src_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    src_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+    # ── 1. Détecter 2 visages stables sur 10 frames ──
+    sample_count = 10
+    face_A_samples, face_B_samples = [], []
+
+    cap = cv2.VideoCapture(in_path)
+    for i in range(sample_count):
+        fi = int(total_frames * (i + 0.5) / sample_count)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        h, w = frame.shape[:2]
+        scale = min(1.0, 640 / w)
+        small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1.0 else frame
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(20, 20))
+        if len(faces) >= 2:
+            sorted_faces = sorted(faces, key=lambda f: f[0])
+            fa = sorted_faces[0]
+            fb = sorted_faces[1]
+            inv = 1.0 / scale
+            face_A_samples.append((int((fa[0]+fa[2]//2)*inv), int((fa[1]+fa[3]//2)*inv), int(fa[2]*inv), int(fa[3]*inv)))
+            face_B_samples.append((int((fb[0]+fb[2]//2)*inv), int((fb[1]+fb[3]//2)*inv), int(fb[2]*inv), int(fb[3]*inv)))
+    cap.release()
+
+    if len(face_A_samples) < 3:
+        logger.info("[split] < 2 visages stables — fallback face tracking")
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        return
+
+    def avg(lst): return int(sum(lst) / len(lst))
+    face_A = (avg([c[0] for c in face_A_samples]), avg([c[1] for c in face_A_samples]),
+               avg([c[2] for c in face_A_samples]), avg([c[3] for c in face_A_samples]))
+    face_B = (avg([c[0] for c in face_B_samples]), avg([c[1] for c in face_B_samples]),
+               avg([c[2] for c in face_B_samples]), avg([c[3] for c in face_B_samples]))
+    logger.info(f"[split] Face A center=({face_A[0]},{face_A[1]}) Face B center=({face_B[0]},{face_B[1]})")
+
+    # ── 2. Détecter qui parle via mouvement de la bouche ──
+    def mouth_region(frame_gray, cx, cy, fw, fh):
+        x1 = max(0, cx - fw//2)
+        x2 = min(frame_gray.shape[1], cx + fw//2)
+        y1 = max(0, cy + fh//8)
+        y2 = min(frame_gray.shape[0], cy + fh//2 + 5)
+        return frame_gray[y1:y2, x1:x2]
+
+    sample_step = max(1, int(fps * 0.3))
+    raw_timeline = []  # (frame_idx, speaker: 0=A on top, 1=B on top)
+    prev_A = prev_B = None
+
+    cap = cv2.VideoCapture(in_path)
+    fi = 0
+    while fi < total_frames:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+        ret, frame = cap.read()
+        if not ret:
+            break
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        mA = mouth_region(gray, face_A[0], face_A[1], face_A[2], face_A[3])
+        mB = mouth_region(gray, face_B[0], face_B[1], face_B[2], face_B[3])
+        if prev_A is not None and prev_B is not None:
+            dA = float(np.mean(np.abs(mA.astype(float) - prev_A.astype(float)))) if mA.size > 0 and mA.shape == prev_A.shape else 0.0
+            dB = float(np.mean(np.abs(mB.astype(float) - prev_B.astype(float)))) if mB.size > 0 and mB.shape == prev_B.shape else 0.0
+            raw_timeline.append((fi, 0 if dA >= dB else 1))
+        if mA.size > 0: prev_A = mA.copy()
+        if mB.size > 0: prev_B = mB.copy()
+        fi += sample_step
+    cap.release()
+
+    if not raw_timeline:
+        logger.info("[split] timeline vide — fallback")
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        return
+
+    # ── 3. Lisser : durée min 1.5s par locuteur ──
+    min_frames = int(fps * 1.5)
+    smoothed = []
+    cur_speaker = raw_timeline[0][1]
+    cur_start = raw_timeline[0][0]
+    run = 0
+    for fi, sp in raw_timeline:
+        if sp == cur_speaker:
+            run += 1
+        else:
+            if run * sample_step >= min_frames:
+                smoothed.append((cur_start, cur_speaker))
+                cur_speaker = sp
+                cur_start = fi
+                run = 1
+    smoothed.append((cur_start, cur_speaker))
+    logger.info(f"[split] {len(smoothed)} segments locuteurs")
+
+    # ── 4. Crop VF pour chaque visage (720×640 = moitié de 720×1280) ──
+    half_w, half_h = 720, 640
+
+    def face_vf(cx, cy, fw, fh):
+        ratio = half_w / half_h  # 9/8
+        crop_w = min(src_w, max(fw * 3, int(src_h * ratio)))
+        crop_h = int(crop_w / ratio)
+        if crop_h > src_h:
+            crop_h = src_h
+            crop_w = int(crop_h * ratio)
+        crop_w = max(2, crop_w - crop_w % 2)
+        crop_h = max(2, crop_h - crop_h % 2)
+        x = max(0, min(src_w - crop_w, cx - crop_w // 2))
+        y = max(0, min(src_h - crop_h, cy - crop_h // 2))
+        return f"crop={crop_w}:{crop_h}:{x}:{y},scale={half_w}:{half_h}"
+
+    vf_A = face_vf(face_A[0], face_A[1], face_A[2], face_A[3])
+    vf_B = face_vf(face_B[0], face_B[1], face_B[2], face_B[3])
+
+    # ── 5. Générer les segments et concat ──
+    tmpdir = tempfile.mkdtemp()
+    segment_files = []
+    list_file = os.path.join(tmpdir, "concat.txt")
+
+    try:
+        segments = []
+        for i, (start_fi, speaker) in enumerate(smoothed):
+            end_fi = smoothed[i+1][0] if i+1 < len(smoothed) else total_frames
+            segments.append((start_fi / fps, end_fi / fps, speaker))
+
+        for idx, (t0, t1, speaker) in enumerate(segments):
+            seg_out = os.path.join(tmpdir, f"seg_{idx:04d}.mp4")
+            top_vf = vf_A if speaker == 0 else vf_B
+            bot_vf = vf_B if speaker == 0 else vf_A
+            top_final = f"{top_vf},{overlay_vf}" if overlay_vf else top_vf
+            fc = (f"[0:v]{top_final}[top];"
+                  f"[0:v]{bot_vf}[bot];"
+                  f"[top][bot]vstack=inputs=2[out]")
+            cmd = [
+                "ffmpeg", "-y", "-loglevel", "error",
+                "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}",
+                "-i", in_path,
+                "-filter_complex", fc,
+                "-map", "[out]", "-map", "0:a:0?",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+                "-pix_fmt", "yuv420p", "-threads", "2",
+                "-c:a", "aac", "-b:a", "128k",
+                seg_out
+            ]
+            r = subprocess.run(cmd, capture_output=True, timeout=120)
+            if r.returncode == 0 and os.path.exists(seg_out) and os.path.getsize(seg_out) > 0:
+                segment_files.append(seg_out)
+                logger.info(f"[split] seg {idx} ({t0:.1f}s-{t1:.1f}s) speaker={speaker} ✓")
+            else:
+                logger.warning(f"[split] seg {idx} echec: {(r.stdout+r.stderr).decode(errors='replace')[:200]}")
+
+        if not segment_files:
+            raise RuntimeError("Aucun segment split généré — fallback")
+
+        with open(list_file, "w") as f:
+            for seg in segment_files:
+                f.write(f"file '{seg}'\n")
+
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+             "-i", list_file, "-c", "copy", out_path],
+            capture_output=True, timeout=120
+        )
+        if r.returncode != 0:
+            raise RuntimeError(f"concat: {(r.stdout+r.stderr).decode(errors='replace')[:300]}")
+        logger.info(f"[split] ✓ split screen généré")
+
+    except Exception as e:
+        logger.warning(f"[split] erreur ({e}) — fallback face tracking")
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+    finally:
+        for f in segment_files:
+            try: os.remove(f)
+            except: pass
+        try: os.remove(list_file)
+        except: pass
+        try: os.rmdir(tmpdir)
+        except: pass
+
+
 # ── 5. JOBS ────────────────────────────────────────────────────────────────────
 
 async def run_generate_shorts(
@@ -1623,9 +1819,14 @@ async def process_clip_endpoint(
 
         # Passe unique : reframe + sous-titres en une seule commande FFmpeg
         async with _get_ffmpeg_sem():
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf)
-            )
+            if reframe_mode == "split":
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf)
+                )
+            else:
+                await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf)
+                )
         if not out_path.exists() or out_path.stat().st_size == 0:
             raise HTTPException(500, "Reframe/burn échoué")
         logger.info(f"[process-clip] OK — {out_path.stat().st_size // 1024}KB")
