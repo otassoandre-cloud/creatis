@@ -192,7 +192,7 @@
     .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
 
     /* Live subtitle overlay */
-    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; line-height: 1.25; max-height: 2.6em; overflow: hidden; }
+    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; line-height: 1.25; overflow: visible; }
 
     /* Play button overlay */
     .modal-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; transition: opacity .2s; }
@@ -1668,7 +1668,8 @@ const V2 = (() => {
   function _applySubPosition(el, xPct, yPct) {
     el.style.top = `${yPct}%`;
     el.style.bottom = 'auto';
-    el.style.left = `${xPct}%`;
+    // Toujours centré horizontalement — left:50% évite tout débordement
+    el.style.left = '50%';
     el.style.transform = 'translateX(-50%)';
   }
 
