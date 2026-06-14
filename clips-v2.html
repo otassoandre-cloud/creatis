@@ -191,8 +191,8 @@
     .modal-player-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
 
-    /* Live subtitle overlay */
-    .modal-sub-overlay { position: absolute; left: 50%; transform: translateX(-50%); width: 92%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Live subtitle overlay — positioning handled by JS (_renderSubText + _applySubPosition) */
+    .modal-sub-overlay { position: absolute; left: 4%; right: 4%; text-align: center; pointer-events: none; z-index: 5; font-family: 'Inter', Arial, sans-serif; word-wrap: break-word; line-height: 1.25; overflow: hidden; }
 
     /* Play button overlay */
     .modal-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; transition: opacity .2s; }
@@ -1658,7 +1658,10 @@ const V2 = (() => {
     el.style.textAlign = 'center';
     el.style.zIndex = '5';
     el.style.wordWrap = 'break-word';
-    el.style.maxWidth = '92%';
+    el.style.maxWidth = 'none';
+    // Max 2 lignes — calculé en px sur la font-size réelle (scale-proof)
+    el.style.maxHeight = `${Math.round(fs * 1.25 * 2 + 4)}px`;
+    el.style.overflow = 'hidden';
     el.style.display = text ? 'block' : 'none';
     el.style.cursor = 'grab';
     el.style.pointerEvents = 'all';
@@ -1668,9 +1671,7 @@ const V2 = (() => {
   function _applySubPosition(el, xPct, yPct) {
     el.style.top = `${yPct}%`;
     el.style.bottom = 'auto';
-    // Toujours centré horizontalement — left:50% évite tout débordement
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
+    // Ne pas toucher left/right/transform — géré par _renderSubText (left:4%;right:4%)
   }
 
   function _setupDraggable(el, wrap, yKey, xKey) {
