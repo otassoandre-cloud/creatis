@@ -988,7 +988,10 @@ const V2 = (() => {
 
         // Extract audio
         const fileSizeMB = (_file.size / 1e6).toFixed(0);
-        setMsg(`Extraction audio (${fileSizeMB} MB) — ne quitte pas la page ⏳`);
+        const fileSizeGB = (_file.size / 1e9).toFixed(1);
+        const sizeLabel = _file.size > 1e9 ? `${fileSizeGB} Go` : `${fileSizeMB} Mo`;
+        const bigFileNote = _file.size > 2e9 ? ' — vidéo lourde, les 2 premières heures seront analysées' : '';
+        setMsg(`Extraction audio (${sizeLabel})${bigFileNote} ⏳`);
         const audioData = await extractAudio(_file, (pct, msg) => {
           setBar(10 + Math.round(pct * 0.3));
           const pctDisplay = Math.round(Math.min(pct, 100));
@@ -1076,7 +1079,9 @@ const V2 = (() => {
     try {
       try { await ffmpeg.createDir('/input'); } catch {}
       await ffmpeg.mount('WORKERFS', { files: [file] }, '/input');
-      await ffmpeg.exec(['-i', `/input/${file.name}`, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
+      // Limite à 2h max — évite des heures d'extraction pour les très grosses vidéos
+      const MAX_DURATION = 7200;
+      await ffmpeg.exec(['-i', `/input/${file.name}`, '-t', String(MAX_DURATION), '-vn', '-ar', '16000', '-ac', '1', '-b:a', '16k', '-f', 'mp3', '/audio_out.mp3']);
       ffmpeg.off('progress', progressHandler);
       const data = await ffmpeg.readFile('/audio_out.mp3');
       await ffmpeg.deleteFile('/audio_out.mp3');
