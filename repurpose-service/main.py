@@ -2264,6 +2264,9 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 "retries": 3,
                 "quiet": True,
             }
+            cookies_file = _get_cookies_file()
+            if cookies_file:
+                ydl_opts["cookiefile"] = cookies_file
             try:
                 loop = asyncio.get_event_loop()
                 def _dl():
