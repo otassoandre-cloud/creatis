@@ -34,6 +34,8 @@ WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
 YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
 RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
 BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
+# Fallback public — utilisé si BGUTIL_URL interne inaccessible depuis ce service
+BGUTIL_PUBLIC_URL     = "https://bgutil-ytdlp-pot-provider-production-ff91.up.railway.app"
 
 WORK_DIR = Path(tempfile.gettempdir()) / "creatis"
 WORK_DIR.mkdir(exist_ok=True)
@@ -73,33 +75,45 @@ async def _check_bgutil() -> bool:
 
 
 def _fetch_po_token_sync() -> tuple:
-    """Appelle bgutil (sync). Retourne (visitor_data, po_token)."""
-    if not BGUTIL_URL:
-        return "", ""
-    with httpx.Client(timeout=20) as c:
-        try:
-            r = c.post(f"{BGUTIL_URL}/get_pot", json={})
-            logger.info(f"[bgutil] réponse complète: {r.text}")  # log sans troncature
-            if r.status_code == 200:
-                data = r.json()
-                logger.info(f"[bgutil] clés disponibles: {list(data.keys())}")
-                token   = data.get("poToken") or data.get("po_token") or ""
-                visitor = (data.get("visitorData") or data.get("visitor_data")
-                           or data.get("contentBinding") or "")
-                if token:
-                    logger.info(f"[bgutil] PoToken={len(token)}c contentBinding={len(visitor)}c")
-                    return visitor, token
-        except Exception as e:
-            logger.warning(f"[bgutil] /get_pot failed: {e}")
+    """Appelle bgutil (sync). Retourne (visitor_data, po_token). Essaie internal puis public."""
+    urls_to_try = [u for u in [BGUTIL_URL, BGUTIL_PUBLIC_URL] if u]
+    for url in urls_to_try:
+        with httpx.Client(timeout=20) as c:
+            try:
+                r = c.post(f"{url}/get_pot", json={})
+                logger.info(f"[bgutil] {url}/get_pot → {r.status_code}")
+                if r.status_code == 200:
+                    data = r.json()
+                    token   = data.get("poToken") or data.get("po_token") or ""
+                    visitor = (data.get("visitorData") or data.get("visitor_data") or "")
+                    if token:
+                        logger.info(f"[bgutil] OK from {url}: PoToken={len(token)}c")
+                        return visitor, token
+            except Exception as e:
+                logger.warning(f"[bgutil] {url}/get_pot failed: {e}")
     return "", ""
 
 
 def _yt_extractor_args() -> dict:
-    # web + bgutil = PoToken valide → bypass bot-detection sur IPs datacenter
+    """Construit les extractor_args yt-dlp. Injecte le PoToken bgutil directement."""
     args = {"youtube": {"player_client": ["web", "android_vr", "android", "ios"]}}
-    if BGUTIL_URL:
-        args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_URL]}
-        logger.info(f"[bgutil] plugin configuré: {BGUTIL_URL}")
+
+    active_bgutil = BGUTIL_URL or BGUTIL_PUBLIC_URL
+    if active_bgutil:
+        # Mécanisme plugin (si bgutil-ytdlp-pot-provider est bien chargé)
+        args["youtubepot-bgutilhttp"] = {"base_url": [active_bgutil]}
+
+        # Injection directe — belt-and-suspenders si le plugin ne se déclenche pas
+        try:
+            visitor_data, po_token = _fetch_po_token_sync()
+            if po_token:
+                args["youtube"]["po_token"] = [f"web+{po_token}"]
+                if visitor_data:
+                    args["youtube"]["visitor_data"] = [visitor_data]
+                logger.info(f"[bgutil] PoToken injecté directement ({len(po_token)}c)")
+        except Exception as e:
+            logger.warning(f"[bgutil] injection directe échouée: {e}")
+
     return args
 
 
@@ -383,6 +397,29 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
                 "X-YouTube-Client-Version": "2.20231204.01.00",
                 "Origin": "https://m.youtube.com",
                 "Referer": "https://m.youtube.com/",
+            },
+        },
+        {
+            "name": "TVHTML5",
+            "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "TVHTML5",
+                        "clientVersion": "7.20241029.00.00",
+                        "hl": "en", "gl": "US",
+                    }
+                },
+                "videoId": video_id,
+                "contentCheckOk": True,
+                "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1",
+                "X-YouTube-Client-Name": "7",
+                "X-YouTube-Client-Version": "7.20241029.00.00",
+                "Origin": "https://www.youtube.com",
             },
         },
     ]
@@ -1741,6 +1778,20 @@ async def get_transcript(video_id: str, _=Depends(auth)):
         logger.warning(f"[transcript/ytdlp] {video_id} failed: {e}")
 
     raise HTTPException(status_code=404, detail="Aucun sous-titre disponible pour cette vidéo")
+
+
+@app.get("/test-bgutil")
+def test_bgutil_endpoint():
+    """Debug: vérifie que bgutil est joignable et génère un PoToken."""
+    visitor_data, po_token = _fetch_po_token_sync()
+    return {
+        "bgutil_url": BGUTIL_URL,
+        "bgutil_public_url": BGUTIL_PUBLIC_URL,
+        "po_token_length": len(po_token),
+        "visitor_data_length": len(visitor_data),
+        "ok": bool(po_token),
+        "extractor_args": _yt_extractor_args(),
+    }
 
 
 @app.get("/test-formats")
