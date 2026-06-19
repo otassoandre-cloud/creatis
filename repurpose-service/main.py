@@ -2098,11 +2098,16 @@ async def test_rapidapi_endpoint(video_id: str = "A-RU8qOAtRk"):
             except Exception:
                 pass
             link = api_body.get("link", "") if isinstance(api_body, dict) else ""
-        # 3. Test download du lien
+        # 3. Test download du lien — avec headers navigateur
         dl_info = {}
         if link:
             try:
-                dl = await client.get(link, timeout=15)
+                browser_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                    "Referer": "https://www.youtube.com/",
+                    "Accept": "audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,application/ogg;q=0.7,video/*;q=0.6,*/*;q=0.5",
+                }
+                dl = await client.get(link, timeout=15, headers=browser_headers)
                 dl_info = {"dl_status": dl.status_code, "dl_size": len(dl.content), "dl_url": link[:100]}
             except Exception as e:
                 dl_info = {"dl_error": str(e), "dl_url": link[:100]}
