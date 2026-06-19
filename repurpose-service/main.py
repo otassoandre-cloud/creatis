@@ -273,42 +273,78 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
         raise ValueError("ID vidéo YouTube introuvable")
     video_id = m.group(1)
 
-    payload = {
-        "context": {
-            "client": {
-                "clientName": "ANDROID",
-                "clientVersion": "19.29.37",
-                "androidSdkVersion": 30,
-                "userAgent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
-                "osName": "Android",
-                "osVersion": "11",
-                "platform": "MOBILE",
-                "hl": "fr",
-                "gl": "FR",
-            }
+    # Essai 1 : TV Embedded client (pas de PoToken, pas de bot-check)
+    # Essai 2 : Android client (fallback)
+    clients = [
+        {
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+                        "clientVersion": "2.0",
+                        "hl": "fr", "gl": "FR",
+                    },
+                    "thirdParty": {"embedUrl": "https://www.youtube.com"},
+                },
+                "videoId": video_id,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1",
+                "X-YouTube-Client-Name": "85",
+                "X-YouTube-Client-Version": "2.0",
+                "Origin": "https://www.youtube.com",
+            },
+            "key": "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw",
         },
-        "videoId": video_id,
-        "params": "CgIQBg==",
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
-        "X-YouTube-Client-Name": "3",
-        "X-YouTube-Client-Version": "19.29.37",
-        "Accept-Language": "fr-FR,fr;q=0.9",
-        "Origin": "https://www.youtube.com",
-    }
+        {
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "ANDROID",
+                        "clientVersion": "19.29.37",
+                        "androidSdkVersion": 30,
+                        "userAgent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+                        "osName": "Android", "osVersion": "11",
+                        "platform": "MOBILE", "hl": "fr", "gl": "FR",
+                    }
+                },
+                "videoId": video_id,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+                "X-YouTube-Client-Name": "3",
+                "X-YouTube-Client-Version": "19.29.37",
+                "Origin": "https://www.youtube.com",
+            },
+            "key": "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw",
+        },
+    ]
 
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        r = await client.post(
-            "https://www.youtube.com/youtubei/v1/player"
-            "?key=AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg&prettyPrint=false",
-            json=payload,
-            headers=headers,
-        )
-        if r.status_code != 200:
-            raise RuntimeError(f"InnerTube HTTP {r.status_code}")
-        data = r.json()
+    data = None
+    for c in clients:
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+                r = await client.post(
+                    f"https://www.youtube.com/youtubei/v1/player?key={c['key']}&prettyPrint=false",
+                    json=c["payload"],
+                    headers=c["headers"],
+                )
+                logger.info(f"[innertube] client={c['headers'].get('X-YouTube-Client-Name')} HTTP {r.status_code}")
+                if r.status_code == 200:
+                    d = r.json()
+                    if d.get("streamingData"):
+                        data = d
+                        break
+                    logger.warning(f"[innertube] pas de streamingData: {d.get('playabilityStatus',{}).get('status')}")
+                else:
+                    logger.warning(f"[innertube] HTTP {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            logger.warning(f"[innertube] client error: {e}")
+
+    if not data:
+        raise RuntimeError("InnerTube: aucun client n'a retourné de streamingData")
 
     status = data.get("playabilityStatus", {}).get("status", "")
     if status not in ("OK", "LIVE_STREAM_OFFLINE"):
