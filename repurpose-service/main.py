@@ -264,6 +264,94 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
     return out_path
 
 
+async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
+    """Télécharge audio via InnerTube Android API — bypass bot-detection sans yt-dlp.
+    YouTube Android client retourne des URLs de stream directes (non chiffrées).
+    """
+    m = re.search(r'(?:v=|youtu\.be/|shorts/|embed/)([a-zA-Z0-9_-]{11})', youtube_url)
+    if not m:
+        raise ValueError("ID vidéo YouTube introuvable")
+    video_id = m.group(1)
+
+    payload = {
+        "context": {
+            "client": {
+                "clientName": "ANDROID",
+                "clientVersion": "19.29.37",
+                "androidSdkVersion": 30,
+                "userAgent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+                "osName": "Android",
+                "osVersion": "11",
+                "platform": "MOBILE",
+                "hl": "fr",
+                "gl": "FR",
+            }
+        },
+        "videoId": video_id,
+        "params": "CgIQBg==",
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+        "X-YouTube-Client-Name": "3",
+        "X-YouTube-Client-Version": "19.29.37",
+        "Accept-Language": "fr-FR,fr;q=0.9",
+        "Origin": "https://www.youtube.com",
+    }
+
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        r = await client.post(
+            "https://www.youtube.com/youtubei/v1/player"
+            "?key=AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg&prettyPrint=false",
+            json=payload,
+            headers=headers,
+        )
+        if r.status_code != 200:
+            raise RuntimeError(f"InnerTube HTTP {r.status_code}")
+        data = r.json()
+
+    status = data.get("playabilityStatus", {}).get("status", "")
+    if status not in ("OK", "LIVE_STREAM_OFFLINE"):
+        reason = data.get("playabilityStatus", {}).get("reason", status)
+        raise RuntimeError(f"Vidéo non disponible: {reason}")
+
+    title = data.get("videoDetails", {}).get("title", "")
+
+    adaptive = data.get("streamingData", {}).get("adaptiveFormats", [])
+    audio_streams = sorted(
+        [f for f in adaptive if "audio" in f.get("mimeType", "") and f.get("url")],
+        key=lambda f: f.get("averageBitrate", 0), reverse=True
+    )
+    if not audio_streams:
+        # fallback: formats non-adaptatifs
+        audio_streams = [f for f in data.get("streamingData", {}).get("formats", []) if f.get("url")]
+
+    if not audio_streams:
+        raise RuntimeError("Aucun stream audio dans la réponse InnerTube")
+
+    audio_url = audio_streams[0]["url"]
+    # Déterminer l'extension à partir du mimeType
+    mime = audio_streams[0].get("mimeType", "audio/mp4")
+    ext = "webm" if "webm" in mime else "m4a"
+    out_path = out_dir / f"audio.{ext}"
+
+    logger.info(f"[innertube] stream audio: {title[:50]} ({mime})")
+
+    async with httpx.AsyncClient(timeout=300, follow_redirects=True) as client:
+        async with client.stream("GET", audio_url) as resp:
+            resp.raise_for_status()
+            with open(str(out_path), "wb") as f:
+                async for chunk in resp.aiter_bytes(65536):
+                    f.write(chunk)
+
+    size_mb = out_path.stat().st_size / 1_048_576
+    if size_mb < 0.01:
+        raise RuntimeError(f"Audio InnerTube vide ({size_mb:.3f} MB)")
+
+    logger.info(f"[innertube] OK {size_mb:.1f}MB — {title[:50]}")
+    return str(out_path), title
+
+
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     """Télécharge audio via yt-dlp.
     Stratégie 1 : IP Railway + bgutil PoToken (session cohérente, pas de mismatch IP).
@@ -1580,16 +1668,27 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
 
 @app.post("/transcribe-segments")
 async def transcribe_segments_endpoint(req: TranscribeRequest, _=Depends(auth)):
-    """yt-dlp (proxy) + Groq Whisper → segments horodatés. Fallback quand sous-titres YouTube indispos."""
+    """InnerTube Android API → Whisper (stratégie 1). Fallback yt-dlp si InnerTube échoue."""
     if "youtube.com" not in req.youtube_url and "youtu.be" not in req.youtube_url:
         raise HTTPException(400, "URL YouTube invalide")
     job_dir = WORK_DIR / f"ts_{uuid.uuid4().hex[:8]}"
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
-        logger.info(f"[transcribe-segments] download {req.youtube_url}")
-        source, title = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _download_audio_for_transcription(req.youtube_url, job_dir)
-        )
+        # Stratégie 1 : InnerTube Android API (bypass bot-detection)
+        source, title = None, ""
+        try:
+            logger.info(f"[transcribe-segments] InnerTube: {req.youtube_url}")
+            source, title = await _innertube_download_audio(req.youtube_url, job_dir)
+            logger.info(f"[transcribe-segments] InnerTube OK: {title[:50]}")
+        except Exception as e_it:
+            logger.warning(f"[transcribe-segments] InnerTube failed ({e_it}), fallback yt-dlp")
+            for p in job_dir.glob("audio.*"):
+                p.unlink(missing_ok=True)
+            # Stratégie 2 : yt-dlp (multiples tentatives proxy/bgutil)
+            source, title = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: _download_audio_for_transcription(req.youtube_url, job_dir)
+            )
+
         logger.info(f"[transcribe-segments] transcription '{title}'")
         transcript = await transcribe(source)
         if not transcript["segments"]:
