@@ -1772,16 +1772,56 @@ async def get_transcript(video_id: str, _=Depends(auth)):
 
 @app.get("/test-bgutil")
 def test_bgutil_endpoint():
-    """Debug: vérifie que bgutil est joignable et génère un PoToken."""
+    """Debug: vérifie bgutil + teste InnerTube par client."""
     visitor_data, po_token = _fetch_po_token_sync()
     return {
         "bgutil_url": BGUTIL_URL,
         "bgutil_public_url": BGUTIL_PUBLIC_URL,
         "po_token_length": len(po_token),
-        "visitor_data_length": len(visitor_data),
         "ok": bool(po_token),
-        "extractor_args": _yt_extractor_args(),
     }
+
+
+@app.get("/test-innertube")
+async def test_innertube(video_id: str = "WVcfOsVewPk"):
+    """Debug: teste InnerTube client par client, retourne status + raison."""
+    import httpx
+    _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
+    _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+
+    clients = [
+        {"name": "ANDROID_VR", "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+         "payload": {"context": {"client": {"clientName": "ANDROID_VR", "clientVersion": "1.56.21", "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32, "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip", "osName": "Android", "osVersion": "12L", "platform": "MOBILE", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+         "headers": {"Content-Type": "application/json", "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip", "X-YouTube-Client-Name": "28", "X-YouTube-Client-Version": "1.56.21"}},
+        {"name": "TVHTML5", "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+         "payload": {"context": {"client": {"clientName": "TVHTML5", "clientVersion": "7.20241029.00.00", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+         "headers": {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1", "X-YouTube-Client-Name": "7", "X-YouTube-Client-Version": "7.20241029.00.00"}},
+        {"name": "IOS", "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
+         "payload": {"context": {"client": {"clientName": "IOS", "clientVersion": "19.09.3", "deviceMake": "Apple", "deviceModel": "iPhone16,2", "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip", "osName": "iPhone", "osVersion": "17.5.1.21F90", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+         "headers": {"Content-Type": "application/json", "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip", "X-YouTube-Client-Name": "5", "X-YouTube-Client-Version": "19.09.3"}},
+    ]
+
+    results = []
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        for c in clients:
+            try:
+                r = await client.post(c["url"], json=c["payload"], headers=c["headers"])
+                d = r.json() if r.status_code == 200 else {}
+                ps = d.get("playabilityStatus", {})
+                has_streaming = bool(d.get("streamingData"))
+                audio_formats = len([f for f in d.get("streamingData", {}).get("adaptiveFormats", []) if "audio" in f.get("mimeType", "") and f.get("url")]) if has_streaming else 0
+                results.append({
+                    "client": c["name"],
+                    "http_status": r.status_code,
+                    "playability_status": ps.get("status"),
+                    "reason": ps.get("reason", "")[:100],
+                    "has_streaming_data": has_streaming,
+                    "audio_formats": audio_formats,
+                })
+            except Exception as e:
+                results.append({"client": c["name"], "error": str(e)})
+
+    return {"video_id": video_id, "results": results}
 
 
 @app.get("/test-formats")
