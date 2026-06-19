@@ -2074,16 +2074,43 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
 
 @app.get("/test-rapidapi")
 async def test_rapidapi_endpoint(video_id: str = "A-RU8qOAtRk"):
-    """Debug: teste RapidAPI YouTube downloader avec polling."""
+    """Debug: teste RapidAPI YouTube downloader avec polling + diagnostic download."""
     if not RAPIDAPI_KEY:
         return {"ok": False, "error": "RAPIDAPI_KEY non configurée dans Railway"}
-    tmp = WORK_DIR / "ra_test"
-    tmp.mkdir(exist_ok=True)
-    path = await _download_audio_rapidapi(video_id, tmp)
-    if path:
-        size = Path(path).stat().st_size
-        return {"ok": True, "size_kb": size // 1024, "path": path}
-    return {"ok": False, "error": "RapidAPI échec — voir logs Railway"}
+    host = "youtube-mp36.p.rapidapi.com"
+    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": host}
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        # 1. Appel API
+        r = await client.get(f"https://{host}/dl", params={"id": video_id}, headers=headers)
+        api_status = r.status_code
+        try:
+            api_body = r.json()
+        except Exception:
+            api_body = r.text[:200]
+        link = api_body.get("link", "") if isinstance(api_body, dict) else ""
+        processing = api_body.get("status") == "processing" if isinstance(api_body, dict) else False
+        # 2. Si processing, attente courte pour diagnostic rapide
+        if processing:
+            await asyncio.sleep(8)
+            r2 = await client.get(f"https://{host}/dl", params={"id": video_id}, headers=headers)
+            try:
+                api_body = r2.json()
+            except Exception:
+                pass
+            link = api_body.get("link", "") if isinstance(api_body, dict) else ""
+        # 3. Test download du lien
+        dl_info = {}
+        if link:
+            try:
+                dl = await client.get(link, timeout=15)
+                dl_info = {"dl_status": dl.status_code, "dl_size": len(dl.content), "dl_url": link[:100]}
+            except Exception as e:
+                dl_info = {"dl_error": str(e), "dl_url": link[:100]}
+        return {
+            "api_status": api_status,
+            "api_body": api_body,
+            "download": dl_info,
+        }
 
 
 @app.get("/test-playwright")
