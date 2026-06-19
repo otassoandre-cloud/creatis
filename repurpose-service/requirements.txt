@@ -9,3 +9,4 @@ opencv-python-headless>=4.8.0
 youtube-transcript-api==0.6.3
 requests>=2.32.3
 python-multipart>=0.0.9
+playwright>=1.44.0
