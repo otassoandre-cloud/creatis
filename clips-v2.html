@@ -1395,72 +1395,89 @@ const V2 = (() => {
       _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
 
     } else if (_ytUrl) {
-      // Mode URL YouTube — stream InnerTube → <video> identique au mode fichier
+      // Mode URL YouTube — télécharge le segment brut via Railway puis le joue comme un fichier
       const clipStart = clip.start_time ?? clip.start;
-      const clipEnd = clip.end_time ?? clip.end;
-      const videoId = clip.video_id || _ytVideoId();
-
-      // Afficher thumbnail pendant le chargement
-      if (ph) {
-        const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
-        if (thumbUrl) {
-          ph.style.backgroundImage = `url(${thumbUrl})`;
-          ph.style.backgroundSize = 'cover';
-          ph.style.backgroundPosition = 'center top';
-        }
-        ph.textContent = '⏳ Chargement…';
-        ph.style.color = '#fff';
-        ph.style.fontSize = '12px';
-        ph.style.display = 'flex';
-        ph.style.alignItems = 'center';
-        ph.style.justifyContent = 'center';
-      }
-
-      // Supprimer ancien bouton ext s'il existe
-      const wrap = document.getElementById('modal-player-wrap');
-      const oldBtn = wrap?.querySelector('.yt-ext-btn');
+      const clipEnd   = clip.end_time   ?? clip.end;
+      const videoId   = clip.video_id   || _ytVideoId();
+      const wrap      = document.getElementById('modal-player-wrap');
+      const oldBtn    = wrap?.querySelector('.yt-ext-btn');
       if (oldBtn) oldBtn.remove();
 
-      if (!videoId) { if (ph) ph.textContent = 'ID vidéo manquant'; return; }
+      // État de chargement avec thumbnail de fond
+      if (ph) {
+        const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
+        if (thumbUrl) { ph.style.backgroundImage = `url(${thumbUrl})`; ph.style.backgroundSize = 'cover'; ph.style.backgroundPosition = 'center top'; }
+        ph.innerHTML = '<div style="background:rgba(0,0,0,.6);padding:8px 14px;border-radius:8px;color:#fff;font-size:12px;text-align:center">⏳ Téléchargement du clip…</div>';
+        ph.style.display = 'flex'; ph.style.alignItems = 'center'; ph.style.justifyContent = 'center';
+      }
+      video.style.display = 'none';
 
-      // Appel InnerTube via Vercel pour récupérer l'URL stream
+      if (!videoId) { if (ph) ph.innerHTML = '<div style="color:#f87171;background:rgba(0,0,0,.7);padding:8px 12px;border-radius:6px">ID vidéo manquant</div>'; return; }
+
       const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      const authHeaders = tok ? { 'Authorization': `Bearer ${tok}` } : {};
+
+      // Lance le job raw_segment sur Railway
       fetch('/api/repurpose', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': `Bearer ${tok}` } : {}) },
-        body: JSON.stringify({ mode: 'clip_stream_url', video_id: videoId }),
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd }),
       })
       .then(r => r.json())
       .then(data => {
-        if (!data.ok || !data.url) throw new Error(data.error || 'Stream URL introuvable');
+        if (!data.ok || !data.job_id) throw new Error(data.error || 'Lancement impossible');
+        const job_id = data.job_id;
 
-        video.src = data.url;
-        video.style.display = 'block';
-        if (ph) ph.style.display = 'none';
+        // Polling status toutes les 2s
+        const pollInterval = setInterval(async () => {
+          // Arrêter le poll si le modal a changé de clip
+          if (_modalIdx !== i) { clearInterval(pollInterval); return; }
+          try {
+            const sr = await fetch('/api/repurpose', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders },
+              body: JSON.stringify({ mode: 'raw_segment_status', job_id }),
+            });
+            const st = await sr.json();
+            if (st.status === 'done' && st.file_url) {
+              clearInterval(pollInterval);
+              if (_modalIdx !== i) return;
 
-        video.addEventListener('loadedmetadata', () => {
-          video.currentTime = clipStart;
-          _updateCropPreview();
-        }, { once: true });
+              video.src = st.file_url;
+              video.style.display = 'block';
+              if (ph) ph.style.display = 'none';
 
-        // Drag & édition sur les overlays — identique au mode fichier
-        const subOv = document.getElementById('modal-sub-overlay');
-        const hookOv = document.getElementById('modal-hook-overlay');
-        if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
-        if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
-        const subHandle = document.getElementById('modal-sub-handle');
-        const hookHandle = document.getElementById('modal-hook-handle');
-        if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
-        if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
+              video.addEventListener('loadedmetadata', () => {
+                video.currentTime = 0; // segment déjà découpé — commence à 0
+                _updateCropPreview();
+              }, { once: true });
 
-        _lastSegKey = null;
-        cancelAnimationFrame(_subRaf);
-        _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
+              // Recalculer les temps relatifs du clip pour le sub loop
+              clip._rawOffset = clipStart; // offset pour sous-titres
+              const subOv  = document.getElementById('modal-sub-overlay');
+              const hookOv = document.getElementById('modal-hook-overlay');
+              if (subOv  && wrap) _setupDraggable(subOv,  wrap, 'subY',  'subX');
+              if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
+              const subHandle  = document.getElementById('modal-sub-handle');
+              const hookHandle = document.getElementById('modal-hook-handle');
+              if (subHandle)  _setupResizeHandle(subHandle,  'fontSize');
+              if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
+
+              _lastSegKey = null;
+              cancelAnimationFrame(_subRaf);
+              _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
+
+            } else if (st.status === 'error') {
+              clearInterval(pollInterval);
+              if (ph) ph.innerHTML = `<div style="background:rgba(0,0,0,.8);color:#f87171;padding:8px 12px;border-radius:6px;font-size:11px;max-width:80%;text-align:center">Erreur : ${st.error}</div>`;
+            } else if (st.progress && ph) {
+              ph.querySelector('div').textContent = `⏳ ${st.progress}`;
+            }
+          } catch (e) { console.warn('[raw_segment poll]', e); }
+        }, 2000);
       })
       .catch(err => {
-        console.error('[clip_stream_url]', err);
-        if (ph) { ph.textContent = `Erreur : ${err.message}`; ph.style.display = 'flex'; }
-        video.style.display = 'none';
+        if (ph) ph.innerHTML = `<div style="background:rgba(0,0,0,.8);color:#f87171;padding:8px 12px;border-radius:6px;font-size:11px;max-width:80%">Erreur : ${err.message}</div>`;
       });
 
     } else {
@@ -1485,10 +1502,13 @@ const V2 = (() => {
     const clipStart = clip.start_time ?? clip.start;
     const clipEnd = clip.end_time ?? clip.end;
     const clipDur = Math.max(clipEnd - clipStart, 1);
-    const t = video.currentTime;
+    // rawOffset : le segment a été découpé, la vidéo commence à t=0 mais les sous-titres sont en temps absolu
+    const rawOffset = clip._rawOffset ?? null;
+    const t = rawOffset != null ? video.currentTime + rawOffset : video.currentTime;
     const rel = t - clipStart;
 
-    if (!video.paused && t >= clipEnd) video.currentTime = clipStart;
+    if (!video.paused && rawOffset != null && video.currentTime >= clipDur) video.currentTime = 0;
+    else if (!video.paused && rawOffset == null && t >= clipEnd) video.currentTime = clipStart;
 
     if (progFill) progFill.style.width = Math.min(100, Math.max(0, rel / clipDur * 100)) + '%';
     if (timeEl) {

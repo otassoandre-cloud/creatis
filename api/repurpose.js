@@ -824,18 +824,55 @@ module.exports = async (req, res) => {
     }
   }
 
+  if (mode === 'raw_segment') {
+    // Lance le téléchargement du segment brut sur Railway
+    const { video_id, start, end } = body;
+    if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/raw-segment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id, start, end }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway' });
+      return res.status(200).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'raw_segment_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/raw-segment-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (data.status === 'done') {
+        // On retourne l'URL directe du fichier (endpoint public sur Railway)
+        data.file_url = `${REPURPOSE_SERVICE_URL}/raw-segment-file/${job_id}/clip.mp4`;
+      }
+      return res.status(r.ok ? 200 : r.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clip_stream_url') {
-    // Proxy vers Railway /stream-url — Railway n'est pas bloqué par YouTube bot-detection
+    // Proxy vers Railway /stream-url (fallback si raw_segment pas utilisé)
     const { video_id } = body;
     if (!video_id) return res.status(400).json({ error: 'video_id requis' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
     try {
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/stream-url`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
         body: JSON.stringify({ video_id }),
         signal: AbortSignal.timeout(35000),
       });
@@ -843,7 +880,6 @@ module.exports = async (req, res) => {
       if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway stream-url' });
       return res.status(200).json(data);
     } catch (err) {
-      console.error('[clip_stream_url]', err.message);
       return res.status(502).json({ error: err.message });
     }
   }

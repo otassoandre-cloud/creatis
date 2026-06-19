@@ -44,6 +44,7 @@ JOBS:         dict = {}
 CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 UPLOAD_JOBS:  dict = {}
+RAW_SEGMENTS: dict = {}
 
 # Limite les ffmpeg lourds en parallèle — initialisé au premier appel async
 _FFMPEG_SEM = None
@@ -1744,6 +1745,129 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
 
 class StreamUrlRequest(BaseModel):
     video_id: str
+
+class RawSegmentRequest(BaseModel):
+    video_id: str
+    start: float
+    end: float
+
+async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str, out_dir: Path):
+    RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Connexion YouTube…"}
+    try:
+        _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
+        _IOS_KEY     = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+        it_clients = [
+            {
+                "name": "ANDROID",
+                "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
+                "payload": {"context": {"client": {
+                    "clientName": "ANDROID", "clientVersion": "19.09.37", "androidSdkVersion": 30,
+                    "userAgent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                    "osName": "Android", "osVersion": "11", "platform": "MOBILE", "hl": "en", "gl": "US",
+                }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+                "headers": {"Content-Type": "application/json",
+                    "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                    "X-YouTube-Client-Name": "3", "X-YouTube-Client-Version": "19.09.37", "X-Goog-Api-Format-Version": "2"},
+            },
+            {
+                "name": "IOS",
+                "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
+                "payload": {"context": {"client": {
+                    "clientName": "IOS", "clientVersion": "19.09.3", "deviceModel": "iPhone16,2",
+                    "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                    "osName": "iPhone", "osVersion": "17.5.1.21F90", "hl": "en", "gl": "US",
+                }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+                "headers": {"Content-Type": "application/json",
+                    "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                    "X-YouTube-Client-Name": "5", "X-YouTube-Client-Version": "19.09.3", "X-Goog-Api-Format-Version": "2"},
+            },
+        ]
+        stream_url = None
+        for c in it_clients:
+            try:
+                async with httpx.AsyncClient(timeout=30, follow_redirects=True) as hc:
+                    r = await hc.post(c["url"], json=c["payload"], headers=c["headers"])
+                    if r.status_code == 200:
+                        d = r.json()
+                        if d.get("streamingData"):
+                            fmts = [f for f in d["streamingData"].get("formats", [])
+                                    if f.get("url") and "mp4" in f.get("mimeType", "")]
+                            fmts.sort(key=lambda f: f.get("height", 0), reverse=True)
+                            pick = next((f for f in fmts if (f.get("height") or 0) <= 720), fmts[0] if fmts else None)
+                            if pick:
+                                stream_url = pick["url"]
+                                logger.info(f"[raw-segment] {c['name']} OK {pick.get('qualityLabel','?')}")
+                                break
+                        else:
+                            logger.warning(f"[raw-segment] {c['name']} pas streamingData: {d.get('playabilityStatus',{}).get('status')}")
+                    else:
+                        logger.warning(f"[raw-segment] {c['name']} HTTP {r.status_code}")
+            except Exception as e:
+                logger.warning(f"[raw-segment] {c['name']} err: {e}")
+
+        if not stream_url:
+            raise RuntimeError("InnerTube: aucun format mp4 disponible")
+
+        RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
+        out_path = out_dir / "clip.mp4"
+        duration  = end - start
+
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
+            "-i", stream_url, "-c", "copy", "-movflags", "faststart", str(out_path),
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+
+        if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+            logger.warning(f"[raw-segment] copy rc={proc.returncode}, re-encode fallback")
+            proc2 = await asyncio.create_subprocess_exec(
+                "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
+                "-i", stream_url,
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
+            if proc2.returncode != 0:
+                raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
+
+        size_kb = out_path.stat().st_size // 1024
+        logger.info(f"[raw-segment] {job_id} done {size_kb}KB")
+        RAW_SEGMENTS[job_id] = {"status": "done", "file": "clip.mp4"}
+
+    except Exception as e:
+        logger.error(f"[raw-segment] {job_id} error: {e}")
+        RAW_SEGMENTS[job_id] = {"status": "error", "error": str(e)}
+
+
+@app.post("/raw-segment")
+async def raw_segment_endpoint(req: RawSegmentRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    job_id  = str(uuid.uuid4())[:12]
+    out_dir = WORK_DIR / f"rs_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Démarrage…"}
+    tasks.add_task(_run_raw_segment, req.video_id, req.start, req.end, job_id, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/raw-segment-status/{job_id}")
+def raw_segment_status_endpoint(job_id: str, _=Depends(auth)):
+    job = RAW_SEGMENTS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+
+@app.get("/raw-segment-file/{job_id}/{filename}")
+def raw_segment_file_endpoint(job_id: str, filename: str):
+    if ".." in job_id + filename:
+        raise HTTPException(400, "Chemin invalide")
+    path = WORK_DIR / f"rs_{job_id}" / filename
+    if not path.exists():
+        raise HTTPException(404, "Fichier introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
 
 @app.post("/stream-url")
 async def stream_url_endpoint(req: StreamUrlRequest, _=Depends(auth)):
