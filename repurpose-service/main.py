@@ -94,22 +94,21 @@ def _gen_visitor_data() -> str:
 
 
 def _fetch_po_token_sync() -> tuple:
-    """Appelle bgutil avec un visitor_data généré → PoToken lié. Retourne (visitor_data, po_token)."""
+    """Appelle bgutil → PoToken + contentBinding. Retourne (content_binding, po_token)."""
     urls_to_try = [u for u in [BGUTIL_URL, BGUTIL_PUBLIC_URL] if u]
-    # Génère un visitor_data valide pour lier le PoToken
-    visitor_data = _gen_visitor_data()
     for url in urls_to_try:
-        with httpx.Client(timeout=20) as c:
+        with httpx.Client(timeout=25) as c:
             try:
-                r = c.post(f"{url}/get_pot", json={"visitor_data": visitor_data})
-                logger.info(f"[bgutil] {url}/get_pot → {r.status_code}")
+                r = c.post(f"{url}/get_pot", json={})
+                logger.info(f"[bgutil] {url}/get_pot → {r.status_code} body={r.text[:120]}")
                 if r.status_code == 200:
                     data = r.json()
                     token = data.get("poToken") or data.get("po_token") or ""
-                    # Utilise le visitor_data qu'on a envoyé (bgutil le lie à ce visitor)
+                    # contentBinding remplace visitor_data (API bgutil mise à jour)
+                    content_binding = data.get("contentBinding") or data.get("visitorData") or ""
                     if token:
-                        logger.info(f"[bgutil] OK: PoToken={len(token)}c visitorData={len(visitor_data)}c")
-                        return visitor_data, token
+                        logger.info(f"[bgutil] OK: PoToken={len(token)}c contentBinding={len(content_binding)}c")
+                        return content_binding, token
             except Exception as e:
                 logger.warning(f"[bgutil] {url}/get_pot failed: {e}")
     return "", ""
@@ -304,19 +303,13 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
     # WEB API key
     _WEB_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
-    # Obtenir PoToken bgutil pour WEB client (visitor_data inclus dans contentBinding)
+    # Obtenir PoToken bgutil pour WEB client
     _po_token = ""
     _visitor_data = ""
     try:
-        with httpx.Client(timeout=12) as _c:
-            r = _c.post(f"{BGUTIL_PUBLIC_URL}/get_pot", json={})
-            if r.status_code == 200:
-                d = r.json()
-                _po_token = d.get("poToken") or d.get("po_token") or ""
-                # contentBinding est le visitorData encodé que YouTube attend
-                _visitor_data = d.get("contentBinding") or d.get("visitorData") or d.get("visitor_data") or ""
-                if _po_token:
-                    logger.info(f"[innertube] bgutil PoToken OK ({len(_po_token)}c), visitorData ({len(_visitor_data)}c)")
+        _visitor_data, _po_token = _fetch_po_token_sync()
+        if _po_token:
+            logger.info(f"[innertube] bgutil PoToken OK ({len(_po_token)}c), contentBinding ({len(_visitor_data)}c)")
     except Exception as e:
         logger.warning(f"[innertube] bgutil /get_pot failed: {e}")
 
