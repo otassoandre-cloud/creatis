@@ -2072,6 +2072,33 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
+@app.get("/test-ytv2")
+async def test_ytv2_endpoint(video_id: str = "A-RU8qOAtRk"):
+    """Debug: teste YouTube V2 API (Omar M'Haimdat) pour URLs vidéo MP4."""
+    if not RAPIDAPI_KEY:
+        return {"ok": False, "error": "RAPIDAPI_KEY manquante"}
+    host = "youtube-v2.p.rapidapi.com"
+    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": host}
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        r = await client.get(
+            f"https://{host}/video/details",
+            params={"video_id": video_id, "hl": "fr", "gl": "FR"},
+            headers=headers,
+        )
+        try:
+            body = r.json()
+        except Exception:
+            body = r.text[:400]
+        # Chercher URLs MP4 dans la réponse
+        formats = []
+        if isinstance(body, dict):
+            for key in ("formats", "streamingData", "adaptiveFormats", "videos"):
+                if key in body:
+                    formats = body[key]
+                    break
+        return {"status": r.status_code, "formats_count": len(formats) if isinstance(formats, list) else 0, "body_keys": list(body.keys()) if isinstance(body, dict) else body}
+
+
 @app.get("/test-rapidapi")
 async def test_rapidapi_endpoint(video_id: str = "A-RU8qOAtRk"):
     """Debug: teste RapidAPI YouTube downloader avec polling + diagnostic download."""
