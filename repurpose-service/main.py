@@ -1930,6 +1930,18 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
+@app.get("/test-captions")
+def test_captions_endpoint(video_id: str = "A-RU8qOAtRk"):
+    """Debug: teste youtube-transcript-api depuis Railway (API légère, pas de download)."""
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        tl = YouTubeTranscriptApi.list_transcripts(video_id)
+        langs = [f"{t.language_code}(auto={t.is_generated})" for t in tl]
+        return {"ok": True, "video_id": video_id, "langs": langs}
+    except Exception as e:
+        return {"ok": False, "video_id": video_id, "error": str(e)}
+
+
 class StreamUrlRequest(BaseModel):
     video_id: str
 
