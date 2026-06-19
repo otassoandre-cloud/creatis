@@ -982,12 +982,23 @@ const V2 = (() => {
         setStep(1); setBar(3);
         document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
 
-        // Extraction audio native via AudioContext (rapide, aucun téléchargement)
+        // Extraction audio : natif pour < 500 Mo, ffmpeg.wasm pour les fichiers plus lourds
         setMsg('Extraction audio…');
-        const audioBlob = await extractAudioNative(_file, (pct) => {
-          setBar(3 + Math.round(pct * 0.45));
-          setMsg(`Extraction audio… ${pct}%`);
-        });
+        const FILE_LIMIT_NATIVE = 500 * 1024 * 1024; // 500 Mo
+        let audioBlob;
+        if (_file.size <= FILE_LIMIT_NATIVE) {
+          audioBlob = await extractAudioNative(_file, (pct) => {
+            setBar(3 + Math.round(pct * 0.45));
+            setMsg(`Extraction audio… ${pct}%`);
+          });
+        } else {
+          setMsg(`Fichier lourd (${(_file.size/1e9).toFixed(1)} Go) — extraction en cours…`);
+          const rawData = await extractAudio(_file, (pct) => {
+            setBar(3 + Math.round(pct * 0.45));
+            setMsg(`Extraction audio… ${pct}%`);
+          });
+          audioBlob = new Blob([rawData.buffer], { type: 'audio/mpeg' });
+        }
         setBar(50); setStep(2);
 
         // Get Railway token
@@ -3365,10 +3376,15 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
 })();
 
-document.addEventListener('DOMContentLoaded', V2.init);
+document.addEventListener('DOMContentLoaded', () => {
+  V2.init();
+  // Précharger ffmpeg.wasm en arrière-plan dès le chargement de la page
+  // (prêt quand l'utilisateur clique sur Créer les Shorts pour les gros fichiers)
+  setTimeout(() => { try { V2._preloadFFmpeg && V2._preloadFFmpeg(); } catch {} }, 2000);
+});
 </script>
 
 </body>
