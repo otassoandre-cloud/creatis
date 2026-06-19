@@ -1424,10 +1424,10 @@ const V2 = (() => {
       if (!videoId) { if (ph) ph.textContent = 'ID vidéo manquant'; return; }
 
       // Appel InnerTube via Vercel pour récupérer l'URL stream
-      const tok = localStorage.getItem('creatis_token') || '';
+      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
       fetch('/api/repurpose', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+        headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': `Bearer ${tok}` } : {}) },
         body: JSON.stringify({ mode: 'clip_stream_url', video_id: videoId }),
       })
       .then(r => r.json())
