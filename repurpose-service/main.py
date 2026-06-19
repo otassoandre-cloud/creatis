@@ -74,21 +74,42 @@ async def _check_bgutil() -> bool:
         return False
 
 
+def _gen_visitor_data() -> str:
+    """Génère un visitorData YouTube valide (proto3 base64). Même format que yt-dlp."""
+    import struct, base64 as _b64, time as _time, random as _random, string as _string
+    vid = ''.join(_random.choices(_string.ascii_letters + _string.digits + '_-', k=11))
+    ts = int(_time.time())
+    vid_b = vid.encode()
+    proto = bytes([0x0a, len(vid_b)]) + vid_b  # field 1: string
+    # field 5: varint timestamp
+    ts_v = []
+    v = ts
+    while True:
+        b = v & 0x7F; v >>= 7
+        if v: b |= 0x80
+        ts_v.append(b)
+        if not v: break
+    proto += bytes([0x28]) + bytes(ts_v)
+    return _b64.urlsafe_b64encode(proto).rstrip(b'=').decode()
+
+
 def _fetch_po_token_sync() -> tuple:
-    """Appelle bgutil (sync). Retourne (visitor_data, po_token). Essaie internal puis public."""
+    """Appelle bgutil avec un visitor_data généré → PoToken lié. Retourne (visitor_data, po_token)."""
     urls_to_try = [u for u in [BGUTIL_URL, BGUTIL_PUBLIC_URL] if u]
+    # Génère un visitor_data valide pour lier le PoToken
+    visitor_data = _gen_visitor_data()
     for url in urls_to_try:
         with httpx.Client(timeout=20) as c:
             try:
-                r = c.post(f"{url}/get_pot", json={})
+                r = c.post(f"{url}/get_pot", json={"visitor_data": visitor_data})
                 logger.info(f"[bgutil] {url}/get_pot → {r.status_code}")
                 if r.status_code == 200:
                     data = r.json()
-                    token   = data.get("poToken") or data.get("po_token") or ""
-                    visitor = (data.get("visitorData") or data.get("visitor_data") or "")
+                    token = data.get("poToken") or data.get("po_token") or ""
+                    # Utilise le visitor_data qu'on a envoyé (bgutil le lie à ce visitor)
                     if token:
-                        logger.info(f"[bgutil] OK from {url}: PoToken={len(token)}c")
-                        return visitor, token
+                        logger.info(f"[bgutil] OK: PoToken={len(token)}c visitorData={len(visitor_data)}c")
+                        return visitor_data, token
             except Exception as e:
                 logger.warning(f"[bgutil] {url}/get_pot failed: {e}")
     return "", ""
