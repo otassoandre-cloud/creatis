@@ -473,11 +473,11 @@
       <div class="analyze-spinner"></div>
       <div class="analyze-title" id="analyze-title">Analyse en cours…</div>
       <div class="analyze-steps" id="analyze-steps">
-        <div class="astep" id="as-1">⚙️ Chargement ffmpeg.wasm…</div>
-        <div class="astep" id="as-2">🎙️ Extraction audio…</div>
-        <div class="astep" id="as-3">📤 Transcription Whisper…</div>
-        <div class="astep" id="as-4">🧠 Identification des clips…</div>
-        <div class="astep" id="as-5">✅ Clips identifiés !</div>
+        <div class="astep" id="as-1">📤 Upload vidéo…</div>
+        <div class="astep" id="as-2">🎙️ Transcription Whisper…</div>
+        <div class="astep" id="as-3">🧠 Identification des clips…</div>
+        <div class="astep" id="as-4">✅ Clips identifiés !</div>
+        <div class="astep" id="as-5"></div>
       </div>
       <div class="prog-bar-wrap"><div class="prog-bar-fill" id="analyze-bar" style="width:0%"></div></div>
       <div id="analyze-msg" style="font-size:12px;color:var(--texte-muted);margin-top:4px"></div>
@@ -804,8 +804,7 @@ const V2 = (() => {
     const nameEl = document.getElementById('v1-upload-name');
     if (nameEl) { nameEl.textContent = f.name.replace(/\.[^.]+$/, ''); nameEl.style.color = 'var(--texte)'; }
 
-    // Précharger ffmpeg.wasm + BlazeFace en arrière-plan dès la sélection du fichier
-    loadFFmpeg().catch(() => {});
+    // Précharger BlazeFace en arrière-plan dès la sélection du fichier
     _loadBlazeface().catch(() => {});
   }
 
@@ -979,78 +978,67 @@ const V2 = (() => {
         renderStudio(data.result.title || 'Vidéo YouTube');
 
       } else {
-        // Upload flow
+        // Upload flow — direct Railway (ffmpeg natif, pas de ffmpeg.wasm)
         setStep(1); setBar(3);
         document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
-        setMsg('Préparation… ⚡');
-        await loadFFmpeg(); // déjà préchargé si l'user a attendu après sélection
-        setBar(10); setStep(2);
-
-        // Extract audio
-        const fileSizeMB = (_file.size / 1e6).toFixed(0);
-        const fileSizeGB = (_file.size / 1e9).toFixed(1);
-        const sizeLabel = _file.size > 1e9 ? `${fileSizeGB} Go` : `${fileSizeMB} Mo`;
-        const bigFileNote = _file.size > 2e9 ? ' — vidéo lourde, les 2 premières heures seront analysées' : '';
-        setMsg(`Extraction audio (${sizeLabel})${bigFileNote} ⏳`);
-        const audioData = await extractAudio(_file, (pct, msg) => {
-          setBar(10 + Math.round(pct * 0.3));
-          const pctDisplay = Math.round(Math.min(pct, 100));
-          setMsg(`Extraction audio… ${pctDisplay}% — encore quelques secondes ⏳`);
-        });
-        setBar(40); setStep(3);
 
         // Get Railway token
         const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
         const tokData = await tokRes.json();
         if (!tokData.ok) throw new Error(tokData.error || 'Erreur auth Railway');
 
-        // Upload audio → transcribe (avec retry sur 502/503)
-        const audioBlob = new Blob([audioData.buffer], { type: 'audio/mpeg' });
+        // Upload vidéo directement vers Railway avec barre de progression
+        const fileSizeMB = (_file.size / 1e6).toFixed(0);
+        setMsg(`Upload vidéo (${fileSizeMB} Mo)…`);
         const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.mp3');
+        formData.append('file', _file);
+        const uploadData = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${tokData.railway_url}/upload-video`);
+          xhr.setRequestHeader('Authorization', `Bearer ${tokData.token}`);
+          xhr.upload.onprogress = e => {
+            if (e.lengthComputable) {
+              setBar(3 + Math.round(e.loaded / e.total * 45));
+              setMsg(`Upload… ${Math.round(e.loaded / e.total * 100)}%`);
+            }
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText)); }
+              catch { reject(new Error('Réponse serveur invalide')); }
+            } else {
+              reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error('Erreur réseau pendant l\'upload'));
+          xhr.send(formData);
+        });
+        if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
+        setBar(50); setStep(2);
+        setMsg('Transcription Whisper en cours…');
 
-        let transcribeData = null;
-        const MAX_ATTEMPTS = 3;
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-          if (attempt > 1) {
-            setMsg(`Service en démarrage… tentative ${attempt}/${MAX_ATTEMPTS}`);
-            await new Promise(r => setTimeout(r, 4000 * attempt));
-          } else {
-            setMsg('Upload audio…');
-          }
-          try {
-            transcribeData = await new Promise((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
-              xhr.open('POST', `${tokData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokData.token)}`);
-              xhr.timeout = 300000;
-              xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(40 + Math.round(e.loaded / e.total * 15)); };
-              xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse serveur invalide')); }
-                } else if ((xhr.status === 502 || xhr.status === 503) && attempt < MAX_ATTEMPTS) {
-                  reject(new Error(`retry_${xhr.status}`));
-                } else {
-                  reject(new Error(`Upload échoué (${xhr.status})`));
-                }
-              };
-              xhr.onerror = () => reject(new Error('Erreur réseau'));
-              xhr.ontimeout = () => attempt < MAX_ATTEMPTS ? reject(new Error('retry_timeout')) : reject(new Error('Timeout (5 min)'));
-              xhr.send(formData);
-            });
-            break; // succès
-          } catch(e) {
-            if (!e.message.startsWith('retry_') || attempt === MAX_ATTEMPTS) throw e;
-          }
+        // Poll upload-status jusqu'à done
+        const { job_id, video_id } = uploadData;
+        let statusData;
+        for (let i = 0; i < 120; i++) {
+          await new Promise(r => setTimeout(r, 5000));
+          const r = await fetch(`${tokData.railway_url}/upload-status/${job_id}`,
+            { headers: { 'Authorization': `Bearer ${tokData.token}` } });
+          if (!r.ok) throw new Error(`Polling erreur ${r.status}`);
+          statusData = await r.json();
+          if (statusData.status === 'done') break;
+          if (statusData.status === 'error') throw new Error(statusData.error || 'Transcription échouée');
+          setBar(50 + Math.min(i * 0.5, 20));
         }
-        if (!transcribeData.ok) throw new Error(transcribeData.error || 'Transcription échouée');
-        _segments = transcribeData.segments || [];
-        setBar(65); setStep(4);
+        if (statusData?.status !== 'done') throw new Error('Timeout transcription (>10 min)');
+        _segments = statusData.segments || [];
+        setBar(75); setStep(3);
 
         // Identify clips via Groq
         setMsg('Identification des meilleurs moments…');
         const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
-          mode: 'clips', segments: _segments, video_id: `local_${Date.now()}`,
-          title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: 10
+          mode: 'clips', segments: _segments, video_id: video_id || `local_${Date.now()}`,
+          title: _file.name.replace(/\.[^.]+$/, ''), duration: statusData.duration, n_clips: 10
         }) });
         const clipsData = await clipsRes.json();
         if (!clipsData.ok) {
@@ -1058,7 +1046,7 @@ const V2 = (() => {
           throw new Error(clipsData.error || 'Erreur identification clips');
         }
         _clips = clipsData.result.clips || [];
-        setBar(100); setStep(5);
+        setBar(100); setStep(4);
         renderStudio(_file.name.replace(/\.[^.]+$/, ''));
         _precacheSegmentsAsync(_clips).catch(() => {});
       }
