@@ -116,7 +116,7 @@ def _fetch_po_token_sync() -> tuple:
 
 def _yt_extractor_args() -> dict:
     """Construit les extractor_args yt-dlp. Utilise bgutil public URL (fiable depuis Railway)."""
-    args = {"youtube": {"player_client": ["web", "android_vr", "android", "ios"]}}
+    args = {"youtube": {"player_client": ["android_creator", "android_testsuite", "mweb", "web", "android_vr", "android", "ios"]}}
 
     # Toujours configurer le plugin avec l'URL publique (connue joignable depuis Railway)
     # Le plugin bgutil-ytdlp-pot-provider intercepte le fetch du web client et génère un PoToken
@@ -639,8 +639,8 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
               "label": "webshare+android"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        # 3. Railway IP android_vr + android/ios (sans bgutil)
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android_vr", "android", "ios"]}}, "label": "railway+android_vr"},
+        # 3. Railway IP clients alternatifs (android_creator, mweb — moins bloqués)
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android_creator", "android_testsuite", "mweb", "android_vr", "android", "ios"]}}, "label": "railway+alt-clients"},
     ]
 
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best"]
