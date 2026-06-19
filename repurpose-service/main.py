@@ -662,18 +662,111 @@ def _get_yt_cookies_playwright_sync(video_id: str, out_dir: Path) -> Optional[st
         return None
 
 
+def _get_innertube_audio_url(video_id: str) -> Optional[tuple]:
+    """Récupère URL audio directe via InnerTube (sans yt-dlp, sans cookies). Returns (url, title) or None."""
+    import requests as _req
+    _ANDROID_KEY = "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
+    _IOS_KEY     = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+    clients = [
+        {
+            "name": "ANDROID_VR",
+            "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "payload": {"context": {"client": {
+                "clientName": "ANDROID_VR", "clientVersion": "1.56.21",
+                "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32,
+                "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                "osName": "Android", "osVersion": "12L", "platform": "MOBILE", "hl": "en", "gl": "US",
+            }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+            "headers": {"Content-Type": "application/json",
+                "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                "X-YouTube-Client-Name": "28", "X-YouTube-Client-Version": "1.56.21", "X-Goog-Api-Format-Version": "2"},
+        },
+        {
+            "name": "ANDROID",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
+            "payload": {"context": {"client": {
+                "clientName": "ANDROID", "clientVersion": "19.09.37", "androidSdkVersion": 30,
+                "userAgent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                "osName": "Android", "osVersion": "11", "platform": "MOBILE", "hl": "en", "gl": "US",
+            }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+            "headers": {"Content-Type": "application/json",
+                "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                "X-YouTube-Client-Name": "3", "X-YouTube-Client-Version": "19.09.37", "X-Goog-Api-Format-Version": "2"},
+        },
+        {
+            "name": "IOS",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
+            "payload": {"context": {"client": {
+                "clientName": "IOS", "clientVersion": "19.09.3", "deviceModel": "iPhone16,2",
+                "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                "osName": "iPhone", "osVersion": "17.5.1.21F90", "hl": "en", "gl": "US",
+            }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+            "headers": {"Content-Type": "application/json",
+                "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                "X-YouTube-Client-Name": "5", "X-YouTube-Client-Version": "19.09.3", "X-Goog-Api-Format-Version": "2"},
+        },
+    ]
+    for c in clients:
+        try:
+            r = _req.post(c["url"], json=c["payload"], headers=c["headers"], timeout=30)
+            if r.status_code != 200:
+                logger.warning(f"[innertube-audio] {c['name']} HTTP {r.status_code}")
+                continue
+            d = r.json()
+            streaming = d.get("streamingData", {})
+            title = d.get("videoDetails", {}).get("title", "")
+            # Audio-only adaptive formats (priorité)
+            adaptive = [f for f in streaming.get("adaptiveFormats", [])
+                        if f.get("url") and "audio" in f.get("mimeType", "")]
+            adaptive.sort(key=lambda f: f.get("bitrate", 0), reverse=True)
+            if adaptive:
+                logger.info(f"[innertube-audio] {c['name']} OK — audio adaptive ({len(adaptive)} formats)")
+                return adaptive[0]["url"], title
+            # Fallback : formats muxés
+            fmts = [f for f in streaming.get("formats", []) if f.get("url")]
+            if fmts:
+                logger.info(f"[innertube-audio] {c['name']} OK — muxed format")
+                return fmts[0]["url"], title
+            logger.warning(f"[innertube-audio] {c['name']} pas streamingData: {d.get('playabilityStatus',{}).get('status')}")
+        except Exception as e:
+            logger.warning(f"[innertube-audio] {c['name']} err: {e}")
+    return None
+
+
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
-    """Télécharge audio via yt-dlp.
-    Stratégie 0 : Playwright → cookies depuis l'IP Railway → yt-dlp avec ces cookies.
-    Stratégie 1 : IP Railway + bgutil PoToken.
-    Stratégie 2 : IP résidentielle Webshare + android/ios.
-    Stratégie 3 : Railway android_vr sans bgutil.
+    """Télécharge audio via InnerTube direct puis yt-dlp fallback.
+    Stratégie 0 : InnerTube ANDROID_VR/ANDROID/IOS — URL directe, pas de bot detection.
+    Stratégie 1 : yt-dlp + YOUTUBE_COOKIES (authentifiés).
+    Stratégie 2 : yt-dlp + bgutil PoToken.
+    Stratégie 3 : yt-dlp + clients alternatifs.
     """
     import yt_dlp
     cookies_file = _get_cookies_file()
 
-    # Playwright : obtenir des cookies YouTube frais depuis l'IP Railway
     m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
+    video_id = m.group(1) if m else None
+
+    # Stratégie 0 : InnerTube direct (bypasse bot detection, pas de cookies nécessaires)
+    if video_id:
+        innertube = _get_innertube_audio_url(video_id)
+        if innertube:
+            audio_url, title = innertube
+            out_path = out_dir / "audio.m4a"
+            try:
+                cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", audio_url,
+                       "-t", "7200", "-c", "copy", str(out_path)]
+                result = subprocess.run(cmd, timeout=600, capture_output=True)
+                if result.returncode == 0 and out_path.exists() and out_path.stat().st_size > 10_000:
+                    logger.info(f"[innertube-audio] téléchargé OK: {out_path.stat().st_size // 1024} KB")
+                    return str(out_path), title
+                else:
+                    logger.warning(f"[innertube-audio] ffmpeg rc={result.returncode} size={out_path.stat().st_size if out_path.exists() else 0}")
+                    out_path.unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning(f"[innertube-audio] ffmpeg err: {e}")
+                out_path.unlink(missing_ok=True)
+
+    # Playwright : obtenir des cookies YouTube frais depuis l'IP Railway
     if m:
         pw_cookies = _get_yt_cookies_playwright_sync(m.group(1), out_dir)
         if pw_cookies and not cookies_file:
