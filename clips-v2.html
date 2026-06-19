@@ -978,67 +978,60 @@ const V2 = (() => {
         renderStudio(data.result.title || 'Vidéo YouTube');
 
       } else {
-        // Upload flow — direct Railway (ffmpeg natif, pas de ffmpeg.wasm)
+        // Upload flow — extraction audio native (AudioContext, aucune lib à télécharger)
         setStep(1); setBar(3);
         document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
+
+        // Extraction audio native via AudioContext (rapide, aucun téléchargement)
+        setMsg('Extraction audio…');
+        const audioBlob = await extractAudioNative(_file, (pct) => {
+          setBar(3 + Math.round(pct * 0.45));
+          setMsg(`Extraction audio… ${pct}%`);
+        });
+        setBar(50); setStep(2);
 
         // Get Railway token
         const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
         const tokData = await tokRes.json();
         if (!tokData.ok) throw new Error(tokData.error || 'Erreur auth Railway');
 
-        // Upload vidéo directement vers Railway avec barre de progression
-        const fileSizeMB = (_file.size / 1e6).toFixed(0);
-        setMsg(`Upload vidéo (${fileSizeMB} Mo)…`);
-        const formData = new FormData();
-        formData.append('file', _file);
-        const uploadData = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', `${tokData.railway_url}/upload-video`);
-          xhr.setRequestHeader('Authorization', `Bearer ${tokData.token}`);
-          xhr.upload.onprogress = e => {
-            if (e.lengthComputable) {
-              setBar(3 + Math.round(e.loaded / e.total * 45));
-              setMsg(`Upload… ${Math.round(e.loaded / e.total * 100)}%`);
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try { resolve(JSON.parse(xhr.responseText)); }
-              catch { reject(new Error('Réponse serveur invalide')); }
-            } else {
-              reject(new Error(`Upload échoué (${xhr.status}): ${xhr.responseText.slice(0,200)}`));
-            }
-          };
-          xhr.onerror = () => reject(new Error('Erreur réseau pendant l\'upload'));
-          xhr.send(formData);
-        });
-        if (!uploadData.ok) throw new Error(uploadData.error || 'Upload échoué');
-        setBar(50); setStep(2);
-        setMsg('Transcription Whisper en cours…');
-
-        // Poll upload-status jusqu'à done
-        const { job_id, video_id } = uploadData;
-        let statusData;
-        for (let i = 0; i < 120; i++) {
-          await new Promise(r => setTimeout(r, 5000));
-          const r = await fetch(`${tokData.railway_url}/upload-status/${job_id}`,
-            { headers: { 'Authorization': `Bearer ${tokData.token}` } });
-          if (!r.ok) throw new Error(`Polling erreur ${r.status}`);
-          statusData = await r.json();
-          if (statusData.status === 'done') break;
-          if (statusData.status === 'error') throw new Error(statusData.error || 'Transcription échouée');
-          setBar(50 + Math.min(i * 0.5, 20));
+        // Upload audio (quelques Mo) directement vers Railway
+        setMsg('Upload audio…');
+        const audioFormData = new FormData();
+        audioFormData.append('file', audioBlob, 'audio.wav');
+        let transcribeData = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (attempt > 1) { setMsg(`Retry ${attempt}/3…`); await new Promise(r => setTimeout(r, 4000 * attempt)); }
+          try {
+            transcribeData = await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('POST', `${tokData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokData.token)}`);
+              xhr.timeout = 300000;
+              xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(50 + Math.round(e.loaded / e.total * 15)); };
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse invalide')); }
+                } else if ((xhr.status === 502 || xhr.status === 503) && attempt < 3) {
+                  reject(new Error('retry'));
+                } else { reject(new Error(`Erreur ${xhr.status}`)); }
+              };
+              xhr.onerror = () => reject(new Error('Erreur réseau'));
+              xhr.ontimeout = () => reject(new Error('retry'));
+              xhr.send(audioFormData);
+            });
+            break;
+          } catch(e) { if (e.message !== 'retry' || attempt === 3) throw e; }
         }
-        if (statusData?.status !== 'done') throw new Error('Timeout transcription (>10 min)');
-        _segments = statusData.segments || [];
+        if (!transcribeData?.ok) throw new Error(transcribeData?.error || 'Transcription échouée');
+        _segments = transcribeData.segments || [];
+        const video_id = `local_${Date.now()}`;
         setBar(75); setStep(3);
 
         // Identify clips via Groq
         setMsg('Identification des meilleurs moments…');
         const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
-          mode: 'clips', segments: _segments, video_id: video_id || `local_${Date.now()}`,
-          title: _file.name.replace(/\.[^.]+$/, ''), duration: statusData.duration, n_clips: 10
+          mode: 'clips', segments: _segments, video_id: video_id,
+          title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: 10
         }) });
         const clipsData = await clipsRes.json();
         if (!clipsData.ok) {
@@ -1057,7 +1050,44 @@ const V2 = (() => {
     }
   }
 
-  // ── Audio extraction ──
+  // ── Extraction audio native (AudioContext — aucune lib, rapide) ──
+  async function extractAudioNative(file, onProgress) {
+    const MAX_DURATION_S = 7200; // 2h max
+    if (onProgress) onProgress(5);
+    const arrayBuffer = await file.arrayBuffer();
+    if (onProgress) onProgress(20);
+    const tmpCtx = new AudioContext();
+    const audioBuffer = await tmpCtx.decodeAudioData(arrayBuffer);
+    await tmpCtx.close();
+    if (onProgress) onProgress(50);
+    const sampleRate = 16000;
+    const duration = Math.min(audioBuffer.duration, MAX_DURATION_S);
+    const numFrames = Math.ceil(duration * sampleRate);
+    const offCtx = new OfflineAudioContext(1, numFrames, sampleRate);
+    const src = offCtx.createBufferSource();
+    src.buffer = audioBuffer;
+    src.connect(offCtx.destination);
+    src.start(0);
+    const rendered = await offCtx.startRendering();
+    if (onProgress) onProgress(80);
+    const pcm = rendered.getChannelData(0);
+    // Encode WAV 16kHz mono 16-bit
+    const buf = new ArrayBuffer(44 + pcm.length * 2);
+    const v = new DataView(buf);
+    const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); ws(8, 'WAVE');
+    ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    ws(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+    for (let i = 0; i < pcm.length; i++) {
+      v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 32767, true);
+    }
+    if (onProgress) onProgress(100);
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  // ── Audio extraction ffmpeg.wasm (gardé en fallback) ──
   async function extractAudio(file, onProgress) {
     const ffmpeg = await loadFFmpeg();
     const progressHandler = ({ progress }) => {
