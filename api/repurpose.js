@@ -734,10 +734,13 @@ module.exports = async (req, res) => {
 
   // ── Proxy multipart vers Railway (upload-video, transcribe-audio, reframe-clip) ──
   if (contentType.includes('multipart/form-data')) {
-    const authUser2 = await verifyToken(token);
-    if (!authUser2 && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     const railwayEndpoint = (req.query && req.query.railway) || 'upload-video';
+    // upload-video et transcribe-audio publics (analyse gratuite) ; reframe-clip = export Pro uniquement
+    if (railwayEndpoint === 'reframe-clip') {
+      const authUser2 = await verifyToken(token);
+      if (!authUser2 && !isLocal) return res.status(401).json({ error: 'Connexion requise pour exporter' });
+    }
     if (!['upload-video', 'transcribe-audio', 'reframe-clip'].includes(railwayEndpoint)) {
       return res.status(400).json({ error: 'Endpoint invalide' });
     }
@@ -769,19 +772,20 @@ module.exports = async (req, res) => {
   let body = {};
   try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
 
-  // Auth requise (Repurpose = Pro uniquement)
-  const authUser = await verifyToken(token);
-  if (!authUser && !isLocal) {
-    return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
-  }
   const mode = body.mode || 'text';
   const url = body.url || '';
+
+  // Modes publics — pas d'auth requise (analyse gratuite, paywall au téléchargement)
+  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'upload-status', 'log_lead']);
+  const authUser = PUBLIC_MODES.has(mode) ? null : await verifyToken(token);
+  if (!PUBLIC_MODES.has(mode) && !authUser && !isLocal) {
+    return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
+  }
 
   // ── Modes sans URL — traiter immédiatement avant tout autre check ──
 
   // Upload token : credentials Railway pour upload direct
   if (mode === 'upload-token') {
-    if (!authUser && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
     return res.status(200).json({ ok: true, railway_url: REPURPOSE_SERVICE_URL, token: REPURPOSE_SERVICE_SECRET });
   }
