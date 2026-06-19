@@ -273,77 +273,87 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
         raise ValueError("ID vidéo YouTube introuvable")
     video_id = m.group(1)
 
-    # Essai 1 : TV Embedded client (pas de PoToken, pas de bot-check)
-    # Essai 2 : Android client (fallback)
-    # Clients InnerTube — sans key= (évite "Precondition check failed")
+    # Android API key (yt-dlp source, client ID 3)
+    _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
+    # iOS API key (yt-dlp source, client ID 5)
+    _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+
     clients = [
         {
-            "name": "TV_EMBEDDED",
-            "payload": {
-                "context": {
-                    "client": {
-                        "clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-                        "clientVersion": "2.0",
-                        "hl": "fr", "gl": "FR",
-                    },
-                    "thirdParty": {"embedUrl": "https://www.youtube.com/"},
-                },
-                "videoId": video_id,
-            },
-            "headers": {
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1",
-                "X-YouTube-Client-Name": "85",
-                "X-YouTube-Client-Version": "2.0",
-                "Origin": "https://www.youtube.com",
-                "Referer": "https://www.youtube.com/",
-            },
-        },
-        {
             "name": "ANDROID",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
             "payload": {
                 "context": {
                     "client": {
                         "clientName": "ANDROID",
-                        "clientVersion": "19.29.37",
+                        "clientVersion": "19.09.37",
                         "androidSdkVersion": 30,
-                        "userAgent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+                        "userAgent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
                         "osName": "Android", "osVersion": "11",
-                        "platform": "MOBILE", "hl": "fr", "gl": "FR",
+                        "platform": "MOBILE", "hl": "en", "gl": "US",
                     }
                 },
                 "videoId": video_id,
+                "contentCheckOk": True,
+                "racyCheckOk": True,
             },
             "headers": {
                 "Content-Type": "application/json",
-                "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
+                "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
                 "X-YouTube-Client-Name": "3",
-                "X-YouTube-Client-Version": "19.29.37",
-                "Origin": "https://www.youtube.com",
+                "X-YouTube-Client-Version": "19.09.37",
+                "X-Goog-Api-Format-Version": "2",
             },
         },
         {
             "name": "IOS",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
             "payload": {
                 "context": {
                     "client": {
                         "clientName": "IOS",
-                        "clientVersion": "19.29.1",
+                        "clientVersion": "19.09.3",
                         "deviceMake": "Apple",
                         "deviceModel": "iPhone16,2",
-                        "userAgent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+                        "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
                         "osName": "iPhone", "osVersion": "17.5.1.21F90",
-                        "hl": "fr", "gl": "FR",
+                        "hl": "en", "gl": "US",
                     }
                 },
                 "videoId": video_id,
+                "contentCheckOk": True,
+                "racyCheckOk": True,
             },
             "headers": {
                 "Content-Type": "application/json",
-                "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+                "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
                 "X-YouTube-Client-Name": "5",
-                "X-YouTube-Client-Version": "19.29.1",
-                "Origin": "https://www.youtube.com",
+                "X-YouTube-Client-Version": "19.09.3",
+                "X-Goog-Api-Format-Version": "2",
+            },
+        },
+        {
+            "name": "MWEB",
+            "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "MWEB",
+                        "clientVersion": "2.20231204.01.00",
+                        "hl": "en", "gl": "US",
+                    }
+                },
+                "videoId": video_id,
+                "contentCheckOk": True,
+                "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+                "X-YouTube-Client-Name": "2",
+                "X-YouTube-Client-Version": "2.20231204.01.00",
+                "Origin": "https://m.youtube.com",
+                "Referer": "https://m.youtube.com/",
             },
         },
     ]
@@ -353,7 +363,7 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
         try:
             async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
                 r = await client.post(
-                    "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+                    c["url"],
                     json=c["payload"],
                     headers=c["headers"],
                 )
@@ -454,6 +464,8 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     "check_formats": False,
                     "no_playlist": True,
                     "extractor_args": attempt["extractor_args"],
+                    "socket_timeout": 120,
+                    "retries": 3,
                 }
                 if fmt:
                     opts["format"] = fmt
