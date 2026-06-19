@@ -460,6 +460,14 @@
         <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
       </label>
 
+      <div class="url-sep" style="width:100%;max-width:600px;">ou colle une URL YouTube</div>
+      <div class="url-input-row" style="width:100%;max-width:600px;">
+        <input type="text" class="url-input" id="yt-url-input"
+          placeholder="https://youtube.com/watch?v=..."
+          oninput="V2.setYtUrl(this.value)"
+          onpaste="setTimeout(()=>V2.setYtUrl(document.getElementById('yt-url-input').value),0)">
+      </div>
+
       <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Créer les Shorts
@@ -789,11 +797,28 @@ const V2 = (() => {
     setFile(f);
   }
 
+  function setYtUrl(val) {
+    const v = (val || '').trim();
+    const isYt = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?.*v=|shorts\/)|youtu\.be\/)/.test(v);
+    _ytUrl = isYt ? v : '';
+    _file = null;
+    _clipSegmentIds = {};
+    const zone = document.getElementById('drop-zone');
+    if (zone) zone.classList.remove('has-file');
+    const nameEl = document.getElementById('v1-upload-name');
+    if (nameEl) { nameEl.textContent = 'Cliquer ou déposer une vidéo ici'; nameEl.style.color = ''; }
+    document.getElementById('btn-analyze').disabled = !isYt;
+    const input = document.getElementById('yt-url-input');
+    if (input) input.style.borderColor = v.length > 5 && !isYt ? 'var(--rouge, #ef4444)' : isYt ? 'var(--vert)' : '';
+  }
+
   function setFile(f) {
     _file = f;
     _faceCache = {}; // reset quand nouvelle vidéo
     _ytUrl = '';
     _clipSegmentIds = {};
+    const urlInput = document.getElementById('yt-url-input');
+    if (urlInput) { urlInput.value = ''; urlInput.style.borderColor = ''; }
     const zone = document.getElementById('drop-zone');
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
@@ -951,10 +976,13 @@ const V2 = (() => {
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
       if (_ytUrl) {
-        // YouTube flow — fetch clips + segments
-        setStep(4); setBar(30);
+        // YouTube URL flow
         document.getElementById('analyze-title').textContent = 'Analyse YouTube…';
-        setMsg('Récupération des sous-titres YouTube…');
+        // Adapter les labels des étapes pour le flow URL
+        const stepLabels = ['📥 Récupération transcription…', '🎙️ Transcription Whisper…', '🧠 Identification des clips…', '✅ Clips identifiés !', ''];
+        stepLabels.forEach((txt, i) => { const el = document.getElementById(`as-${i+1}`); if (el) el.textContent = txt; });
+        setStep(1); setBar(20);
+        setMsg('Récupération des sous-titres / téléchargement audio…');
         const res = await fetch('/api/repurpose', {
           method: 'POST', headers,
           body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
@@ -964,7 +992,8 @@ const V2 = (() => {
           if (data.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
           throw new Error(data.error || 'Erreur analyse YouTube');
         }
-        setBar(100); setStep(5);
+        setBar(90); setStep(4);
+        setMsg('');
         _clips = data.result.clips || [];
         _segments = data.result.segments || [];
         renderStudio(data.result.title || 'Vidéo YouTube');
@@ -3172,6 +3201,8 @@ const V2 = (() => {
     const dz = document.getElementById('drop-zone'); if (dz) dz.classList.remove('has-file');
     const nameEl = document.getElementById('v1-upload-name');
     if (nameEl) { nameEl.textContent = 'Déposer une vidéo ici'; nameEl.style.color = ''; }
+    const urlIn = document.getElementById('yt-url-input');
+    if (urlIn) { urlIn.value = ''; urlIn.style.borderColor = ''; }
     document.getElementById('btn-analyze').disabled = true;
     setState('upload');
   }
@@ -3205,7 +3236,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal };
 })();
 
 document.addEventListener('DOMContentLoaded', V2.init);

@@ -1093,8 +1093,15 @@ module.exports = async (req, res) => {
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
         console.log(`[clips] captions OK: ${segments.length} segments`);
       } catch (e) {
-        console.warn('[clips] captions failed:', e.message);
-        throw new Error('Cette vidéo n\'a pas de sous-titres automatiques disponibles. Active les sous-titres automatiques sur YouTube Studio, ou utilise une vidéo avec des sous-titres existants.');
+        console.warn('[clips] captions failed, fallback Railway Whisper:', e.message);
+        try {
+          const r = await transcribeViaRailway(url);
+          if (!r.segments?.length) throw new Error('Transcription vide');
+          segments = r.segments; title = r.title || pageTitle; duration = r.duration;
+          console.log(`[clips] Railway Whisper OK: ${segments.length} segments`);
+        } catch (e2) {
+          throw new Error(`Transcription impossible — ${e2.message}. Utilise l'option "Uploader une vidéo" pour les vidéos sans sous-titres.`);
+        }
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
