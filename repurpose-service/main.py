@@ -746,9 +746,9 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
     if m:
         pw_cookies = _get_yt_cookies_playwright_sync(m.group(1), out_dir)
-        if pw_cookies:
+        if pw_cookies and not cookies_file:
             cookies_file = pw_cookies
-            logger.info("[download_video] cookies Playwright obtenus")
+            logger.info("[download_video] cookies Playwright utilisés (pas de YOUTUBE_COOKIES)")
     if cookies_file:
         logger.info("yt-dlp video: cookies actifs")
 
