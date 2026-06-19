@@ -1742,6 +1742,99 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
+class StreamUrlRequest(BaseModel):
+    video_id: str
+
+@app.post("/stream-url")
+async def stream_url_endpoint(req: StreamUrlRequest, _=Depends(auth)):
+    """Retourne l'URL de stream mp4 directe via InnerTube — pour lecture dans <video> côté browser."""
+    youtube_url = f"https://www.youtube.com/watch?v={req.video_id}"
+
+    _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
+    _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+    clients = [
+        {
+            "name": "ANDROID",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
+            "payload": {
+                "context": {"client": {
+                    "clientName": "ANDROID", "clientVersion": "19.09.37",
+                    "androidSdkVersion": 30,
+                    "userAgent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                    "osName": "Android", "osVersion": "11",
+                    "platform": "MOBILE", "hl": "en", "gl": "US",
+                }},
+                "videoId": req.video_id, "contentCheckOk": True, "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+                "X-YouTube-Client-Name": "3", "X-YouTube-Client-Version": "19.09.37",
+                "X-Goog-Api-Format-Version": "2",
+            },
+        },
+        {
+            "name": "IOS",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
+            "payload": {
+                "context": {"client": {
+                    "clientName": "IOS", "clientVersion": "19.09.3",
+                    "deviceModel": "iPhone16,2",
+                    "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                    "osName": "iPhone", "osVersion": "17.5.1.21F90",
+                    "hl": "en", "gl": "US",
+                }},
+                "videoId": req.video_id, "contentCheckOk": True, "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip",
+                "X-YouTube-Client-Name": "5", "X-YouTube-Client-Version": "19.09.3",
+                "X-Goog-Api-Format-Version": "2",
+            },
+        },
+    ]
+
+    data = None
+    client_used = None
+    for c in clients:
+        try:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as hc:
+                r = await hc.post(c["url"], json=c["payload"], headers=c["headers"])
+                if r.status_code == 200:
+                    d = r.json()
+                    if d.get("streamingData"):
+                        data = d
+                        client_used = c["name"]
+                        break
+                    logger.warning(f"[stream-url] {c['name']} pas de streamingData: {d.get('playabilityStatus',{}).get('status')}")
+                else:
+                    logger.warning(f"[stream-url] {c['name']} HTTP {r.status_code}")
+        except Exception as e:
+            logger.warning(f"[stream-url] {c['name']} erreur: {e}")
+
+    if not data:
+        raise HTTPException(status_code=502, detail="InnerTube: aucun client n'a retourné de streamingData")
+
+    # Formats combinés (audio+vidéo) mp4 en priorité, ≤ 720p pour fluidité browser
+    combined = [f for f in data.get("streamingData", {}).get("formats", [])
+                if f.get("url") and "mp4" in f.get("mimeType", "")]
+    combined.sort(key=lambda f: f.get("height", 0), reverse=True)
+    picked = next((f for f in combined if (f.get("height") or 0) <= 720), combined[0] if combined else None)
+
+    if not picked:
+        raise HTTPException(status_code=502, detail="Aucun format mp4 combiné disponible")
+
+    logger.info(f"[stream-url] {client_used} OK — {picked.get('qualityLabel', picked.get('height', '?'))}p")
+    return {
+        "ok": True,
+        "url": picked["url"],
+        "height": picked.get("height"),
+        "mimeType": picked.get("mimeType"),
+        "client": client_used,
+    }
+
+
 @app.post("/transcribe-segments")
 async def transcribe_segments_endpoint(req: TranscribeRequest, _=Depends(auth)):
     """InnerTube Android API → Whisper (stratégie 1). Fallback yt-dlp si InnerTube échoue."""
