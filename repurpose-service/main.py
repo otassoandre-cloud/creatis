@@ -676,9 +676,10 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     m = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
     if m:
         pw_cookies = _get_yt_cookies_playwright_sync(m.group(1), out_dir)
-        if pw_cookies:
+        if pw_cookies and not cookies_file:
+            # Playwright uniquement si pas de YOUTUBE_COOKIES (authentifiés > anonymes)
             cookies_file = pw_cookies
-            logger.info("[download] cookies Playwright obtenus — utilisés en priorité")
+            logger.info("[download] cookies Playwright obtenus — utilisés (pas de YOUTUBE_COOKIES)")
 
     # Stratégies séparées — ordre de priorité
     attempts = [
