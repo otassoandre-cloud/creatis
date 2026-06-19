@@ -95,8 +95,8 @@ def _fetch_po_token_sync() -> tuple:
 
 
 def _yt_extractor_args() -> dict:
-    # web = prioritaire (PoToken bgutil), android/ios = fallback si web sans formats
-    args = {"youtube": {"player_client": ["web", "android", "ios"]}}
+    # android_vr = bypass bot-detection (Oculus Quest, pas de PoToken requis)
+    args = {"youtube": {"player_client": ["android_vr", "android", "ios"]}}
     if BGUTIL_URL:
         args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_URL]}
         logger.info(f"[bgutil] plugin configuré: {BGUTIL_URL}")
@@ -281,6 +281,34 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
 
     clients = [
         {
+            "name": "ANDROID_VR",
+            "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "ANDROID_VR",
+                        "clientVersion": "1.56.21",
+                        "deviceMake": "Oculus",
+                        "deviceModel": "Quest 3",
+                        "androidSdkVersion": 32,
+                        "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                        "osName": "Android", "osVersion": "12L",
+                        "platform": "MOBILE", "hl": "en", "gl": "US",
+                    }
+                },
+                "videoId": video_id,
+                "contentCheckOk": True,
+                "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                "X-YouTube-Client-Name": "28",
+                "X-YouTube-Client-Version": "1.56.21",
+                "X-Goog-Api-Format-Version": "2",
+            },
+        },
+        {
             "name": "ANDROID",
             "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
             "payload": {
@@ -449,8 +477,8 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
               "label": "webshare+android"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        # 3. Railway IP sans bgutil, android/ios seulement
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
+        # 3. Railway IP android_vr seulement (bypass bot-detection)
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android_vr", "android", "ios"]}}, "label": "railway+android_vr"},
     ]
 
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best"]
@@ -1758,6 +1786,19 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         _IOS_KEY     = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
         it_clients = [
             {
+                "name": "ANDROID_VR",
+                "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+                "payload": {"context": {"client": {
+                    "clientName": "ANDROID_VR", "clientVersion": "1.56.21",
+                    "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32,
+                    "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                    "osName": "Android", "osVersion": "12L", "platform": "MOBILE", "hl": "en", "gl": "US",
+                }}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
+                "headers": {"Content-Type": "application/json",
+                    "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                    "X-YouTube-Client-Name": "28", "X-YouTube-Client-Version": "1.56.21", "X-Goog-Api-Format-Version": "2"},
+            },
+            {
                 "name": "ANDROID",
                 "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
                 "payload": {"context": {"client": {
@@ -1877,6 +1918,26 @@ async def stream_url_endpoint(req: StreamUrlRequest, _=Depends(auth)):
     _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
     _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
     clients = [
+        {
+            "name": "ANDROID_VR",
+            "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "payload": {
+                "context": {"client": {
+                    "clientName": "ANDROID_VR", "clientVersion": "1.56.21",
+                    "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32,
+                    "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                    "osName": "Android", "osVersion": "12L",
+                    "platform": "MOBILE", "hl": "en", "gl": "US",
+                }},
+                "videoId": req.video_id, "contentCheckOk": True, "racyCheckOk": True,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+                "X-YouTube-Client-Name": "28", "X-YouTube-Client-Version": "1.56.21",
+                "X-Goog-Api-Format-Version": "2",
+            },
+        },
         {
             "name": "ANDROID",
             "url": f"https://www.youtube.com/youtubei/v1/player?key={_ANDROID_KEY}&prettyPrint=false",
