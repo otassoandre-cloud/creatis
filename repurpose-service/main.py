@@ -2254,7 +2254,8 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             section = f"*{_ts(max(0, start - 1))}-{_ts(end + 1)}"
             tmp_path = out_dir / "full.%(ext)s"
             ydl_opts = {
-                "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+                "format": "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+                "merge_output_format": "mp4",
                 "outtmpl": str(tmp_path),
                 "download_ranges": lambda _, __: [{"start_time": max(0, start - 1), "end_time": end + 1}],
                 "force_keyframes_at_cuts": True,
