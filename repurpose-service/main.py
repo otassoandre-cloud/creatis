@@ -1668,21 +1668,17 @@ async def run_clips(
                     None, lambda: download_from_direct_url(video_url, audio_url, out_dir)
                 )
             else:
-                # Essai 1 : yt-dlp normal
+                # Audio seul — moins de CDN protection que vidéo complète
                 source = None
                 try:
-                    source = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: download_video(url, out_dir)
+                    result = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _download_audio_for_transcription(url, out_dir)
                     )
+                    source = result[0] if isinstance(result, tuple) else result
                 except Exception as e:
-                    logger.warning(f"[clips] yt-dlp failed: {e} — tentative RapidAPI")
-                    # Essai 2 : RapidAPI (bypass YouTube bot detection)
-                    if video_id and RAPIDAPI_KEY:
-                        rapidapi_audio = await _download_audio_rapidapi(video_id, out_dir)
-                        if rapidapi_audio:
-                            source = rapidapi_audio
-                    if not source:
-                        raise
+                    logger.warning(f"[clips] audio download failed: {e}")
+                if not source:
+                    raise RuntimeError(f"Téléchargement audio échoué: impossible d'obtenir l'audio")
             transcript = await transcribe(source)
             Path(source).unlink(missing_ok=True)
 
