@@ -2072,35 +2072,6 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
-@app.get("/test-cobalt")
-async def test_cobalt_endpoint(video_id: str = "A-RU8qOAtRk"):
-    """Debug: teste Cobalt API (cobalt.tools) pour download vidéo YouTube."""
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        try:
-            r = await client.post(
-                "https://api.cobalt.tools/",
-                json={"url": url, "videoQuality": "720", "filenameStyle": "basic"},
-                headers={"Accept": "application/json", "Content-Type": "application/json"},
-            )
-            try:
-                body = r.json()
-            except Exception:
-                body = r.text[:300]
-            # Tester si l'URL retournée est téléchargeable
-            dl_info = {}
-            stream_url = body.get("url", "") if isinstance(body, dict) else ""
-            if stream_url:
-                try:
-                    test = await client.get(stream_url, timeout=10, headers={"Range": "bytes=0-5000"})
-                    dl_info = {"dl_status": test.status_code, "dl_size": len(test.content)}
-                except Exception as e:
-                    dl_info = {"dl_error": str(e)}
-            return {"cobalt_status": r.status_code, "cobalt_body": body, "stream_url": stream_url[:120] if stream_url else "", "download_test": dl_info}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
-
 @app.get("/test-rapidapi")
 async def test_rapidapi_endpoint(video_id: str = "A-RU8qOAtRk"):
     """Debug: teste RapidAPI YouTube downloader avec polling + diagnostic download."""
