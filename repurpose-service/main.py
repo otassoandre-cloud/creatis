@@ -1839,17 +1839,10 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
     _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
     _WEB_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
-    # Bgutil PoToken pour WEB client
-    po_token, visitor_data_b = "", ""
-    try:
-        with httpx.Client(timeout=10) as _hc:
-            r = _hc.post(f"{BGUTIL_PUBLIC_URL}/get_pot", json={})
-            if r.status_code == 200:
-                d = r.json()
-                po_token = d.get("poToken") or d.get("po_token") or ""
-                visitor_data_b = d.get("contentBinding") or d.get("visitorData") or ""
-    except Exception as e:
-        logger.warning(f"[test-innertube] bgutil: {e}")
+    # Bgutil PoToken pour WEB client — utilise _fetch_po_token_sync() qui essaie internal+public
+    visitor_data_b, po_token = _fetch_po_token_sync()
+    # contentBinding = visitorData que YouTube attend (structure proto encodée)
+    # On utilise visitor_data comme visitorData car bgutil retourne visitorData si dispo
 
     clients = []
     if po_token:
