@@ -95,24 +95,14 @@ def _fetch_po_token_sync() -> tuple:
 
 
 def _yt_extractor_args() -> dict:
-    """Construit les extractor_args yt-dlp. Injecte le PoToken bgutil directement."""
+    """Construit les extractor_args yt-dlp. Utilise bgutil public URL (fiable depuis Railway)."""
     args = {"youtube": {"player_client": ["web", "android_vr", "android", "ios"]}}
 
-    active_bgutil = BGUTIL_URL or BGUTIL_PUBLIC_URL
-    if active_bgutil:
-        # Mécanisme plugin (si bgutil-ytdlp-pot-provider est bien chargé)
-        args["youtubepot-bgutilhttp"] = {"base_url": [active_bgutil]}
-
-        # Injection directe — belt-and-suspenders si le plugin ne se déclenche pas
-        try:
-            visitor_data, po_token = _fetch_po_token_sync()
-            if po_token:
-                args["youtube"]["po_token"] = [f"web+{po_token}"]
-                if visitor_data:
-                    args["youtube"]["visitor_data"] = [visitor_data]
-                logger.info(f"[bgutil] PoToken injecté directement ({len(po_token)}c)")
-        except Exception as e:
-            logger.warning(f"[bgutil] injection directe échouée: {e}")
+    # Toujours configurer le plugin avec l'URL publique (connue joignable depuis Railway)
+    # Le plugin bgutil-ytdlp-pot-provider intercepte le fetch du web client et génère un PoToken
+    # bindé au visitor_data correct — ne pas injecter po_token directement (mismatch visitor_data)
+    args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_PUBLIC_URL]}
+    logger.info(f"[bgutil] plugin configuré → {BGUTIL_PUBLIC_URL}")
 
     return args
 
