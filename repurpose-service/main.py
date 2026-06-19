@@ -270,9 +270,7 @@ def download_from_direct_url(video_url: str, audio_url: Optional[str], out_dir: 
 
 
 async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
-    """Télécharge audio via InnerTube Android API — bypass bot-detection sans yt-dlp.
-    YouTube Android client retourne des URLs de stream directes (non chiffrées).
-    """
+    """Télécharge audio via InnerTube — WEB+PoToken en premier, puis ANDROID_VR fallback."""
     m = re.search(r'(?:v=|youtu\.be/|shorts/|embed/)([a-zA-Z0-9_-]{11})', youtube_url)
     if not m:
         raise ValueError("ID vidéo YouTube introuvable")
@@ -282,8 +280,60 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
     _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
     # iOS API key (yt-dlp source, client ID 5)
     _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+    # WEB API key
+    _WEB_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
-    clients = [
+    # Obtenir PoToken bgutil pour WEB client (visitor_data inclus dans contentBinding)
+    _po_token = ""
+    _visitor_data = ""
+    try:
+        with httpx.Client(timeout=12) as _c:
+            r = _c.post(f"{BGUTIL_PUBLIC_URL}/get_pot", json={})
+            if r.status_code == 200:
+                d = r.json()
+                _po_token = d.get("poToken") or d.get("po_token") or ""
+                # contentBinding est le visitorData encodé que YouTube attend
+                _visitor_data = d.get("contentBinding") or d.get("visitorData") or d.get("visitor_data") or ""
+                if _po_token:
+                    logger.info(f"[innertube] bgutil PoToken OK ({len(_po_token)}c), visitorData ({len(_visitor_data)}c)")
+    except Exception as e:
+        logger.warning(f"[innertube] bgutil /get_pot failed: {e}")
+
+    clients = []
+
+    # Client WEB + PoToken — bypasse la bot-detection via token cryptographique valide
+    if _po_token:
+        web_payload: dict = {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": "2.20240726.00.00",
+                    "hl": "en", "gl": "US",
+                }
+            },
+            "videoId": video_id,
+            "contentCheckOk": True,
+            "racyCheckOk": True,
+            "serviceIntegrityDimensions": {"poToken": _po_token},
+        }
+        if _visitor_data:
+            web_payload["context"]["client"]["visitorData"] = _visitor_data
+        clients.append({
+            "name": "WEB+PoToken",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_WEB_KEY}&prettyPrint=false",
+            "payload": web_payload,
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+                "X-YouTube-Client-Name": "1",
+                "X-YouTube-Client-Version": "2.20240726.00.00",
+                "Origin": "https://www.youtube.com",
+                "Referer": f"https://www.youtube.com/watch?v={video_id}",
+                **({"X-Goog-Visitor-Id": _visitor_data} if _visitor_data else {}),
+            },
+        })
+
+    clients += [
         {
             "name": "ANDROID_VR",
             "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
@@ -1784,24 +1834,45 @@ def test_bgutil_endpoint():
 
 @app.get("/test-innertube")
 async def test_innertube(video_id: str = "WVcfOsVewPk"):
-    """Debug: teste InnerTube client par client, retourne status + raison."""
-    import httpx
+    """Debug: teste InnerTube client par client, retourne status + raison (inclut WEB+PoToken)."""
     _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
     _IOS_KEY = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
+    _WEB_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
 
-    clients = [
+    # Bgutil PoToken pour WEB client
+    po_token, visitor_data_b = "", ""
+    try:
+        with httpx.Client(timeout=10) as _hc:
+            r = _hc.post(f"{BGUTIL_PUBLIC_URL}/get_pot", json={})
+            if r.status_code == 200:
+                d = r.json()
+                po_token = d.get("poToken") or d.get("po_token") or ""
+                visitor_data_b = d.get("contentBinding") or d.get("visitorData") or ""
+    except Exception as e:
+        logger.warning(f"[test-innertube] bgutil: {e}")
+
+    clients = []
+    if po_token:
+        web_payload = {"context": {"client": {"clientName": "WEB", "clientVersion": "2.20240726.00.00", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True, "serviceIntegrityDimensions": {"poToken": po_token}}
+        if visitor_data_b:
+            web_payload["context"]["client"]["visitorData"] = visitor_data_b
+        clients.append({
+            "name": "WEB+PoToken",
+            "url": f"https://www.youtube.com/youtubei/v1/player?key={_WEB_KEY}&prettyPrint=false",
+            "payload": web_payload,
+            "headers": {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36", "X-YouTube-Client-Name": "1", "X-YouTube-Client-Version": "2.20240726.00.00", "Origin": "https://www.youtube.com", "Referer": f"https://www.youtube.com/watch?v={video_id}", **({"X-Goog-Visitor-Id": visitor_data_b} if visitor_data_b else {})},
+        })
+
+    clients += [
         {"name": "ANDROID_VR", "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
          "payload": {"context": {"client": {"clientName": "ANDROID_VR", "clientVersion": "1.56.21", "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32, "userAgent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip", "osName": "Android", "osVersion": "12L", "platform": "MOBILE", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
          "headers": {"Content-Type": "application/json", "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip", "X-YouTube-Client-Name": "28", "X-YouTube-Client-Version": "1.56.21"}},
         {"name": "TVHTML5", "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
          "payload": {"context": {"client": {"clientName": "TVHTML5", "clientVersion": "7.20241029.00.00", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
          "headers": {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/6.0 TV Safari/538.1", "X-YouTube-Client-Name": "7", "X-YouTube-Client-Version": "7.20241029.00.00"}},
-        {"name": "IOS", "url": f"https://www.youtube.com/youtubei/v1/player?key={_IOS_KEY}&prettyPrint=false",
-         "payload": {"context": {"client": {"clientName": "IOS", "clientVersion": "19.09.3", "deviceMake": "Apple", "deviceModel": "iPhone16,2", "userAgent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip", "osName": "iPhone", "osVersion": "17.5.1.21F90", "hl": "en", "gl": "US"}}, "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True},
-         "headers": {"Content-Type": "application/json", "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X) gzip", "X-YouTube-Client-Name": "5", "X-YouTube-Client-Version": "19.09.3"}},
     ]
 
-    results = []
+    results = [{"bgutil": f"po_token={len(po_token)}c visitorData={len(visitor_data_b)}c"}]
     async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         for c in clients:
             try:
@@ -1814,7 +1885,7 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
                     "client": c["name"],
                     "http_status": r.status_code,
                     "playability_status": ps.get("status"),
-                    "reason": ps.get("reason", "")[:100],
+                    "reason": ps.get("reason", "")[:120],
                     "has_streaming_data": has_streaming,
                     "audio_formats": audio_formats,
                 })
