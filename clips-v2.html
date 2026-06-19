@@ -928,6 +928,15 @@ const V2 = (() => {
         if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
       }).catch(() => {});
     }
+    // Pré-remplir email gate si venu de la LP (?email=xxx) ou localStorage
+    const urlEmail = new URLSearchParams(window.location.search).get('email');
+    const storedEmail = localStorage.getItem('creatis_lead_email');
+    const prefillEmail = urlEmail || storedEmail || '';
+    if (prefillEmail) {
+      const inp = document.getElementById('email-gate-input');
+      if (inp) inp.value = prefillEmail;
+    }
+
     // Watermark opacity display
     const wmOp = document.getElementById('opt-wm-opacity');
     if (wmOp) wmOp.addEventListener('input', () => {

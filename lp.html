@@ -36,6 +36,31 @@
       else if(_p==='modal'){window.ouvrirModal();}
     };
   })();
+
+  var _lpAnnuel = false;
+  window.lpTogglePricing = function() {
+    _lpAnnuel = !_lpAnnuel;
+    var thumb = document.getElementById('lp-toggle-thumb');
+    var lM = document.getElementById('lp-label-mensuel');
+    var lA = document.getElementById('lp-label-annuel');
+    var proPrice = document.getElementById('lp-pro-price');
+    var proThen  = document.getElementById('lp-pro-then');
+    var stPrice  = document.getElementById('lp-studio-price');
+
+    if (_lpAnnuel) {
+      thumb.style.left = '25px';
+      lM.style.color = '#6b7280'; lA.style.color = '#fff';
+      proPrice.innerHTML = '7,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span>';
+      proThen.textContent = 'puis 15,90€/mois, facturé annuellement · résiliable à tout moment';
+      stPrice.innerHTML = '39€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span>';
+    } else {
+      thumb.style.left = '3px';
+      lM.style.color = '#fff'; lA.style.color = '#6b7280';
+      proPrice.innerHTML = '9,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span>';
+      proThen.textContent = 'puis 19,90€/mois · résiliable à tout moment';
+      stPrice.innerHTML = '49€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span>';
+    }
+  };
   </script>
 
 <style>
@@ -525,8 +550,8 @@
     <div style="background:#0d1410;border:1px solid #1a2620;border-radius:16px;padding:28px 24px;">
       <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:20px">📥</div>
       <div style="font-size:12px;font-weight:700;color:#10b981;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Étape 1</div>
-      <div style="font-size:17px;font-weight:800;margin-bottom:8px">Colle ta vidéo YouTube</div>
-      <div style="font-size:14px;color:#6b7280;line-height:1.6">Colle l'URL de ta vidéo longue. Créatis la télécharge et la transcrit automatiquement.</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:8px">Uploade ta vidéo</div>
+      <div style="font-size:14px;color:#6b7280;line-height:1.6">Importe ta vidéo longue depuis ton ordinateur. Créatis la transcrit automatiquement mot par mot.</div>
     </div>
     <div style="background:#0d1410;border:1px solid #1a2620;border-radius:16px;padding:28px 24px;">
       <div style="width:44px;height:44px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:20px">🔥</div>
@@ -551,9 +576,9 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;">
       <div style="background:#111;border:1px solid #1e2a24;border-radius:16px;padding:24px;">
         <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
-        <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin-bottom:20px">"J'avais des heures de footage qui dormaient. En 2 jours avec Créatis j'ai produit 30 Shorts. Mon taux de vues a explosé sur TikTok."</p>
+        <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin-bottom:20px">"J'avais des heures de vidéos qui dormaient sur mon disque dur. En 2 jours avec Créatis j'ai produit 30 Shorts. Mon taux de vues a explosé sur TikTok."</p>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#000;flex-shrink:0">T</div>
+          <img src="https://i.pravatar.cc/40?img=12" alt="Thomas" style="width:40px;height:40px;border-radius:50%;flex-shrink:0;object-fit:cover">
           <div>
             <div style="font-size:14px;font-weight:700">Thomas M.</div>
             <div style="font-size:12px;color:#6b7280">Chaîne Gaming · 12K abonnés</div>
@@ -562,9 +587,9 @@
       </div>
       <div style="background:#111;border:1px solid #1e2a24;border-radius:16px;padding:24px;">
         <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
-        <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin-bottom:20px">"Le recadrage automatique est bluffant. Mes clips viraux se vendent comme des petits pains, je passe 0 minute en montage maintenant."</p>
+        <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin-bottom:20px">"Le recadrage automatique est bluffant. Mes clips font des millions de vues et je passe 0 minute en montage maintenant."</p>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0">S</div>
+          <img src="https://i.pravatar.cc/40?img=47" alt="Sarah" style="width:40px;height:40px;border-radius:50%;flex-shrink:0;object-fit:cover">
           <div>
             <div style="font-size:14px;font-weight:700">Sarah K.</div>
             <div style="font-size:12px;color:#6b7280">Développement personnel · 8K abonnés</div>
@@ -575,7 +600,7 @@
         <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
         <p style="font-size:15px;line-height:1.65;color:#d1d5db;margin-bottom:20px">"J'ai testé 4 outils de clips IA. Créatis est le seul qui comprend vraiment le contenu francophone et génère des hooks qui fonctionnent."</p>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#000;flex-shrink:0">M</div>
+          <img src="https://i.pravatar.cc/40?img=57" alt="Marc" style="width:40px;height:40px;border-radius:50%;flex-shrink:0;object-fit:cover">
           <div>
             <div style="font-size:14px;font-weight:700">Marc D.</div>
             <div style="font-size:12px;color:#6b7280">Finance & Investissement · 22K abonnés</div>
@@ -590,7 +615,18 @@
 <section style="max-width:960px;margin:0 auto;padding:80px 24px;" id="pricing">
   <p style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10b981;margin-bottom:12px">Tarifs</p>
   <h2 style="text-align:center;font-size:clamp(22px,3vw,36px);font-weight:900;margin-bottom:8px">Simple. Transparent. Sans surprise.</h2>
-  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:48px">Commence gratuitement, upgrade quand tu veux.</p>
+  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:32px">Commence gratuitement, upgrade quand tu veux.</p>
+
+  <!-- Toggle mensuel / annuel -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px">
+    <span id="lp-label-mensuel" style="font-size:14px;font-weight:700;color:#fff">Mensuel</span>
+    <div onclick="lpTogglePricing()" style="width:48px;height:26px;background:#10b981;border-radius:100px;cursor:pointer;position:relative;transition:background .2s" id="lp-toggle-track">
+      <div id="lp-toggle-thumb" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s"></div>
+    </div>
+    <span id="lp-label-annuel" style="font-size:14px;font-weight:700;color:#6b7280">Annuel</span>
+    <span style="background:#10b981;color:#000;font-size:11px;font-weight:800;padding:3px 8px;border-radius:100px">-20%</span>
+  </div>
+
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start;">
     <!-- Gratuit -->
     <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;">
@@ -609,32 +645,35 @@
     <div style="background:linear-gradient(145deg,#0d1f18,#0a1510);border:2px solid #10b981;border-radius:20px;padding:28px 24px;position:relative;box-shadow:0 0 40px rgba(16,185,129,.12)">
       <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#10b981;color:#000;font-size:11px;font-weight:800;padding:4px 14px;border-radius:100px;letter-spacing:.04em;white-space:nowrap">⭐ LE PLUS POPULAIRE</div>
       <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:16px">Pro</div>
-      <div style="font-size:38px;font-weight:900;margin-bottom:4px">9,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:24px">Puis 19€/mois — annulable à tout moment</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:4px">le 1er mois</div>
+      <div style="font-size:38px;font-weight:900;margin-bottom:4px" id="lp-pro-price">9,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:24px" id="lp-pro-then">puis 19,90€/mois · résiliable à tout moment</div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>Clips illimités</strong></li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Tous les 8 agents IA</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Script YouTube complet</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Miniatures IA Pro</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Idées de vidéos illimitées</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>Clips Viraux illimités</strong></li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Script, titres, miniatures, idées IA</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Tous les outils créateur débloqués</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> 30 crédits image / mois</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Recyclage multiplateforme</li>
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Support prioritaire</li>
       </ul>
-      <button onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Démarrer pour 9,90€ →</button>
-      <p style="text-align:center;font-size:11px;color:#6b7280;margin-top:10px">30 jours satisfait ou remboursé</p>
+      <button onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Démarrer le Pro →</button>
+      <p style="text-align:center;font-size:11px;color:#6b7280;margin-top:10px">Essai 7 jours · Sans CB · Garantie 30 jours</p>
     </div>
-    <!-- Agence -->
-    <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;">
-      <div style="font-size:14px;font-weight:700;color:#6b7280;margin-bottom:16px">Agence</div>
-      <div style="font-size:38px;font-weight:900;margin-bottom:4px">97€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:24px">Pour les agences & studios</div>
+    <!-- Studio -->
+    <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;position:relative;opacity:.85">
+      <div style="position:absolute;top:-14px;right:20px;background:#374151;color:#9ca3af;font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px;letter-spacing:.04em">Bientôt disponible</div>
+      <div style="font-size:14px;font-weight:700;color:#6b7280;margin-bottom:16px">Studio</div>
+      <div style="font-size:38px;font-weight:900;margin-bottom:4px;color:#9ca3af" id="lp-studio-price">49€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:24px" id="lp-studio-then">Pour les agences et créateurs qui gèrent 2-3 chaînes YouTube.</div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Tout Pro inclus</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> 5 chaînes YouTube</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Marque blanche</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Accès API</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Manager dédié</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> Clips Viraux + tous outils <strong>illimités</strong></li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> Tous les outils créateur débloqués</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> 100 crédits image / mois</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> 3 chaînes YouTube indépendantes</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> Recyclage multiplateforme</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af"><span style="color:#10b981;font-size:16px">✓</span> Support dédié par email</li>
       </ul>
-      <a href="mailto:creatis.app.contact@gmail.com" style="display:block;text-align:center;width:100%;padding:13px;background:transparent;border:1.5px solid #2a3830;color:#d1d5db;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;box-sizing:border-box;transition:border-color .15s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#2a3830'">Nous contacter</a>
+      <button disabled style="width:100%;padding:13px;background:transparent;border:1.5px solid #374151;color:#6b7280;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:inherit">Coming Soon</button>
     </div>
   </div>
 </section>
@@ -646,7 +685,7 @@
   <div style="display:flex;flex-direction:column;gap:12px;" itemscope itemtype="https://schema.org/FAQPage">
     <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:0;overflow:hidden;" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
       <summary style="font-size:15px;font-weight:700;padding:18px 20px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px" itemprop="name">C'est vraiment gratuit au début ? <span style="color:#10b981;font-size:20px;flex-shrink:0">+</span></summary>
-      <div style="padding:0 20px 18px;font-size:14px;color:#9ca3af;line-height:1.65;" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Oui, totalement. Tu peux tester Créatis avec 1 essai gratuit — aucune carte bancaire demandée. Si tu veux générer des clips illimités, tu passes en Pro à 9,90€ pour le premier mois.</span></div>
+      <div style="padding:0 20px 18px;font-size:14px;color:#9ca3af;line-height:1.65;" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Oui, totalement. Tu peux tester Créatis avec 1 essai gratuit — aucune carte bancaire demandée. Si tu veux générer des clips illimités, tu passes en Pro à 9,90€ pour le premier mois, puis 19,90€/mois.</span></div>
     </details>
     <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:0;overflow:hidden;" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
       <summary style="font-size:15px;font-weight:700;padding:18px 20px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px" itemprop="name">Quelles plateformes sont supportées ? <span style="color:#10b981;font-size:20px;flex-shrink:0">+</span></summary>
@@ -909,7 +948,8 @@ window.soumettreLead=function(){
   if(videoUrl)localStorage.setItem('creatis_clips_pending',videoUrl);
   localStorage.setItem('creatis_lp_ref','clips-viraux');
   if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
-  window.location.href=`/auth.html?ref=lp-clips&returnUrl=app.html#email=${encodeURIComponent(email)}`;
+  localStorage.setItem('creatis_lead_email', email);
+  window.location.href=`/clips-v2.html?email=${encodeURIComponent(email)}`;
 };
 // Flush si clic survenu avant ce script
 if(typeof window._lpFlush==='function')window._lpFlush();
