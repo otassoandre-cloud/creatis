@@ -2072,42 +2072,33 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
-@app.get("/test-invidious")
-async def test_invidious_endpoint(video_id: str = "A-RU8qOAtRk"):
-    """Debug: teste Invidious public API pour stream URLs — contourne YouTube via leurs IPs."""
-    instances = [
-        "https://inv.nadeko.net",
-        "https://invidious.privacyredirect.com",
-        "https://vid.puffyan.us",
-    ]
-    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-        for base in instances:
+@app.get("/test-cobalt")
+async def test_cobalt_endpoint(video_id: str = "A-RU8qOAtRk"):
+    """Debug: teste Cobalt API (cobalt.tools) pour download vidéo YouTube."""
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        try:
+            r = await client.post(
+                "https://api.cobalt.tools/",
+                json={"url": url, "videoQuality": "720", "filenameStyle": "basic"},
+                headers={"Accept": "application/json", "Content-Type": "application/json"},
+            )
             try:
-                r = await client.get(f"{base}/api/v1/videos/{video_id}?fields=adaptiveFormats,formatStreams,title")
-                if r.status_code != 200:
-                    continue
-                data = r.json()
-                streams = data.get("formatStreams", [])
-                adaptive = data.get("adaptiveFormats", [])
-                # Filtrer formats vidéo MP4 + audio
-                mp4_streams = [{"url": s.get("url","")[:80], "quality": s.get("quality",""), "type": s.get("type","")} for s in streams if "mp4" in s.get("type","")]
-                # Tester si une URL est téléchargeable
-                dl_ok = False
-                dl_url = ""
-                for s in streams:
-                    if "mp4" in s.get("type", ""):
-                        dl_url = s.get("url", "")
-                        try:
-                            test = await client.get(dl_url, timeout=8, headers={"Range": "bytes=0-1000"})
-                            if test.status_code in (200, 206):
-                                dl_ok = True
-                                break
-                        except Exception:
-                            pass
-                return {"instance": base, "title": data.get("title",""), "mp4_streams": mp4_streams, "adaptive_count": len(adaptive), "dl_ok": dl_ok, "dl_url_sample": dl_url[:100]}
-            except Exception as e:
-                continue
-    return {"ok": False, "error": "Toutes les instances Invidious ont échoué"}
+                body = r.json()
+            except Exception:
+                body = r.text[:300]
+            # Tester si l'URL retournée est téléchargeable
+            dl_info = {}
+            stream_url = body.get("url", "") if isinstance(body, dict) else ""
+            if stream_url:
+                try:
+                    test = await client.get(stream_url, timeout=10, headers={"Range": "bytes=0-5000"})
+                    dl_info = {"dl_status": test.status_code, "dl_size": len(test.content)}
+                except Exception as e:
+                    dl_info = {"dl_error": str(e)}
+            return {"cobalt_status": r.status_code, "cobalt_body": body, "stream_url": stream_url[:120] if stream_url else "", "download_test": dl_info}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
 
 @app.get("/test-rapidapi")
