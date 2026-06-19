@@ -95,8 +95,8 @@ def _fetch_po_token_sync() -> tuple:
 
 
 def _yt_extractor_args() -> dict:
-    # android_vr = bypass bot-detection (Oculus Quest, pas de PoToken requis)
-    args = {"youtube": {"player_client": ["android_vr", "android", "ios"]}}
+    # web + bgutil = PoToken valide → bypass bot-detection sur IPs datacenter
+    args = {"youtube": {"player_client": ["web", "android_vr", "android", "ios"]}}
     if BGUTIL_URL:
         args["youtubepot-bgutilhttp"] = {"base_url": [BGUTIL_URL]}
         logger.info(f"[bgutil] plugin configuré: {BGUTIL_URL}")
@@ -477,7 +477,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
               "label": "webshare+android"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        # 3. Railway IP android_vr seulement (bypass bot-detection)
+        # 3. Railway IP android_vr + android/ios (sans bgutil)
         {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android_vr", "android", "ios"]}}, "label": "railway+android_vr"},
     ]
 
