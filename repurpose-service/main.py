@@ -2005,32 +2005,76 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             except Exception as e:
                 logger.warning(f"[raw-segment] {c['name']} err: {e}")
 
-        if not stream_url:
-            raise RuntimeError("InnerTube: aucun format mp4 disponible")
-
-        RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
         out_path = out_dir / "clip.mp4"
         duration  = end - start
 
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
-            "-i", stream_url, "-c", "copy", "-movflags", "faststart", str(out_path),
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-
-        if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
-            logger.warning(f"[raw-segment] copy rc={proc.returncode}, re-encode fallback")
-            proc2 = await asyncio.create_subprocess_exec(
+        if stream_url:
+            RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
+            proc = await asyncio.create_subprocess_exec(
                 "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
-                "-i", stream_url,
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
-                "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                "-i", stream_url, "-c", "copy", "-movflags", "faststart", str(out_path),
                 stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
             )
-            _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
-            if proc2.returncode != 0:
-                raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+
+            if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+                logger.warning(f"[raw-segment] copy rc={proc.returncode}, re-encode fallback")
+                proc2 = await asyncio.create_subprocess_exec(
+                    "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
+                    "-i", stream_url,
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                    "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+                )
+                _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
+                if proc2.returncode != 0:
+                    raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
+        else:
+            # Fallback yt-dlp avec bgutil plugin — télécharge uniquement la section
+            RAW_SEGMENTS[job_id]["progress"] = "Téléchargement via yt-dlp…"
+            youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+            # Format timestamps HH:MM:SS pour --download-sections
+            def _ts(s: float) -> str:
+                h, r = divmod(int(s), 3600); m, sec = divmod(r, 60)
+                return f"{h:02d}:{m:02d}:{sec:02d}"
+            section = f"*{_ts(max(0, start - 1))}-{_ts(end + 1)}"
+            tmp_path = out_dir / "full.%(ext)s"
+            ydl_opts = {
+                "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+                "outtmpl": str(tmp_path),
+                "download_ranges": lambda _, __: [{"start_time": max(0, start - 1), "end_time": end + 1}],
+                "force_keyframes_at_cuts": True,
+                "extractor_args": _yt_extractor_args(),
+                "no_playlist": True,
+                "socket_timeout": 120,
+                "retries": 3,
+                "quiet": True,
+            }
+            try:
+                loop = asyncio.get_event_loop()
+                def _dl():
+                    import yt_dlp
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([youtube_url])
+                await asyncio.wait_for(loop.run_in_executor(None, _dl), timeout=180)
+            except Exception as e:
+                raise RuntimeError(f"yt-dlp segment: {e}")
+
+            # Trouver le fichier téléchargé et couper précisément
+            downloaded = next(out_dir.glob("full.*"), None)
+            if not downloaded:
+                raise RuntimeError("yt-dlp: fichier segment introuvable")
+            RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
+            offset = start - max(0, start - 1)  # décalage dû au pré-roll de 1s
+            proc = await asyncio.create_subprocess_exec(
+                "ffmpeg", "-y", "-ss", str(offset), "-t", str(duration),
+                "-i", str(downloaded), "-c", "copy", "-movflags", "faststart", str(out_path),
+                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+            downloaded.unlink(missing_ok=True)
+            if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+                raise RuntimeError(f"ffmpeg cut: {stderr.decode()[-200:]}")
 
         size_kb = out_path.stat().st_size // 1024
         logger.info(f"[raw-segment] {job_id} done {size_kb}KB")
