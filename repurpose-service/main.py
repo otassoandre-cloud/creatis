@@ -2072,31 +2072,42 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
     return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
 
 
-@app.get("/test-ytv2")
-async def test_ytv2_endpoint(video_id: str = "A-RU8qOAtRk"):
-    """Debug: teste YouTube V2 API (Omar M'Haimdat) pour URLs vidéo MP4."""
-    if not RAPIDAPI_KEY:
-        return {"ok": False, "error": "RAPIDAPI_KEY manquante"}
-    host = "youtube-v2.p.rapidapi.com"
-    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": host}
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        r = await client.get(
-            f"https://{host}/video/details",
-            params={"video_id": video_id, "hl": "fr", "gl": "FR"},
-            headers=headers,
-        )
-        try:
-            body = r.json()
-        except Exception:
-            body = r.text[:400]
-        # Chercher URLs MP4 dans la réponse
-        formats = []
-        if isinstance(body, dict):
-            for key in ("formats", "streamingData", "adaptiveFormats", "videos"):
-                if key in body:
-                    formats = body[key]
-                    break
-        return {"status": r.status_code, "formats_count": len(formats) if isinstance(formats, list) else 0, "body_keys": list(body.keys()) if isinstance(body, dict) else body}
+@app.get("/test-invidious")
+async def test_invidious_endpoint(video_id: str = "A-RU8qOAtRk"):
+    """Debug: teste Invidious public API pour stream URLs — contourne YouTube via leurs IPs."""
+    instances = [
+        "https://inv.nadeko.net",
+        "https://invidious.privacyredirect.com",
+        "https://vid.puffyan.us",
+    ]
+    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+        for base in instances:
+            try:
+                r = await client.get(f"{base}/api/v1/videos/{video_id}?fields=adaptiveFormats,formatStreams,title")
+                if r.status_code != 200:
+                    continue
+                data = r.json()
+                streams = data.get("formatStreams", [])
+                adaptive = data.get("adaptiveFormats", [])
+                # Filtrer formats vidéo MP4 + audio
+                mp4_streams = [{"url": s.get("url","")[:80], "quality": s.get("quality",""), "type": s.get("type","")} for s in streams if "mp4" in s.get("type","")]
+                # Tester si une URL est téléchargeable
+                dl_ok = False
+                dl_url = ""
+                for s in streams:
+                    if "mp4" in s.get("type", ""):
+                        dl_url = s.get("url", "")
+                        try:
+                            test = await client.get(dl_url, timeout=8, headers={"Range": "bytes=0-1000"})
+                            if test.status_code in (200, 206):
+                                dl_ok = True
+                                break
+                        except Exception:
+                            pass
+                return {"instance": base, "title": data.get("title",""), "mp4_streams": mp4_streams, "adaptive_count": len(adaptive), "dl_ok": dl_ok, "dl_url_sample": dl_url[:100]}
+            except Exception as e:
+                continue
+    return {"ok": False, "error": "Toutes les instances Invidious ont échoué"}
 
 
 @app.get("/test-rapidapi")
