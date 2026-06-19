@@ -824,6 +824,53 @@ module.exports = async (req, res) => {
     }
   }
 
+  if (mode === 'clip_stream_url') {
+    // Appel InnerTube Android → URL stream vidéo directe pour preview dans le browser
+    const { video_id } = body;
+    if (!video_id) return res.status(400).json({ error: 'video_id requis' });
+    try {
+      const ANDROID_KEY = 'AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg';
+      const itRes = await fetch(
+        `https://www.youtube.com/youtubei/v1/player?key=${ANDROID_KEY}&prettyPrint=false`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+            'X-YouTube-Client-Name': '3',
+            'X-YouTube-Client-Version': '19.09.37',
+            'X-Goog-Api-Format-Version': '2',
+          },
+          body: JSON.stringify({
+            context: { client: {
+              clientName: 'ANDROID', clientVersion: '19.09.37',
+              androidSdkVersion: 30, osName: 'Android', osVersion: '11',
+              platform: 'MOBILE', hl: 'en', gl: 'US',
+            }},
+            videoId: video_id,
+            contentCheckOk: true, racyCheckOk: true,
+          }),
+        }
+      );
+      if (!itRes.ok) throw new Error(`InnerTube HTTP ${itRes.status}`);
+      const itData = await itRes.json();
+      const ps = itData?.playabilityStatus?.status;
+      if (ps !== 'OK') throw new Error(`Vidéo non disponible: ${itData?.playabilityStatus?.reason || ps}`);
+
+      // Préférer format combiné mp4 (audio+vidéo) ≤ 720p pour lecture directe dans <video>
+      const formats = (itData?.streamingData?.formats || [])
+        .filter(f => f.url && f.mimeType?.includes('mp4'))
+        .sort((a, b) => (b.height || 0) - (a.height || 0));
+      const picked = formats.find(f => (f.height || 0) <= 720) || formats[0];
+      if (!picked?.url) throw new Error('Aucun format mp4 disponible');
+
+      return res.status(200).json({ ok: true, url: picked.url, height: picked.height, mimeType: picked.mimeType });
+    } catch (err) {
+      console.error('[clip_stream_url]', err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clip_export') {
     const { video_id, start, end } = body;
     if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });

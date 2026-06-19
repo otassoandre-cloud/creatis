@@ -996,6 +996,9 @@ const V2 = (() => {
         setMsg('');
         _clips = data.result.clips || [];
         _segments = data.result.segments || [];
+        // Injecter video_id (11 chars) sur chaque clip pour l'export Railway
+        const _ytVid = _ytVideoId();
+        if (_ytVid) _clips = _clips.map(c => ({ ...c, video_id: _ytVid }));
         renderStudio(data.result.title || 'Vidéo YouTube');
 
       } else {
@@ -1125,6 +1128,8 @@ const V2 = (() => {
       setTimeout(() => {
         for (let i = 0; i < Math.min(5, _clips.length); i++) _analyzeClipFaces(i);
       }, 500);
+    } else if (_ytUrl) {
+      setTimeout(() => generateThumbnails(), 200);
     }
   }
 
@@ -1389,8 +1394,77 @@ const V2 = (() => {
       _lastSegKey = null;
       _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
 
+    } else if (_ytUrl) {
+      // Mode URL YouTube — stream InnerTube → <video> identique au mode fichier
+      const clipStart = clip.start_time ?? clip.start;
+      const clipEnd = clip.end_time ?? clip.end;
+      const videoId = clip.video_id || _ytVideoId();
+
+      // Afficher thumbnail pendant le chargement
+      if (ph) {
+        const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
+        if (thumbUrl) {
+          ph.style.backgroundImage = `url(${thumbUrl})`;
+          ph.style.backgroundSize = 'cover';
+          ph.style.backgroundPosition = 'center top';
+        }
+        ph.textContent = '⏳ Chargement…';
+        ph.style.color = '#fff';
+        ph.style.fontSize = '12px';
+        ph.style.display = 'flex';
+        ph.style.alignItems = 'center';
+        ph.style.justifyContent = 'center';
+      }
+
+      // Supprimer ancien bouton ext s'il existe
+      const wrap = document.getElementById('modal-player-wrap');
+      const oldBtn = wrap?.querySelector('.yt-ext-btn');
+      if (oldBtn) oldBtn.remove();
+
+      if (!videoId) { if (ph) ph.textContent = 'ID vidéo manquant'; return; }
+
+      // Appel InnerTube via Vercel pour récupérer l'URL stream
+      const tok = localStorage.getItem('creatis_token') || '';
+      fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+        body: JSON.stringify({ mode: 'clip_stream_url', video_id: videoId }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok || !data.url) throw new Error(data.error || 'Stream URL introuvable');
+
+        video.src = data.url;
+        video.style.display = 'block';
+        if (ph) ph.style.display = 'none';
+
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = clipStart;
+          _updateCropPreview();
+        }, { once: true });
+
+        // Drag & édition sur les overlays — identique au mode fichier
+        const subOv = document.getElementById('modal-sub-overlay');
+        const hookOv = document.getElementById('modal-hook-overlay');
+        if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
+        if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
+        const subHandle = document.getElementById('modal-sub-handle');
+        const hookHandle = document.getElementById('modal-hook-handle');
+        if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
+        if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
+
+        _lastSegKey = null;
+        cancelAnimationFrame(_subRaf);
+        _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
+      })
+      .catch(err => {
+        console.error('[clip_stream_url]', err);
+        if (ph) { ph.textContent = `Erreur : ${err.message}`; ph.style.display = 'flex'; }
+        video.style.display = 'none';
+      });
+
     } else {
-      // No local file — show thumbnail
+      // No local file, no YouTube URL — show stored thumbnail
       const thumb = document.getElementById(`clip-thumb-${i}`);
       const thumbData = thumb?.dataset.thumb;
       if (thumbData && ph) {
@@ -2112,6 +2186,12 @@ const V2 = (() => {
     const cc = document.getElementById('crop-canvas'); if (cc) cc.style.display = 'none';
     const video = document.getElementById('modal-video');
     if (video) { video.pause(); video.src = ''; video.style.display = 'none'; }
+    // Nettoyer éléments YouTube du modal
+    const wrap = document.getElementById('modal-player-wrap');
+    const ytIframe = wrap?.querySelector('iframe.yt-modal-player');
+    if (ytIframe) ytIframe.remove();
+    const ytBtn = wrap?.querySelector('.yt-ext-btn');
+    if (ytBtn) ytBtn.remove();
     const ph = document.getElementById('modal-player-ph');
     if (ph) { ph.style.display = 'flex'; ph.textContent = '🎬'; }
     const btn = document.getElementById('modal-play-btn');
@@ -2420,7 +2500,35 @@ const V2 = (() => {
   }
 
   // ── Thumbnails ──
+  function _ytVideoId() {
+    if (!_ytUrl) return null;
+    const m = _ytUrl.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
   async function generateThumbnails() {
+    if (!_file && _ytUrl) {
+      // Mode URL YouTube — thumbnail statique YouTube
+      const vid = _ytVideoId();
+      if (!vid) return;
+      // Essai : mqdefault (320×180), fallback 0.jpg (basse qualité)
+      const thumbUrl = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
+      for (let i = 0; i < _clips.length; i++) {
+        const clip = _clips[i];
+        const el = document.getElementById(`clip-thumb-${i}`);
+        if (!el) continue;
+        const empty = el.querySelector('.clip-thumb-empty');
+        if (empty) {
+          const img = document.createElement('img');
+          img.src = thumbUrl;
+          img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+          el.insertBefore(img, empty);
+          empty.remove();
+        }
+        el.dataset.thumb = thumbUrl;
+      }
+      return;
+    }
     if (!_file) return;
     const videoUrl = URL.createObjectURL(_file);
     for (let i = 0; i < _clips.length; i++) {
