@@ -604,53 +604,52 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
 
 async def _download_audio_rapidapi(video_id: str, out_dir: Path) -> Optional[str]:
     """Fallback RapidAPI — leurs serveurs bypass YouTube bot detection.
-    Free tier : 500 req/mois. Nécessite RAPIDAPI_KEY dans Railway env vars."""
+    Free tier : 500 req/mois. Nécessite RAPIDAPI_KEY dans Railway env vars.
+    youtube-mp36 est asynchrone pour les longues vidéos → polling jusqu'à status=ok."""
     if not RAPIDAPI_KEY:
         return None
-    apis = [
-        # youtube-mp36 : retourne lien MP3 direct
-        {
-            "url": "https://youtube-mp36.p.rapidapi.com/dl",
-            "params": {"id": video_id},
-            "host": "youtube-mp36.p.rapidapi.com",
-            "get_link": lambda d: d.get("link") if d.get("status") == "ok" else None,
-        },
-        # all-in-one-downloader : retourne formats multiples
-        {
-            "url": "https://all-in-one-downloader.p.rapidapi.com/media",
-            "params": {"url": f"https://www.youtube.com/watch?v={video_id}"},
-            "host": "all-in-one-downloader.p.rapidapi.com",
-            "get_link": lambda d: next(
-                (f.get("url") for f in (d.get("medias") or []) if "audio" in f.get("type", "")), None
-            ),
-        },
-    ]
+    host = "youtube-mp36.p.rapidapi.com"
+    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": host}
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-        for api in apis:
-            try:
-                logger.info(f"[rapidapi] {api['host']} video={video_id}")
-                r = await client.get(api["url"], params=api["params"], headers={
-                    "X-RapidAPI-Key": RAPIDAPI_KEY,
-                    "X-RapidAPI-Host": api["host"],
-                })
+        try:
+            # Polling : max 24 tentatives × 5s = 2 minutes
+            for attempt in range(24):
+                logger.info(f"[rapidapi] poll {attempt+1}/24 video={video_id}")
+                r = await client.get(
+                    f"https://{host}/dl",
+                    params={"id": video_id},
+                    headers=headers,
+                )
                 if r.status_code != 200:
-                    logger.warning(f"[rapidapi] {api['host']} → {r.status_code}")
-                    continue
+                    logger.warning(f"[rapidapi] {r.status_code}: {r.text[:100]}")
+                    return None
                 data = r.json()
-                link = api["get_link"](data)
-                if not link:
-                    logger.warning(f"[rapidapi] {api['host']} pas de lien: {str(data)[:100]}")
-                    continue
-                # Téléchargement du fichier audio
-                out_path = out_dir / "audio.mp3"
-                logger.info(f"[rapidapi] download depuis {link[:80]}...")
-                resp = await client.get(link, timeout=120)
-                out_path.write_bytes(resp.content)
-                if out_path.stat().st_size > 10_000:
-                    logger.info(f"[rapidapi] OK {out_path.stat().st_size // 1024}KB")
-                    return str(out_path)
-            except Exception as e:
-                logger.warning(f"[rapidapi] {api['host']} échec: {e}")
+                status = data.get("status")
+                if status == "ok":
+                    link = data.get("link", "")
+                    if not link:
+                        logger.warning("[rapidapi] status=ok mais lien vide")
+                        return None
+                    out_path = out_dir / "audio.mp3"
+                    logger.info(f"[rapidapi] download {link[:80]}...")
+                    resp = await client.get(link, timeout=120)
+                    out_path.write_bytes(resp.content)
+                    size = out_path.stat().st_size
+                    if size > 10_000:
+                        logger.info(f"[rapidapi] OK {size // 1024}KB")
+                        return str(out_path)
+                    logger.warning(f"[rapidapi] fichier trop petit: {size}B")
+                    return None
+                elif status in ("processing", "queued"):
+                    progress = data.get("progress", 0)
+                    logger.info(f"[rapidapi] processing {progress}%... attente 5s")
+                    await asyncio.sleep(5)
+                else:
+                    logger.warning(f"[rapidapi] status inattendu: {data}")
+                    return None
+            logger.warning("[rapidapi] timeout après 2 minutes")
+        except Exception as e:
+            logger.warning(f"[rapidapi] échec: {e}")
     return None
 
 
@@ -2075,35 +2074,16 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
 
 @app.get("/test-rapidapi")
 async def test_rapidapi_endpoint(video_id: str = "A-RU8qOAtRk"):
-    """Debug: teste RapidAPI YouTube downloader — expose réponse brute."""
+    """Debug: teste RapidAPI YouTube downloader avec polling."""
     if not RAPIDAPI_KEY:
         return {"ok": False, "error": "RAPIDAPI_KEY non configurée dans Railway"}
-    results = []
-    apis = [
-        {"url": "https://youtube-mp36.p.rapidapi.com/dl", "params": {"id": video_id}, "host": "youtube-mp36.p.rapidapi.com"},
-        {"url": "https://all-in-one-downloader.p.rapidapi.com/media", "params": {"url": f"https://www.youtube.com/watch?v={video_id}"}, "host": "all-in-one-downloader.p.rapidapi.com"},
-    ]
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        for api in apis:
-            try:
-                r = await client.get(api["url"], params=api["params"], headers={
-                    "X-RapidAPI-Key": RAPIDAPI_KEY,
-                    "X-RapidAPI-Host": api["host"],
-                })
-                try:
-                    body = r.json()
-                except Exception:
-                    body = r.text[:300]
-                results.append({"host": api["host"], "status": r.status_code, "body": body})
-            except Exception as e:
-                results.append({"host": api["host"], "error": str(e)})
     tmp = WORK_DIR / "ra_test"
     tmp.mkdir(exist_ok=True)
     path = await _download_audio_rapidapi(video_id, tmp)
     if path:
         size = Path(path).stat().st_size
-        return {"ok": True, "size_kb": size // 1024, "apis": results}
-    return {"ok": False, "apis": results}
+        return {"ok": True, "size_kb": size // 1024, "path": path}
+    return {"ok": False, "error": "RapidAPI échec — voir logs Railway"}
 
 
 @app.get("/test-playwright")
