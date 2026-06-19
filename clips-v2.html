@@ -2337,6 +2337,7 @@ const V2 = (() => {
 
   async function exportFromModal() {
     if (_modalIdx === null) return;
+    if (_userPlan === 'gratuit') { showUpgradeModal(); return; }
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const mobBtn = document.getElementById('mob-dl-btn');
