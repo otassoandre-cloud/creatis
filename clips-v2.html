@@ -460,14 +460,6 @@
         <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
       </label>
 
-      <div class="url-sep" style="width:100%;max-width:600px;">ou colle une URL YouTube</div>
-      <div class="url-input-row" style="width:100%;max-width:600px;">
-        <input type="text" class="url-input" id="yt-url-input"
-          placeholder="https://youtube.com/watch?v=..."
-          oninput="V2.setYtUrl(this.value)"
-          onpaste="setTimeout(()=>V2.setYtUrl(document.getElementById('yt-url-input').value),0)">
-      </div>
-
       <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Créer les Shorts
@@ -797,28 +789,13 @@ const V2 = (() => {
     setFile(f);
   }
 
-  function setYtUrl(val) {
-    const v = (val || '').trim();
-    const isYt = /^https?:\/\/(www\.)?(youtube\.com\/(watch\?.*v=|shorts\/)|youtu\.be\/)/.test(v);
-    _ytUrl = isYt ? v : '';
-    _file = null;
-    _clipSegmentIds = {};
-    const zone = document.getElementById('drop-zone');
-    if (zone) zone.classList.remove('has-file');
-    const nameEl = document.getElementById('v1-upload-name');
-    if (nameEl) { nameEl.textContent = 'Cliquer ou déposer une vidéo ici'; nameEl.style.color = ''; }
-    document.getElementById('btn-analyze').disabled = !isYt;
-    const input = document.getElementById('yt-url-input');
-    if (input) input.style.borderColor = v.length > 5 && !isYt ? 'var(--rouge, #ef4444)' : isYt ? 'var(--vert)' : '';
-  }
+  function setYtUrl(val) {} // désactivé — URL YouTube masqué en frontend
 
   function setFile(f) {
     _file = f;
-    _faceCache = {}; // reset quand nouvelle vidéo
+    _faceCache = {};
     _ytUrl = '';
     _clipSegmentIds = {};
-    const urlInput = document.getElementById('yt-url-input');
-    if (urlInput) { urlInput.value = ''; urlInput.style.borderColor = ''; }
     const zone = document.getElementById('drop-zone');
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
@@ -1916,7 +1893,7 @@ const V2 = (() => {
     const video = document.getElementById('modal-video');
     const btn = document.getElementById('modal-play-btn');
     const overlay = document.getElementById('modal-play-overlay');
-    if (!video || !_file) return;
+    if (!video || (!_file && !video.src)) return;
     if (video.paused) {
       video.play();
       btn?.classList.remove('paused');
