@@ -275,8 +275,10 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
 
     # Essai 1 : TV Embedded client (pas de PoToken, pas de bot-check)
     # Essai 2 : Android client (fallback)
+    # Clients InnerTube — sans key= (évite "Precondition check failed")
     clients = [
         {
+            "name": "TV_EMBEDDED",
             "payload": {
                 "context": {
                     "client": {
@@ -284,7 +286,7 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
                         "clientVersion": "2.0",
                         "hl": "fr", "gl": "FR",
                     },
-                    "thirdParty": {"embedUrl": "https://www.youtube.com"},
+                    "thirdParty": {"embedUrl": "https://www.youtube.com/"},
                 },
                 "videoId": video_id,
             },
@@ -294,10 +296,11 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
                 "X-YouTube-Client-Name": "85",
                 "X-YouTube-Client-Version": "2.0",
                 "Origin": "https://www.youtube.com",
+                "Referer": "https://www.youtube.com/",
             },
-            "key": "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw",
         },
         {
+            "name": "ANDROID",
             "payload": {
                 "context": {
                     "client": {
@@ -318,7 +321,30 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
                 "X-YouTube-Client-Version": "19.29.37",
                 "Origin": "https://www.youtube.com",
             },
-            "key": "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw",
+        },
+        {
+            "name": "IOS",
+            "payload": {
+                "context": {
+                    "client": {
+                        "clientName": "IOS",
+                        "clientVersion": "19.29.1",
+                        "deviceMake": "Apple",
+                        "deviceModel": "iPhone16,2",
+                        "userAgent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+                        "osName": "iPhone", "osVersion": "17.5.1.21F90",
+                        "hl": "fr", "gl": "FR",
+                    }
+                },
+                "videoId": video_id,
+            },
+            "headers": {
+                "Content-Type": "application/json",
+                "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+                "X-YouTube-Client-Name": "5",
+                "X-YouTube-Client-Version": "19.29.1",
+                "Origin": "https://www.youtube.com",
+            },
         },
     ]
 
@@ -327,21 +353,23 @@ async def _innertube_download_audio(youtube_url: str, out_dir: Path) -> tuple:
         try:
             async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
                 r = await client.post(
-                    f"https://www.youtube.com/youtubei/v1/player?key={c['key']}&prettyPrint=false",
+                    "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
                     json=c["payload"],
                     headers=c["headers"],
                 )
-                logger.info(f"[innertube] client={c['headers'].get('X-YouTube-Client-Name')} HTTP {r.status_code}")
+                logger.info(f"[innertube] {c['name']} HTTP {r.status_code}")
                 if r.status_code == 200:
                     d = r.json()
                     if d.get("streamingData"):
                         data = d
+                        logger.info(f"[innertube] {c['name']} OK — streamingData présent")
                         break
-                    logger.warning(f"[innertube] pas de streamingData: {d.get('playabilityStatus',{}).get('status')}")
+                    ps = d.get("playabilityStatus", {})
+                    logger.warning(f"[innertube] {c['name']} pas de streamingData: {ps.get('status')} — {ps.get('reason','')[:100]}")
                 else:
-                    logger.warning(f"[innertube] HTTP {r.status_code}: {r.text[:200]}")
+                    logger.warning(f"[innertube] {c['name']} HTTP {r.status_code}: {r.text[:300]}")
         except Exception as e:
-            logger.warning(f"[innertube] client error: {e}")
+            logger.warning(f"[innertube] {c['name']} erreur: {e}")
 
     if not data:
         raise RuntimeError("InnerTube: aucun client n'a retourné de streamingData")
