@@ -324,11 +324,11 @@
 }
 .lp-anim-url span { font-size:13px; color:#555; flex:1; text-align:left; white-space:nowrap; overflow:hidden; transition:color .4s; }
 .lp-anim-url button {
-  padding:8px 18px; background:var(--vert); color:#000; border:none; border-radius:40px;
+  padding:8px 18px; background:linear-gradient(135deg,#10b981,#d1fae5); color:#000; border:none; border-radius:40px;
   font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;
-  font-family:inherit; transition:background .15s;
+  font-family:inherit; transition:opacity .15s;
 }
-.lp-anim-url button:hover { background:var(--vert-clair); }
+.lp-anim-url button:hover { opacity:.88; }
 .lp-anim-shorts {
   display:flex; gap:8px; justify-content:center;
   opacity:0; transform:translateY(20px);
@@ -530,7 +530,7 @@
 
       <!-- CTA upload uniquement -->
       <div class="lp-input-row" style="justify-content:center">
-        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:var(--vert);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
+        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:linear-gradient(135deg,#10b981,#d1fae5);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
           <input type="file" id="lp-file" accept="video/*,video/mp4,video/quicktime,video/mov" onchange="lancerDemoFichier(this)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Uploader ma vidéo — Gratuit →

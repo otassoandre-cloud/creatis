@@ -72,7 +72,7 @@ a:hover { color: var(--vert-clair); }
 
 /* ===== BOUTONS ===== */
 .btn-primaire {
-  background: var(--vert);
+  background: linear-gradient(135deg, #10b981, #d1fae5);
   color: #000;
   border: none;
   padding: 12px 24px;
@@ -90,10 +90,10 @@ a:hover { color: var(--vert-clair); }
 }
 
 .btn-primaire:hover {
-  background: var(--vert-clair);
+  background: linear-gradient(135deg, #059669, #10b981);
   color: #000;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+  box-shadow: 0 4px 24px rgba(16,185,129,0.4);
 }
 
 .btn-primaire:active { transform: translateY(0); }
