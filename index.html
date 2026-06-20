@@ -594,7 +594,16 @@
 <section style="max-width:960px;margin:0 auto;padding:80px 24px;" id="pricing">
   <p style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10b981;margin-bottom:12px">Tarifs</p>
   <h2 style="text-align:center;font-size:clamp(22px,3vw,36px);font-weight:900;margin-bottom:8px">Simple. Transparent. Sans surprise.</h2>
-  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:48px">Commence gratuitement, upgrade quand tu veux.</p>
+  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:28px">Commence gratuitement, upgrade quand tu veux.</p>
+
+  <!-- Toggle mensuel / annuel -->
+  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px">
+    <span id="lbl-mensuel" style="font-size:14px;font-weight:700;color:#f0f0f0">Mensuel</span>
+    <button id="billing-toggle" onclick="lpToggleBilling()" style="position:relative;width:48px;height:26px;border-radius:99px;background:#1e2a24;border:none;cursor:pointer;transition:background .2s;padding:0;flex-shrink:0">
+      <span id="billing-knob" style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#10b981;transition:transform .2s;display:block"></span>
+    </button>
+    <span id="lbl-annuel" style="font-size:14px;font-weight:600;color:#6b7280">Annuel <span style="background:rgba(16,185,129,.15);color:#10b981;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:4px">-20%</span></span>
+  </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start;max-width:860px;margin:0 auto;">
     <!-- Gratuit -->
@@ -617,12 +626,12 @@
       <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:16px">Pro</div>
       <!-- Prix avec promo -->
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
-        <div style="font-size:22px;font-weight:800;text-decoration:line-through;color:#4a5568">19,90€</div>
-        <div style="font-size:38px;font-weight:900">9,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+        <div id="pro-prix-barre" style="font-size:22px;font-weight:800;text-decoration:line-through;color:#4a5568">19,90€</div>
+        <div style="font-size:38px;font-weight:900"><span id="pro-prix">9,90</span>€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px">
-        <span style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">-50% le 1er mois</span>
-        <span style="font-size:12px;color:#6b7280">puis 19,90€/mois</span>
+        <span id="pro-badge" style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">-50% le 1er mois</span>
+        <span id="pro-suite" style="font-size:12px;color:#6b7280">puis 19,90€/mois</span>
       </div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Générations <strong>illimitées</strong></li>
@@ -632,20 +641,20 @@
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>Clips sans watermark</strong></li>
       </ul>
       <!-- Countdown promo -->
-      <div style="text-align:center;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35);border-radius:8px;padding:10px 14px;margin-bottom:16px">
+      <div id="lp-countdown-wrap" style="text-align:center;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35);border-radius:8px;padding:10px 14px;margin-bottom:16px">
         <div style="font-size:12px;color:#f97316;font-weight:700;margin-bottom:4px">⚡ Offre de lancement — expire dans</div>
         <div id="lp-countdown" style="font-size:24px;font-weight:900;color:#f97316;letter-spacing:.05em;font-variant-numeric:tabular-nums">--:--:--</div>
         <div style="font-size:11px;color:rgba(249,115,22,0.7);margin-top:2px">-50% sur le 1er mois · 9,90€ au lieu de 19,90€</div>
       </div>
-      <button onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Passer au Pro — 9,90€ le 1er mois</button>
+      <button id="pro-btn" onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Passer au Pro — 9,90€ le 1er mois</button>
       <p style="text-align:center;font-size:11px;color:#6b7280;margin-top:10px">30 jours satisfait ou remboursé · Annulable à tout moment</p>
     </div>
 
     <!-- Studio -->
     <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;opacity:0.75">
       <div style="font-size:14px;font-weight:700;color:#6b7280;margin-bottom:16px">Studio</div>
-      <div style="font-size:38px;font-weight:900;margin-bottom:4px">49€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:24px">Pour les agences · <strong style="color:#4b5563">Bientôt disponible</strong></div>
+      <div style="font-size:38px;font-weight:900;margin-bottom:4px"><span id="studio-prix">49</span>€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+      <div id="studio-desc" style="font-size:13px;color:#6b7280;margin-bottom:24px">Pour les agences · <strong style="color:#4b5563">Bientôt disponible</strong></div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Générations <strong>illimitées</strong></li>
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>100 miniatures HD</strong> par mois</li>
@@ -656,8 +665,48 @@
     </div>
   </div>
 
-  <!-- Countdown script -->
+  <!-- Toggle billing + countdown -->
   <script>
+  let _lpAnnuel = false;
+  window.lpToggleBilling = function() {
+    _lpAnnuel = !_lpAnnuel;
+    const knob = document.getElementById('billing-knob');
+    const toggle = document.getElementById('billing-toggle');
+    const lblM = document.getElementById('lbl-mensuel');
+    const lblA = document.getElementById('lbl-annuel');
+    if (knob) knob.style.transform = _lpAnnuel ? 'translateX(22px)' : 'translateX(0)';
+    if (toggle) toggle.style.background = _lpAnnuel ? '#10b981' : '#1e2a24';
+    if (lblM) { lblM.style.color = _lpAnnuel ? '#6b7280' : '#f0f0f0'; lblM.style.fontWeight = _lpAnnuel ? '600' : '700'; }
+    if (lblA) { lblA.style.color = _lpAnnuel ? '#f0f0f0' : '#6b7280'; lblA.style.fontWeight = _lpAnnuel ? '700' : '600'; }
+    // Pro
+    const prixEl = document.getElementById('pro-prix');
+    const barreEl = document.getElementById('pro-prix-barre');
+    const badgeEl = document.getElementById('pro-badge');
+    const suiteEl = document.getElementById('pro-suite');
+    const btnEl = document.getElementById('pro-btn');
+    const cdEl = document.getElementById('lp-countdown-wrap');
+    if (_lpAnnuel) {
+      if (prixEl) prixEl.textContent = '15';
+      if (barreEl) barreEl.style.display = 'none';
+      if (badgeEl) { badgeEl.textContent = '-20% annuel'; badgeEl.style.background = '#10b981'; badgeEl.style.color = '#000'; }
+      if (suiteEl) suiteEl.textContent = 'Facturé 180€/an — économise 60€';
+      if (btnEl) btnEl.textContent = 'Passer au Pro — 15€/mois';
+      if (cdEl) cdEl.style.display = 'none';
+    } else {
+      if (prixEl) prixEl.textContent = '9,90';
+      if (barreEl) barreEl.style.display = '';
+      if (badgeEl) { badgeEl.textContent = '-50% le 1er mois'; badgeEl.style.background = '#f97316'; badgeEl.style.color = '#fff'; }
+      if (suiteEl) suiteEl.textContent = 'puis 19,90€/mois';
+      if (btnEl) btnEl.textContent = 'Passer au Pro — 9,90€ le 1er mois';
+      if (cdEl) cdEl.style.display = '';
+    }
+    // Studio
+    const sPrix = document.getElementById('studio-prix');
+    const sDesc = document.getElementById('studio-desc');
+    if (sPrix) sPrix.textContent = _lpAnnuel ? '39' : '49';
+    if (sDesc) sDesc.innerHTML = _lpAnnuel ? 'Facturé 468€/an — <strong style="color:#10b981">économise 120€</strong>' : 'Pour les agences · <strong style="color:#4b5563">Bientôt disponible</strong>';
+  };
+
   (function(){
     const key = 'creatis_promo_end';
     let end = localStorage.getItem(key);
