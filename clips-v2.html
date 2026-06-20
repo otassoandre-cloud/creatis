@@ -504,6 +504,8 @@
         IA en cours
       </div>
     </div>
+    <!-- Titre caché (utilisé par le JS) -->
+    <div id="analyze-title" style="display:none"></div>
     <!-- Steps discrets en dessous -->
     <div class="analyze-steps" id="analyze-steps" style="max-width:600px;margin:0 auto;">
       <div class="astep" id="as-1">📤 Upload vidéo…</div>
@@ -1060,7 +1062,7 @@ const V2 = (() => {
 
       if (_ytUrl) {
         // YouTube URL flow
-        document.getElementById('analyze-title').textContent = 'Analyse YouTube…';
+        const _atEl = document.getElementById('analyze-title'); if (_atEl) _atEl.textContent = 'Analyse YouTube…';
         // Adapter les labels des étapes pour le flow URL
         const stepLabels = ['📥 Récupération transcription…', '🎙️ Transcription Whisper…', '🧠 Identification des clips…', '✅ Clips identifiés !', ''];
         stepLabels.forEach((txt, i) => { const el = document.getElementById(`as-${i+1}`); if (el) el.textContent = txt; });
@@ -1088,7 +1090,7 @@ const V2 = (() => {
       } else {
         // Upload flow — extraction audio native (AudioContext, aucune lib à télécharger)
         setStep(1); setBar(3);
-        document.getElementById('analyze-title').textContent = 'Analyse de ta vidéo…';
+        const _atEl2 = document.getElementById('analyze-title'); if (_atEl2) _atEl2.textContent = 'Analyse de ta vidéo…';
 
         // Extraction audio : natif pour < 500 Mo, ffmpeg.wasm pour les fichiers plus lourds
         setMsg('Extraction audio…');
