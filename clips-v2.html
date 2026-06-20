@@ -464,6 +464,12 @@
         <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
       </label>
 
+      <!-- Préview vidéo 16:9 -->
+      <div id="video-preview-wrap" style="display:none;max-width:600px;margin:16px auto 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
+        <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
+        <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600" id="video-preview-dur"></div>
+      </div>
+
       <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Créer les Shorts
@@ -808,6 +814,21 @@ const V2 = (() => {
     const nameEl = document.getElementById('v1-upload-name');
     if (nameEl) { nameEl.textContent = f.name.replace(/\.[^.]+$/, ''); nameEl.style.color = 'var(--texte)'; }
 
+    // Préview vidéo 16:9
+    const prevWrap = document.getElementById('video-preview-wrap');
+    const prevVid = document.getElementById('video-preview');
+    const prevDur = document.getElementById('video-preview-dur');
+    if (prevVid && prevWrap) {
+      if (prevVid._prevUrl) URL.revokeObjectURL(prevVid._prevUrl);
+      prevVid._prevUrl = URL.createObjectURL(f);
+      prevVid.src = prevVid._prevUrl;
+      prevVid.onloadedmetadata = () => {
+        const d = prevVid.duration;
+        if (prevDur) prevDur.textContent = isFinite(d) ? `${Math.floor(d/60)}:${String(Math.floor(d%60)).padStart(2,'0')}` : '';
+      };
+      prevWrap.style.display = 'block';
+    }
+
     // Précharger BlazeFace en arrière-plan dès la sélection du fichier
     _loadBlazeface().catch(() => {});
   }
@@ -938,6 +959,8 @@ const V2 = (() => {
       return;
     }
     if (window.posthog) posthog.capture('video_uploaded', { source: _ytUrl ? 'youtube' : 'file', plan: _userPlan });
+    const _pw = document.getElementById('video-preview-wrap');
+    if (_pw) _pw.style.display = 'none';
     setState('analyze');
 
     const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
