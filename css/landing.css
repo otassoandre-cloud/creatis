@@ -1809,7 +1809,7 @@
   text-align: center; font-family: monospace; letter-spacing: .3px;
 }
 
-.demo-app { display: flex; height: 460px; background: #0a0f0a; }
+.demo-app { display: flex; height: 460px; background: #0d0b14; }
 
 .demo-nav {
   width: 176px; flex-shrink: 0;
@@ -2034,7 +2034,7 @@
   display: none;
   position: fixed;
   top: 68px; left: 0; right: 0; bottom: 0;
-  background: #0a0f0a;
+  background: #0d0b14;
   border-top: 1px solid var(--bordure);
   padding: 32px 24px;
   flex-direction: column;
@@ -2071,7 +2071,7 @@
     top: 60px;
     left: 0;
     right: 0;
-    background: #0a0f0a;
+    background: #0d0b14;
     border-bottom: 1px solid var(--bordure);
     padding: 16px 24px 20px;
     gap: 12px;
