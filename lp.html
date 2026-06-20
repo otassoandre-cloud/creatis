@@ -203,7 +203,7 @@
 /* ── Carte démo animée ── */
 .lp-demo-card {
   max-width:860px; width:calc(100% - 32px); margin:12px auto 0;
-  background:#100e18; border:1px solid var(--bordure); border-radius:20px; overflow:hidden;
+  background:#0e0e10; border:1px solid var(--bordure); border-radius:20px; overflow:hidden;
   padding:28px 24px 20px; text-align:center;
 }
 
@@ -263,7 +263,7 @@
 .ad-msg{max-width:86%;padding:8px 11px;border-radius:11px;font-size:10px;line-height:1.5;opacity:0;transform:translateY(3px);transition:all .3s;}
 .ad-msg.on{opacity:1;transform:translateY(0);}
 .ad-msg.u{background:#1a1a1a;color:#bbb;align-self:flex-end;border-radius:11px 11px 2px 11px;}
-.ad-msg.a{background:#0e0c17;color:#c0e0c0;align-self:flex-start;border-radius:11px 11px 11px 2px;border:1px solid #1f1830;}
+.ad-msg.a{background:#0e1a0e;color:#c0e0c0;align-self:flex-start;border-radius:11px 11px 11px 2px;border:1px solid #1a2a1a;}
 .ad-msg.a strong{color:#10b981;}
 .ad-chat-row{padding:8px 12px;border-top:1px solid #181818;display:flex;gap:6px;flex-shrink:0;}
 .ad-chat-inp{flex:1;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 9px;font-size:10px;color:#bbb;font-family:inherit;outline:none;}
@@ -281,7 +281,7 @@
 .main-car-region{position:relative;overflow:hidden;}
 .main-car-outer{overflow:hidden;}
 .main-car-track{display:flex;gap:20px;transition:transform .45s cubic-bezier(.25,.1,.25,1);padding-left:max(24px,calc(50% - 430px));}
-.main-car-slide{flex-shrink:0;width:min(860px,82vw);background:#100e18;border:1px solid var(--bordure);border-radius:20px;overflow:hidden;}
+.main-car-slide{flex-shrink:0;width:min(860px,82vw);background:#0e0e10;border:1px solid var(--bordure);border-radius:20px;overflow:hidden;}
 .main-car-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:44px;height:44px;border-radius:50%;background:rgba(20,20,20,.92);border:1px solid rgba(255,255,255,.07);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(8px);}
 .main-car-btn:hover:not(:disabled){background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#10b981;}
 .main-car-btn:disabled{opacity:.12;cursor:default;}
@@ -324,11 +324,11 @@
 }
 .lp-anim-url span { font-size:13px; color:#555; flex:1; text-align:left; white-space:nowrap; overflow:hidden; transition:color .4s; }
 .lp-anim-url button {
-  padding:8px 18px; background:linear-gradient(135deg,#10b981,#d1fae5); color:#000; border:none; border-radius:40px;
+  padding:8px 18px; background:var(--vert); color:#000; border:none; border-radius:40px;
   font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;
-  font-family:inherit; transition:opacity .15s;
+  font-family:inherit; transition:background .15s;
 }
-.lp-anim-url button:hover { opacity:.88; }
+.lp-anim-url button:hover { background:var(--vert-clair); }
 .lp-anim-shorts {
   display:flex; gap:8px; justify-content:center;
   opacity:0; transform:translateY(20px);
@@ -530,7 +530,7 @@
 
       <!-- CTA upload uniquement -->
       <div class="lp-input-row" style="justify-content:center">
-        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:linear-gradient(135deg,#10b981,#d1fae5);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
+        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:var(--vert);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
           <input type="file" id="lp-file" accept="video/*,video/mp4,video/quicktime,video/mov" onchange="lancerDemoFichier(this)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Uploader ma vidéo — Gratuit →
@@ -1792,7 +1792,7 @@ Flemo</div>
   </section>
 
   <!-- ===== SECTION AFFILIATION ===== -->
-  <section style="background:#0d0b14;padding:72px 24px;text-align:center;border-top:1px solid #1a2a1a">
+  <section style="background:#0a0f0a;padding:72px 24px;text-align:center;border-top:1px solid #1a2a1a">
     <div style="max-width:520px;margin:0 auto">
       <div style="display:inline-block;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:20px;padding:5px 14px;font-size:12px;color:#10b981;margin-bottom:20px;letter-spacing:0.3px">Programme Affilié</div>
       <h2 style="font-size:clamp(24px,4vw,36px);font-weight:800;margin:0 0 14px;line-height:1.2;color:#fff">Recommande Créatis.<br><span style="color:#10b981">Gagne une commission à vie.</span></h2>
@@ -1802,12 +1802,12 @@ Flemo</div>
   </section>
 
   <!-- ===== TÉMOIGNAGES ===== -->
-  <section style="background:#110d1a;border-top:1px solid #1f1830;border-bottom:1px solid #1f1830;padding:80px 24px;">
+  <section style="background:#0d1410;border-top:1px solid #1a2620;border-bottom:1px solid #1a2620;padding:80px 24px;">
     <div style="max-width:960px;margin:0 auto;">
       <p style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10b981;margin-bottom:12px">Ce qu'ils en disent</p>
       <h2 style="text-align:center;font-size:clamp(22px,3vw,36px);font-weight:900;margin-bottom:48px">Les créateurs adorent Créatis</h2>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;">
-        <div style="background:#0f0c17;border:1px solid #1f1830;border-radius:16px;padding:24px;">
+        <div style="background:#111;border:1px solid #1e2a24;border-radius:16px;padding:24px;">
           <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
           <p style="font-size:15px;line-height:1.6;color:#d1fae5;margin-bottom:20px">"J'ai réduit le temps de création de mes vidéos de 3h à 20 minutes. Les scripts sont vraiment bons, ça ressemble à mon style."</p>
           <div style="display:flex;align-items:center;gap:12px">
@@ -1818,7 +1818,7 @@ Flemo</div>
             </div>
           </div>
         </div>
-        <div style="background:#0f0c17;border:1px solid #1f1830;border-radius:16px;padding:24px;">
+        <div style="background:#111;border:1px solid #1e2a24;border-radius:16px;padding:24px;">
           <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
           <p style="font-size:15px;line-height:1.6;color:#d1fae5;margin-bottom:20px">"Les clips viraux c'est magique. Je colle ma vidéo, j'ai 10 shorts prêts en 2 minutes. Mon TikTok a explosé ce mois-ci."</p>
           <div style="display:flex;align-items:center;gap:12px">
@@ -1829,7 +1829,7 @@ Flemo</div>
             </div>
           </div>
         </div>
-        <div style="background:#0f0c17;border:1px solid #1f1830;border-radius:16px;padding:24px;">
+        <div style="background:#111;border:1px solid #1e2a24;border-radius:16px;padding:24px;">
           <div style="display:flex;gap:4px;margin-bottom:16px">⭐⭐⭐⭐⭐</div>
           <p style="font-size:15px;line-height:1.6;color:#d1fae5;margin-bottom:20px">"Les miniatures générées par l'IA sont bluffantes. Mon CTR est passé de 4% à 9% en un mois. Indispensable."</p>
           <div style="display:flex;align-items:center;gap:12px">
@@ -1845,28 +1845,28 @@ Flemo</div>
   </section>
 
   <!-- ===== FAQ ===== -->
-  <section style="padding:80px 24px;background:#0d0b14;">
+  <section style="padding:80px 24px;background:#0a0f0a;">
     <div style="max-width:720px;margin:0 auto;">
       <p style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10b981;margin-bottom:12px">FAQ</p>
       <h2 style="text-align:center;font-size:clamp(22px,3vw,36px);font-weight:900;margin-bottom:48px">Questions fréquentes</h2>
       <div style="display:flex;flex-direction:column;gap:16px;" id="faq-list">
-        <details style="background:#0f0c17;border:1px solid #1f1830;border-radius:14px;padding:20px 24px;cursor:pointer;">
+        <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:20px 24px;cursor:pointer;">
           <summary style="font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center">C'est quoi Créatis exactement ? <span style="color:#10b981;font-size:20px">+</span></summary>
           <p style="margin-top:14px;color:#9ca3af;line-height:1.7">Créatis est une plateforme IA pour créateurs YouTube francophones. Elle génère automatiquement des clips viraux, scripts, miniatures, idées de vidéos et bien plus — en quelques secondes, depuis une simple URL YouTube.</p>
         </details>
-        <details style="background:#0f0c17;border:1px solid #1f1830;border-radius:14px;padding:20px 24px;cursor:pointer;">
+        <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:20px 24px;cursor:pointer;">
           <summary style="font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center">Est-ce que c'est vraiment gratuit au départ ? <span style="color:#10b981;font-size:20px">+</span></summary>
           <p style="margin-top:14px;color:#9ca3af;line-height:1.7">Oui. Tu peux tester Clips Viraux gratuitement, sans carte bancaire. Tu obtiens 1 essai complet pour voir la qualité du résultat avant de t'abonner.</p>
         </details>
-        <details style="background:#0f0c17;border:1px solid #1f1830;border-radius:14px;padding:20px 24px;cursor:pointer;">
+        <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:20px 24px;cursor:pointer;">
           <summary style="font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center">Combien de temps ça prend pour générer du contenu ? <span style="color:#10b981;font-size:20px">+</span></summary>
           <p style="margin-top:14px;color:#9ca3af;line-height:1.7">Entre 20 et 60 secondes selon l'agent. Les clips viraux analysent ta vidéo et livrent 10 shorts prêts à poster en moins d'une minute.</p>
         </details>
-        <details style="background:#0f0c17;border:1px solid #1f1830;border-radius:14px;padding:20px 24px;cursor:pointer;">
+        <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:20px 24px;cursor:pointer;">
           <summary style="font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center">Le contenu généré est-il unique et personnalisé ? <span style="color:#10b981;font-size:20px">+</span></summary>
           <p style="margin-top:14px;color:#9ca3af;line-height:1.7">Oui. Créatis analyse ta chaîne, ta niche et ton style pour générer du contenu qui ressemble à ce que TU ferais — pas du contenu générique copié-collé.</p>
         </details>
-        <details style="background:#0f0c17;border:1px solid #1f1830;border-radius:14px;padding:20px 24px;cursor:pointer;">
+        <details style="background:#111;border:1px solid #1e2a24;border-radius:14px;padding:20px 24px;cursor:pointer;">
           <summary style="font-weight:700;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center">Puis-je annuler à tout moment ? <span style="color:#10b981;font-size:20px">+</span></summary>
           <p style="margin-top:14px;color:#9ca3af;line-height:1.7">Oui, sans engagement. Tu peux annuler ton abonnement en un clic depuis ton compte, et tu gardes l'accès jusqu'à la fin de la période payée.</p>
         </details>

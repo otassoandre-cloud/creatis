@@ -148,10 +148,7 @@
 }
 
 .surligne {
-  background: linear-gradient(135deg, #10b981, #d1fae5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #10b981 !important;
   position: relative;
   display: inline-block;
 }
@@ -163,7 +160,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #10b981, #d1fae5);
+  background: linear-gradient(90deg, var(--vert), var(--vert-clair));
   border-radius: 2px;
 }
 
@@ -1809,7 +1806,7 @@
   text-align: center; font-family: monospace; letter-spacing: .3px;
 }
 
-.demo-app { display: flex; height: 460px; background: #0d0b14; }
+.demo-app { display: flex; height: 460px; background: #0a0f0a; }
 
 .demo-nav {
   width: 176px; flex-shrink: 0;
@@ -2034,7 +2031,7 @@
   display: none;
   position: fixed;
   top: 68px; left: 0; right: 0; bottom: 0;
-  background: #0d0b14;
+  background: #0a0f0a;
   border-top: 1px solid var(--bordure);
   padding: 32px 24px;
   flex-direction: column;
@@ -2071,7 +2068,7 @@
     top: 60px;
     left: 0;
     right: 0;
-    background: #0d0b14;
+    background: #0a0f0a;
     border-bottom: 1px solid var(--bordure);
     padding: 16px 24px 20px;
     gap: 12px;
