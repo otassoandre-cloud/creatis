@@ -82,6 +82,13 @@
     .astep.done { color: var(--texte-doux); }
     .prog-bar-wrap { width: 280px; height: 4px; background: var(--bordure); border-radius: 2px; overflow: hidden; }
     .prog-bar-fill { height: 100%; background: var(--vert); border-radius: 2px; transition: width .4s; }
+    /* ─── AI SCAN ANIMATIONS ─── */
+    #ai-scan-line { animation: scan-move 2.4s ease-in-out infinite; }
+    @keyframes scan-move { 0%,100% { top: 0%; opacity:1; } 48% { top: calc(100% - 2px); opacity:1; } 50%,52% { opacity:0; } 54% { top: 0%; opacity:0; } 56% { opacity:1; } }
+    @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.3; transform:scale(.6); } }
+    @keyframes box-appear { 0% { opacity:0; transform:scale(.8); } 15% { opacity:1; transform:scale(1); } 75% { opacity:.9; } 100% { opacity:0; } }
+    .ai-detect-box { position:absolute; border:1.5px solid rgba(16,185,129,0.7); border-radius:3px; box-shadow:0 0 8px rgba(16,185,129,0.3); animation:box-appear 1.8s ease forwards; pointer-events:none; }
+    #ai-scan-wrap .prog-bar-wrap { width:100%; }
 
     /* ─── STUDIO STATE ─── */
     .studio-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
@@ -479,19 +486,33 @@
 
   <!-- ═══════════════ STATE: ANALYZE ═══════════════ -->
   <div class="state" id="state-analyze">
-    <div class="analyze-center">
-      <div class="analyze-spinner"></div>
-      <div class="analyze-title" id="analyze-title">Analyse en cours…</div>
-      <div class="analyze-steps" id="analyze-steps">
-        <div class="astep" id="as-1">📤 Upload vidéo…</div>
-        <div class="astep" id="as-2">🎙️ Transcription Whisper…</div>
-        <div class="astep" id="as-3">🧠 Identification des clips…</div>
-        <div class="astep" id="as-4">✅ Clips identifiés !</div>
-        <div class="astep" id="as-5"></div>
+    <!-- Vidéo en fond + overlay IA -->
+    <div id="ai-scan-wrap" style="position:relative;max-width:600px;margin:0 auto 20px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;">
+      <video id="ai-scan-video" style="width:100%;height:100%;object-fit:contain;opacity:0.55;" muted playsinline></video>
+      <!-- Scanner line -->
+      <div id="ai-scan-line" style="position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#10b981,#34d399,#10b981,transparent);box-shadow:0 0 12px #10b981,0 0 24px rgba(16,185,129,0.4);z-index:3;pointer-events:none;top:0;"></div>
+      <!-- Detection boxes -->
+      <div id="ai-scan-boxes" style="position:absolute;inset:0;z-index:2;pointer-events:none;"></div>
+      <!-- Overlay texte typewriter -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;padding:14px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.85));">
+        <div id="ai-typewriter" style="font-family:monospace;font-size:12px;color:#10b981;min-height:18px;letter-spacing:0.5px;"></div>
+        <div class="prog-bar-wrap" style="margin-top:8px;margin-bottom:0"><div class="prog-bar-fill" id="analyze-bar" style="width:0%"></div></div>
       </div>
-      <div class="prog-bar-wrap"><div class="prog-bar-fill" id="analyze-bar" style="width:0%"></div></div>
-      <div id="analyze-msg" style="font-size:12px;color:var(--texte-muted);margin-top:4px"></div>
+      <!-- Badge IA -->
+      <div style="position:absolute;top:12px;right:12px;z-index:4;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#10b981;backdrop-filter:blur(8px);display:flex;align-items:center;gap:5px;">
+        <div style="width:6px;height:6px;border-radius:50%;background:#10b981;animation:pulse-dot 1s infinite;"></div>
+        IA en cours
+      </div>
     </div>
+    <!-- Steps discrets en dessous -->
+    <div class="analyze-steps" id="analyze-steps" style="max-width:600px;margin:0 auto;">
+      <div class="astep" id="as-1">📤 Upload vidéo…</div>
+      <div class="astep" id="as-2">🎙️ Transcription Whisper…</div>
+      <div class="astep" id="as-3">🧠 Identification des clips…</div>
+      <div class="astep" id="as-4">✅ Clips identifiés !</div>
+      <div class="astep" id="as-5"></div>
+    </div>
+    <div id="analyze-msg" style="font-size:12px;color:var(--texte-muted);margin-top:6px;text-align:center;max-width:600px;margin-left:auto;margin-right:auto"></div>
   </div>
 
   <!-- ═══════════════ STATE: STUDIO ═══════════════ -->
@@ -776,6 +797,63 @@ const V2 = (() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // ── AI Scan Animation ──
+  let _scanIntervals = [];
+  function _startScanAnim() {
+    // Copier la vidéo preview dans l'élément de fond
+    const src = document.getElementById('video-preview')?.src;
+    const vid = document.getElementById('ai-scan-video');
+    if (vid && src) { vid.src = src; vid.play().catch(() => {}); }
+
+    // Typewriter cycling
+    const phrases = [
+      '> Extraction audio en cours…',
+      '> Transcription Whisper IA…',
+      '> Analyse des moments viraux…',
+      '> Identification des hooks…',
+      '> Génération des clips courts…',
+      '> Scoring engagement…',
+    ];
+    let pi = 0, ci = 0, tw = '';
+    const twEl = document.getElementById('ai-typewriter');
+    function typeNext() {
+      if (!twEl || _currentState !== 'analyze') return;
+      const phrase = phrases[pi % phrases.length];
+      if (ci <= phrase.length) {
+        twEl.textContent = phrase.slice(0, ci) + (ci < phrase.length ? '▌' : '');
+        ci++;
+        _scanIntervals.push(setTimeout(typeNext, ci === phrase.length + 1 ? 1200 : 38));
+      } else {
+        ci = 0; pi++;
+        typeNext();
+      }
+    }
+    typeNext();
+
+    // Detection boxes aléatoires
+    const wrap = document.getElementById('ai-scan-boxes');
+    function spawnBox() {
+      if (!wrap || _currentState !== 'analyze') return;
+      const box = document.createElement('div');
+      box.className = 'ai-detect-box';
+      const w = 12 + Math.random() * 22, h = 8 + Math.random() * 14;
+      box.style.cssText = `left:${5 + Math.random()*75}%;top:${8 + Math.random()*75}%;width:${w}%;height:${h}%;`;
+      wrap.appendChild(box);
+      setTimeout(() => box.remove(), 1900);
+      _scanIntervals.push(setTimeout(spawnBox, 600 + Math.random() * 900));
+    }
+    spawnBox();
+  }
+
+  function _stopScanAnim() {
+    _scanIntervals.forEach(clearTimeout);
+    _scanIntervals = [];
+    const vid = document.getElementById('ai-scan-video');
+    if (vid) { vid.pause(); vid.src = ''; }
+    const wrap = document.getElementById('ai-scan-boxes');
+    if (wrap) wrap.innerHTML = '';
+  }
+
   // ── Toast ──
   function toast(msg, type = 'info', ms = 4000) {
     const tc = document.getElementById('toasts');
@@ -962,6 +1040,7 @@ const V2 = (() => {
     const _pw = document.getElementById('video-preview-wrap');
     if (_pw) _pw.style.display = 'none';
     setState('analyze');
+    _startScanAnim();
 
     const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
     const setBar = p => { const el = document.getElementById('analyze-bar'); if (el) el.style.width = p + '%'; };
@@ -1087,6 +1166,7 @@ const V2 = (() => {
 
     } catch(err) {
       toast(`❌ ${err.message}`, 'erreur', 8000);
+      _stopScanAnim();
       setState('upload');
     }
   }
@@ -1161,6 +1241,7 @@ const V2 = (() => {
     if (banner) banner.style.display = _userPlan === 'gratuit' ? 'flex' : 'none';
     renderClipsGrid();
     updateExportBtn();
+    _stopScanAnim();
     setState('studio');
     // Generate thumbnails + pré-analyser visages en arrière-plan
     if (_file) {
