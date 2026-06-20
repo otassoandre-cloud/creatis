@@ -420,24 +420,13 @@
 
 <!-- CAROUSEL PRINCIPAL (style OpusClip) -->
 <div class="main-car-wrap" id="main-car-wrap">
-  <!-- Tabs au-dessus du carousel -->
-  <div class="mct-tabs" id="mct-tabs">
-    <button class="mct-tab act" onclick="goSlide(0)">✂️ Clips Viraux</button>
-  </div>
-
-  <!-- Région carousel avec flèches -->
+  <!-- Demo clips -->
   <div class="main-car-region">
-    <button class="main-car-btn main-car-prev" id="main-car-prev" onclick="goSlide(slidePos-1)" disabled>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <button class="main-car-btn main-car-next" id="main-car-next" onclick="goSlide(slidePos+1)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-  <div class="main-car-outer">
-    <div class="main-car-track" id="main-car-track">
+  <div class="main-car-outer" style="overflow:visible">
+    <div class="main-car-track" id="main-car-track" style="transform:none!important">
 
-      <!-- Slide 0 : Demo clips animée -->
-      <div class="main-car-slide" id="lp-demo-card" style="padding:28px 24px 20px;text-align:center;">
+      <!-- Slide clips viraux -->
+      <div class="main-car-slide" id="lp-demo-card" style="padding:28px 24px 20px;text-align:center;min-width:100%;">
         <div id="la-vid" class="lp-anim-vid">
           <div id="la-bg" style="position:absolute;inset:0;transition:background .5s;"></div>
           <img id="la-thumb" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;transition:opacity .5s;opacity:0;">
@@ -456,13 +445,6 @@
         <div class="lp-anim-st" id="la-st"></div>
       </div>
 
-      <!-- Slides 1-6 : un agent par slide -->
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-idees"><div id="ad-ws-idees" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-yt"><div id="ad-ws-yt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-cmt"><div id="ad-ws-cmt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-rec"><div id="ad-ws-rec" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-mini"><div id="ad-ws-mini" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
-      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-chat"><div id="ad-ws-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
 
     </div>
   </div>
