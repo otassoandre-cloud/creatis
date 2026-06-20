@@ -594,18 +594,9 @@
 <section style="max-width:960px;margin:0 auto;padding:80px 24px;" id="pricing">
   <p style="text-align:center;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#10b981;margin-bottom:12px">Tarifs</p>
   <h2 style="text-align:center;font-size:clamp(22px,3vw,36px);font-weight:900;margin-bottom:8px">Simple. Transparent. Sans surprise.</h2>
-  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:28px">Commence gratuitement, upgrade quand tu veux.</p>
+  <p style="text-align:center;font-size:15px;color:#6b7280;margin-bottom:48px">Commence gratuitement, upgrade quand tu veux.</p>
 
-  <!-- Toggle mensuel / annuel -->
-  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px">
-    <span id="lbl-mensuel" style="font-size:14px;font-weight:700;color:#f0f0f0">Mensuel</span>
-    <button id="billing-toggle" onclick="toggleBilling()" style="position:relative;width:48px;height:26px;border-radius:99px;background:#1e2a24;border:none;cursor:pointer;transition:background .2s;padding:0;flex-shrink:0">
-      <span id="billing-knob" style="position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#10b981;transition:transform .2s;display:block"></span>
-    </button>
-    <span id="lbl-annuel" style="font-size:14px;font-weight:600;color:#6b7280">Annuel <span style="background:rgba(16,185,129,.15);color:#10b981;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:4px">-20%</span></span>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start;max-width:860px;margin:0 auto;">
     <!-- Gratuit -->
     <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;">
       <div style="font-size:14px;font-weight:700;color:#6b7280;margin-bottom:16px">Gratuit</div>
@@ -619,38 +610,74 @@
       </ul>
       <button onclick="ouvrirModal()" style="width:100%;padding:13px;background:transparent;border:1.5px solid #2a3830;color:#d1d5db;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#2a3830'">Commencer gratuitement</button>
     </div>
+
     <!-- Pro -->
     <div style="background:linear-gradient(145deg,#0d1f18,#0a1510);border:2px solid #10b981;border-radius:20px;padding:28px 24px;position:relative;box-shadow:0 0 40px rgba(16,185,129,.12)">
       <div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#10b981;color:#000;font-size:11px;font-weight:800;padding:4px 14px;border-radius:100px;letter-spacing:.04em;white-space:nowrap">⭐ LE PLUS POPULAIRE</div>
       <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:16px">Pro</div>
-      <div style="font-size:38px;font-weight:900;margin-bottom:4px"><span id="prix-pro">19</span>€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:24px" id="desc-pro">Annulable à tout moment</div>
+      <!-- Prix avec promo -->
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <div style="font-size:22px;font-weight:800;text-decoration:line-through;color:#4a5568">19,90€</div>
+        <div style="font-size:38px;font-weight:900">9,90€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px">
+        <span style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">-50% le 1er mois</span>
+        <span style="font-size:12px;color:#6b7280">puis 19,90€/mois</span>
+      </div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>50 générations/mois</strong></li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Tous les 8 agents IA</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Script YouTube complet</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> 30 miniatures IA/mois</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Idées de vidéos illimitées</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Support prioritaire</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Générations <strong>illimitées</strong></li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Les <strong>10 agents IA</strong> débloqués</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>30 miniatures HD</strong> par mois</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Prospection sponsors</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>Clips sans watermark</strong></li>
       </ul>
-      <button id="btn-pro" onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Démarrer pour 19€ →</button>
-      <p style="text-align:center;font-size:11px;color:#6b7280;margin-top:10px">30 jours satisfait ou remboursé</p>
+      <!-- Countdown promo -->
+      <div style="text-align:center;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35);border-radius:8px;padding:10px 14px;margin-bottom:16px">
+        <div style="font-size:12px;color:#f97316;font-weight:700;margin-bottom:4px">⚡ Offre de lancement — expire dans</div>
+        <div id="lp-countdown" style="font-size:24px;font-weight:900;color:#f97316;letter-spacing:.05em;font-variant-numeric:tabular-nums">--:--:--</div>
+        <div style="font-size:11px;color:rgba(249,115,22,0.7);margin-top:2px">-50% sur le 1er mois · 9,90€ au lieu de 19,90€</div>
+      </div>
+      <button onclick="ouvrirModal()" style="width:100%;padding:13px;background:#10b981;color:#000;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">Passer au Pro — 9,90€ le 1er mois</button>
+      <p style="text-align:center;font-size:11px;color:#6b7280;margin-top:10px">30 jours satisfait ou remboursé · Annulable à tout moment</p>
     </div>
+
     <!-- Studio -->
-    <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;">
+    <div style="background:#111;border:1px solid #1e2a24;border-radius:20px;padding:28px 24px;opacity:0.75">
       <div style="font-size:14px;font-weight:700;color:#6b7280;margin-bottom:16px">Studio</div>
-      <div style="font-size:38px;font-weight:900;margin-bottom:4px"><span id="prix-studio">49</span>€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:24px" id="desc-studio">Annulable à tout moment</div>
+      <div style="font-size:38px;font-weight:900;margin-bottom:4px">49€<span style="font-size:16px;font-weight:500;color:#6b7280">/mois</span></div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:24px">Pour les agences · <strong style="color:#4b5563">Bientôt disponible</strong></div>
       <ul style="list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:10px">
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>Générations illimitées</strong></li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> 100 miniatures IA/mois</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Générations <strong>illimitées</strong></li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>100 miniatures HD</strong> par mois</li>
+        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> <strong>3 chaînes YouTube</strong> indépendantes</li>
         <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Tout Pro inclus</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Accès API</li>
-        <li style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:#10b981;font-size:16px">✓</span> Manager dédié</li>
       </ul>
-      <a href="mailto:creatis.app.contact@gmail.com" style="display:block;text-align:center;width:100%;padding:13px;background:transparent;border:1.5px solid #2a3830;color:#d1d5db;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;box-sizing:border-box;transition:border-color .15s" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#2a3830'">Nous contacter</a>
+      <button disabled style="width:100%;padding:13px;background:transparent;border:1.5px solid #2a3830;color:#4b5563;border-radius:10px;font-size:14px;font-weight:700;cursor:not-allowed;font-family:inherit">Coming Soon</button>
     </div>
   </div>
+
+  <!-- Countdown script -->
+  <script>
+  (function(){
+    const key = 'creatis_promo_end';
+    let end = localStorage.getItem(key);
+    if (!end || Date.now() > +end) {
+      end = Date.now() + 24 * 60 * 60 * 1000;
+      localStorage.setItem(key, end);
+    }
+    function tick() {
+      const left = +end - Date.now();
+      if (left <= 0) { const el = document.getElementById('lp-countdown'); if(el) el.textContent = '00:00:00'; return; }
+      const h = String(Math.floor(left/3600000)).padStart(2,'0');
+      const m = String(Math.floor((left%3600000)/60000)).padStart(2,'0');
+      const s = String(Math.floor((left%60000)/1000)).padStart(2,'0');
+      const el = document.getElementById('lp-countdown');
+      if (el) el.textContent = `${h}:${m}:${s}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+  </script>
 </section>
 
 <!-- FAQ -->
@@ -776,31 +803,6 @@ function initDemo(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initDemo);
 else initDemo();
 
-// ── Billing toggle ──
-let _annuel = false;
-window.toggleBilling = function() {
-  _annuel = !_annuel;
-  const knob = document.getElementById('billing-knob');
-  const toggle = document.getElementById('billing-toggle');
-  const lblM = document.getElementById('lbl-mensuel');
-  const lblA = document.getElementById('lbl-annuel');
-  if (knob) knob.style.transform = _annuel ? 'translateX(22px)' : 'translateX(0)';
-  if (toggle) toggle.style.background = _annuel ? '#10b981' : '#1e2a24';
-  if (lblM) lblM.style.color = _annuel ? '#6b7280' : '#f0f0f0';
-  if (lblA) lblA.style.color = _annuel ? '#f0f0f0' : '#6b7280';
-  // Prix Pro
-  const pPro = document.getElementById('prix-pro');
-  const dPro = document.getElementById('desc-pro');
-  const bPro = document.getElementById('btn-pro');
-  if (pPro) pPro.textContent = _annuel ? '15' : '19';
-  if (dPro) dPro.textContent = _annuel ? 'Facturé 180€/an — économise 48€' : 'Annulable à tout moment';
-  if (bPro) bPro.textContent = _annuel ? 'Démarrer pour 15€/mois →' : 'Démarrer pour 19€ →';
-  // Prix Studio
-  const pStudio = document.getElementById('prix-studio');
-  const dStudio = document.getElementById('desc-studio');
-  if (pStudio) pStudio.textContent = _annuel ? '39' : '49';
-  if (dStudio) dStudio.textContent = _annuel ? 'Facturé 468€/an — économise 120€' : 'Annulable à tout moment';
-};
 
 window.addEventListener('scroll',()=>{
   document.getElementById('navbar')?.classList.toggle('defilé',window.scrollY>20);
