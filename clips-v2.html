@@ -12,8 +12,8 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     :root {
-      --bg: #050505;
-      --bg-card: #0d0d0d;
+      --bg: #080A0F;
+      --bg-card: #0C0F16;
       --bg-hover: #141414;
       --bordure: #1f1f1f;
       --vert: #10b981;
@@ -26,9 +26,10 @@
       --jaune: #f0a500;
     }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--texte); min-height: 100vh; }
+    body::before { content:''; position:fixed; inset:0; z-index:-1; background-image:radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size:26px 26px; pointer-events:none; }
 
     /* ─── NAV ─── */
-    .nav { position: sticky; top: 0; z-index: 50; background: rgba(5,5,5,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--bordure); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; }
+    .nav { position: sticky; top: 0; z-index: 50; background: rgba(8,10,15,0.9); backdrop-filter: blur(12px); border-bottom: none; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; }
     .nav-logo { font-weight: 800; font-size: 17px; color: var(--texte); text-decoration: none; }
     .nav-logo span { color: var(--vert); }
     .nav-badge { background: var(--vert-dim); border: 1px solid rgba(16,185,129,0.3); color: var(--vert); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; letter-spacing: .5px; }
@@ -36,7 +37,8 @@
     .btn-nav { background: var(--vert); color: #000; font-weight: 700; font-size: 13px; padding: 7px 16px; border-radius: 8px; border: none; cursor: pointer; text-decoration: none; }
 
     /* ─── LAYOUT ─── */
-    .page { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+    .page { margin: 0 auto; padding: 0 20px; width: 100%; max-width: 1100px; overflow-x: hidden; }
+    #state-upload.active ~ #state-studio, #state-upload.active ~ #state-analyze { padding: 0 20px; }
 
     /* ─── STATES ─── */
     .state { display: none; }
@@ -251,8 +253,9 @@
     .seg-edited { color: var(--texte) !important; }
 
     /* Style pills */
-    .modal-styles-wrap { overflow-x: auto; white-space: nowrap; scrollbar-width: none; -ms-overflow-style:none; position: relative; }
-    .modal-styles { display: inline-flex; flex-wrap: nowrap; gap: 7px; }
+    .modal-styles-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style:none; position: relative; margin: 0 -20px; padding: 0 20px; }
+    .modal-styles-wrap::-webkit-scrollbar { display: none; }
+    .modal-styles { display: flex; flex-wrap: wrap; gap: 6px; }
     .ms-pill { font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #1e1e1e; background: #141414; cursor: pointer; transition: all .15s; color: #555; white-space: nowrap; }
     .ms-pill:hover { border-color: #444; color: #ccc; }
 
@@ -412,21 +415,89 @@
       .btn-sel-all, .btn-sel-none, .btn-sel-top { font-size: 11px; padding: 4px 10px; }
     }
 
-    /* ── Upload V1 design ── */
-    .v1-hero-center { display:flex; flex-direction:column; align-items:center; padding:60px 20px 28px; gap:16px; text-align:center; }
-    .v1-hero-label { font-size:11px; font-weight:700; letter-spacing:.12em; color:var(--vert); text-transform:uppercase; margin:0; }
-    .v1-hero-title { font-size:clamp(22px,4vw,36px); font-weight:800; line-height:1.2; margin:0; color:var(--texte); }
-    .v1-hero-sub { font-size:13px; color:var(--texte-doux); margin:0; }
-    .v1-bar { display:flex; align-items:center; gap:0; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); border-radius:50px; padding:6px 6px 6px 20px; width:100%; max-width:520px; transition:border-color .2s; cursor:default; }
-    .v1-bar:hover, .v1-bar.drag-over { border-color:rgba(16,185,129,.5); }
+    /* ── Upload V2 design ── */
+    .state-upload-bg { position:fixed; inset:0; z-index:0; pointer-events:none; }
+    .state-upload-bg .dotgrid { position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px); background-size:26px 26px; }
+    .state-upload-bg .glow { position:absolute; border-radius:50%; filter:blur(120px); }
+    .state-upload-bg .glow-1 { width:600px; height:600px; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(16,185,129,0.15); filter:blur(150px); }
+    .state-upload-bg .glow-2 { display:none; }
+
+    #state-upload.active { position:relative; min-height:calc(100vh - 56px); display:flex; align-items:center; justify-content:center; background:transparent; padding:0 16px; }
+    .upload-hero-grid { display:flex; flex-direction:column; align-items:center; text-align:center; width:100%; max-width:560px; margin:0 auto; padding:0; position:relative; z-index:2; box-sizing:border-box; }
+    .upload-hero-left { display:flex; flex-direction:column; align-items:center; gap:20px; width:100%; }
+    .upload-hero-right { display:flex; justify-content:center; align-items:center; }
+
+    /* Shorts preview à droite */
+    .upload-shorts-preview { display:flex; gap:14px; align-items:flex-end; }
+    .usp-card { position:relative; border-radius:18px; overflow:hidden; border:2px solid rgba(255,255,255,0.06); box-shadow:0 20px 50px -15px rgba(0,0,0,0.6); transition:transform .3s; }
+    .usp-card:hover { transform:translateY(-6px); }
+    .usp-card img { width:100%; height:100%; object-fit:cover; display:block; }
+    .usp-card.usp-1 { width:140px; height:250px; transform:rotate(-4deg); }
+    .usp-card.usp-2 { width:160px; height:285px; z-index:2; }
+    .usp-card.usp-3 { width:140px; height:250px; transform:rotate(4deg); }
+    .usp-badge { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); border:2px solid #10b981; color:#10b981; font-weight:800; font-size:13px; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .usp-hook { position:absolute; bottom:0; left:0; right:0; padding:28px 10px 10px; background:linear-gradient(transparent,rgba(0,0,0,0.9)); font-size:11px; font-weight:700; color:#fff; line-height:1.3; }
+
+    @media (max-width:768px) {
+      .upload-hero-grid { grid-template-columns:1fr; text-align:center; padding:16px; gap:16px; max-width:100%; }
+      .upload-hero-left { align-items:center; width:100%; }
+      .upload-hero-right { width:100%; }
+      .upload-shorts-preview { justify-content:center; gap:6px; }
+      .usp-card { border-radius:12px; }
+      .usp-card.usp-1 { width:85px; height:150px; transform:rotate(-4deg); }
+      .usp-card.usp-2 { width:100px; height:175px; }
+      .usp-card.usp-3 { width:85px; height:150px; transform:rotate(4deg); }
+      .usp-hook { font-size:9px; padding:20px 6px 6px; }
+      .usp-badge { width:28px; height:28px; font-size:10px; top:6px; left:6px; }
+      .v1-bar { max-width:100%; padding:5px 5px 5px 12px; }
+      .v1-bar-placeholder { font-size:12px; }
+      .v1-bar-sep { padding:0 6px; font-size:11px; }
+      .v1-bar-btn { padding:8px 14px; font-size:12px; }
+      .v1-btn-creer { width:100%; justify-content:center; padding:12px 24px; font-size:14px; }
+      .v1-hero-title { font-size:24px; }
+      .v1-hero-sub { font-size:13px; padding:0 8px; }
+      .v1-hero-label { font-size:10px; padding:5px 12px; }
+      .upload-trust { gap:10px; }
+      .upload-trust span { font-size:11px; }
+      #state-upload { min-height:auto; padding-bottom:16px; }
+    }
+
+    .v1-hero-center { display:flex; flex-direction:column; align-items:center; padding:80px 20px 40px; gap:20px; text-align:center; position:relative; z-index:2; }
+    .v1-hero-label { font-size:11px; font-weight:700; letter-spacing:.1em; color:#10b981; text-transform:uppercase; margin:0; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2); padding:6px 16px; border-radius:99px; display:inline-block; }
+    .v1-hero-title { font-size:clamp(28px,6vw,44px); font-weight:800; line-height:1.15; margin:0; color:#f2f4f7; letter-spacing:-0.02em; }
+    .v1-hero-title span.vert { color:#10b981; }
+    .v1-hero-sub { font-size:15px; color:#8A93A3; margin:0; max-width:400px; line-height:1.6; }
+
+    .v1-bar { display:flex; align-items:center; gap:0; background:rgba(255,255,255,0.04); border:1.5px solid rgba(255,255,255,0.1); border-radius:50px; padding:6px 6px 6px 20px; width:100%; max-width:460px; transition:all .3s; cursor:pointer; }
+    .v1-bar:hover, .v1-bar.drag-over { border-color:#10b981; background:rgba(16,185,129,0.06); box-shadow:0 0 30px -10px rgba(16,185,129,0.3); }
+    .v1-bar.has-file { border-color:#10b981; border-style:solid; }
     .v1-bar-left { display:flex; align-items:center; gap:10px; flex:1; min-width:0; }
-    .v1-bar-placeholder { font-size:14px; color:var(--texte-doux); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .v1-bar-sep { font-size:13px; color:var(--texte-doux); padding:0 12px; flex-shrink:0; }
-    .v1-bar-btn { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:40px; padding:9px 20px; font-size:13px; font-weight:600; color:var(--texte); cursor:pointer; transition:background .15s; white-space:nowrap; flex-shrink:0; }
-    .v1-bar-btn:hover { background:rgba(255,255,255,.18); }
-    .v1-btn-creer { display:flex; align-items:center; gap:8px; background:#fff; color:#0a0f0a; border:none; border-radius:40px; padding:13px 32px; font-size:15px; font-weight:700; cursor:pointer; transition:opacity .2s; margin-top:4px; }
-    .v1-btn-creer:hover:not(:disabled) { opacity:.88; }
-    .v1-btn-creer:disabled { opacity:.4; cursor:default; }
+    .v1-bar-placeholder { font-size:14px; color:#8A93A3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .v1-bar-sep { font-size:13px; color:#8A93A3; padding:0 12px; flex-shrink:0; }
+    .v1-bar-btn { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:40px; padding:10px 22px; font-size:13px; font-weight:600; color:#f2f4f7; cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0; }
+    .v1-bar-btn:hover { background:rgba(16,185,129,0.15); border-color:rgba(16,185,129,0.4); color:#10b981; }
+
+    .v1-btn-creer { display:flex; align-items:center; justify-content:center; gap:8px; background:linear-gradient(180deg,#10b981,#059669); color:#0a0f0a; border:none; border-radius:40px; padding:14px 36px; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; box-shadow:0 12px 40px -12px rgba(16,185,129,0.4); font-family:inherit; width:100%; max-width:460px; }
+    .v1-btn-creer:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 16px 48px -12px rgba(16,185,129,0.5); }
+    .v1-btn-creer:disabled { opacity:.35; cursor:default; transform:none; box-shadow:none; }
+
+    /* Trust row upload */
+    .upload-trust { display:flex; gap:20px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+    .upload-trust span { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#8A93A3; font-weight:600; }
+    .upload-trust svg { color:#10b981; flex-shrink:0; }
+
+    /* Preview shorts */
+    .upload-preview { display:flex; gap:10px; justify-content:center; margin-top:16px; opacity:0.5; }
+    .upload-preview-card { width:56px; height:100px; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); position:relative; }
+    .upload-preview-card img { width:100%; height:100%; object-fit:cover; }
+    .upload-preview-card .up-score { position:absolute; bottom:4px; left:4px; font-size:10px; font-weight:800; color:#f0a500; }
+
+    @media (max-width: 600px) {
+      .v1-hero-center { padding:50px 16px 28px; gap:14px; }
+      .v1-hero-title { font-size:clamp(24px,6vw,32px); }
+      .upload-trust { gap:12px; }
+      .upload-preview-card { width:44px; height:78px; }
+    }
   </style>
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.people.toString()+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonPropertiesForFlags".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||(window.posthog=[]));
@@ -453,34 +524,51 @@
 
   <!-- ═══════════════ STATE: UPLOAD ═══════════════ -->
   <div class="state active" id="state-upload">
-    <div class="v1-hero-center">
-      <p class="v1-hero-label">OUTIL DE DÉCOUPAGE VIDÉO IA</p>
-      <h1 class="v1-hero-title">1 longue vidéo,<br>10 clips viraux.</h1>
-      <p class="v1-hero-sub">Transcription automatique · Recadrage 9:16 · Export MP4</p>
+    <div class="state-upload-bg">
+      <div class="dotgrid"></div>
+      <div class="glow glow-1"></div>
+      <div class="glow glow-2"></div>
+    </div>
+    <div class="upload-hero-grid">
+      <!-- LEFT — upload -->
+      <div class="upload-hero-left">
+        <p class="v1-hero-label">CLIPS VIRAUX IA</p>
+        <h1 class="v1-hero-title">1 vidéo longue,<br><span class="vert">10 Shorts</span> qui explosent.</h1>
+        <p class="v1-hero-sub">Dépose ta vidéo. L'IA découpe les meilleurs moments, recadre en 9:16 et brûle les sous-titres.</p>
 
-      <label class="v1-bar" id="drop-zone" style="cursor:pointer"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)">
-        <div class="v1-bar-left">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span id="v1-upload-name" class="v1-bar-placeholder">Cliquer ou déposer une vidéo ici</span>
+        <div class="v1-bar" id="drop-zone" style="cursor:pointer"
+          onclick="document.getElementById('file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="event.preventDefault();this.classList.remove('drag-over');V2.onDrop(event)">
+          <div class="v1-bar-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="v1-upload-name" class="v1-bar-placeholder">Cliquer ou déposer une vidéo ici</span>
+          </div>
+          <span class="v1-bar-sep">ou</span>
+          <span class="v1-bar-btn">Charger</span>
+          <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
         </div>
-        <span class="v1-bar-sep">ou</span>
-        <span class="v1-bar-btn">Charger des fichiers</span>
-        <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
-      </label>
 
-      <!-- Préview vidéo 16:9 -->
-      <div id="video-preview-wrap" style="display:none;max-width:600px;margin:16px auto 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
-        <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
-        <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600" id="video-preview-dur"></div>
+        <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
+          <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
+          <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600" id="video-preview-dur"></div>
+        </div>
+
+        <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Créer les Shorts
+        </button>
+
+        <div class="upload-trust">
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Zéro montage</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 60 secondes</span>
+          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Gratuit</span>
+        </div>
       </div>
 
-      <button class="v1-btn-creer" id="btn-analyze" onclick="V2.startAnalyze()" disabled>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        Créer les Shorts
-      </button>
+      <!-- RIGHT — placeholder pour futures vraies images -->
+      <div class="upload-hero-right" style="display:none"></div>
     </div>
   </div>
 
@@ -528,7 +616,7 @@
     </div>
 
     <!-- Bannière gratuit : watermark + clips limités -->
-    <div id="studio-gratuit-banner" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--texte-doux);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div id="studio-gratuit-banner" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--texte-doux);align-items:center;justify-content:space-between;gap:10px;">
       <span>🔒 Plan gratuit — 3 clips exportables · filigrane Créatis sur les vidéos</span>
       <button onclick="V2.showUpgradeModal()" style="background:var(--vert);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Passer au Pro →</button>
     </div>
@@ -674,6 +762,11 @@
             <span style="font-size:13px;color:var(--texte-doux)">Hook sur les 3 premières secondes</span>
           </div>
           <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:8px">
+          <div id="hook-style-btns" style="display:none;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            <button type="button" class="hook-st-btn active" data-hs="pill" onclick="V2.setHookStyle('pill')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Pill</button>
+            <button type="button" class="hook-st-btn" data-hs="clean" onclick="V2.setHookStyle('clean')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Clean</button>
+            <button type="button" class="hook-st-btn" data-hs="outline" onclick="V2.setHookStyle('outline')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Outline</button>
+          </div>
           <div id="hook-presets" style="display:none;gap:12px;margin-bottom:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texte-doux);cursor:pointer">
               <input type="color" id="modal-hook-bg" value="#000000" oninput="V2.updateClipOpt()" style="width:28px;height:28px;border:none;background:none;cursor:pointer;padding:0;border-radius:4px">
@@ -728,7 +821,7 @@
     </div>
 
     <!-- Panneau transcription (overlay sur les settings) -->
-    <div id="transcript-panel" style="display:none;position:absolute;inset:0;background:#0d0d0d;z-index:20;display:none;flex-direction:column">
+    <div id="transcript-panel" style="display:none;position:absolute;inset:0;background:#0d0d0d;z-index:20;flex-direction:column">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--bordure);flex-shrink:0">
         <div>
           <div style="font-size:14px;font-weight:800">✏️ Modifier les sous-titres</div>
@@ -754,6 +847,7 @@ const V2 = (() => {
   // ── State ──
   let _file = null;           // File object (uploaded video)
   let _clipSegmentIds = {};   // key → Railway video_id (segment pré-uploadé par clip)
+  let _thumbs = {};           // index → dataUrl (sauvegardé pour la récupération)
   let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
   let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
   const FREE_CLIP_LIMIT = 3; // clips exportables en gratuit
@@ -788,6 +882,140 @@ const V2 = (() => {
       const v = document.getElementById('wm-opacity-val');
       if (v) v.textContent = wmOp.value + '%';
     });
+
+    // Recovery : vérifier si une analyse récente est dans localStorage
+    _checkRecovery();
+  }
+
+  // ── Background processing helpers ──
+  let _silentAudioCtx = null;
+  function _startSilentAudio() {
+    try {
+      if (_silentAudioCtx) return;
+      _silentAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = _silentAudioCtx.createBuffer(1, _silentAudioCtx.sampleRate, _silentAudioCtx.sampleRate);
+      function loop() {
+        if (!_silentAudioCtx) return;
+        const src = _silentAudioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(_silentAudioCtx.destination);
+        src.onended = loop;
+        src.start();
+      }
+      loop();
+    } catch {}
+  }
+  function _stopSilentAudio() {
+    try { _silentAudioCtx?.close(); } catch {}
+    _silentAudioCtx = null;
+  }
+
+  function _saveAnalysisAndNotify(clips, segments, name) {
+    // Sauvegarder dans localStorage pour récupération
+    try {
+      localStorage.setItem('creatis_last_analysis', JSON.stringify({
+        ts: Date.now(), name, clips, segments: segments?.slice(0, 200), plan: _userPlan,
+        segmentIds: _clipSegmentIds
+      }));
+    } catch {}
+    _stopSilentAudio();
+    // Email notification (fire & forget)
+    try {
+      const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
+      if (tok) {
+        fetch('/api/repurpose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+          body: JSON.stringify({ mode: 'notify_clips_ready', count: clips.length, name })
+        }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  function _checkRecovery() {
+    try {
+      const raw = localStorage.getItem('creatis_last_analysis');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const age = Date.now() - (data.ts || 0);
+      if (age > 4 * 3600 * 1000 || !data.clips?.length) { localStorage.removeItem('creatis_last_analysis'); return; }
+      const ageMin = Math.floor(age / 60000);
+      const ageStr = ageMin < 60 ? `il y a ${ageMin} min` : `il y a ${Math.floor(ageMin/60)}h`;
+      const banner = document.createElement('div');
+      banner.id = 'recovery-banner';
+      banner.style.cssText = 'background:#0d1f17;border:1px solid #10b981;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:600px;margin-left:auto;margin-right:auto;';
+      banner.innerHTML = `
+        <div style="font-size:14px;color:#d1fae5;">
+          🎬 <strong style="color:#fff">${data.clips.length} clips</strong> de <em style="color:#10b981">${data.name}</em> — ${ageStr}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <label style="background:#10b981;color:#000;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center">
+            Reprendre →
+            <input type="file" accept="video/*" style="display:none" onchange="V2._reattachAndRestore(this)">
+          </label>
+          <button onclick="document.getElementById('recovery-banner').remove();localStorage.removeItem('creatis_last_analysis')" style="background:transparent;color:#6b7280;border:none;font-size:18px;cursor:pointer;line-height:1">×</button>
+        </div>`;
+      const upload = document.getElementById('state-upload');
+      if (upload) upload.prepend(banner);
+    } catch {}
+  }
+
+  function _reattachFile(input) {
+    const f = input.files?.[0];
+    if (!f) return;
+    _file = f;
+    generateThumbnails();
+    if (_modalIdx >= 0) showModal(_modalIdx);
+  }
+
+  function _reattachAndRestore(input) {
+    const f = input.files?.[0];
+    if (!f) return;
+    _file = f;
+    try {
+      const data = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
+      if (!data.clips?.length) return;
+      _clips = data.clips;
+      _segments = data.segments || [];
+      _userPlan = data.plan || _userPlan;
+      _clipSegmentIds = data.segmentIds || {};
+      _thumbs = data.thumbs || {};
+      document.getElementById('recovery-banner')?.remove();
+      renderStudio(data.name || 'Vidéo');
+      setTimeout(() => generateThumbnails(), 200);
+    } catch {}
+  }
+
+  function _restoreAnalysis() {
+    try {
+      const data = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
+      if (!data.clips?.length) return;
+      _clips = data.clips;
+      _segments = data.segments || [];
+      _userPlan = data.plan || _userPlan;
+      _clipSegmentIds = data.segmentIds || {};
+      _thumbs = data.thumbs || {};
+      document.getElementById('recovery-banner')?.remove();
+      renderStudio(data.name || 'Vidéo');
+      // Injecter les thumbnails sauvegardées
+      if (data.thumbs) {
+        requestAnimationFrame(() => {
+          Object.entries(data.thumbs).forEach(([i, url]) => {
+            const el = document.getElementById(`clip-thumb-${i}`);
+            if (!el) return;
+            const empty = el.querySelector('.clip-thumb-empty');
+            if (empty) {
+              const img = document.createElement('img');
+              img.src = url;
+              img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+              el.insertBefore(img, empty);
+              empty.remove();
+            }
+            el.dataset.thumb = url;
+          });
+        });
+      }
+    } catch {}
   }
 
   // ── State machine ──
@@ -905,7 +1133,10 @@ const V2 = (() => {
       prevVid.onloadedmetadata = () => {
         const d = prevVid.duration;
         if (prevDur) prevDur.textContent = isFinite(d) ? `${Math.floor(d/60)}:${String(Math.floor(d%60)).padStart(2,'0')}` : '';
+        // iOS ne rend pas la 1ère frame sans play/pause
+        prevVid.play().then(() => prevVid.pause()).catch(() => {});
       };
+      prevVid.load(); // requis sur iOS Safari pour déclencher le chargement du blob
       prevWrap.style.display = 'block';
     }
 
@@ -972,8 +1203,21 @@ const V2 = (() => {
   function toggleHook(on) {
     const inp = document.getElementById('opt-hook-text');
     const row = document.getElementById('opt-hook-style-row');
+    const styleBtns = document.getElementById('hook-style-btns');
     if (inp) inp.style.display = on ? 'block' : 'none';
     if (row) row.style.display = on ? 'flex' : 'none';
+    if (styleBtns) styleBtns.style.display = on ? 'flex' : 'none';
+  }
+
+  let _hookStyle = 'pill';
+  function setHookStyle(s) {
+    _hookStyle = s;
+    document.querySelectorAll('.hook-st-btn').forEach(b => {
+      b.style.background = b.dataset.hs === s ? 'var(--vert)' : 'var(--bg-card)';
+      b.style.color = b.dataset.hs === s ? '#000' : 'var(--texte)';
+      b.style.borderColor = b.dataset.hs === s ? 'var(--vert)' : 'var(--bordure)';
+    });
+    if (_modalIdx !== null) updateClipOpt();
   }
 
   function toggleWatermark(on) {
@@ -1023,13 +1267,43 @@ const V2 = (() => {
     return _ffmpegLoading;
   }
 
+  function _showAuthOverlay() {
+    if (document.getElementById('auth-overlay')) return;
+    const ov = document.createElement('div');
+    ov.id = 'auth-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+      <div style="background:#10141C;border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:36px 32px;max-width:400px;width:90%;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px">⚡</div>
+        <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:6px;color:#f2f4f7">1 essai gratuit</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Connecte-toi en 1 clic pour générer tes clips viraux. Sans carte bancaire.</p>
+        <button onclick="window._authGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:#fff;color:#111;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continuer avec Google
+        </button>
+        <button onclick="document.getElementById('auth-overlay').remove()" style="background:none;border:none;color:#8A93A3;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>
+      </div>
+    `;
+    document.body.appendChild(ov);
+  }
+
+  window._authGoogle = async function() {
+    if (typeof Auth !== 'undefined') {
+      try { await Auth.signInWithGoogle(); } catch(e) {
+        toast('❌ ' + e.message, 'erreur', 5000);
+      }
+    } else {
+      window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+    }
+  };
+
   // ── Analyze pipeline ──
   async function startAnalyze() {
-    if (!_file && !_ytUrl) return;
-    // Vérification serveur au moment du clic (pas au chargement — timing)
-    if (typeof Auth !== 'undefined') {
+    if (!_file && !_ytUrl) { toast('❌ Sélectionne une vidéo d\'abord', 'erreur'); return; }
+    // Vérification serveur — seulement si connecté (pas en mode démo)
+    if (typeof Auth !== 'undefined' && Auth.getToken()) {
       try {
-        const data = await Auth.getPlanDistant();
+        const data = await Promise.race([Auth.getPlanDistant(), new Promise(r => setTimeout(() => r(null), 3000))]);
         if (data?.plan) _userPlan = data.plan;
         if (data?.repurpose_count !== undefined) _repurposeCount = data.repurpose_count;
       } catch {}
@@ -1049,16 +1323,21 @@ const V2 = (() => {
     const setMsg = t => { const el = document.getElementById('analyze-msg'); if (el) el.textContent = t; };
 
     try {
-      // Attendre que la session Supabase soit chargée (async)
-      if (typeof Auth !== 'undefined') await Auth.getSession().catch(() => {});
-      const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+      // Attendre que la session Supabase soit chargée (timeout 3s max)
+      let token = null;
+      try {
+        if (typeof Auth !== 'undefined') {
+          await Promise.race([Auth.getSession(), new Promise(r => setTimeout(r, 3000))]);
+          token = Auth.getToken();
+        }
+      } catch {}
+      // Pas de token → rediriger vers auth
       if (!token) {
-        setState('upload');
-        toast('❌ Connexion requise — connecte-toi sur creatis.app/auth', 'erreur', 6000);
-        setTimeout(() => { window.location.href = '/auth.html?redirect=/clips-v2'; }, 1500);
+        window.location.href = '/auth.html?returnUrl=/clips-v2.html';
         return;
       }
-      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       if (_ytUrl) {
         // YouTube URL flow
@@ -1085,6 +1364,7 @@ const V2 = (() => {
         const _ytVid = _ytVideoId();
         if (_ytVid) _clips = _clips.map(c => ({ ...c, video_id: _ytVid }));
         if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'youtube', plan: _userPlan });
+        _saveAnalysisAndNotify(_clips, _segments, data.result.title || 'Vidéo YouTube');
         renderStudio(data.result.title || 'Vidéo YouTube');
 
       } else {
@@ -1097,10 +1377,21 @@ const V2 = (() => {
         const FILE_LIMIT_NATIVE = 500 * 1024 * 1024; // 500 Mo
         let audioBlob;
         if (_file.size <= FILE_LIMIT_NATIVE) {
-          audioBlob = await extractAudioNative(_file, (pct) => {
-            setBar(3 + Math.round(pct * 0.45));
-            setMsg(`Extraction audio… ${pct}%`);
-          });
+          try {
+            audioBlob = await extractAudioNative(_file, (pct) => {
+              setBar(3 + Math.round(pct * 0.45));
+              setMsg(`Extraction audio… ${pct}%`);
+            });
+          } catch(nativeErr) {
+            // decodeAudioData échoue sur iOS pour certains formats → fallback FFmpeg.wasm
+            console.warn('[audio] native failed, fallback FFmpeg:', nativeErr.message);
+            setMsg('Extraction audio (fallback)…');
+            const rawData = await extractAudio(_file, (pct) => {
+              setBar(3 + Math.round(pct * 0.45));
+              setMsg(`Extraction audio… ${pct}%`);
+            });
+            audioBlob = new Blob([rawData.buffer], { type: 'audio/mpeg' });
+          }
         } else {
           setMsg(`Fichier lourd (${(_file.size/1e9).toFixed(1)} Go) — extraction en cours…`);
           const rawData = await extractAudio(_file, (pct) => {
@@ -1116,8 +1407,10 @@ const V2 = (() => {
         const tokData = await tokRes.json();
         if (!tokData.ok) throw new Error(tokData.error || 'Erreur auth Railway');
 
+        // Hack iOS : boucle audio silencieuse pour garder la page active en arrière-plan
+        _startSilentAudio();
         // Upload audio (quelques Mo) directement vers Railway
-        setMsg('Upload audio…');
+        setMsg('⏳ Analyse en cours — tu peux verrouiller ton écran, on continue…');
         const audioFormData = new FormData();
         audioFormData.append('file', audioBlob, 'audio.wav');
         let transcribeData = null;
@@ -1161,12 +1454,20 @@ const V2 = (() => {
         }
         _clips = clipsData.result.clips || [];
         if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan });
+        _saveAnalysisAndNotify(_clips, _segments, _file?.name?.replace(/\.[^.]+$/, '') || 'vidéo');
         setBar(100); setStep(4);
         renderStudio(_file.name.replace(/\.[^.]+$/, ''));
-        _precacheSegmentsAsync(_clips).catch(() => {});
+        _precacheSegmentsAsync(_clips).then(() => {
+          // Sauvegarder les segment IDs Railway après précache (pour restauration)
+          try {
+            const saved = localStorage.getItem('creatis_last_analysis');
+            if (saved) { const d = JSON.parse(saved); d.segmentIds = _clipSegmentIds; localStorage.setItem('creatis_last_analysis', JSON.stringify(d)); }
+          } catch {}
+        }).catch(() => {});
       }
 
     } catch(err) {
+      if (window.posthog) posthog.capture('analysis_error', { message: err.message, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' });
       toast(`❌ ${err.message}`, 'erreur', 8000);
       _stopScanAnim();
       setState('upload');
@@ -1407,13 +1708,54 @@ const V2 = (() => {
   }
 
   function showUpgradeModal() {
-    // Si dans iframe app.html → déclenche la modale upgrade du parent
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'show_upgrade' }, '*');
-    } else {
-      window.location.href = '/paiement.html?plan=pro';
-    }
+    if (window.posthog) posthog.capture('paywall_shown', { plan: _userPlan, source: 'clips-v2' });
+    if (document.getElementById('paywall-modal')) return;
+    const m = document.createElement('div');
+    m.id = 'paywall-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;';
+    m.innerHTML = `
+      <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:36px 32px;max-width:420px;width:90%;text-align:center;position:relative;">
+        <button onclick="document.getElementById('paywall-modal').remove()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
+        <div style="font-size:36px;margin-bottom:12px">🔒</div>
+        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Ton essai gratuit est terminé</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour générer des clips viraux illimités, sans watermark.</p>
+        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:18px;margin-bottom:20px;text-align:left;">
+          <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,90€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
+          <div style="font-size:0.78rem;color:#8A93A3;margin-bottom:12px">puis 19,90€/mois · résiliable à tout moment</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:0.8rem;color:#f2f4f7;">
+            <div>✓ Clips viraux illimités</div>
+            <div>✓ Sans watermark</div>
+            <div>✓ YouTube Complet</div>
+            <div>✓ Miniature Pro IA</div>
+            <div>✓ Recyclage contenu</div>
+            <div>✓ 30 idées de vidéos</div>
+            <div>✓ Réponses commentaires</div>
+            <div>✓ Analyse vidéo</div>
+            <div>✓ Assistant & Support</div>
+            <div>✓ 8 agents IA débloqués</div>
+          </div>
+        </div>
+        <button onclick="window._goToPro()" style="width:100%;padding:14px;background:linear-gradient(180deg,#10b981,#059669);color:#0a0f0a;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 30px -8px rgba(16,185,129,0.4);">⚡ Passer au Pro</button>
+        <p style="font-size:11px;color:#8A93A3;margin-top:12px">Annule quand tu veux · Sans engagement</p>
+      </div>
+    `;
+    document.body.appendChild(m);
   }
+
+  window._goToPro = function() {
+    const planConfig = window.CONFIG?.PLANS?.pro;
+    if (planConfig?.stripeId) {
+      const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+      sessionStorage.setItem('creatis_paiement', JSON.stringify({
+        priceId: planConfig.stripeId, plan: 'pro', annuel: false,
+        userId: currentUser.id || currentUser.email || null,
+        userEmail: currentUser.email || null
+      }));
+      window.location.href = '/paiement.html';
+    } else {
+      window.location.href = '/lp.html#tarifs';
+    }
+  };
   function closeUpgradeModal() {}
 
   function showModal(i) {
@@ -1460,6 +1802,7 @@ const V2 = (() => {
     const hookBgEl = document.getElementById('modal-hook-bg'); if (hookBgEl) hookBgEl.value = opts.hookBg || '#000000';
     const hookFgEl = document.getElementById('modal-hook-fg'); if (hookFgEl) hookFgEl.value = opts.hookColor || '#ffffff';
     const presetsEl2 = document.getElementById('hook-presets'); if (presetsEl2) presetsEl2.style.display = opts.hookEnabled ? 'flex' : 'none';
+    const hookStyleBtns = document.getElementById('hook-style-btns'); if (hookStyleBtns) hookStyleBtns.style.display = opts.hookEnabled ? 'flex' : 'none';
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) { hookTxt.value = opts.hookText; hookTxt.style.display = opts.hookEnabled ? 'block' : 'none'; }
     // Style pills
@@ -1486,6 +1829,39 @@ const V2 = (() => {
     stopModalVideo();
     const video = document.getElementById('modal-video');
     const ph = document.getElementById('modal-player-ph');
+
+    // Pas de fichier local (restauration localStorage) → afficher thumbnail + export via Railway
+    if (!_file && !_ytUrl) {
+      const _thumbUrl = _thumbs[i] || document.getElementById(`clip-thumb-${i}`)?.dataset?.thumb;
+      if (_thumbUrl) {
+        // Afficher la thumbnail comme prévisualisation statique
+        video.style.display = 'none';
+        if (ph) {
+          ph.style.cssText = 'display:block;position:relative;width:100%;height:100%;';
+          ph.innerHTML = `<img src="${_thumbUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:0">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3)">
+              <label style="background:#10b981;color:#000;font-weight:700;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px">
+                📁 Re-sélectionner pour lire
+                <input type="file" accept="video/*" style="display:none" onchange="V2._reattachFile(this)">
+              </label>
+            </div>`;
+        }
+      } else {
+        // Pas de thumbnail non plus → re-sélectionner
+        if (ph) {
+          ph.innerHTML = `<div style="text-align:center;padding:20px">
+            <div style="font-size:28px;margin-bottom:8px">📁</div>
+            <div style="color:#fff;font-size:13px;font-weight:700;margin-bottom:12px">Re-sélectionne ta vidéo</div>
+            <label style="background:#10b981;color:#000;font-weight:700;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px">
+              Choisir la vidéo
+              <input type="file" accept="video/*" style="display:none" onchange="V2._reattachFile(this)">
+            </label>
+          </div>`;
+          ph.style.display = 'flex'; ph.style.alignItems = 'center'; ph.style.justifyContent = 'center';
+        }
+      }
+      return;
+    }
 
     if (_file) {
       // Local file — play directly from start_time
@@ -1684,15 +2060,30 @@ const V2 = (() => {
         if (video.paused) {
           hookEl.style.display = 'block';
           hookEl.style.outline = inWindow ? 'none' : '1.5px dashed rgba(255,255,255,0.5)';
-          const _hbg = opts.hookBg || '#000000'; const _hr=parseInt(_hbg.slice(1,3),16),_hg=parseInt(_hbg.slice(3,5),16),_hb=parseInt(_hbg.slice(5,7),16);
-          hookEl.style.background = inWindow ? `rgba(${_hr},${_hg},${_hb},0.93)` : `rgba(${_hr},${_hg},${_hb},0.3)`;
+          hookEl.style.background = 'none';
         } else {
           hookEl.style.display = inWindow ? 'block' : 'none';
           hookEl.style.outline = 'none';
-          const _hbg2 = opts.hookBg || '#000000'; const _hr2=parseInt(_hbg2.slice(1,3),16),_hg2=parseInt(_hbg2.slice(3,5),16),_hb2=parseInt(_hbg2.slice(5,7),16);
-          hookEl.style.background = `rgba(${_hr2},${_hg2},${_hb2},0.93)`;
+          hookEl.style.background = 'none';
         }
+        const _hbg3 = opts.hookBg || '#000000'; const _hr3=parseInt(_hbg3.slice(1,3),16),_hg3=parseInt(_hbg3.slice(3,5),16),_hb3=parseInt(_hbg3.slice(5,7),16);
         hookEl.textContent = hookTxt;
+        if (_hookStyle === 'clean') {
+          hookEl.style.background = 'none';
+          hookEl.style.padding = '0';
+          hookEl.style.borderRadius = '0';
+          hookEl.style.textShadow = '2px 2px 8px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.7)';
+        } else if (_hookStyle === 'outline') {
+          hookEl.style.background = 'none';
+          hookEl.style.padding = '0';
+          hookEl.style.borderRadius = '0';
+          hookEl.style.textShadow = `0 2px 0 ${_hbg3},0 -2px 0 ${_hbg3},2px 0 0 ${_hbg3},-2px 0 0 ${_hbg3},1px 1px 0 ${_hbg3},-1px -1px 0 ${_hbg3},1px -1px 0 ${_hbg3},-1px 1px 0 ${_hbg3},0 3px 6px rgba(0,0,0,0.5)`;
+        } else {
+          hookEl.style.background = `rgba(${_hr3},${_hg3},${_hb3},0.93)`;
+          hookEl.style.padding = '4px 14px';
+          hookEl.style.borderRadius = '8px';
+          hookEl.style.textShadow = 'none';
+        }
         _applySubPosition(hookEl, opts.hookX ?? 50, opts.hookY ?? 10);
       } else {
         hookEl.style.display = 'none';
@@ -1787,13 +2178,20 @@ const V2 = (() => {
         break;
       }
       case 'minimal': {
-        el.textContent = text;
+        const span = document.createElement('span');
+        span.textContent = text;
+        span.style.background = 'rgba(0,0,0,0.60)';
+        span.style.padding = bp;
+        span.style.borderRadius = Math.round(6*sc) + 'px';
+        span.style.boxDecorationBreak = 'clone';
+        span.style.webkitBoxDecorationBreak = 'clone';
+        el.appendChild(span);
         el.style.color = ct;
         el.style.fontSize = fs + 'px';
         el.style.fontWeight = '700';
         el.style.fontFamily = 'inherit';
-        el.style.background = 'rgba(0,0,0,0.60)';
-        el.style.padding = bp;
+        el.style.background = 'none';
+        el.style.padding = '0';
         el.style.borderRadius = '0';
         el.style.textShadow = 'none';
         break;
@@ -1922,7 +2320,7 @@ const V2 = (() => {
   }
 
   function _setupDraggable(el, wrap, yKey, xKey) {
-    el.addEventListener('click', e => e.stopPropagation());
+    el.addEventListener('click', e => { if (_isDragging) e.stopPropagation(); });
 
     const startDrag = (startX, startY) => {
       _isDragging = false;
@@ -2287,6 +2685,8 @@ const V2 = (() => {
     if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
     const presetsEl = document.getElementById('hook-presets');
     if (presetsEl) presetsEl.style.display = hookOn ? 'flex' : 'none';
+    const hsBtns = document.getElementById('hook-style-btns');
+    if (hsBtns) hsBtns.style.display = hookOn ? 'flex' : 'none';
     // Préserver subY/hookY/segEdits existants
     const prev = _clipSettings[_modalIdx] || {};
     _lastSegKey = null; // force re-render (couleur/taille changée)
@@ -2484,11 +2884,12 @@ const V2 = (() => {
 
   async function exportFromModal() {
     if (_modalIdx === null) return;
-    if (_userPlan === 'gratuit') {
-      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'download_click', clip_idx: _modalIdx });
+    // Gratuit : autorise l'export AVEC watermark "Créatis" forcé
+    if (_userPlan === 'gratuit' && _modalIdx >= FREE_CLIP_LIMIT) {
+      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'download_locked_clip', clip_idx: _modalIdx });
       showUpgradeModal(); return;
     }
-    if (window.posthog) posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan });
+    if (window.posthog) posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' });
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const mobBtn = document.getElementById('mob-dl-btn');
@@ -2496,6 +2897,11 @@ const V2 = (() => {
     if (btn) { btn.disabled = true; btn.onclick = null; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
     if (mobBtn) { mobBtn.disabled = true; mobBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;width:20px;height:20px"><path d="M12 2v10m0 0l-3-3m3 3l3-3"/><circle cx="12" cy="12" r="10" stroke-dasharray="30 10"/></svg>…'; }
     if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
+    // Cacher les overlays CSS pendant l'export (Railway brûle les sous-titres dans la vidéo)
+    const _subOvExp = document.getElementById('modal-sub-overlay'); if (_subOvExp) _subOvExp.style.visibility = 'hidden';
+    const _hookOvExp = document.getElementById('modal-hook-overlay'); if (_hookOvExp) _hookOvExp.style.visibility = 'hidden';
+    const _subHExp = document.getElementById('modal-sub-handle'); if (_subHExp) _subHExp.style.display = 'none';
+    const _hookHExp = document.getElementById('modal-hook-handle'); if (_hookHExp) _hookHExp.style.display = 'none';
     try {
       const opts = getClipOpts(i);
       const result = await exportSingleClip(_clips[i], opts, pct => {
@@ -2516,9 +2922,14 @@ const V2 = (() => {
         const objUrl = URL.createObjectURL(result.blob);
         logClipExport(1);
 
-        // Stopper le canvas preview et afficher le résultat export réel
+        // Stopper le canvas preview et cacher les overlays (la vidéo exportée a déjà les sous-titres brûlés)
         if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+        if (_subRaf) { cancelAnimationFrame(_subRaf); _subRaf = null; }
         const cc2 = document.getElementById('crop-canvas'); if (cc2) cc2.style.display = 'none';
+        const subOv = document.getElementById('modal-sub-overlay'); if (subOv) subOv.style.display = 'none';
+        const hookOv = document.getElementById('modal-hook-overlay'); if (hookOv) hookOv.style.display = 'none';
+        const subH = document.getElementById('modal-sub-handle'); if (subH) subH.style.display = 'none';
+        const hookH = document.getElementById('modal-hook-handle'); if (hookH) hookH.style.display = 'none';
         if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); }
         _exportPreviewUrl = objUrl;
         const modalVideo = document.getElementById('modal-video');
@@ -2698,11 +3109,17 @@ const V2 = (() => {
           }
           // Stocker en style pour le modal
           el.dataset.thumb = dataUrl;
+          _thumbs[i] = dataUrl;
         }
       }
       await new Promise(r => setTimeout(r, 100));
     }
     URL.revokeObjectURL(videoUrl);
+    // Mise à jour localStorage avec les thumbnails
+    try {
+      const saved = localStorage.getItem('creatis_last_analysis');
+      if (saved) { const d = JSON.parse(saved); d.thumbs = _thumbs; d.segmentIds = _clipSegmentIds; localStorage.setItem('creatis_last_analysis', JSON.stringify(d)); }
+    } catch {}
   }
 
   function captureFrame(videoUrl, time) {
@@ -2910,10 +3327,11 @@ const V2 = (() => {
     form.append('sub_y',      String(opts.subY ?? 82));
     form.append('sub_x',      String(opts.subX ?? 50));
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
-    form.append('hook_text',  opts.hookText  || '');
+    form.append('hook_text',  opts.hookText || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
-    form.append('hook_bg',    opts.hookBg    || '#000000');
+    form.append('hook_bg',    opts.hookBg || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
+    form.append('hook_style',   _hookStyle || 'pill');
     form.append('reframe_mode', opts.reframeMode || 'face');
     form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
@@ -2964,6 +3382,12 @@ const V2 = (() => {
         if (onMsg) onMsg(`Connexion perdue — nouvelle tentative…`);
         await new Promise(r => setTimeout(r, 4000));
       }
+    }
+
+    // Watermark "Créatis" pour les gratuits
+    if (_userPlan === 'gratuit' && videoBlob) {
+      if (onMsg) onMsg('Ajout watermark…');
+      try { videoBlob = await _burnOverlays(videoBlob, opts, true); } catch(e) { console.warn('Watermark failed:', e); }
     }
 
     if (onPct) onPct(100);
@@ -3191,6 +3615,22 @@ const V2 = (() => {
           if (opts.hookEnabled && opts.hookText && t < 3)
             _drawHookCanvas(ctx, opts.hookText, opts, 720, 1280);
 
+          // Watermark "Créatis" forcé pour les gratuits — grand, diagonal, répété
+          if (_userPlan === 'gratuit') {
+            ctx.save();
+            ctx.globalAlpha = 0.18;
+            ctx.font = 'bold 90px Arial, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.translate(360, 640);
+            ctx.rotate(-30 * Math.PI / 180);
+            ctx.fillText('Créatis', 0, -200);
+            ctx.fillText('Créatis', 0, 0);
+            ctx.fillText('Créatis', 0, 200);
+            ctx.restore();
+          }
+
           if (onPct && dur > 0) onPct(Math.round(t / dur * 78));
           if (!video.ended && !video.paused) raf = requestAnimationFrame(draw);
         };
@@ -3206,6 +3646,77 @@ const V2 = (() => {
         video.play().then(() => draw()).catch(reject);
       };
       video.onerror = () => reject(new Error('Chargement vidéo échoué'));
+      video.src = url;
+      video.load();
+    });
+  }
+
+  // Post-traitement Canvas : watermark gratuit + hook non-pill
+  function _burnOverlays(blob, opts, isPillHook) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const video = document.createElement('video');
+      video.muted = true; video.playsInline = true;
+      const canvas = document.createElement('canvas');
+      canvas.width = 720; canvas.height = 1280;
+      const ctx = canvas.getContext('2d');
+
+      video.onloadedmetadata = () => {
+        const stream = canvas.captureStream(30);
+
+        // Audio
+        try {
+          const ac = new AudioContext();
+          const src = ac.createMediaElementSource(video);
+          const dest = ac.createMediaStreamDestination();
+          src.connect(dest); src.connect(ac.destination);
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        } catch {}
+
+        const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+          .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+        const chunks = [];
+        rec.ondataavailable = e => { if (e.data?.size > 0) chunks.push(e.data); };
+        rec.onstop = () => {
+          URL.revokeObjectURL(url);
+          resolve(new Blob(chunks, { type: mime }));
+        };
+
+        let raf;
+        const draw = () => {
+          ctx.drawImage(video, 0, 0, 720, 1280);
+          const t = video.currentTime;
+
+          // Hook non-pill (Clean/Outline) — les 3 premières secondes
+          if (!isPillHook && opts.hookEnabled && opts.hookText && t < 3) {
+            _drawHookCanvas(ctx, opts.hookText, opts, 720, 1280);
+          }
+
+          // Watermark "Créatis" pour les gratuits
+          if (_userPlan === 'gratuit') {
+            ctx.save();
+            ctx.globalAlpha = 0.18;
+            ctx.font = 'bold 90px Arial, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.translate(360, 640);
+            ctx.rotate(-30 * Math.PI / 180);
+            ctx.fillText('Créatis', 0, -200);
+            ctx.fillText('Créatis', 0, 0);
+            ctx.fillText('Créatis', 0, 200);
+            ctx.restore();
+          }
+
+          if (!video.ended && !video.paused) raf = requestAnimationFrame(draw);
+        };
+
+        video.onended = () => { cancelAnimationFrame(raf); setTimeout(() => rec.stop(), 200); };
+        rec.start(200);
+        video.play().then(draw).catch(reject);
+      };
+      video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Watermark: erreur vidéo')); };
       video.src = url;
       video.load();
     });
@@ -3289,11 +3800,26 @@ const V2 = (() => {
     const pad = 18;
     const maxLineW = lines.reduce((mx, l) => Math.max(mx, ctx.measureText(l).width), 0);
     const r = parseInt(hookBg.slice(1,3),16)||0, g = parseInt(hookBg.slice(3,5),16)||0, b = parseInt(hookBg.slice(5,7),16)||0;
-    ctx.fillStyle = `rgba(${r},${g},${b},0.93)`;
-    ctx.fillRect(w/2 - maxLineW/2 - pad, topY, maxLineW + pad*2, lines.length * lh + pad * 2);
+    if (_hookStyle === 'pill' || !_hookStyle) {
+      ctx.fillStyle = `rgba(${r},${g},${b},0.93)`;
+      const bx = w/2 - maxLineW/2 - pad, by = topY, bw = maxLineW + pad*2, bh = lines.length * lh + pad * 2;
+      const br = 12;
+      ctx.beginPath(); ctx.moveTo(bx+br,by); ctx.lineTo(bx+bw-br,by); ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+br); ctx.lineTo(bx+bw,by+bh-br); ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-br,by+bh); ctx.lineTo(bx+br,by+bh); ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-br); ctx.lineTo(bx,by+br); ctx.quadraticCurveTo(bx,by,bx+br,by); ctx.closePath(); ctx.fill();
+    }
     ctx.fillStyle = hookColor;
     let y = topY + pad + fontSize;
     for (const line of lines) {
+      if (_hookStyle === 'outline') {
+        ctx.strokeStyle = hookBg;
+        ctx.lineWidth = 6;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(line, w/2, y);
+      } else if (_hookStyle === 'clean') {
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+      }
       ctx.fillText(line, w/2, y);
       y += lh;
     }
@@ -3493,14 +4019,46 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
   V2.init();
-  // Précharger ffmpeg.wasm en arrière-plan dès le chargement de la page
-  // (prêt quand l'utilisateur clique sur Créer les Shorts pour les gros fichiers)
   setTimeout(() => { try { V2._preloadFFmpeg && V2._preloadFFmpeg(); } catch {} }, 2000);
+
+  // Auto-upload depuis LP (?upload=1) — mode plein écran
+  if (new URLSearchParams(window.location.search).get('upload') === '1') {
+    history.replaceState(null, '', window.location.pathname);
+
+    // Masquer toute l'interface et afficher un écran upload
+    const page = document.getElementById('page');
+    if (page) page.style.display = 'none';
+
+    const uploadScreen = document.createElement('div');
+    uploadScreen.id = 'lp-upload-screen';
+    uploadScreen.innerHTML = `
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080A0F;padding:20px;text-align:center">
+        <div style="font-size:2rem;font-weight:800;margin-bottom:8px;color:#fff">1 vidéo longue, <span style="color:#10b981">10 Shorts.</span></div>
+        <p style="color:#8A93A3;margin-bottom:32px;font-size:1rem">Sélectionne ta vidéo pour lancer l'analyse IA</p>
+        <label style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:48px 64px;border:2px dashed #1F2630;border-radius:24px;cursor:pointer;transition:border-color .2s;background:#10141C" onmouseover="this.style.borderColor='#10b981'" onmouseout="this.style.borderColor='#1F2630'">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span style="font-size:1.1rem;font-weight:700;color:#fff">Clique pour choisir ta vidéo</span>
+          <span style="font-size:0.85rem;color:#8A93A3">MP4, MOV — jusqu'à 24 Go</span>
+          <input type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="window._lpAutoStart(this)">
+        </label>
+        <p style="color:#8A93A3;font-size:0.75rem;margin-top:24px">Zéro inscription · Gratuit · Résultats en 60 secondes</p>
+      </div>
+    `;
+    document.body.prepend(uploadScreen);
+
+    window._lpAutoStart = function(input) {
+      if (!input.files?.[0]) return;
+      uploadScreen.remove();
+      if (page) page.style.display = '';
+      V2.onFileSelect(input);
+      setTimeout(() => V2.startAnalyze(), 300);
+    };
+  }
 });
 </script>
 

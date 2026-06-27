@@ -2661,6 +2661,7 @@ async def process_clip_endpoint(
     hook_bg: str = Form("#000000"),
     hook_font_size: int = Form(0),
     hook_y: float = Form(10.0),
+    hook_style: str = Form("pill"),
     reframe_mode: str = Form("center"),
     clip_start: float = Form(-1.0),
     clip_end: float = Form(-1.0),
@@ -2757,10 +2758,18 @@ async def process_clip_endpoint(
             return f"&H{alpha}{h[4:6]}{h[2:4]}{h[0:2]}"
         hbg       = hex_to_ass_bg(hook_bg, "12")   # 93% opaque — fond de la boite
         hbg_solid = hex_to_ass_bg(hook_bg, "00")   # 100% opaque — OutlineColour = meme couleur que fond
-        # OutlineColour = meme couleur que BackColour → les 18px d'outline = padding invisible (pas de noir qui deborde)
         hook_margin_v = max(20, int(hook_y / 100 * 1280))
         hfs = hook_font_size if hook_font_size > 0 else int(font_size * 0.9)
-        hook_style = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
+        # Hook style : pill (fond box), clean (ombre), outline (contour épais)
+        if hook_style == "clean":
+            # Clean : pas de fond, ombre portée (Shadow=3, BorderStyle=1, Outline=0)
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,0,3,8,30,30,{hook_margin_v},1"
+        elif hook_style == "outline":
+            # Outline : contour épais (BorderStyle=1, Outline=5) couleur du fond
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},&H00000000,-1,0,0,0,100,100,0,0,1,5,1,8,30,30,{hook_margin_v},1"
+        else:
+            # Pill : fond box (BorderStyle=3, Outline=18 padding)
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
 
         overlay_vf = ""
         if has_subs and style != "none":
@@ -2768,7 +2777,7 @@ async def process_clip_endpoint(
                 "[Script Info]","ScriptType: v4.00+","PlayResX: 720","PlayResY: 1280","WrapStyle: 1","",
                 "[V4+ Styles]",
                 "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-                style_line, hook_style, "",
+                style_line, hook_style_line, "",
                 "[Events]",
                 "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
             ]
