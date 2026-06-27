@@ -256,9 +256,36 @@
     /* Style pills */
     .modal-styles-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style:none; position: relative; margin: 0 -20px; padding: 0 20px; }
     .modal-styles-wrap::-webkit-scrollbar { display: none; }
-    .modal-styles { display: flex; flex-wrap: wrap; gap: 6px; }
-    .ms-pill { font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #1e1e1e; background: #141414; cursor: pointer; transition: all .15s; color: #555; white-space: nowrap; }
-    .ms-pill:hover { border-color: #444; color: #ccc; }
+    .modal-styles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .ms-pill { font-size: 10px; font-weight: 600; padding: 6px 4px 5px; border-radius: 10px; border: 1px solid #222; background: #141414; cursor: pointer; transition: all .15s; color: #666; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ms-pill:hover { border-color: #444; color: #ccc; background: #181818; }
+    .ms-pill .mp { width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #111; overflow: hidden; }
+    .ms-pill .mt { font-weight: 800; font-size: 12px; line-height: 1.2; text-align: center; }
+    .ms-pill[data-style="none"] .mt { color: #444; font-weight: 400; font-size: 10px; font-style: italic; }
+    .ms-pill[data-style="bold"] .mt { color: #fff; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+    .ms-pill[data-style="minimal"] .mt { color: #fff; font-weight: 500; font-size: 11px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+    .ms-pill[data-style="karaoke"] .mt { color: #fff; }
+    .ms-pill[data-style="karaoke"] .mt .hl { color: #10b981; }
+    .ms-pill[data-style="neon"] .mt { color: #10b981; text-shadow: 0 0 8px #10b981, 0 0 16px #10b981, 0 0 32px rgba(16,185,129,0.4); }
+    .ms-pill[data-style="spotlight"] .mp { background: rgba(0,0,0,0.7); }
+    .ms-pill[data-style="spotlight"] .mt { color: #555; }
+    .ms-pill[data-style="spotlight"] .mt .hl { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.6); }
+    .ms-pill[data-style="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
+    .ms-pill[data-style="wordpop"] .mt .hl { display: inline-block; transform: scale(1.3); color: #fbbf24; margin: 0 1px; }
+    .ms-pill[data-style="slide"] .mt { color: #fff; animation: st-slide 1.5s ease infinite; }
+    .ms-pill[data-style="shake"] .mt { color: #fff; font-weight: 900; animation: st-shake 0.4s ease infinite; }
+    .ms-pill[data-style="wave"] .mt { font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: st-wave 2s linear infinite; }
+    @keyframes st-slide { 0% { transform: translateY(100%); opacity: 0; } 20% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100%); opacity: 0; } }
+    @keyframes st-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-2px) rotate(-1deg); } 75% { transform: translateX(2px) rotate(1deg); } }
+    @keyframes st-wave { 0% { background-position: 0%; } 100% { background-position: 200%; } }
+    .hook-st-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px !important; border-radius: 10px !important; background: #141414 !important; border: 1px solid #222 !important; min-width: 80px; }
+    .hook-st-btn .mp { width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #111; overflow: hidden; }
+    .hook-st-btn .mt { font-size: 12px; line-height: 1.2; }
+    .hook-st-btn[data-hs="pill"] .mt { color: #fff; font-weight: 800; background: rgba(0,0,0,0.9); padding: 4px 10px; border-radius: 6px; }
+    .hook-st-btn[data-hs="clean"] .mt { color: #fff; font-weight: 800; text-shadow: 2px 2px 8px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.7); }
+    .hook-st-btn[data-hs="outline"] .mt { color: #fff; font-weight: 800; -webkit-text-stroke: 1.5px #000; paint-order: stroke fill; text-shadow: 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000; }
+    .hook-st-btn:hover { border-color: #444 !important; background: #181818 !important; }
+    .hook-st-btn.active { border-color: #10b981 !important; background: rgba(16,185,129,0.08) !important; }
 
     /* ── MOBILE ── */
     /* ── Toolbar icônes mobile ── */
@@ -302,9 +329,12 @@
       .mob-desktop-extra { display: none; }
 
       /* Pills scroll */
-      .modal-styles { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .modal-styles { grid-template-columns: repeat(3, 1fr); gap: 6px; overflow-x: visible; }
       .modal-styles::-webkit-scrollbar { display: none; }
-      .modal-styles-wrap::after { content: '›'; position: absolute; right: 0; top: 0; bottom: 4px; width: 40px; background: linear-gradient(to right, transparent, #0d0d0d); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; color: var(--texte-muted); font-size: 18px; pointer-events: none; animation: nudge 1.5s ease-in-out infinite; }
+      .ms-pill .mp { height: 30px; }
+      .ms-pill .mt { font-size: 10px; }
+      .ms-pill { font-size: 9px; padding: 5px 3px 4px; gap: 3px; }
+      .modal-styles-wrap::after { display: none; }
       @keyframes nudge { 0%,100% { transform: translateX(0); opacity:.6; } 50% { transform: translateX(3px); opacity:1; } }
       /* Options en 2 colonnes sur mobile */
       .modal-opt-row { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -315,7 +345,7 @@
       .modal-score-num { font-size: 28px; }
       .modal-score-row { gap: 10px; }
     }
-    .ms-pill.active { border-color: #fff !important; background: #1c1c1c !important; color: #fff !important; outline: none !important; }
+    .ms-pill.active { border-color: #10b981 !important; background: rgba(16,185,129,0.08) !important; color: #fff !important; outline: none !important; }
     .sz-btns { display: flex; gap: 6px; }
     .sz-btn { width: 36px; height: 36px; background: #141414; border: 1px solid #282828; border-radius: 8px; color: #555; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; }
     .sz-btn:hover { border-color: #444; color: #ccc; }
@@ -723,17 +753,17 @@
           <div style="font-size:10px;font-weight:700;color:#3a3a3a;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Style sous-titres</div>
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
-            <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')">Aucun</button>
-            <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')">Bold</button>
-            <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')">Minimal</button>
-            <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')">Karaoke</button>
-            <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')">Néon</button>
-            <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')">Spotlight</button>
-            <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')">✍️ Typewriter</button>
-            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')">💥 Word Pop</button>
-            <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')">⬆ Slide</button>
-            <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')">📳 Shake</button>
-            <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')">🌈 Color Wave</button>
+            <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')"><div class="mp"><span class="mt">Aucun</span></div><span>Aucun</span></button>
+            <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Texte</span></div><span>Bold</span></button>
+            <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')"><div class="mp"><span class="mt">Texte</span></div><span>Minimal</span></button>
+            <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Karaoke</span></button>
+            <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')"><div class="mp"><span class="mt">Texte</span></div><span>Néon</span></button>
+            <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Spotlight</span></button>
+            <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Texte</span></div><span>Typewriter</span></button>
+            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Word Pop</span></button>
+            <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Texte</span></div><span>Slide</span></button>
+            <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')"><div class="mp"><span class="mt">Texte</span></div><span>Shake</span></button>
+            <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Texte</span></div><span>Color Wave</span></button>
           </div>
           </div>
           <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
@@ -764,9 +794,9 @@
           </div>
           <input type="text" id="modal-hook-txt" class="opt-input" placeholder="Texte d'accroche…" maxlength="80" oninput="V2.updateClipOpt()" style="display:none;margin-bottom:8px">
           <div id="hook-style-btns" style="display:none;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-            <button type="button" class="hook-st-btn active" data-hs="pill" onclick="V2.setHookStyle('pill')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Pill</button>
-            <button type="button" class="hook-st-btn" data-hs="clean" onclick="V2.setHookStyle('clean')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Clean</button>
-            <button type="button" class="hook-st-btn" data-hs="outline" onclick="V2.setHookStyle('outline')" style="padding:4px 12px;border-radius:6px;border:1px solid var(--bordure);background:var(--bg-card);color:var(--texte);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Outline</button>
+            <button type="button" class="hook-st-btn active" data-hs="pill" onclick="V2.setHookStyle('pill')" style="cursor:pointer;font-family:inherit;color:#888;font-size:10px;font-weight:600"><div class="mp"><span class="mt">Hook</span></div><span>Pill</span></button>
+            <button type="button" class="hook-st-btn" data-hs="clean" onclick="V2.setHookStyle('clean')" style="cursor:pointer;font-family:inherit;color:#888;font-size:10px;font-weight:600"><div class="mp"><span class="mt">Hook</span></div><span>Clean</span></button>
+            <button type="button" class="hook-st-btn" data-hs="outline" onclick="V2.setHookStyle('outline')" style="cursor:pointer;font-family:inherit;color:#888;font-size:10px;font-weight:600"><div class="mp"><span class="mt">Hook</span></div><span>Outline</span></button>
           </div>
           <div id="hook-presets" style="display:none;gap:12px;margin-bottom:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texte-doux);cursor:pointer">
