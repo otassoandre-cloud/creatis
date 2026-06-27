@@ -2758,18 +2758,15 @@ async def process_clip_endpoint(
             return f"&H{alpha}{h[4:6]}{h[2:4]}{h[0:2]}"
         hbg       = hex_to_ass_bg(hook_bg, "12")   # 93% opaque — fond de la boite
         hbg_solid = hex_to_ass_bg(hook_bg, "00")   # 100% opaque — OutlineColour = meme couleur que fond
-        hook_margin_v = max(20, int(hook_y / 100 * 1280))
         hfs = hook_font_size if hook_font_size > 0 else int(font_size * 0.9)
         # Hook style : pill (fond box), clean (ombre), outline (contour épais)
+        # MarginV=0 car position exacte via \pos() dans le Dialogue
         if hook_style == "clean":
-            # Clean : pas de fond, ombre portée (Shadow=3, BorderStyle=1, Outline=0)
-            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,0,3,8,30,30,{hook_margin_v},1"
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,0,3,8,30,30,0,1"
         elif hook_style == "outline":
-            # Outline : contour épais (BorderStyle=1, Outline=5) couleur du fond
-            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},&H00000000,-1,0,0,0,100,100,0,0,1,5,1,8,30,30,{hook_margin_v},1"
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},&H00000000,-1,0,0,0,100,100,0,0,1,5,1,8,30,30,0,1"
         else:
-            # Pill : fond box (BorderStyle=3, Outline=18 padding)
-            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,{hook_margin_v},1"
+            hook_style_line = f"Style: Hook,{F},{hfs},{hc},{hc},{hbg_solid},{hbg},-1,0,0,0,100,100,0,0,3,18,0,8,30,30,0,1"
 
         overlay_vf = ""
         if has_subs and style != "none":
@@ -2782,7 +2779,10 @@ async def process_clip_endpoint(
                 "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
             ]
             if hook_bool and hook_text:
-                ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{hook_text}")
+                _hook_x_px = 360  # centré sur 720px
+                _hook_y_px = int(max(0, min(100, hook_y)) / 100 * 1280)
+                _hook_pos = "{" + f"\\pos({_hook_x_px},{_hook_y_px})\\an8" + "}"
+                ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{_hook_pos}{hook_text}")
             # Max 2 lignes : ~2400 / font_size caractères par chunk (canvas 720px, 92% width)
             _max_chars = max(18, int(2400 / max(font_size, 30)))
             def split_seg(t0, t1, txt):
