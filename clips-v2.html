@@ -816,20 +816,19 @@
           <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--texte-doux);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
         </div>
 
-        <!-- Section : Face tracking -->
+        <!-- Section : Recadrage -->
         <div class="mob-section" id="mob-sec-face">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Face tracking</div>
-              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Crop intelligent — idéal vlogs/IRL, désactive pour gaming</div>
+              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Centrer le visage</div>
+              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Le short se recadre automatiquement sur le visage</div>
             </div>
             <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
-          <!-- Auto-speaker podcast -->
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
+          <div id="auto-speaker-row" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Auto-speaker podcast</div>
-              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Suit le locuteur actif — switch automatique entre les 2 personnes</div>
+              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Mode podcast</div>
+              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Alterne automatiquement entre les 2 intervenants</div>
             </div>
             <label class="toggle"><input type="checkbox" id="modal-split-screen" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
           </div>
@@ -1807,7 +1806,8 @@ const V2 = (() => {
     _resetModalBtn(document.getElementById('modal-dl-btn'));
     _modalIdx = i;
     _livePreds = null; // reset détection live pour ce nouveau clip
-    _analyzeClipFaces(i); // pré-analyser les visages en arrière-plan
+    _analyzeClipFaces(i);
+    _showPodcastIfMultiFace(i);
     const sc = scoreColor(clip.score);
     const start = clip.start_time ?? clip.start;
     const end = clip.end_time ?? clip.end;
@@ -2594,7 +2594,17 @@ const V2 = (() => {
     } finally {
       hv.src = ''; hv.remove(); URL.revokeObjectURL(url);
     }
-    if (_modalIdx === clipIdx) _updateCropPreview();
+    if (_modalIdx === clipIdx) {
+      _updateCropPreview();
+      _showPodcastIfMultiFace(clipIdx);
+    }
+  }
+
+  function _showPodcastIfMultiFace(idx) {
+    const row = document.getElementById('auto-speaker-row');
+    if (!row) return;
+    const data = _faceCache[idx];
+    row.style.display = (data && data.splitLeftCx != null) ? 'flex' : 'none';
   }
 
   // Live face detection state
