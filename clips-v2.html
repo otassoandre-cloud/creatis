@@ -196,7 +196,7 @@
 
     /* ── Player column (left, desktop) ── */
     .modal-player-col { flex-shrink: 0; width: 280px; background: #000; display: flex; flex-direction: column; }
-    .modal-player-wrap { flex: 1; position: relative; overflow: hidden; background: #000; cursor: pointer; }
+    .modal-player-wrap { flex: none; aspect-ratio: 9/16; width: 100%; position: relative; overflow: hidden; background: #000; cursor: pointer; }
     .modal-player-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .modal-player-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; background: #0a100a; }
 
@@ -2080,8 +2080,8 @@ const V2 = (() => {
           hookEl.style.textShadow = `0 2px 0 ${_hbg3},0 -2px 0 ${_hbg3},2px 0 0 ${_hbg3},-2px 0 0 ${_hbg3},1px 1px 0 ${_hbg3},-1px -1px 0 ${_hbg3},1px -1px 0 ${_hbg3},-1px 1px 0 ${_hbg3},0 3px 6px rgba(0,0,0,0.5)`;
         } else {
           hookEl.style.background = `rgba(${_hr3},${_hg3},${_hb3},0.93)`;
-          hookEl.style.padding = '4px 14px';
-          hookEl.style.borderRadius = '8px';
+          hookEl.style.padding = `${hookPad}px`;
+          hookEl.style.borderRadius = `${Math.round(12 * sc)}px`;
           hookEl.style.textShadow = 'none';
         }
         _applySubPosition(hookEl, opts.hookX ?? 50, opts.hookY ?? 10);
@@ -3776,7 +3776,7 @@ const V2 = (() => {
   }
 
   function _drawHookCanvas(ctx, text, opts, w, h) {
-    const fontSize = Math.round((opts.fontSize || 70) * 0.9);
+    const fontSize = opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9);
     const hookColor = opts.hookColor || '#ffffff';
     const hookBg = opts.hookBg || '#000000';
     const hookY = opts.hookY ?? 10;
