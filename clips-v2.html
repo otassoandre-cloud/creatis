@@ -278,6 +278,10 @@
     @keyframes st-slide { 0% { transform: translateY(100%); opacity: 0; } 20% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100%); opacity: 0; } }
     @keyframes st-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-2px) rotate(-1deg); } 75% { transform: translateX(2px) rotate(1deg); } }
     @keyframes st-wave { 0% { background-position: 0%; } 100% { background-position: 200%; } }
+    .ms-extra { display: none; }
+    .modal-styles.expanded .ms-extra { display: flex; }
+    .modal-styles.expanded .ms-more-btn { display: none; }
+    .ms-more-btn:hover { border-color: #10b981 !important; }
     .hook-st-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 5px !important; border-radius: 10px !important; background: #141414 !important; border: 1px solid #222 !important; min-width: 80px; }
     .hook-st-btn .mp { width: 100%; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #111; overflow: hidden; }
     .hook-st-btn .mt { font-size: 12px; line-height: 1.2; }
@@ -758,12 +762,13 @@
             <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')"><div class="mp"><span class="mt">Texte</span></div><span>Minimal</span></button>
             <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Karaoke</span></button>
             <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')"><div class="mp"><span class="mt">Texte</span></div><span>Néon</span></button>
-            <button class="ms-pill" data-style="spotlight" onclick="V2.setClipStyle('spotlight')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Spotlight</span></button>
-            <button class="ms-pill" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Texte</span></div><span>Typewriter</span></button>
-            <button class="ms-pill" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Word Pop</span></button>
-            <button class="ms-pill" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Texte</span></div><span>Slide</span></button>
-            <button class="ms-pill" data-style="shake" onclick="V2.setClipStyle('shake')"><div class="mp"><span class="mt">Texte</span></div><span>Shake</span></button>
-            <button class="ms-pill" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Texte</span></div><span>Color Wave</span></button>
+            <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
+            <button class="ms-pill ms-extra" data-style="spotlight" onclick="V2.setClipStyle('spotlight')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Spotlight</span></button>
+            <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Texte</span></div><span>Typewriter</span></button>
+            <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">Tex<span class="hl">te</span></span></div><span>Word Pop</span></button>
+            <button class="ms-pill ms-extra" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Texte</span></div><span>Slide</span></button>
+            <button class="ms-pill ms-extra" data-style="shake" onclick="V2.setClipStyle('shake')"><div class="mp"><span class="mt">Texte</span></div><span>Shake</span></button>
+            <button class="ms-pill ms-extra" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Texte</span></div><span>Color Wave</span></button>
           </div>
           </div>
           <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
@@ -1836,7 +1841,10 @@ const V2 = (() => {
     const hookStyleBtns = document.getElementById('hook-style-btns'); if (hookStyleBtns) hookStyleBtns.style.display = opts.hookEnabled ? 'flex' : 'none';
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) { hookTxt.value = opts.hookText; hookTxt.style.display = opts.hookEnabled ? 'block' : 'none'; }
-    // Style pills
+    // Style pills + auto-expand if extra style selected
+    const extraStyles = ['spotlight','typewriter','wordpop','slide','shake','wave'];
+    const grid = document.getElementById('modal-style-btns');
+    if (grid) grid.classList.toggle('expanded', extraStyles.includes(opts.style));
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.style === opts.style);
     });
@@ -2496,13 +2504,21 @@ const V2 = (() => {
     if (_modalIdx === null) return;
     if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
     _clipSettings[_modalIdx].style = style;
-    _lastSegKey = null; // force re-render avec la nouvelle animation
+    _lastSegKey = null;
+    const grid = document.getElementById('modal-style-btns');
+    const extraStyles = ['spotlight','typewriter','wordpop','slide','shake','wave'];
+    if (extraStyles.includes(style) && grid && !grid.classList.contains('expanded')) grid.classList.add('expanded');
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.style === style);
     });
     const defaults = { bold:'#ffffff', minimal:'#ffffff', karaoke:'#FFE000', neon:'#00FF9C', spotlight:'#ffffff', typewriter:'#ffffff', wordpop:'#ffffff', slide:'#ffffff', shake:'#ffffff', wave:'#ffffff' };
     const ct = document.getElementById('modal-color-text');
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
+  }
+
+  function toggleMoreStyles() {
+    const grid = document.getElementById('modal-style-btns');
+    if (grid) grid.classList.toggle('expanded');
   }
 
   // ── BlazeFace (TF.js) — détection visages cross-browser ──
@@ -4050,7 +4066,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
