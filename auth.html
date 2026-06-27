@@ -384,24 +384,12 @@
     </div>
   </div>
 
-  <!-- Bloc démo -->
-  <div class="demo-block" id="demo-block">
-    <div class="demo-badge">⚡ Recommandé</div>
-    <div class="demo-titre">Essaie d'abord,<br>inscris-toi ensuite.</div>
-    <div class="demo-sub">Génère un vrai script maintenant — sans email, sans mot de passe.</div>
-    <button class="btn-demo-essai" onclick="connexionDemo()">Générer mon script maintenant →</button>
-    <div class="demo-features">
-      <div class="demo-feat"><strong>Script</strong>complet</div>
-      <div class="demo-feat"><strong>Hook</strong>viral</div>
-      <div class="demo-feat"><strong>Titre</strong>+ SEO</div>
-      <div class="demo-feat"><strong>30s</strong>chrono</div>
-    </div>
-  </div>
+  <div id="demo-block" style="display:none"></div>
 
   <!-- Séparateur -->
-  <div class="auth-divider">
+  <div class="auth-divider" style="display:none">
     <div class="auth-divider-line"></div>
-    <div class="auth-divider-text">ou crée un compte pour sauvegarder</div>
+    <div class="auth-divider-text"></div>
     <div class="auth-divider-line"></div>
   </div>
 
@@ -495,10 +483,17 @@
       return;
     }
 
-    // Pré-remplir email depuis #email= (landing page lp.html)
-    if (!hash.type && hash.email) {
+    // Pré-remplir email depuis ?email= (LP) ou #email= (legacy) — seulement si valide
+    const emailParam = urlParams.get('email') || (!hash.type && hash.email ? decodeURIComponent(hash.email) : '');
+    if (emailParam && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParam)) {
       const emailField = document.getElementById('auth-email');
-      if (emailField) emailField.value = decodeURIComponent(hash.email);
+      if (emailField) emailField.value = emailParam;
+    }
+
+    // Erreur OAuth (renvoyé depuis callback.html)
+    const oauthError = urlParams.get('error');
+    if (oauthError) {
+      afficherErreur('La connexion Google a échoué. Réessaie ou inscris-toi avec email/mot de passe.');
     }
 
     // Badge plan
@@ -570,8 +565,8 @@
     btn.disabled = true;
     btn.textContent = 'Redirection vers Google…';
     afficherErreur('');
-    // Timeout de sécurité : si pas de redirect en 8s, débloquer le bouton
-    const timeout = setTimeout(() => resetGoogleBtn('La redirection Google a échoué. Réessaie ou utilise email/mot de passe.'), 8000);
+    // Timeout de sécurité : si pas de redirect en 20s, débloquer le bouton
+    const timeout = setTimeout(() => resetGoogleBtn('La redirection Google a échoué. Réessaie ou utilise email/mot de passe.'), 20000);
     try {
       await Auth.signInWithGoogle();
       // signInWithOAuth redirige la page — si on arrive ici sans redirect c'est un échec silencieux
@@ -599,7 +594,7 @@
       if (modeConnexion) {
         await Auth.connecter(email, password);
         afficherSucces('Connexion réussie — redirection…');
-        setTimeout(() => verifierPlanPostAuth(), 700);
+        setTimeout(() => verifierPlanPostAuth().catch(e => { afficherErreur('Erreur de redirection : ' + e.message); btn.disabled = false; btnTexte.textContent = 'Se connecter →'; }), 700);
       } else {
         const data = await Auth.inscrire(email, password);
         const newUser = { email, nom: email.split('@')[0], plan: 'gratuit', dateInscription: Date.now() };
@@ -631,7 +626,7 @@
           toggleMode();
         } else {
           afficherSucces('Compte créé — redirection…');
-          setTimeout(() => verifierPlanPostAuth(), 700);
+          setTimeout(() => verifierPlanPostAuth().catch(e => { afficherErreur('Erreur de redirection : ' + e.message); btn.disabled = false; btnTexte.textContent = 'Créer mon compte gratuit →'; }), 700);
         }
       }
     } catch (err) {

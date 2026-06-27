@@ -776,13 +776,51 @@ module.exports = async (req, res) => {
   const url = body.url || '';
 
   // Modes publics — pas d'auth requise (analyse gratuite, paywall au téléchargement)
-  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'upload-status', 'log_lead']);
+  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'upload-status', 'log_lead', 'notify_clips_ready']);
   const authUser = PUBLIC_MODES.has(mode) ? null : await verifyToken(token);
   if (!PUBLIC_MODES.has(mode) && !authUser && !isLocal) {
     return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
   }
 
   // ── Modes sans URL — traiter immédiatement avant tout autre check ──
+
+  // Email "tes clips sont prêts"
+  if (mode === 'notify_clips_ready') {
+    const _au = await verifyToken(token);
+    if (_au && process.env.BREVO_API_KEY) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${_au.id}&select=email,nom`, {
+          headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+        });
+        const user = (await r.json())?.[0];
+        if (user?.email) {
+          const nom = user.nom || user.email.split('@')[0] || 'Créateur';
+          const count = body.count || 0;
+          const name = body.name || 'ta vidéo';
+          await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY.trim() },
+            body: JSON.stringify({
+              sender: { email: 'contact@creatis.app', name: 'Créatis' },
+              to: [{ email: user.email, name: nom }],
+              subject: `Tes ${count} clips de "${name}" sont prêts 🎬`,
+              htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#fff;padding:32px;border-radius:12px;">
+                <div style="font-size:22px;font-weight:900;margin-bottom:8px;">Créatis<span style="color:#10b981;">.</span></div>
+                <h2 style="font-size:20px;margin:0 0 12px;">Tes ${count} clips viraux sont prêts, ${nom} 🎬</h2>
+                <p style="color:#aaa;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                  L'analyse de <strong style="color:#fff;">"${name}"</strong> est terminée. Tes clips t'attendent sur Créatis.
+                </p>
+                <a href="https://creatis.app/clips-v2.html" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+                  Voir mes clips →
+                </a>
+              </div>`
+            })
+          });
+        }
+      } catch {}
+    }
+    return res.status(200).json({ ok: true });
+  }
 
   // Upload token : credentials Railway pour upload direct
   if (mode === 'upload-token') {

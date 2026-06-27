@@ -720,6 +720,11 @@
   line-height: 1;
 }
 
+/* Offset ancres pour navbar fixe (~104px avec bandeau) */
+#tarifs, #comment-ca-marche, #vs-chatgpt, #fonctionnalites, #exemple-reel {
+  scroll-margin-top: 120px;
+}
+
 .tarifs-toggle-wrap {
   display: flex;
   align-items: center;

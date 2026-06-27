@@ -106,6 +106,11 @@ const Auth = (() => {
     async signInWithGoogle() {
       const client = _createClient();
       if (!client) throw new Error('Supabase non configuré');
+      // Purger les anciens artefacts PKCE pour éviter bad_oauth_state
+      try {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('sb-') && (k.endsWith('-auth-token-code-verifier') || k.endsWith('-auth-token')));
+        keys.forEach(k => localStorage.removeItem(k));
+      } catch {}
       const redirectTo = window.location.origin + '/auth/callback';
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google',

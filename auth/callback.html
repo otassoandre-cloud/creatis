@@ -59,8 +59,32 @@
   <script src="/js/auth.js"></script>
   <script>
     (async () => {
+      // Vérifier si Supabase/Google a retourné une erreur dans l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+      const urlError = urlParams.get('error') || hashParams.get('error');
+      if (urlError) {
+        const desc = urlParams.get('error_description') || hashParams.get('error_description') || urlError;
+        const el = document.getElementById('cb-erreur');
+        el.textContent = 'Erreur de connexion — Réessaie avec Google ou email/mot de passe.';
+        el.style.display = 'block';
+        document.querySelector('.cb-spinner').style.display = 'none';
+        document.querySelector('.cb-titre').textContent = '';
+        setTimeout(() => { window.location.href = '/auth.html?error=oauth_failed'; }, 2500);
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        const el = document.getElementById('cb-erreur');
+        el.textContent = 'La connexion prend trop de temps — Réessaie.';
+        el.style.display = 'block';
+        document.querySelector('.cb-spinner').style.display = 'none';
+        setTimeout(() => { window.location.href = '/auth.html?error=timeout'; }, 2000);
+      }, 15000);
+
       try {
         const user = await Auth.handleOAuthCallback();
+        clearTimeout(timeoutId);
 
         // Sync user data to localStorage so app.html has it immediately
         const nom = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0];
@@ -98,6 +122,7 @@
         const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
         window.location.href = returnUrl || '/app.html';
       } catch (err) {
+        clearTimeout(timeoutId);
         // Avant de renvoyer vers auth.html, vérifier si une session existe déjà
         try {
           const client = window.supabase?.createClient?.(window.CONFIG?.SUPABASE_URL, window.CONFIG?.SUPABASE_ANON_KEY);
