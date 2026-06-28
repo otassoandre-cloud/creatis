@@ -350,8 +350,9 @@
       .mob-icon-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 2px; background: transparent; border: none; cursor: pointer; color: var(--texte-muted); font-size: 9px; font-weight: 700; letter-spacing: .02em; transition: color .15s; border-top: 2px solid transparent; }
       .mob-icon-btn svg { width: 17px; height: 17px; }
       .mob-icon-btn.mob-active { color: var(--vert); border-top-color: var(--vert); }
-      .mob-icon-dl { flex: none; background: linear-gradient(180deg, var(--vert), var(--vert-2)); color: #fff !important; border-radius: 8px; padding: 7px 12px; margin: 4px 0; border-top: none !important; font-size: 10px !important; }
+      .mob-icon-dl { flex: none; background: linear-gradient(180deg, var(--vert), var(--vert-2)); color: #fff !important; border-radius: 8px; padding: 7px 12px; margin: 4px 0; border-top: none !important; font-size: 10px !important; position: relative; overflow: hidden; min-width: 70px; }
       .mob-icon-dl svg { stroke: #fff; }
+      .mob-icon-dl .mob-dl-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #fff; border-radius: 2px; transition: width .3s; }
       .mob-always { display: none; }
 
       /* Cacher header score row + export groupé sur mobile */
@@ -388,9 +389,9 @@
       #mob-sec-face > div > div > div:first-child { font-size: 12px !important; }
       #mob-sec-face > div > div > div:last-child { font-size: 10px !important; }
 
-      /* Bouton dl compact */
-      .modal-dl-btn { padding: 10px 14px; font-size: 13px; border-radius: 10px; font-weight: 700; }
-      .mob-always { padding: 6px 10px 8px; }
+      .modal-dl-btn { padding: 12px 14px; font-size: 14px; border-radius: 10px; font-weight: 800; }
+      .mob-always { padding: 8px 12px 10px; }
+      .modal-dl-status { font-size: 11px !important; }
       /* Score compact */
       .modal-score-num { font-size: 28px; }
       .modal-score-row { gap: 10px; }
@@ -794,7 +795,8 @@
           </button>
           <button class="mob-icon-btn mob-icon-dl" id="mob-dl-btn" onclick="V2.exportFromModal()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
+            <span id="mob-dl-label">Export</span>
+            <div class="mob-dl-progress" id="mob-dl-progress" style="width:0%"></div>
           </button>
         </div>
 
@@ -3015,7 +3017,11 @@ const V2 = (() => {
     const mobBtn = document.getElementById('mob-dl-btn');
     const status = document.getElementById('modal-dl-status');
     if (btn) { btn.disabled = true; btn.onclick = null; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
-    if (mobBtn) { mobBtn.disabled = true; mobBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite;width:20px;height:20px"><path d="M12 2v10m0 0l-3-3m3 3l3-3"/><circle cx="12" cy="12" r="10" stroke-dasharray="30 10"/></svg>…'; }
+    const mobLabel = document.getElementById('mob-dl-label');
+    const mobProg = document.getElementById('mob-dl-progress');
+    if (mobBtn) { mobBtn.disabled = true; }
+    if (mobLabel) mobLabel.textContent = '0%';
+    if (mobProg) mobProg.style.width = '0%';
     if (status) status.textContent = 'Découpage → Reframe 9:16 → Sous-titres…';
     // Cacher les overlays CSS pendant l'export (Railway brûle les sous-titres dans la vidéo)
     const _subOvExp = document.getElementById('modal-sub-overlay'); if (_subOvExp) _subOvExp.style.visibility = 'hidden';
@@ -3026,12 +3032,16 @@ const V2 = (() => {
       const opts = getClipOpts(i);
       const result = await exportSingleClip(_clips[i], opts, pct => {
         if (status) status.textContent = `${pct}%`;
+        if (mobLabel) mobLabel.textContent = `${pct}%`;
+        if (mobProg) mobProg.style.width = `${pct}%`;
       }, msg => {
         if (status) status.textContent = msg;
       });
 
       const _resetMobBtn = () => {
-        if (mobBtn) { mobBtn.disabled = false; mobBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export'; }
+        if (mobBtn) mobBtn.disabled = false;
+        if (mobLabel) mobLabel.textContent = 'Export';
+        if (mobProg) mobProg.style.width = '0%';
       };
       if (_isIOS() && navigator.canShare) {
         _pendingDownload = { blob: result.blob, filename: result.filename };
@@ -3098,7 +3108,9 @@ const V2 = (() => {
       }
       _resetModalBtn(btn);
       const mobBtnEl = document.getElementById('mob-dl-btn');
-      if (mobBtnEl) { mobBtnEl.disabled = false; mobBtnEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export'; }
+      if (mobBtnEl) mobBtnEl.disabled = false;
+      const mobLblEl = document.getElementById('mob-dl-label'); if (mobLblEl) mobLblEl.textContent = 'Export';
+      const mobPrgEl = document.getElementById('mob-dl-progress'); if (mobPrgEl) mobPrgEl.style.width = '0%';
     }
   }
 
