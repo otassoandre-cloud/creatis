@@ -3047,7 +3047,9 @@ const V2 = (() => {
         _pendingDownload = { blob: result.blob, filename: result.filename };
         if (status) status.textContent = 'Prêt ! Appuie sur le bouton ↓';
         if (btn) { btn.disabled = false; btn.innerHTML = '📲 Enregistrer dans Photos'; btn.onclick = () => V2._iosSharePending(); }
-        if (mobBtn) { mobBtn.disabled = false; mobBtn.innerHTML = '📲'; mobBtn.onclick = () => V2._iosSharePending(); }
+        if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = () => V2._iosSharePending(); }
+        if (mobLabel) mobLabel.textContent = '📲';
+        if (mobProg) mobProg.style.width = '100%';
       } else {
         const objUrl = URL.createObjectURL(result.blob);
         logClipExport(1);
@@ -3081,24 +3083,27 @@ const V2 = (() => {
           wrap.appendChild(badge);
         }
         if (status) status.textContent = '✅ Aperçu prêt — clique pour télécharger';
+        const _doDownload = () => {
+          const a = document.createElement('a');
+          a.href = objUrl; a.download = result.filename;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => { URL.revokeObjectURL(objUrl); _exportPreviewUrl = null; }, 5000);
+          if (status) status.textContent = '✅ Téléchargé !';
+          toast('✅ Clip téléchargé !', 'succes', 3000);
+          _resetModalBtn(btn);
+          _resetMobBtn();
+          const badge = document.getElementById('preview-9-16-badge');
+          if (badge) badge.remove();
+          if (modalVideo) modalVideo.style.objectFit = 'cover';
+        };
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ⬇ Télécharger ce clip';
-          btn.onclick = () => {
-            const a = document.createElement('a');
-            a.href = objUrl; a.download = result.filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            setTimeout(() => { URL.revokeObjectURL(objUrl); _exportPreviewUrl = null; }, 5000);
-            if (status) status.textContent = '✅ Téléchargé !';
-            toast('✅ Clip téléchargé !', 'succes', 3000);
-            _resetModalBtn(btn);
-            _resetMobBtn();
-            const badge = document.getElementById('preview-9-16-badge');
-            if (badge) badge.remove();
-            if (modalVideo) modalVideo.style.objectFit = 'cover';
-          };
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip';
+          btn.onclick = _doDownload;
         }
-        _resetMobBtn();
+        if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = _doDownload; }
+        if (mobLabel) mobLabel.textContent = '⬇';
+        if (mobProg) mobProg.style.width = '100%';
       }
     } catch(err) {
       if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé.'; }
