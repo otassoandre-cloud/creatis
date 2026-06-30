@@ -695,7 +695,7 @@
 
     <!-- Bannière gratuit : watermark + clips limités -->
     <div id="studio-gratuit-banner" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--texte-doux);align-items:center;justify-content:space-between;gap:10px;">
-      <span>🔒 Plan gratuit — 3 clips exportables · filigrane Créatis sur les vidéos</span>
+      <span>🔒 Plan gratuit — 1 export avec filigrane Créatis · Passe au Pro pour exporter en illimité</span>
       <button onclick="V2.showUpgradeModal()" style="background:var(--vert);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Passer au Pro →</button>
     </div>
 
@@ -914,7 +914,7 @@ const V2 = (() => {
   let _thumbs = {};           // index → dataUrl (sauvegardé pour la récupération)
   let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
   let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
-  const FREE_CLIP_LIMIT = 3; // clips exportables en gratuit
+  const FREE_CLIP_LIMIT = 1; // 1 export gratuit avec watermark
   let _ytUrl = '';            // YouTube URL (if any)
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
@@ -1724,7 +1724,7 @@ const V2 = (() => {
       const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
       const tags = autoTags(clip);
       const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
-      const locked = _userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT;
+      const locked = false; // pas de lock par index — paywall déclenché à l'export
 
       if (locked) return `
       <div class="clip-card locked" id="clip-card-${i}" onclick="V2.showUpgradeModal()" style="cursor:pointer;">
@@ -1815,8 +1815,8 @@ const V2 = (() => {
       <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:36px 32px;max-width:420px;width:90%;text-align:center;position:relative;">
         <button onclick="document.getElementById('paywall-modal').remove();if(window.posthog)posthog.capture('paywall_dismissed',{plan:'${_userPlan}'})" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
         <div style="font-size:36px;margin-bottom:12px">🚀</div>
-        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé tes 3 clips gratuits</h2>
-        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter les clips restants — sans watermark, en illimité.</p>
+        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé ton essai gratuit</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter tous tes clips — sans watermark, en illimité.</p>
         <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:18px;margin-bottom:20px;text-align:left;">
           <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,90€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
           <div style="font-size:0.78rem;color:#8A93A3;margin-bottom:12px">puis 19,90€/mois · résiliable à tout moment</div>
@@ -1858,7 +1858,7 @@ const V2 = (() => {
   function closeUpgradeModal() {}
 
   function showModal(i) {
-    if (_userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT) { showUpgradeModal(); return; }
+    // pas de blocage à l'ouverture — on bloque à l'export uniquement
     const clip = _clips[i];
     if (!clip) return;
     if (window.posthog) posthog.capture('clip_opened', { clip_index: i, plan: _userPlan, clip_score: clip.score });
@@ -3041,9 +3041,9 @@ const V2 = (() => {
 
   async function exportFromModal() {
     if (_modalIdx === null) return;
-    // Gratuit : autorise l'export AVEC watermark "Créatis" forcé
-    if (_userPlan === 'gratuit' && _modalIdx >= FREE_CLIP_LIMIT) {
-      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'download_locked_clip', clip_idx: _modalIdx });
+    // Gratuit : 1 essai avec watermark, ensuite paywall
+    if (_userPlan === 'gratuit' && _repurposeCount >= FREE_CLIP_LIMIT) {
+      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'free_limit_reached', repurpose_count: _repurposeCount });
       showUpgradeModal(); return;
     }
     if (window.posthog) { posthog.capture('export_clicked', { clip_index: _modalIdx, plan: _userPlan }); posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' }); }
@@ -3089,6 +3089,7 @@ const V2 = (() => {
       } else {
         const objUrl = URL.createObjectURL(result.blob);
         logClipExport(1);
+        if (_userPlan === 'gratuit') { _repurposeCount++; }
 
         // Stopper le canvas preview et cacher les overlays (la vidéo exportée a déjà les sous-titres brûlés)
         if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
@@ -3129,6 +3130,7 @@ const V2 = (() => {
           if (window.posthog) posthog.capture('download_completed', { clip_index: i, plan: _userPlan });
           _resetModalBtn(btn);
           _resetMobBtn();
+          if (_userPlan === 'gratuit') { setTimeout(() => showUpgradeModal(), 1500); }
           const badge = document.getElementById('preview-9-16-badge');
           if (badge) badge.remove();
           if (modalVideo) modalVideo.style.objectFit = 'cover';
