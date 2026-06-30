@@ -1,8 +1,10 @@
-/* ===== CRÉATIS — YouTube API (channel + video) ===== */
-/* POST /api/youtube  Body: { type: 'channel', input } | { type: 'video', videoUrl } */
+/* ===== CRÉATIS — YouTube API (channel + video + video-meta TikTok/Instagram) ===== */
+/* POST /api/youtube  Body: { type: 'channel', input } | { type: 'video', videoUrl } | { type: 'video-meta', url } */
 
 const YT_API = 'https://www.googleapis.com/youtube/v3';
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
+const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', process.env.APP_URL || 'https://creatis.app');
@@ -14,7 +16,32 @@ export default async function handler(req, res) {
   const { type } = req.body || {};
   if (type === 'channel') return handleChannel(req, res);
   if (type === 'video') return handleVideo(req, res);
-  return res.status(400).json({ error: 'Paramètre "type" requis : "channel" ou "video"' });
+  if (type === 'video-meta') return handleVideoMeta(req, res);
+  return res.status(400).json({ error: 'Paramètre "type" requis : "channel", "video" ou "video-meta"' });
+}
+
+/* ============================================================
+ * VIDEO-META HANDLER — TikTok / Instagram via Railway yt-dlp
+ * ============================================================ */
+async function handleVideoMeta(req, res) {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'url requis' });
+  if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+  try {
+    const r = await fetch(`${REPURPOSE_SERVICE_URL}/video-meta`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`,
+      },
+      body: JSON.stringify({ url }),
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json(data);
+    return res.status(200).json(data);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 }
 
 /* ============================================================

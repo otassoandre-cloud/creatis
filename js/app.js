@@ -949,7 +949,7 @@ class AppCreatis {
             this.afficherToast(`📡 Récupération des données ${_plt}...`, 'info', 6000);
             const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
             const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
-            const mr = await fetch('/api/video-meta', { method: 'POST', headers: hdrs, body: JSON.stringify({ url: _u }) });
+            const mr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video-meta', url: _u }) });
             if (mr.ok) {
               const meta = await mr.json();
               donnees._videoData = {
