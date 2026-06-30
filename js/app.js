@@ -964,8 +964,12 @@ class AppCreatis {
                   description: meta.description || '',
                 },
                 comments: [],
+                transcript: meta.transcript || null,
+                transcriptSource: meta.transcriptSource || 'none',
               };
-              this.afficherToast(`✅ Données ${_plt} récupérées — génération en cours...`, 'succes', 3000);
+              const hasGemini = meta.transcriptSource === 'gemini';
+              const label = hasGemini ? `🤖 Gemini a regardé la vidéo ${_plt}` : `📊 Données ${_plt} récupérées`;
+              this.afficherToast(`✅ ${label} — génération en cours...`, 'succes', 3000);
             } else {
               this.afficherToast(`⚠️ Impossible de récupérer les données ${_plt} — colle le titre et les stats manuellement`, 'info', 5000);
             }

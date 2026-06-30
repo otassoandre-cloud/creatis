@@ -530,24 +530,35 @@ Réponds en français.`;
         ? `\n## 🏷️ OPTIMISATION TAGS\n30 tags optimisés : 5 méga + 15 niche + 10 longue traîne. Logique de sélection.`
         : `\n## #️⃣ OPTIMISATION HASHTAGS\n15 hashtags optimisés pour ${plateforme} : 3 très larges (1M+) + 7 niche (100K-1M) + 5 micro-niche (<100K). Logique de sélection.`;
 
-      return `RÔLE : Tu es directeur éditorial d'une agence créateurs avec 500+ clients sur YouTube, TikTok et Instagram. Tu analyses chaque vidéo avec précision chirurgicale — accroche, rétention, distribution, engagement.
+      const hasGeminiAnalysis = !!videoAnalyse && !isYouTube;
 
-${chaineContext}${platformContext}
+      // Structure du rapport : différente selon qu'on a une analyse Gemini ou non
+      const rapportTikTokGemini = `## 🎯 DIAGNOSTIC GLOBAL
+Score X/10. En 2-3 phrases : ce qui fait le succès de cette vidéo. Les 2 forces principales et 1 faiblesse.
 
-VIDÉO À ANALYSER (${plateforme}) :
-${titreLabel} : "${titre}"
-Stats : ${stats}
-${tagsLabel} : ${tags}
-Description/légende : ${description.substring(0, 800)}
-${url ? `URL : ${url}` : ''}
-${topComments ? `\nTOP COMMENTAIRES :\n${topComments}` : ''}
-${videoAnalyse ? `\nANALYSE CONTENU VIDÉO :\n${videoAnalyse.substring(0, 5000)}` : ''}
+## 🔬 DÉCRYPTAGE VIRAL — Pourquoi ça marche
+Base-toi sur l'analyse Gemini ci-dessous pour synthétiser les mécanismes viraux concrets :
+• **Hook** : Qu'est-ce qui a fait que l'utilisateur n'a pas scrollé ? (1ère seconde précise)
+• **Rétention** : Comment la vidéo maintient l'attention ? (rythme, tension, format)
+• **Émotion dominante** : Quelle émotion déclenchée, par quel mécanisme ?
+• **Audio** : Rôle de la musique/son dans la performance ?
+• **Structure** : Comment la narration est construite ? Y a-t-il un twist ou révélation ?
 
-Objectif prioritaire : ${d.objectif}
+## 🎯 LEÇONS ACTIONNABLES — Ce que tu dois reproduire
+5 techniques concrètes extraites de cette vidéo, reproductibles sur ta propre chaîne.
+Chaque leçon : technique + comment l'appliquer + exemple concret.
 
-RAPPORT EN 6 PARTIES :
+## 📌 OPTIMISATION ${titreLabel.toUpperCase()}
+Légende/caption actuelle analysée. 5 alternatives plus virales :
+• Version [potentiel X%] — justification 1 ligne.
 
-## 🎯 DIAGNOSTIC GLOBAL
+## #️⃣ OPTIMISATION HASHTAGS
+15 hashtags optimisés : 3 très larges (1M+) + 7 niche (100K-1M) + 5 micro-niche (<100K).
+
+## 📈 PLAN D'ACTION — ${d.objectif}
+5 actions concrètes, classées par impact. Action #1 faisable en moins d'1h.`;
+
+      const rapportGeneral = `## 🎯 DIAGNOSTIC GLOBAL
 Score X/10. 3 forces + 3 faiblesses concrètes. Verdict en 1 phrase.
 
 ## 📌 OPTIMISATION ${titreLabel.toUpperCase()}
@@ -567,7 +578,26 @@ ${tagsSection}
 
 ## 📈 PLAN D'ACTION — ${d.objectif}
 5 actions concrètes par impact (fort/moyen/faible) et effort (rapide/moyen/long).
-Action #1 faisable en moins d'1h. Projection 30 jours si tout est appliqué.
+Action #1 faisable en moins d'1h. Projection 30 jours si tout est appliqué.`;
+
+      return `RÔLE : Tu es directeur éditorial d'une agence créateurs avec 500+ clients sur YouTube, TikTok et Instagram. Tu analyses chaque vidéo avec précision chirurgicale — accroche, rétention, distribution, engagement.
+
+${chaineContext}${platformContext}
+
+VIDÉO À ANALYSER (${plateforme}) :
+${titreLabel} : "${titre}"
+Stats : ${stats}
+${tagsLabel} : ${tags}
+Description/légende : ${description.substring(0, 800)}
+${url ? `URL : ${url}` : ''}
+${topComments ? `\nTOP COMMENTAIRES :\n${topComments}` : ''}
+${hasGeminiAnalysis ? `\n🤖 GEMINI A REGARDÉ LA VIDÉO — Analyse visuelle complète :\n${videoAnalyse.substring(0, 6000)}` : videoAnalyse ? `\nANALYSE CONTENU VIDÉO :\n${videoAnalyse.substring(0, 5000)}` : ''}
+
+Objectif prioritaire : ${d.objectif}
+
+RAPPORT EN ${hasGeminiAnalysis ? '6' : '6'} PARTIES :
+
+${hasGeminiAnalysis ? rapportTikTokGemini : rapportGeneral}
 
 Réponds en français. Rapport direct sans commentaires introductifs.`;
     }

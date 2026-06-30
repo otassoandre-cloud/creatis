@@ -1920,40 +1920,173 @@ class VideoMetaRequest(BaseModel):
     url: str
 
 @app.post("/video-meta")
-async def video_meta(body: VideoMetaRequest):
-    """Fetch metadata for any video URL (TikTok, Instagram, YouTube) via yt-dlp."""
-    import yt_dlp
+async def video_meta(body: VideoMetaRequest, _=Depends(auth)):
+    """Fetch metadata + Gemini visual analysis for TikTok/Instagram via yt-dlp."""
+    import yt_dlp, shutil, tempfile
     url = body.url.strip()
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-        "noplaylist": True,
-        "extract_flat": False,
-    }
+    platform = "tiktok" if "tiktok.com" in url else "instagram" if "instagram.com" in url else "youtube"
+
+    # Step 1: metadata only (fast, no download)
+    ydl_meta_opts = {"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_meta_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         if not info:
             raise ValueError("Aucune info retournée")
-        platform = "tiktok" if "tiktok.com" in url else "instagram" if "instagram.com" in url else "youtube"
-        duration_s = info.get("duration") or 0
-        duration_str = f"{int(duration_s//60)}:{int(duration_s%60):02d}" if duration_s else "N/A"
-        return {
-            "platform": platform,
-            "titre": info.get("title") or info.get("description") or "",
-            "description": info.get("description") or "",
-            "vues": info.get("view_count") or 0,
-            "likes": info.get("like_count") or 0,
-            "commentaires": info.get("comment_count") or 0,
-            "duree": duration_str,
-            "auteur": info.get("uploader") or info.get("channel") or "",
-            "tags": info.get("tags") or [],
-            "datePublication": info.get("upload_date") or "",
-        }
     except Exception as e:
-        logger.warning(f"[video-meta] yt-dlp error for {url}: {e}")
+        logger.warning(f"[video-meta] metadata error for {url}: {e}")
         raise HTTPException(status_code=422, detail=str(e))
+
+    duration_s = info.get("duration") or 0
+    duration_str = f"{int(duration_s//60)}:{int(duration_s%60):02d}" if duration_s else "N/A"
+    meta = {
+        "platform": platform,
+        "titre": info.get("title") or info.get("description") or "",
+        "description": info.get("description") or "",
+        "vues": info.get("view_count") or 0,
+        "likes": info.get("like_count") or 0,
+        "commentaires": info.get("comment_count") or 0,
+        "duree": duration_str,
+        "auteur": info.get("uploader") or info.get("channel") or "",
+        "tags": info.get("tags") or [],
+        "datePublication": info.get("upload_date") or "",
+        "transcript": None,
+        "transcriptSource": "none",
+    }
+
+    # Step 2: download + Gemini visual analysis (vidéos ≤ 5 min)
+    if GEMINI_API_KEY and 0 < duration_s <= 300:
+        tmp_dir = Path(tempfile.mkdtemp(dir=WORK_DIR))
+        tmp_video = tmp_dir / "viral.mp4"
+        try:
+            ydl_dl_opts = {
+                "format": "worst[height<=480][ext=mp4]/worst[ext=mp4]/worst",
+                "outtmpl": str(tmp_video),
+                "quiet": True, "no_warnings": True, "noplaylist": True,
+            }
+            with yt_dlp.YoutubeDL(ydl_dl_opts) as ydl:
+                ydl.extract_info(url, download=True)
+
+            if tmp_video.exists() and tmp_video.stat().st_size < 100 * 1024 * 1024:
+                analysis = await _gemini_analyze_viral(tmp_video, platform)
+                if analysis:
+                    meta["transcript"] = analysis
+                    meta["transcriptSource"] = "gemini"
+        except Exception as e:
+            logger.warning(f"[video-meta] Gemini step failed: {e}")
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    return meta
+
+
+async def _gemini_analyze_viral(video_path: Path, platform: str) -> Optional[str]:
+    """Upload video to Gemini Files API and analyze why it performs well."""
+    platform_name = {"tiktok": "TikTok", "instagram": "Instagram Reels"}.get(platform, "vidéo courte")
+    file_size = video_path.stat().st_size
+    try:
+        async with httpx.AsyncClient(timeout=180) as c:
+            # Start resumable upload
+            r = await c.post(
+                f"https://generativelanguage.googleapis.com/upload/v1beta/files?key={GEMINI_API_KEY}",
+                headers={
+                    "X-Goog-Upload-Protocol": "resumable",
+                    "X-Goog-Upload-Command": "start",
+                    "X-Goog-Upload-Header-Content-Length": str(file_size),
+                    "X-Goog-Upload-Header-Content-Type": "video/mp4",
+                    "Content-Type": "application/json",
+                },
+                json={"file": {"display_name": "viral_video"}},
+            )
+            if r.status_code not in (200, 201):
+                logger.warning(f"[Gemini Files upload-start] {r.status_code}: {r.text[:200]}")
+                return None
+            upload_url = r.headers.get("X-Goog-Upload-URL")
+            if not upload_url:
+                return None
+
+            # Upload file bytes
+            video_bytes = video_path.read_bytes()
+            r2 = await c.post(
+                upload_url,
+                headers={
+                    "Content-Length": str(file_size),
+                    "X-Goog-Upload-Offset": "0",
+                    "X-Goog-Upload-Command": "upload, finalize",
+                },
+                content=video_bytes,
+            )
+            if r2.status_code not in (200, 201):
+                logger.warning(f"[Gemini Files upload-data] {r2.status_code}: {r2.text[:200]}")
+                return None
+
+            file_info = r2.json()
+            file_uri = file_info.get("file", {}).get("uri")
+            file_name_gcs = file_info.get("file", {}).get("name", "")
+            if not file_uri:
+                return None
+
+            # Poll until ACTIVE
+            for _ in range(15):
+                await asyncio.sleep(3)
+                sr = await c.get(
+                    f"https://generativelanguage.googleapis.com/v1beta/{file_name_gcs}?key={GEMINI_API_KEY}"
+                )
+                if sr.status_code == 200 and sr.json().get("state") == "ACTIVE":
+                    break
+
+            # Analyze with Gemini
+            prompt = f"""Tu regardes cette vidéo {platform_name} en intégralité. Analyse-la avec précision pour comprendre POURQUOI elle performe bien. Réponds en français.
+
+## 🎬 HOOK (0-3 secondes)
+Décris exactement ce qui se passe dans les 3 premières secondes. Qu'est-ce qui accroche immédiatement ? Pourquoi l'utilisateur ne scrolle pas ?
+
+## 🎵 AUDIO & MUSIQUE
+Quel son/musique est utilisé ? Quel effet ça crée (énergie, émotion, nostalgie, curiosité) ? Est-ce un son trending ?
+
+## ✂️ MONTAGE & RYTHME
+Style de montage : fréquence des coupes, transitions, effets. Rythme global (rapide/lent/varié) ? Pourquoi ce rythme fonctionne ?
+
+## 📝 TEXTES À L'ÉCRAN
+Y a-t-il du texte ? Transcris-le. Comment est-il positionné et chronométré ? Quel rôle joue-t-il ?
+
+## 😮 DÉCLENCHEURS ÉMOTIONNELS
+Quelles émotions cette vidéo déclenche (curiosité, humour, surprise, relatabilité, aspiration) ? Par quels mécanismes concrets ?
+
+## 📖 STRUCTURE NARRATIVE
+Comment la vidéo est construite ? Y a-t-il une montée en tension, une révélation, un twist ? Comment elle maintient l'attention jusqu'au bout ?
+
+## 🔑 POURQUOI ÇA MARCHE — Synthèse
+Les 3-5 raisons concrètes pour lesquelles cette vidéo performe sur {platform_name}. Ce qu'un créateur doit retenir et reproduire."""
+
+            gr = await c.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [
+                        {"fileData": {"mimeType": "video/mp4", "fileUri": file_uri}},
+                        {"text": prompt},
+                    ]}],
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 8192},
+                },
+            )
+            if gr.status_code != 200:
+                logger.warning(f"[Gemini analyze viral] {gr.status_code}: {gr.text[:200]}")
+                return None
+
+            text = gr.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+            # Cleanup Gemini file
+            try:
+                await c.delete(
+                    f"https://generativelanguage.googleapis.com/v1beta/{file_name_gcs}?key={GEMINI_API_KEY}"
+                )
+            except Exception:
+                pass
+
+            return text.strip() if text else None
+    except Exception as e:
+        logger.warning(f"[_gemini_analyze_viral] {e}")
+        return None
 
 
 async def _run_upload_transcription(job_id: str, file_path: Path) -> None:
