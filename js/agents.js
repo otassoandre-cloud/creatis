@@ -170,8 +170,8 @@ Réponds entièrement en français. Pas de commentaires sur ta réponse — livr
       const isShort = (d.format || '').includes('9:16');
       const ratio = isShort ? '9:16 vertical Short format' : '16:9 horizontal';
       const comp = isShort
-        ? 'Portrait vertical composition, subject centered, text in lower third well within frame'
-        : 'Landscape cinematic composition, subject prominent';
+        ? 'Portrait vertical composition, subject centered, completely clean image with no text anywhere'
+        : 'Landscape cinematic composition, subject prominent, completely clean image with no text anywhere';
 
       const noText = 'NO TEXT, NO WORDS, NO LETTERS, NO SIGNS, NO WATERMARK, NO CAPTIONS, pure photographic image.';
       const styles = {
