@@ -923,23 +923,54 @@ class AppCreatis {
     try {
       let resultat;
 
-      // Auto-fetch données vidéo YouTube si url_video fournie
+      // Auto-fetch données vidéo si url_video fournie (YouTube uniquement via API)
       if (donnees.url_video) {
-        try {
-          this.afficherToast('📡 Analyse de la vidéo en cours...', 'info', 6000);
-          const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
-          const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
-          const vr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video', videoUrl: donnees.url_video }) });
-          if (vr.ok) {
-            donnees._videoData = await vr.json();
-            const src = donnees._videoData.transcriptSource;
-            const srcLabel = src === 'gemini' ? '🤖 Gemini a regardé la vidéo' : src === 'vtt' ? '📝 Sous-titres récupérés' : '📊 Données YouTube récupérées';
-            this.afficherToast(`✅ ${srcLabel} — génération en cours...`, 'succes', 3000);
-          } else {
-            const er = await vr.json().catch(() => ({}));
-            this.afficherToast(`⚠️ ${er.error || 'Impossible d\'analyser la vidéo'} — génération avec les données disponibles`, 'info', 4000);
-          }
-        } catch { this.afficherToast('⚠️ Analyse vidéo échouée — génération en cours quand même', 'info', 3000); }
+        const _u = donnees.url_video;
+        const _isYT = _u.includes('youtube.com') || _u.includes('youtu.be');
+        if (_isYT) {
+          try {
+            this.afficherToast('📡 Analyse de la vidéo YouTube en cours...', 'info', 6000);
+            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+            const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+            const vr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video', videoUrl: _u }) });
+            if (vr.ok) {
+              donnees._videoData = await vr.json();
+              const src = donnees._videoData.transcriptSource;
+              const srcLabel = src === 'gemini' ? '🤖 Gemini a regardé la vidéo' : src === 'vtt' ? '📝 Sous-titres récupérés' : '📊 Données YouTube récupérées';
+              this.afficherToast(`✅ ${srcLabel} — génération en cours...`, 'succes', 3000);
+            } else {
+              const er = await vr.json().catch(() => ({}));
+              this.afficherToast(`⚠️ ${er.error || 'Impossible d\'analyser la vidéo'} — génération avec les données disponibles`, 'info', 4000);
+            }
+          } catch { this.afficherToast('⚠️ Analyse vidéo échouée — génération en cours quand même', 'info', 3000); }
+        } else {
+          const _plt = _u.includes('tiktok.com') ? 'TikTok' : 'Instagram';
+          try {
+            this.afficherToast(`📡 Récupération des données ${_plt}...`, 'info', 6000);
+            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+            const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+            const mr = await fetch('/api/video-meta', { method: 'POST', headers: hdrs, body: JSON.stringify({ url: _u }) });
+            if (mr.ok) {
+              const meta = await mr.json();
+              donnees._videoData = {
+                video: {
+                  titre: meta.titre,
+                  vues: meta.vues?.toLocaleString('fr-FR') || '0',
+                  likes: meta.likes?.toLocaleString('fr-FR') || '0',
+                  nombreCommentaires: meta.commentaires?.toLocaleString('fr-FR') || '0',
+                  duree: meta.duree,
+                  datePublication: meta.datePublication,
+                  tags: meta.tags || [],
+                  description: meta.description || '',
+                },
+                comments: [],
+              };
+              this.afficherToast(`✅ Données ${_plt} récupérées — génération en cours...`, 'succes', 3000);
+            } else {
+              this.afficherToast(`⚠️ Impossible de récupérer les données ${_plt} — colle le titre et les stats manuellement`, 'info', 5000);
+            }
+          } catch { this.afficherToast(`⚠️ Erreur récupération ${_plt} — génération avec les données disponibles`, 'info', 3000); }
+        }
       }
 
       // Récupère le contexte YouTube personnalisé pour cet agent

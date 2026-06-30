@@ -459,14 +459,14 @@ Réponds en français.`;
     inputs: [
       {
         id: 'url_video',
-        label: '🔗 URL de la vidéo YouTube',
+        label: '🔗 URL de la vidéo (YouTube, TikTok, Instagram...)',
         type: 'text',
-        placeholder: 'https://youtube.com/watch?v=...',
+        placeholder: 'https://youtube.com/watch?v=... ou tiktok.com/@... ou instagram.com/reel/...',
         requis: false
       },
       {
         id: 'titre',
-        label: 'Titre (si pas d\'URL)',
+        label: 'Titre / légende (si pas d\'URL)',
         type: 'text',
         placeholder: 'ex : J\'ai investi 1000€ en bourse pendant 6 mois',
         requis: false
@@ -483,11 +483,12 @@ Réponds en français.`;
         label: 'Objectif d\'amélioration principal',
         type: 'select',
         options: [
-          'Augmenter le CTR (taux de clic)',
+          'Augmenter le CTR / taux de clic',
           'Améliorer le watch time (rétention)',
           'Obtenir plus de commentaires et d\'engagement',
           'Mieux ranker sur YouTube / SEO',
-          'Attirer plus d\'abonnés',
+          'Exploser sur TikTok / Instagram Reels',
+          'Attirer plus d\'abonnés / followers',
           'Optimiser pour les sponsors'
         ],
         requis: true
@@ -495,8 +496,15 @@ Réponds en français.`;
     ],
     construirePrompt(d, contexteYT = '') {
       const v = d._videoData?.video;
-      const videoAnalyse = d._videoData?.transcript; // analyse Gemini complète ou VTT
+      const videoAnalyse = d._videoData?.transcript;
       const comments = d._videoData?.comments || [];
+
+      // Détection plateforme
+      const url = d.url_video || '';
+      const isTikTok = url.includes('tiktok.com');
+      const isInstagram = url.includes('instagram.com');
+      const isYouTube = !isTikTok && !isInstagram;
+      const plateforme = isTikTok ? 'TikTok' : isInstagram ? 'Instagram Reels' : 'YouTube';
 
       const titre = v?.titre || d.titre || 'Non spécifié';
       const stats = v
@@ -506,42 +514,56 @@ Réponds en français.`;
       const description = v?.description || 'Non fournie';
       const topComments = comments.slice(0, 10).map(c => `• [${c.likes}👍] ${c.texte.substring(0, 200)}`).join('\n');
 
-      // Contexte chaîne uniquement si pas de vidéo externe analysée
       const hasExternalVideo = !!d._videoData;
       const chaineContext = !hasExternalVideo && contexteYT ? `CONTEXTE CHAÎNE :\n${contexteYT}\n\n` : '';
 
-      return `RÔLE : Tu es le directeur éditorial YouTube d'une agence qui a accompagné 500+ créateurs. Tu analyses chaque vidéo avec précision chirurgicale — titre, description, tags, engagement, tout compte.
+      // Conseils spécifiques à la plateforme
+      const platformContext = isTikTok
+        ? `PLATEFORME : TikTok — algorithme basé sur le taux de completion et les partages. Les 3 premières secondes sont critiques. Pas de SEO titre classique : les hashtags + hook audio font la distribution. Durée optimale : 15-60s pour Shorts viraux, 2-3min pour l'éducatif.`
+        : isInstagram
+        ? `PLATEFORME : Instagram Reels — algorithme favorise les partages en Story et les sauvegardes. Hook visuel dans la 1ère seconde crucial. Légende courte (150 car. visibles) + max 5-10 hashtags ciblés. Durée optimale : 7-30s pour la viralité.`
+        : `PLATEFORME : YouTube — algorithme basé sur CTR miniature + watch time. SEO titre + description + tags important. Durée optimale : 8-15min pour la monétisation, sous 60s pour les Shorts.`;
 
-${chaineContext}VIDÉO À ANALYSER :
-Titre : "${titre}"
+      const titreLabel = isTikTok ? 'Légende / Caption' : isInstagram ? 'Légende' : 'Titre';
+      const tagsLabel = isTikTok || isInstagram ? 'Hashtags' : 'Tags';
+      const tagsSection = isYouTube
+        ? `\n## 🏷️ OPTIMISATION TAGS\n30 tags optimisés : 5 méga + 15 niche + 10 longue traîne. Logique de sélection.`
+        : `\n## #️⃣ OPTIMISATION HASHTAGS\n15 hashtags optimisés pour ${plateforme} : 3 très larges (1M+) + 7 niche (100K-1M) + 5 micro-niche (<100K). Logique de sélection.`;
+
+      return `RÔLE : Tu es directeur éditorial d'une agence créateurs avec 500+ clients sur YouTube, TikTok et Instagram. Tu analyses chaque vidéo avec précision chirurgicale — accroche, rétention, distribution, engagement.
+
+${chaineContext}${platformContext}
+
+VIDÉO À ANALYSER (${plateforme}) :
+${titreLabel} : "${titre}"
 Stats : ${stats}
-Tags : ${tags}
-Description : ${description.substring(0, 800)}
+${tagsLabel} : ${tags}
+Description/légende : ${description.substring(0, 800)}
+${url ? `URL : ${url}` : ''}
 ${topComments ? `\nTOP COMMENTAIRES :\n${topComments}` : ''}
-${videoAnalyse ? `\nANALYSE COMPLÈTE DU CONTENU VIDÉO (Gemini a regardé la vidéo) :\n${videoAnalyse.substring(0, 5000)}` : ''}
+${videoAnalyse ? `\nANALYSE CONTENU VIDÉO :\n${videoAnalyse.substring(0, 5000)}` : ''}
 
 Objectif prioritaire : ${d.objectif}
 
 RAPPORT EN 6 PARTIES :
 
 ## 🎯 DIAGNOSTIC GLOBAL
-Score X/10 basé sur le contenu réel de la vidéo. 3 forces + 3 faiblesses concrètes tirées de l'analyse. Verdict en 1 phrase percutante.
+Score X/10. 3 forces + 3 faiblesses concrètes. Verdict en 1 phrase.
 
-## 📌 OPTIMISATION TITRE
-Analyse du titre actuel (longueur, mots-clés, émotion, promesse). 5 alternatives classées par CTR estimé :
-• Titre [CTR estimé X%] — justification 1 ligne.
-Recommandation finale et pourquoi.
+## 📌 OPTIMISATION ${titreLabel.toUpperCase()}
+Analyse actuelle. 5 alternatives classées par potentiel viral :
+• Version [potentiel X%] — justification 1 ligne.
+Recommandation finale.
 
-## 🖼️ RECOMMANDATIONS MINIATURE
-3 concepts précis basés sur le contenu de la vidéo : composition, couleurs, texte overlay, émotion, style. Lequel choisir et pourquoi.
+## 🖼️ RECOMMANDATIONS VISUEL / MINIATURE
+3 concepts précis : composition, couleurs, texte overlay, émotion. Lequel choisir et pourquoi.
+${isYouTube ? '' : `(Pour ${plateforme} : conseils sur la 1ère frame, le hook visuel et le format optimal.)`}
 
-## 📝 OPTIMISATION DESCRIPTION
-Les 2 premières lignes sont-elles accrocheuses ? Timestamps présents ? Mots-clés placés ?
-Réécris les 5 premières lignes pour maximiser SEO + engagement.
+## 📝 OPTIMISATION DESCRIPTION / LÉGENDE
+${isYouTube ? 'Les 2 premières lignes accrocheuses ? Timestamps ? Mots-clés ?' : `Hook dans les 150 premiers caractères visibles ? CTA ? Emojis stratégiques ?`}
+Réécris pour maximiser ${isYouTube ? 'SEO + engagement' : 'partages + sauvegardes'}.
 5 ajouts prioritaires.
-
-## 🏷️ OPTIMISATION TAGS
-30 tags optimisés basés sur le vrai sujet de la vidéo : 5 méga + 15 niche + 10 longue traîne. Logique de sélection.
+${tagsSection}
 
 ## 📈 PLAN D'ACTION — ${d.objectif}
 5 actions concrètes par impact (fort/moyen/faible) et effort (rapide/moyen/long).

@@ -1916,6 +1916,46 @@ def health():
     return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL, "disk_free_gb": free_gb}
 
 
+class VideoMetaRequest(BaseModel):
+    url: str
+
+@app.post("/video-meta")
+async def video_meta(body: VideoMetaRequest):
+    """Fetch metadata for any video URL (TikTok, Instagram, YouTube) via yt-dlp."""
+    import yt_dlp
+    url = body.url.strip()
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+        "extract_flat": False,
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+        if not info:
+            raise ValueError("Aucune info retournée")
+        platform = "tiktok" if "tiktok.com" in url else "instagram" if "instagram.com" in url else "youtube"
+        duration_s = info.get("duration") or 0
+        duration_str = f"{int(duration_s//60)}:{int(duration_s%60):02d}" if duration_s else "N/A"
+        return {
+            "platform": platform,
+            "titre": info.get("title") or info.get("description") or "",
+            "description": info.get("description") or "",
+            "vues": info.get("view_count") or 0,
+            "likes": info.get("like_count") or 0,
+            "commentaires": info.get("comment_count") or 0,
+            "duree": duration_str,
+            "auteur": info.get("uploader") or info.get("channel") or "",
+            "tags": info.get("tags") or [],
+            "datePublication": info.get("upload_date") or "",
+        }
+    except Exception as e:
+        logger.warning(f"[video-meta] yt-dlp error for {url}: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 async def _run_upload_transcription(job_id: str, file_path: Path) -> None:
     try:
         UPLOAD_JOBS[job_id]["progress"] = "Transcription en cours…"
