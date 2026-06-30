@@ -173,14 +173,15 @@ Réponds entièrement en français. Pas de commentaires sur ta réponse — livr
         ? 'Portrait vertical composition, subject centered, text in lower third well within frame'
         : 'Landscape cinematic composition, subject prominent';
 
+      const noText = 'NO TEXT, NO WORDS, NO LETTERS, NO SIGNS, NO WATERMARK, NO CAPTIONS, pure photographic image.';
       const styles = {
-        'Réaliste naturel': `Photorealistic YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Natural photography, DSLR quality, natural lighting and colors. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Réaliste naturel': `${noText} Photorealistic photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Natural DSLR photography, authentic lighting, true-to-life colors, highly detailed.`,
 
-        'Lifestyle luxe': `Photorealistic luxury lifestyle YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Warm golden hour sunlight, premium environment, aspirational atmosphere. High-end editorial photography. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Lifestyle luxe': `${noText} Photorealistic luxury lifestyle photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Warm golden hour sunlight, premium environment, aspirational atmosphere, high-end editorial photography.`,
 
-        'Cinématique': `Cinematic photorealistic YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Professional location lighting, dramatic shadows and highlights, movie-quality photography. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Cinématique': `${noText} Cinematic photorealistic photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Professional cinematography lighting, dramatic shadows and highlights, movie-quality visual.`,
 
-        'Avant/Après': `Photorealistic YouTube thumbnail ${ratio}, SPLIT SCREEN. LEFT HALF (BEFORE): ${desc} — darker, before state. RIGHT HALF (AFTER): same scene transformed — brighter, better result. Lightning bolt divider center. ${personPhrase}${nicheCtx}${comp}. NO TEXT NO WORDS NO LETTERS NO SIGNS.`
+        'Avant/Après': `${noText} Photorealistic photograph, ${ratio} format, SPLIT SCREEN. LEFT HALF (BEFORE): ${desc} — darker, before state. RIGHT HALF (AFTER): same scene transformed — brighter, better result. Lightning bolt divider center. ${personPhrase}${nicheCtx}${comp}.`
       };
 
       return styles[styleKey] || styles['Réaliste naturel'];
