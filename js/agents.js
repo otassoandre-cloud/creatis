@@ -462,21 +462,7 @@ Réponds en français.`;
         label: '🔗 URL de la vidéo virale à décrypter',
         type: 'text',
         placeholder: 'https://youtube.com/watch?v=... ou tiktok.com/@... ou instagram.com/reel/...',
-        requis: false
-      },
-      {
-        id: 'titre',
-        label: 'Titre / légende (si pas d\'URL)',
-        type: 'text',
-        placeholder: 'ex : J\'ai investi 1000€ en bourse pendant 6 mois',
-        requis: false
-      },
-      {
-        id: 'stats',
-        label: 'Stats (si pas d\'URL)',
-        type: 'textarea',
-        placeholder: 'ex : 12 400 vues · 340 likes · 28 commentaires · 8 min · CTR 3,2%',
-        requis: false
+        requis: true
       },
       {
         id: 'objectif',
@@ -503,10 +489,10 @@ Réponds en français.`;
       const isYouTube = !isTikTok && !isInstagram;
       const plateforme = isTikTok ? 'TikTok' : isInstagram ? 'Instagram Reels' : 'YouTube';
 
-      const titre = v?.titre || d.titre || 'Non spécifié';
+      const titre = v?.titre || 'Non spécifié';
       const stats = v
         ? `${v.vues} vues · ${v.likes} likes · ${v.nombreCommentaires} commentaires · Durée : ${v.duree}`
-        : (d.stats || 'Non fournies');
+        : 'Non fournies';
       const description = v?.description || '';
       const topComments = comments.slice(0, 5).map(c => `• [${c.likes}👍] "${c.texte.substring(0, 150)}"`).join('\n');
 
