@@ -384,10 +384,6 @@
       .hook-st-btn .mp { height: 28px !important; }
       .hook-st-btn .mt { font-size: 10px !important; }
 
-      /* Face tracking compact */
-      #mob-sec-face > div { gap: 8px !important; }
-      #mob-sec-face > div > div > div:first-child { font-size: 12px !important; }
-      #mob-sec-face > div > div > div:last-child { font-size: 10px !important; }
 
       .modal-dl-btn { padding: 12px 14px; font-size: 14px; border-radius: 10px; font-weight: 800; }
       .mob-always { padding: 8px 12px 10px; }
@@ -785,10 +781,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Hook
           </button>
-          <button class="mob-icon-btn" id="mob-btn-face" onclick="V2.mobPanel('face')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Recadrage
-          </button>
           <button class="mob-icon-btn" id="mob-btn-edit" onclick="V2.mobPanel('edit')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Texte
@@ -804,7 +796,6 @@
         <div class="desk-sec-tabs" id="desk-sec-tabs">
           <button class="desk-sec-tab active" onclick="V2.deskTab('subs')">Sous-titres</button>
           <button class="desk-sec-tab" onclick="V2.deskTab('hook')">Hook</button>
-          <button class="desk-sec-tab" onclick="V2.deskTab('face')">Recadrage</button>
         </div>
 
         <!-- Section : Sous-titres -->
@@ -871,23 +862,6 @@
           <button onclick="V2.autoHook()" style="font-size:12px;font-weight:700;color:var(--texte-doux);background:transparent;border:none;cursor:pointer;padding:0">⚡ Auto depuis le clip</button>
         </div>
 
-        <!-- Section : Recadrage -->
-        <div class="mob-section" id="mob-sec-face">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Centrer le visage</div>
-              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Le short se recadre automatiquement sur le visage</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt();if(window.posthog)posthog.capture('face_tracking_toggled',{enabled:this.checked})"><span class="toggle-slider"></span></label>
-          </div>
-          <div id="auto-speaker-row" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Mode podcast</div>
-              <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Alterne automatiquement entre les 2 intervenants</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="modal-split-screen" onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
-          </div>
-        </div>
 
         <!-- Section : Modifier texte -->
         <div class="mob-section" id="mob-sec-edit">
@@ -2616,7 +2590,7 @@ const V2 = (() => {
     document.querySelectorAll('.desk-sec-tab').forEach(t => t.classList.remove('active'));
     const btn = document.querySelector(`.desk-sec-tab[onclick*="'${panel}'"]`);
     if (btn) btn.classList.add('active');
-    ['subs','hook','face','edit'].forEach(p => {
+    ['subs','hook','edit'].forEach(p => {
       const el = document.getElementById('mob-sec-' + p);
       if (el) el.classList.toggle('mob-open', p === panel || (panel === 'subs' && p === 'edit'));
     });
@@ -2866,7 +2840,7 @@ const V2 = (() => {
       wmOpacity: prev.wmOpacity ?? 0.8,
       subY: prev.subY ?? 82, subX: prev.subX ?? 50,
       hookY: prev.hookY ?? 10, hookX: prev.hookX ?? 50,
-      reframeMode: document.getElementById('modal-split-screen')?.checked ? 'split' : (document.getElementById('modal-face-track')?.checked ? 'face' : 'center'),
+      reframeMode: 'face',
       segEdits: prev.segEdits || {},
     };
     _updateCropPreview();
