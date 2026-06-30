@@ -878,7 +878,7 @@
               <div style="font-size:13px;font-weight:700;color:var(--texte-doux)">Centrer le visage</div>
               <div style="font-size:11px;color:var(--texte-muted);margin-top:2px">Le short se recadre automatiquement sur le visage</div>
             </div>
-            <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt()"><span class="toggle-slider"></span></label>
+            <label class="toggle"><input type="checkbox" id="modal-face-track" checked onchange="V2.updateClipOpt();if(window.posthog)posthog.capture('face_tracking_toggled',{enabled:this.checked})"><span class="toggle-slider"></span></label>
           </div>
           <div id="auto-speaker-row" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bordure)">
             <div>
@@ -960,10 +960,12 @@ const V2 = (() => {
       Auth.getUser().then(user => {
         const el = document.getElementById('nav-user');
         if (el && user) el.textContent = user.email?.split('@')[0] || user.nom || '';
+        if (user && window.posthog) posthog.identify(user.id || user.email, { email: user.email });
       }).catch(() => {});
       Auth.getPlanDistant().then(data => {
         if (data?.plan) _userPlan = data.plan;
         if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
+        if (window.posthog && data?.plan) try { posthog.people?.set({ plan: data.plan }); } catch {}
       }).catch(() => {});
     }
     // Watermark opacity display
@@ -975,6 +977,9 @@ const V2 = (() => {
 
     // Recovery : vérifier si une analyse récente est dans localStorage
     _checkRecovery();
+    // Tracker upload_started au clic sur la zone d'upload
+    const _dz = document.getElementById('drop-zone');
+    if (_dz) _dz.addEventListener('click', () => { if (window.posthog) posthog.capture('upload_started', { plan: _userPlan, method: 'click' }); }, { capture: true });
   }
 
   // ── Background processing helpers ──
@@ -1062,7 +1067,7 @@ const V2 = (() => {
     const f = input.files?.[0];
     if (!f) return;
     _file = f;
-    if (window.posthog) posthog.capture('resume_attempted', { has_local_data: !!localStorage.getItem('creatis_last_analysis') });
+    if (window.posthog) posthog.capture('resume_clicked', { has_local_data: !!localStorage.getItem('creatis_last_analysis') });
     try {
       const data = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
       if (!data.clips?.length) {
@@ -1227,6 +1232,7 @@ const V2 = (() => {
     _faceCache = {};
     _ytUrl = '';
     _clipSegmentIds = {};
+    if (window.posthog) posthog.capture('upload_file_selected', { file_size_mb: parseFloat((f.size / 1024 / 1024).toFixed(2)), file_type: f.type, plan: _userPlan });
     const zone = document.getElementById('drop-zone');
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
@@ -1425,6 +1431,8 @@ const V2 = (() => {
       } catch {}
     }
     if (window.posthog) posthog.capture('video_uploaded', { source: _ytUrl ? 'youtube' : 'file', plan: _userPlan });
+    if (window.posthog) posthog.capture('generation_started', { plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' });
+    const _genStart = Date.now();
     const _pw = document.getElementById('video-preview-wrap');
     if (_pw) _pw.style.display = 'none';
     setState('analyze');
@@ -1475,7 +1483,7 @@ const V2 = (() => {
         // Injecter video_id (11 chars) sur chaque clip pour l'export Railway
         const _ytVid = _ytVideoId();
         if (_ytVid) _clips = _clips.map(c => ({ ...c, video_id: _ytVid }));
-        if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'youtube', plan: _userPlan });
+        if (window.posthog) { posthog.capture('clips_generated', { count: _clips.length, source: 'youtube', plan: _userPlan, generation_time_ms: Date.now() - _genStart }); if (_repurposeCount === 0) posthog.capture('first_upload_completed', { plan: _userPlan, source: 'youtube' }); }
         _saveAnalysisAndNotify(_clips, _segments, data.result.title || 'Vidéo YouTube');
         renderStudio(data.result.title || 'Vidéo YouTube');
 
@@ -1565,7 +1573,7 @@ const V2 = (() => {
           throw new Error(clipsData.error || 'Erreur identification clips');
         }
         _clips = clipsData.result.clips || [];
-        if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan });
+        if (window.posthog) { posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan, generation_time_ms: Date.now() - _genStart }); if (_repurposeCount === 0) posthog.capture('first_upload_completed', { plan: _userPlan, source: 'file' }); }
         _saveAnalysisAndNotify(_clips, _segments, _file?.name?.replace(/\.[^.]+$/, '') || 'vidéo');
         setBar(100); setStep(4);
         renderStudio(_file.name.replace(/\.[^.]+$/, ''));
@@ -1579,7 +1587,7 @@ const V2 = (() => {
       }
 
     } catch(err) {
-      if (window.posthog) posthog.capture('analysis_error', { message: err.message, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' });
+      if (window.posthog) { posthog.capture('analysis_error', { message: err.message, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' }); posthog.capture('generation_failed', { plan: _userPlan, reason: err.message?.substring(0, 100), source: _ytUrl ? 'youtube' : 'file' }); }
       toast(`❌ ${err.message}`, 'erreur', 8000);
       _stopScanAnim();
       setState('upload');
@@ -1831,7 +1839,7 @@ const V2 = (() => {
     m.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;';
     m.innerHTML = `
       <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:36px 32px;max-width:420px;width:90%;text-align:center;position:relative;">
-        <button onclick="document.getElementById('paywall-modal').remove()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
+        <button onclick="document.getElementById('paywall-modal').remove();if(window.posthog)posthog.capture('paywall_dismissed',{plan:'${_userPlan}'})" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
         <div style="font-size:36px;margin-bottom:12px">🚀</div>
         <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé tes 3 clips gratuits</h2>
         <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter les clips restants — sans watermark, en illimité.</p>
@@ -1859,6 +1867,7 @@ const V2 = (() => {
   }
 
   window._goToPro = function() {
+    if (window.posthog) posthog.capture('upgrade_clicked', { trigger: 'paywall', plan_from: _userPlan });
     const planConfig = window.CONFIG?.PLANS?.pro;
     if (planConfig?.stripeId) {
       const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
@@ -1878,6 +1887,7 @@ const V2 = (() => {
     if (_userPlan === 'gratuit' && i >= FREE_CLIP_LIMIT) { showUpgradeModal(); return; }
     const clip = _clips[i];
     if (!clip) return;
+    if (window.posthog) posthog.capture('clip_opened', { clip_index: i, plan: _userPlan, clip_score: clip.score });
     // Reset preview précédent si on change de clip
     if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); _exportPreviewUrl = null; }
     const prevBadge = document.getElementById('preview-9-16-badge');
@@ -2864,6 +2874,7 @@ const V2 = (() => {
 
   function autoHook() {
     if (_modalIdx === null) return;
+    if (window.posthog) posthog.capture('hook_generated', { clip_index: _modalIdx, plan: _userPlan });
     const clip = _clips[_modalIdx];
     const txt = (clip.hook || clip.title || '').substring(0, 80);
     const hookTxt = document.getElementById('modal-hook-txt');
@@ -3040,7 +3051,7 @@ const V2 = (() => {
       if (window.posthog) posthog.capture('paywall_shown', { trigger: 'download_locked_clip', clip_idx: _modalIdx });
       showUpgradeModal(); return;
     }
-    if (window.posthog) posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' });
+    if (window.posthog) { posthog.capture('export_clicked', { clip_index: _modalIdx, plan: _userPlan }); posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' }); }
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const mobBtn = document.getElementById('mob-dl-btn');
@@ -3120,6 +3131,7 @@ const V2 = (() => {
           setTimeout(() => { URL.revokeObjectURL(objUrl); _exportPreviewUrl = null; }, 5000);
           if (status) status.textContent = '✅ Téléchargé !';
           toast('✅ Clip téléchargé !', 'succes', 3000);
+          if (window.posthog) posthog.capture('download_completed', { clip_index: i, plan: _userPlan });
           _resetModalBtn(btn);
           _resetMobBtn();
           const badge = document.getElementById('preview-9-16-badge');
@@ -3137,6 +3149,7 @@ const V2 = (() => {
       else {
         if (status) status.textContent = `❌ ${err.message.substring(0, 80)}`;
         toast(`❌ ${err.message}`, 'erreur', 6000);
+        if (window.posthog) posthog.capture('download_failed', { clip_index: i, plan: _userPlan, reason: err.message?.substring(0, 100) });
       }
       _resetModalBtn(btn);
       const mobBtnEl = document.getElementById('mob-dl-btn');
