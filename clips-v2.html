@@ -3463,14 +3463,20 @@ const V2 = (() => {
     // Segment pré-uploadé ? → pas de découpage local ni d'upload, juste les timestamps
     const _segKey = `${Math.round(start)}_${Math.round(end)}`;
     const usePreUpload = !!_clipSegmentIds[_segKey];
-    const useServerSideCut = !usePreUpload && _isIOS() && _file;
+    // iOS OU fichier >150MB → Railway coupe côté serveur (évite ffmpeg.wasm sur gros fichiers)
+    const useServerSideCut = !usePreUpload && (_isIOS() || (_file && _file.size > 150 * 1024 * 1024)) && _file;
     let segmentBlob = null, clipStartParam = -1, clipEndParam = -1;
     if (usePreUpload) {
       // Segment déjà sur Railway — uniquement le traitement (~5-10s)
       if (onMsg) onMsg('Traitement Railway…');
     } else if (_file && !useServerSideCut) {
       if (onMsg) onMsg('Découpage local…');
-      segmentBlob = await cutClipFFmpeg(_file, start, end);
+      // Timeout 40s — si ffmpeg.wasm est bloqué sur un gros fichier, on plante proprement
+      const cutWithTimeout = Promise.race([
+        cutClipFFmpeg(_file, start, end),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Découpage local trop lent (>40s) — réessaie avec un fichier plus petit ou attends')), 40000)),
+      ]);
+      segmentBlob = await cutWithTimeout;
     } else if (_file && useServerSideCut) {
       segmentBlob = _file;
       clipStartParam = start;
