@@ -1328,7 +1328,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
         fc = (
             f"[0:v]{vf_base}[sub];"
             f"[1:v]format=rgba[pill];"
-            f"[sub][pill]overlay=x=0:y={pill_y_px}:enable='between(t\\,0\\,3)'[v_out]"
+            f"[sub][pill]overlay=x=0:y={pill_y_px}:enable=between(t\\,0\\,3):shortest=1[v_out]"
         )
         cmd = [
             "ffmpeg", "-y", "-loglevel", "error",
