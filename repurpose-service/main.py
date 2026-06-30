@@ -1605,9 +1605,7 @@ async def run_generate_shorts(
 
         top = sorted(highlights, key=lambda h: int(h.get("score", 0)), reverse=True)[:num_clips]
 
-        clips = []
-        for i, h in enumerate(top):
-            upd(f"Short {i + 1}/{len(top)}…")
+        async def _extract_one(i: int, h: dict):
             out_path = str(out_dir / f"short_{i + 1:02d}_{job_id[:8]}.mp4")
             try:
                 await asyncio.get_event_loop().run_in_executor(
@@ -1616,7 +1614,8 @@ async def run_generate_shorts(
                         crop_clip(source, st, en, o),
                 )
                 size_mb = round(Path(out_path).stat().st_size / 1_048_576, 1)
-                clips.append({
+                logger.info(f"Short {i + 1} OK  {size_mb} MB")
+                return {
                     "title":           h.get("title", f"Short {i + 1}"),
                     "hook":            h.get("hook_sentence", ""),
                     "virality_reason": h.get("virality_reason", ""),
@@ -1627,10 +1626,17 @@ async def run_generate_shorts(
                     "download_url":    f"/shorts-file/{job_id}/{Path(out_path).name}",
                     "filename":        Path(out_path).name,
                     "size_mb":         size_mb,
-                })
-                logger.info(f"Short {i + 1} OK  {size_mb} MB")
+                }
             except Exception as e:
                 logger.error(f"Short {i + 1} FAILED: {e}")
+                return None
+
+        upd(f"Extraction {len(top)} clips en parallèle…")
+        results = await asyncio.gather(
+            *[_extract_one(i, h) for i, h in enumerate(top)],
+            return_exceptions=True,
+        )
+        clips = [r for r in results if isinstance(r, dict)]
 
         if source:
             Path(source).unlink(missing_ok=True)
