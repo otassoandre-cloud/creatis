@@ -1041,7 +1041,7 @@ const V2 = (() => {
         <div style="display:flex;gap:8px;flex-shrink:0">
           <label style="background:#10b981;color:#000;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center">
             Reprendre →
-            <input type="file" accept="video/*" style="display:none" onchange="V2._reattachAndRestore(this)">
+            <input type="file" accept="video/*" style="display:none" onclick="this.value=''" onchange="V2._reattachAndRestore(this)">
           </label>
           <button onclick="document.getElementById('recovery-banner').remove();localStorage.removeItem('creatis_last_analysis')" style="background:transparent;color:#6b7280;border:none;font-size:18px;cursor:pointer;line-height:1">×</button>
         </div>`;
@@ -1062,23 +1062,41 @@ const V2 = (() => {
     const f = input.files?.[0];
     if (!f) return;
     _file = f;
+    if (window.posthog) posthog.capture('resume_attempted', { has_local_data: !!localStorage.getItem('creatis_last_analysis') });
     try {
       const data = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
       if (!data.clips?.length) {
         document.getElementById('recovery-banner')?.remove();
-        toast('Aucune sauvegarde trouvée — on réanalyse ta vidéo…', 'info', 3000);
+        toast('Aucune sauvegarde — on réanalyse ta vidéo…', 'info', 3000);
         setTimeout(() => startAnalyze(), 400);
         return;
       }
       _clips = data.clips;
       _segments = data.segments || [];
       _userPlan = data.plan || _userPlan;
-      _clipSegmentIds = data.segmentIds || {};
+      _clipSegmentIds = {}; // Reset : les IDs Railway de la session précédente sont expirés
       _thumbs = data.thumbs || {};
       document.getElementById('recovery-banner')?.remove();
       renderStudio(data.name || 'Vidéo');
       setTimeout(() => generateThumbnails(), 200);
-    } catch {}
+      // Re-upload les segments en arrière-plan avant le premier export
+      toast('⚡ Clips restaurés — préparation export en cours…', 'info', 3000);
+      _precacheSegmentsAsync(_clips).then(() => {
+        if (window.posthog) posthog.capture('resume_success', { clips: _clips.length });
+        toast('✅ Prêt à exporter !', 'succes', 2500);
+        // Sauvegarder les nouveaux IDs Railway
+        try {
+          const saved = localStorage.getItem('creatis_last_analysis');
+          if (saved) { const d = JSON.parse(saved); d.segmentIds = _clipSegmentIds; localStorage.setItem('creatis_last_analysis', JSON.stringify(d)); }
+        } catch {}
+      }).catch(() => {
+        if (window.posthog) posthog.capture('resume_failed', { reason: 'precache_error' });
+      });
+    } catch(e) {
+      if (window.posthog) posthog.capture('resume_failed', { reason: 'restore_error', message: e.message });
+      toast('Erreur de restauration — on réanalyse…', 'info', 3000);
+      setTimeout(() => startAnalyze(), 400);
+    }
   }
 
   function _restoreAnalysis() {
