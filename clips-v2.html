@@ -2904,6 +2904,27 @@ const V2 = (() => {
     btn?.classList.add('paused');
     const overlay = document.getElementById('modal-play-overlay');
     overlay?.classList.remove('playing');
+    // Réinitialiser les overlays cachés par l'export — sinon le clip suivant n'a plus de sous-titres/hook
+    const subOv = document.getElementById('modal-sub-overlay');
+    if (subOv) subOv.style.display = '';
+    const hookOv = document.getElementById('modal-hook-overlay');
+    if (hookOv) hookOv.style.display = 'none';
+    const subH = document.getElementById('modal-sub-handle');
+    if (subH) subH.style.display = 'none';
+    const hookH = document.getElementById('modal-hook-handle');
+    if (hookH) hookH.style.display = 'none';
+    // Supprimer le badge aperçu 9:16 de l'export précédent
+    const badge = document.getElementById('preview-9-16-badge');
+    if (badge) badge.remove();
+    // Réactiver le bouton export
+    const dlBtn = document.getElementById('modal-dl-btn');
+    if (dlBtn && dlBtn.disabled) {
+      dlBtn.disabled = false;
+      dlBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger ce clip 9:16';
+      dlBtn.onclick = () => V2.exportFromModal();
+    }
+    const dlStatus = document.getElementById('modal-dl-status');
+    if (dlStatus) dlStatus.textContent = '';
   }
 
   function closeModal() {
