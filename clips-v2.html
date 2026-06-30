@@ -1064,7 +1064,12 @@ const V2 = (() => {
     _file = f;
     try {
       const data = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
-      if (!data.clips?.length) return;
+      if (!data.clips?.length) {
+        document.getElementById('recovery-banner')?.remove();
+        toast('Aucune sauvegarde trouvée — on réanalyse ta vidéo…', 'info', 3000);
+        setTimeout(() => startAnalyze(), 400);
+        return;
+      }
       _clips = data.clips;
       _segments = data.segments || [];
       _userPlan = data.plan || _userPlan;
@@ -1390,6 +1395,9 @@ const V2 = (() => {
   // ── Analyze pipeline ──
   async function startAnalyze() {
     if (!_file && !_ytUrl) { toast('❌ Sélectionne une vidéo d\'abord', 'erreur'); return; }
+    // Feedback immédiat — évite les double-clics pendant l'attente Supabase
+    const analyzeBtn = document.getElementById('btn-analyze');
+    if (analyzeBtn) { analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Préparation…'; }
     // Vérification serveur — seulement si connecté (pas en mode démo)
     if (typeof Auth !== 'undefined' && Auth.getToken()) {
       try {
@@ -1397,10 +1405,6 @@ const V2 = (() => {
         if (data?.plan) _userPlan = data.plan;
         if (data?.repurpose_count !== undefined) _repurposeCount = data.repurpose_count;
       } catch {}
-    }
-    if (_userPlan === 'gratuit' && _repurposeCount > 0) {
-      showUpgradeModal();
-      return;
     }
     if (window.posthog) posthog.capture('video_uploaded', { source: _ytUrl ? 'youtube' : 'file', plan: _userPlan });
     const _pw = document.getElementById('video-preview-wrap');
@@ -1561,6 +1565,9 @@ const V2 = (() => {
       toast(`❌ ${err.message}`, 'erreur', 8000);
       _stopScanAnim();
       setState('upload');
+      // Réactiver le bouton analyser
+      const analyzeBtn = document.getElementById('btn-analyze');
+      if (analyzeBtn) { analyzeBtn.disabled = false; analyzeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Créer les Shorts'; }
     }
   }
 
@@ -1636,6 +1643,7 @@ const V2 = (() => {
     updateExportBtn();
     _stopScanAnim();
     setState('studio');
+    setTimeout(() => toast(`🎬 ${_clips.length} clips prêts — clique sur un clip pour personnaliser et télécharger`, 'succes', 5000), 600);
     // Generate thumbnails + pré-analyser visages en arrière-plan
     if (_file) {
       setTimeout(() => generateThumbnails(), 200);
@@ -1806,9 +1814,9 @@ const V2 = (() => {
     m.innerHTML = `
       <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:36px 32px;max-width:420px;width:90%;text-align:center;position:relative;">
         <button onclick="document.getElementById('paywall-modal').remove()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
-        <div style="font-size:36px;margin-bottom:12px">🔒</div>
-        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Ton essai gratuit est terminé</h2>
-        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour générer des clips viraux illimités, sans watermark.</p>
+        <div style="font-size:36px;margin-bottom:12px">🚀</div>
+        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé tes 3 clips gratuits</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter les clips restants — sans watermark, en illimité.</p>
         <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:18px;margin-bottom:20px;text-align:left;">
           <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,90€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
           <div style="font-size:0.78rem;color:#8A93A3;margin-bottom:12px">puis 19,90€/mois · résiliable à tout moment</div>
@@ -2802,6 +2810,9 @@ const V2 = (() => {
 
   function updateClipOpt() {
     if (_modalIdx === null) return;
+    // Feedback immédiat — évite les rage-clics sur les toggles
+    const canvas = document.getElementById('crop-canvas');
+    if (canvas) { canvas.style.transition = 'opacity .15s'; canvas.style.opacity = '0.5'; setTimeout(() => { canvas.style.opacity = '1'; }, 160); }
     const hookOn = document.getElementById('modal-hook-on')?.checked || false;
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) hookTxt.style.display = hookOn ? 'block' : 'none';
