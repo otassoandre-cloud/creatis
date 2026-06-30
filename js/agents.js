@@ -453,13 +453,13 @@ Réponds en français.`;
     id: 'analyse-video',
     icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
     nom: 'Analyse Vidéo',
-    description: 'Colle l\'URL d\'une vidéo — Créatis analyse titre, stats, description, tags et génère un plan d\'optimisation complet',
+    description: 'Colle une vidéo virale — Créatis décrypte exactement pourquoi elle a explosé et extrait la formule à reproduire sur tes propres vidéos',
     couleur: '#3b82f6',
     type: 'texte',
     inputs: [
       {
         id: 'url_video',
-        label: '🔗 URL de la vidéo (YouTube, TikTok, Instagram...)',
+        label: '🔗 URL de la vidéo virale à décrypter',
         type: 'text',
         placeholder: 'https://youtube.com/watch?v=... ou tiktok.com/@... ou instagram.com/reel/...',
         requis: false
@@ -480,16 +480,14 @@ Réponds en français.`;
       },
       {
         id: 'objectif',
-        label: 'Objectif d\'amélioration principal',
+        label: 'Qu\'est-ce que tu veux extraire ?',
         type: 'select',
         options: [
-          'Augmenter le CTR / taux de clic',
-          'Améliorer le watch time (rétention)',
-          'Obtenir plus de commentaires et d\'engagement',
-          'Mieux ranker sur YouTube / SEO',
-          'Exploser sur TikTok / Instagram Reels',
-          'Attirer plus d\'abonnés / followers',
-          'Optimiser pour les sponsors'
+          'La formule complète (hook + structure + distribution)',
+          'Le hook et les premiers instants qui accrochent',
+          'Le style de montage et le rythme',
+          'Les déclencheurs émotionnels et psychologiques',
+          'La stratégie de distribution (hashtags, moment, format)'
         ],
         requis: true
       }
@@ -499,7 +497,6 @@ Réponds en français.`;
       const videoAnalyse = d._videoData?.transcript;
       const comments = d._videoData?.comments || [];
 
-      // Détection plateforme
       const url = d.url_video || '';
       const isTikTok = url.includes('tiktok.com');
       const isInstagram = url.includes('instagram.com');
@@ -508,98 +505,84 @@ Réponds en français.`;
 
       const titre = v?.titre || d.titre || 'Non spécifié';
       const stats = v
-        ? `${v.vues} vues · ${v.likes} likes · ${v.nombreCommentaires} commentaires · Durée : ${v.duree} · Publié le ${v.datePublication}`
+        ? `${v.vues} vues · ${v.likes} likes · ${v.nombreCommentaires} commentaires · Durée : ${v.duree}`
         : (d.stats || 'Non fournies');
-      const tags = v?.tags?.join(', ') || 'Non fournis';
-      const description = v?.description || 'Non fournie';
-      const topComments = comments.slice(0, 10).map(c => `• [${c.likes}👍] ${c.texte.substring(0, 200)}`).join('\n');
+      const description = v?.description || '';
+      const topComments = comments.slice(0, 5).map(c => `• [${c.likes}👍] "${c.texte.substring(0, 150)}"`).join('\n');
 
-      const hasExternalVideo = !!d._videoData;
-      const chaineContext = !hasExternalVideo && contexteYT ? `CONTEXTE CHAÎNE :\n${contexteYT}\n\n` : '';
+      const chaineContext = contexteYT ? `CHAÎNE DU CRÉATEUR QUI ANALYSE :\n${contexteYT}\n(Adapte les leçons actionnables à sa niche et son style)\n\n` : '';
 
-      // Conseils spécifiques à la plateforme
-      const platformContext = isTikTok
-        ? `PLATEFORME : TikTok — algorithme basé sur le taux de completion et les partages. Les 3 premières secondes sont critiques. Pas de SEO titre classique : les hashtags + hook audio font la distribution. Durée optimale : 15-60s pour Shorts viraux, 2-3min pour l'éducatif.`
-        : isInstagram
-        ? `PLATEFORME : Instagram Reels — algorithme favorise les partages en Story et les sauvegardes. Hook visuel dans la 1ère seconde crucial. Légende courte (150 car. visibles) + max 5-10 hashtags ciblés. Durée optimale : 7-30s pour la viralité.`
-        : `PLATEFORME : YouTube — algorithme basé sur CTR miniature + watch time. SEO titre + description + tags important. Durée optimale : 8-15min pour la monétisation, sous 60s pour les Shorts.`;
+      const hasGeminiAnalysis = !!videoAnalyse;
 
-      const titreLabel = isTikTok ? 'Légende / Caption' : isInstagram ? 'Légende' : 'Titre';
-      const tagsLabel = isTikTok || isInstagram ? 'Hashtags' : 'Tags';
-      const tagsSection = isYouTube
-        ? `\n## 🏷️ OPTIMISATION TAGS\n30 tags optimisés : 5 méga + 15 niche + 10 longue traîne. Logique de sélection.`
-        : `\n## #️⃣ OPTIMISATION HASHTAGS\n15 hashtags optimisés pour ${plateforme} : 3 très larges (1M+) + 7 niche (100K-1M) + 5 micro-niche (<100K). Logique de sélection.`;
+      const geminiBlock = hasGeminiAnalysis
+        ? `\n🤖 GEMINI A REGARDÉ LA VIDÉO — Analyse visuelle frame par frame :\n${videoAnalyse.substring(0, 6000)}\n`
+        : '';
 
-      const hasGeminiAnalysis = !!videoAnalyse && !isYouTube;
+      // Quand Gemini a regardé la vidéo : analyse profonde basée sur le visuel réel
+      const rapportAvecGemini = `## 🎯 VERDICT VIRAL
+Score de viralité X/10. En 1 phrase percutante : la raison principale pour laquelle cette vidéo a explosé sur ${plateforme}.
+Puis les 3 mécanismes clés qui expliquent ce score.
 
-      // Structure du rapport : différente selon qu'on a une analyse Gemini ou non
-      const rapportTikTokGemini = `## 🎯 DIAGNOSTIC GLOBAL
-Score X/10. En 2-3 phrases : ce qui fait le succès de cette vidéo. Les 2 forces principales et 1 faiblesse.
+## 🎬 DÉCRYPTAGE SECONDE PAR SECONDE
+Raconte exactement ce qui se passe dans la vidéo et POURQUOI ça fonctionne à chaque moment :
+• **0-3s (Hook)** : Décris précisément le visuel, le son, le mouvement ou le texte d'ouverture. Pourquoi ça force à rester ?
+• **3s-milieu** : Comment la vidéo maintient l'attention ? Quelle tension ou curiosité est créée ?
+• **Fin** : Comment ça se termine ? Y a-t-il un twist, une révélation, un cliffhanger qui pousse à revoir ou partager ?
 
-## 🔬 DÉCRYPTAGE VIRAL — Pourquoi ça marche
-Base-toi sur l'analyse Gemini ci-dessous pour synthétiser les mécanismes viraux concrets :
-• **Hook** : Qu'est-ce qui a fait que l'utilisateur n'a pas scrollé ? (1ère seconde précise)
-• **Rétention** : Comment la vidéo maintient l'attention ? (rythme, tension, format)
-• **Émotion dominante** : Quelle émotion déclenchée, par quel mécanisme ?
-• **Audio** : Rôle de la musique/son dans la performance ?
-• **Structure** : Comment la narration est construite ? Y a-t-il un twist ou révélation ?
+## 🧠 LES MÉCANISMES PSYCHOLOGIQUES
+Quelles émotions précises cette vidéo déclenche, et par quels éléments concrets ?
+(ex : curiosité → "on ne sait pas si la bille va tomber", humour → ..., relatabilité → ...)
+Quel biais cognitif ou déclencheur social est activé ? (FOMO, compétition, surprise, validation sociale...)
 
-## 🎯 LEÇONS ACTIONNABLES — Ce que tu dois reproduire
-5 techniques concrètes extraites de cette vidéo, reproductibles sur ta propre chaîne.
-Chaque leçon : technique + comment l'appliquer + exemple concret.
+## 🎵 RÔLE DE L'AUDIO
+Si de la musique/un son est utilisé : quel effet précis ça crée ? Est-ce un son trending ? Comment ça amplifie l'émotion ?
+Si voix : quel style de narration ? Pourquoi ça fonctionne ?
 
-## 📌 OPTIMISATION ${titreLabel.toUpperCase()}
-Légende/caption actuelle analysée. 5 alternatives plus virales :
-• Version [potentiel X%] — justification 1 ligne.
+## ✂️ MONTAGE & FORMAT
+Style de montage décrypté : fréquence des coupes, transitions, effets. Pourquoi ce rythme est adapté à ce contenu ?
+Format (durée, orientation, textes à l'écran) : en quoi c'est optimisé pour ${plateforme} ?
 
-## #️⃣ OPTIMISATION HASHTAGS
-15 hashtags optimisés : 3 très larges (1M+) + 7 niche (100K-1M) + 5 micro-niche (<100K).
+## 📋 LA FORMULE À REPRODUIRE
+La formule exacte de cette vidéo, décrite de façon à pouvoir la répliquer :
+**[Type de hook] + [Tension/émotion maintenue par] + [Résolution/fin] + [Audio] + [Format]**
 
-## 📈 PLAN D'ACTION — ${d.objectif}
-5 actions concrètes, classées par impact. Action #1 faisable en moins d'1h.`;
+Puis 5 idées de vidéos concrètes qui utilisent cette même formule, adaptées à la niche du créateur qui analyse.
+Pour chaque idée : titre + comment reproduire le même mécanisme.`;
 
-      const rapportGeneral = `## 🎯 DIAGNOSTIC GLOBAL
-Score X/10. 3 forces + 3 faiblesses concrètes. Verdict en 1 phrase.
+      // Sans Gemini : analyse basée sur les métadonnées + engagement
+      const rapportSansGemini = `## 🎯 VERDICT VIRAL
+Score de viralité X/10 basé sur les stats disponibles. La raison principale qui explique la performance de cette vidéo.
 
-## 📌 OPTIMISATION ${titreLabel.toUpperCase()}
-Analyse actuelle. 5 alternatives classées par potentiel viral :
-• Version [potentiel X%] — justification 1 ligne.
-Recommandation finale.
+## 🔍 CE QU'ON PEUT DÉDUIRE DU SUCCÈS
+À partir du titre, des stats et de l'engagement, explique pourquoi cette vidéo a probablement bien marché :
+• **Le titre/concept** : Qu'est-ce qui crée la curiosité ou l'envie de cliquer ?
+• **Le ratio engagement** : Que révèlent les likes/commentaires/vues sur l'émotion ressentie ?
+• **La durée** : Est-elle optimale pour ${plateforme} ? Qu'est-ce que ça implique sur la rétention ?
 
-## 🖼️ RECOMMANDATIONS VISUEL / MINIATURE
-3 concepts précis : composition, couleurs, texte overlay, émotion. Lequel choisir et pourquoi.
-${isYouTube ? '' : `(Pour ${plateforme} : conseils sur la 1ère frame, le hook visuel et le format optimal.)`}
+## 🧠 LES MÉCANISMES PSYCHOLOGIQUES PROBABLES
+Quels émotions et déclencheurs cette vidéo a probablement activés (curiosité, humour, relatabilité, compétition...) ?
+Base-toi sur le titre/concept pour déduire le mécanisme viral.
 
-## 📝 OPTIMISATION DESCRIPTION / LÉGENDE
-${isYouTube ? 'Les 2 premières lignes accrocheuses ? Timestamps ? Mots-clés ?' : `Hook dans les 150 premiers caractères visibles ? CTA ? Emojis stratégiques ?`}
-Réécris pour maximiser ${isYouTube ? 'SEO + engagement' : 'partages + sauvegardes'}.
-5 ajouts prioritaires.
-${tagsSection}
+## 📋 LA FORMULE PROBABLE
+Reconstitue la formule de cette vidéo à partir des infos disponibles.
+5 idées de vidéos qui reproduisent ce mécanisme, adaptées à la niche.
 
-## 📈 PLAN D'ACTION — ${d.objectif}
-5 actions concrètes par impact (fort/moyen/faible) et effort (rapide/moyen/long).
-Action #1 faisable en moins d'1h. Projection 30 jours si tout est appliqué.`;
+## ⚠️ LIMITE D'ANALYSE
+Sans avoir regardé la vidéo directement, l'analyse reste partielle. Colle l'URL pour que Gemini regarde la vidéo et donne une analyse complète secondes par secondes.`;
 
-      return `RÔLE : Tu es directeur éditorial d'une agence créateurs avec 500+ clients sur YouTube, TikTok et Instagram. Tu analyses chaque vidéo avec précision chirurgicale — accroche, rétention, distribution, engagement.
+      return `RÔLE : Tu es expert en analyse virale — tu décryptes les mécanismes qui font exploser les vidéos sur ${plateforme}. Ton but n'est PAS d'améliorer la vidéo analysée, mais d'expliquer POURQUOI elle a fonctionné et comment reproduire sa formule.
 
-${chaineContext}${platformContext}
+${chaineContext}VIDÉO VIRALE À DÉCRYPTER (${plateforme}) :
+Titre/légende : "${titre}"
+Stats d'engagement : ${stats}
+${description ? `Description : ${description.substring(0, 400)}` : ''}
+${topComments ? `\nCommentaires (ce que les gens ont ressenti) :\n${topComments}` : ''}
+${geminiBlock}
+Focus de l'analyse : ${d.objectif}
 
-VIDÉO À ANALYSER (${plateforme}) :
-${titreLabel} : "${titre}"
-Stats : ${stats}
-${tagsLabel} : ${tags}
-Description/légende : ${description.substring(0, 800)}
-${url ? `URL : ${url}` : ''}
-${topComments ? `\nTOP COMMENTAIRES :\n${topComments}` : ''}
-${hasGeminiAnalysis ? `\n🤖 GEMINI A REGARDÉ LA VIDÉO — Analyse visuelle complète :\n${videoAnalyse.substring(0, 6000)}` : videoAnalyse ? `\nANALYSE CONTENU VIDÉO :\n${videoAnalyse.substring(0, 5000)}` : ''}
+${hasGeminiAnalysis ? rapportAvecGemini : rapportSansGemini}
 
-Objectif prioritaire : ${d.objectif}
-
-RAPPORT EN ${hasGeminiAnalysis ? '6' : '6'} PARTIES :
-
-${hasGeminiAnalysis ? rapportTikTokGemini : rapportGeneral}
-
-Réponds en français. Rapport direct sans commentaires introductifs.`;
+Réponds en français. Sois précis et concret — cite des éléments spécifiques de la vidéo, pas des généralités. Pas d'intro, va droit au but.`;
     }
   },
 
