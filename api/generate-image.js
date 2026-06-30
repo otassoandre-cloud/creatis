@@ -45,7 +45,7 @@ async function verifyToken(token) {
 }
 
 /* ── Quotas par plan ── */
-const PLAN_QUOTAS = { gratuit: 2, pro: 10, studio: 30 };
+const PLAN_QUOTAS = { gratuit: 3, pro: 50, studio: 100 };
 
 /* ── Supabase query (service key) ── */
 async function sbQuery(path, method = 'GET', body) {
