@@ -12,7 +12,7 @@ GET  /clip-export-status/{job_id}                     → { status, download_url
 GET  /clip-export-file/{job_id}/{filename}            → MP4
 GET  /health
 """
-import os, uuid, json, re, asyncio, subprocess, tempfile, logging
+import os, uuid, json, re, asyncio, subprocess, tempfile, logging, io
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -1190,7 +1190,51 @@ def _get_video_dimensions(in_path: str):
     return w, h
 
 
-def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "") -> None:
+def _make_hook_pill_png(text: str, fg_hex: str, bg_hex: str, font_size_pt: int, canvas_w: int = 720):
+    """Génère un PNG transparent (largeur canvas) avec une pill arrondie centrée.
+    Retourne (bytes_png, pill_height_px)."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    def hex2rgba(h: str, a: int = 255):
+        h = h.lstrip("#").upper().zfill(6)
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
+
+    fg = hex2rgba(fg_hex)
+    bg = hex2rgba(bg_hex)
+
+    font = None
+    for fp in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+               "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]:
+        if os.path.exists(fp):
+            try: font = ImageFont.truetype(fp, font_size_pt); break
+            except: pass
+    if font is None:
+        font = ImageFont.load_default()
+
+    tmp = Image.new("RGBA", (1, 1))
+    bbox = ImageDraw.Draw(tmp).textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    pad_h = max(14, int(font_size_pt * 0.55))
+    pad_v = max(10, int(font_size_pt * 0.32))
+    pw = tw + pad_h * 2
+    ph = th + pad_v * 2
+    radius = ph // 2  # pill complète
+
+    img = Image.new("RGBA", (canvas_w, ph), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    x0 = (canvas_w - pw) // 2
+    draw.rounded_rectangle([x0, 0, x0 + pw, ph - 1], radius=radius, fill=bg)
+    tx = (canvas_w - tw) // 2 - bbox[0]
+    ty = pad_v - bbox[1]
+    draw.text((tx, ty), text, font=font, fill=fg)
+
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return buf.getvalue(), ph
+
+
+def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
     tw, th = (float(x) for x in aspect_ratio.split(":"))
     target_ratio = tw / th
 
@@ -1275,20 +1319,32 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
-    final_vf = f"{vf},{overlay_vf}" if overlay_vf else vf
-    cmd = [
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-i", in_path,
-        "-map", "0:v:0",
-        "-map", "0:a:0?",
-        "-vf", final_vf,
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
-        "-pix_fmt", "yuv420p",
-        "-threads", "2",
-        "-movflags", "+faststart",
-        "-c:a", "aac", "-b:a", "128k",
-        out_path,
-    ]
+    _enc_tail = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+                 "-pix_fmt", "yuv420p", "-threads", "2", "-movflags", "+faststart",
+                 "-c:a", "aac", "-b:a", "128k", out_path]
+
+    if pill_png_path:
+        vf_base = f"{vf},{overlay_vf}" if overlay_vf else vf
+        fc = (
+            f"[0:v]{vf_base}[sub];"
+            f"[1:v]format=rgba[pill];"
+            f"[sub][pill]overlay=x=0:y={pill_y_px}:enable='between(t\\,0\\,3)'[v_out]"
+        )
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", in_path,
+            "-loop", "1", "-i", pill_png_path,
+            "-filter_complex", fc,
+            "-map", "[v_out]", "-map", "0:a:0?",
+        ] + _enc_tail
+    else:
+        final_vf = f"{vf},{overlay_vf}" if overlay_vf else vf
+        cmd = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", in_path,
+            "-map", "0:v:0", "-map", "0:a:0?",
+            "-vf", final_vf,
+        ] + _enc_tail
     r = subprocess.run(cmd, capture_output=True, timeout=300)
     if r.returncode != 0:
         err = (r.stdout + r.stderr).decode(errors='replace')[:800]
@@ -1311,7 +1367,7 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
 
 # ── 4b. SPLIT SCREEN DYNAMIQUE ADAPTATIF (podcast/interview) ─────────────────
 
-def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") -> None:
+def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
     """
     Split screen 9:16 adaptatif :
     - 2 visages détectés → split top/bottom, locuteur actif en haut
@@ -1333,7 +1389,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
     cap.release()
 
     if total_frames < 2:
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
         return
 
     cascades = [
@@ -1374,7 +1430,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
     cap.release()
 
     if not frame_data:
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
         return
 
     # ── 2. Positions globales face A / face B (moyennées sur frames 2-visages) ──
@@ -1382,7 +1438,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
 
     if len(two_face_samples) < 2:
         logger.info("[split] < 2 frames avec 2 visages → fallback face tracking")
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
         return
 
     def avg_faces(samples_list):
@@ -1557,7 +1613,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "") ->
 
     except Exception as e:
         logger.warning(f"[split] erreur ({e}) — fallback face tracking")
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf)
+        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
     finally:
         for f in segment_files:
             try: os.remove(f)
@@ -2787,8 +2843,10 @@ async def process_clip_endpoint(
             if hook_bool and hook_text:
                 _hook_x_px = 360  # centré sur 720px
                 _hook_y_px = int(max(0, min(100, hook_y)) / 100 * 1280)
-                _hook_pos = "{" + f"\\pos({_hook_x_px},{_hook_y_px})\\an8" + "}"
-                ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{_hook_pos}{hook_text}")
+                if hook_style != "pill":
+                    # clean / outline → ASS (pas de border-radius, mais style différent)
+                    _hook_pos = "{" + f"\\pos({_hook_x_px},{_hook_y_px})\\an8" + "}"
+                    ass_lines.append(f"Dialogue: 0,{to_ass_time(0)},{to_ass_time(3)},Hook,,0,0,0,,{_hook_pos}{hook_text}")
             # Max 2 lignes : ~2400 / font_size caractères par chunk (canvas 720px, 92% width)
             _max_chars = max(18, int(2400 / max(font_size, 30)))
             def split_seg(t0, t1, txt):
@@ -2849,6 +2907,21 @@ async def process_clip_endpoint(
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
 
+        # Hook pill arrondi via Pillow (uniquement pour hook_style=pill)
+        pill_png_path_str = None
+        pill_y_px_final = 0
+        if hook_bool and hook_text and hook_style == "pill":
+            try:
+                _hook_y_px = int(max(0, min(100, hook_y)) / 100 * 1280)
+                pill_bytes, _pill_h = _make_hook_pill_png(hook_text, hook_color, hook_bg, hfs, canvas_w=720)
+                _pill_path = tmp_dir / "hook_pill.png"
+                _pill_path.write_bytes(pill_bytes)
+                pill_png_path_str = str(_pill_path)
+                pill_y_px_final = max(0, _hook_y_px)
+                logger.info(f"[hook-pill] PNG généré 720x{_pill_h} @y={pill_y_px_final}")
+            except Exception as _pe:
+                logger.warning(f"[hook-pill] Pillow échoué ({_pe}), hook ignoré")
+
         # Filigrane : pill sombre + icône ronde verte (style OpusClip) pour plan gratuit
         if plan == "gratuit":
             _font = ""
@@ -2870,11 +2943,11 @@ async def process_clip_endpoint(
         async with _get_ffmpeg_sem():
             if reframe_mode == "split":
                 await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf)
+                    None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
                 )
             else:
                 await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf)
+                    None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
                 )
         if not out_path.exists() or out_path.stat().st_size == 0:
             raise HTTPException(500, "Reframe/burn échoué")
