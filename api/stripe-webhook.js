@@ -61,10 +61,12 @@ async function supabaseGet(table, match, select = 'id,plan,email,referred_by') {
 
 /* Map Stripe price ID → plan interne */
 const PRICE_TO_PLAN = {
-  'price_1TWISZAptK6HZtp5uBP0RHe8': 'pro',     // pro mensuel 19€ (live)
-  'price_1TWIU8AptK6HZtp5SbYvQ12d': 'pro',     // pro annuel 180€ (live)
-  'price_1TWIV6AptK6HZtp5qlNhu47w': 'studio',  // studio mensuel 49€ (live)
-  'price_1TWIVeAptK6HZtp5zIef773D': 'studio',  // studio annuel 468€ (live)
+  'price_1TonvgAptK6HZtp5sG7ZG5TE': 'pro',     // pro mensuel 19,90€ (live, actuel)
+  'price_1Tonw3AptK6HZtp5f4UFBIa0': 'pro',     // pro annuel 149€ (live, actuel)
+  'price_1TWISZAptK6HZtp5uBP0RHe8': 'pro',     // pro mensuel 19€ (legacy — abonnés existants)
+  'price_1TWIU8AptK6HZtp5SbYvQ12d': 'pro',     // pro annuel 180€ (legacy)
+  'price_1TWIV6AptK6HZtp5qlNhu47w': 'studio',  // studio mensuel 49€ (legacy)
+  'price_1TWIVeAptK6HZtp5zIef773D': 'studio',  // studio annuel 468€ (legacy)
 };
 
 function getPlanFromPriceId(priceId) {
@@ -115,6 +117,7 @@ module.exports = async (req, res) => {
           || null;
         const customerId = session.customer;
         const subscriptionId = session.subscription;
+        let userRow = null; // portée étendue — utilisé par la notif affilié plus bas
 
         console.log(`[Webhook] ✅ Paiement réussi — plan: ${plan}, user: ${userId || email}, subscription: ${subscriptionId}`);
 
@@ -141,9 +144,29 @@ module.exports = async (req, res) => {
           }
 
           // Résoudre l'user row pour l'affiliation
-          const userRow = matchId
+          userRow = matchId
             ? await supabaseGet('users', { id: matchId })
             : await supabaseGet('users', { email: matchEmail });
+
+          // Attribution par code promo — fallback si pas de ?ref= au signup.
+          // Ne s'exécute QUE si aucune attribution n'existe déjà (priorité au lien).
+          if (userRow && !userRow.referred_by) {
+            const promoAffiliateId = await resolvePromoCodeAffiliate(session.id).catch(e => {
+              console.warn('[Webhook] resolvePromoCodeAffiliate erreur:', e.message);
+              return null;
+            });
+            if (promoAffiliateId && promoAffiliateId !== userRow.id) {
+              // Même format que l'attribution par lien ?ref= : préfixe 12 car. de l'uuid,
+              // pas l'uuid complet — sinon les lookups exacts (dashboard affilié, liste admin) ne matchent plus.
+              const refCode = String(promoAffiliateId).slice(0, 12);
+              await supabasePatch('users', { id: userRow.id }, {
+                referred_by: refCode,
+                updated_at: new Date().toISOString()
+              });
+              userRow.referred_by = refCode;
+              console.log(`[Webhook] 🎟️ Attribution par code promo → affilié ${refCode}`);
+            }
+          }
 
           // Enregistrer l'abonnement
           await supabaseUpsert('abonnements', {
@@ -177,6 +200,10 @@ module.exports = async (req, res) => {
         if (process.env.BREVO_API_KEY && userRow?.referred_by) {
           await notifierAffilie(userRow.referred_by, email, plan).catch(e =>
             console.warn('[Webhook] Erreur notif affilié:', e.message)
+          );
+          // Vérifier si ce nouvel abonné fait franchir un palier de récompense à l'affilié
+          await verifierPalierAffilie(userRow.referred_by).catch(e =>
+            console.warn('[Webhook] Erreur vérif palier affilié:', e.message)
           );
         }
 
@@ -409,12 +436,33 @@ async function envoyerEmailBienvenue(email) {
 
 module.exports.envoyerEmailBienvenue = envoyerEmailBienvenue;
 
+/* Résout l'affilié associé à un code promo utilisé au checkout (fallback si pas de ?ref=) */
+async function resolvePromoCodeAffiliate(sessionId) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const full = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['discounts.promotion_code'] });
+  const promo = full.discounts?.[0]?.promotion_code;
+  const code = typeof promo === 'object' && promo ? promo.code : null;
+  if (!code) return null;
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/affiliate_promo_codes?promo_code=eq.${encodeURIComponent(code.toUpperCase())}&select=affiliate_id&limit=1`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  );
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return rows?.[0]?.affiliate_id || null;
+}
+
 /* Notifier un affilié qu'il vient de gagner une commission */
 async function notifierAffilie(refCode, filleulEmail, plan) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
 
-  // Trouver l'email de l'affilié via son code (12 premiers chars de son UUID)
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=like.${encodeURIComponent(refCode)}*&select=email`, {
+  // Trouver l'email de l'affilié via son code (12 premiers chars de son UUID).
+  // La colonne id est de type uuid → LIKE impossible → on borne la plage uuid du préfixe.
+  const _code = String(refCode || '').toLowerCase();
+  const _lo = _code + '00000000-0000-0000-0000-000000000000'.slice(_code.length);
+  const _hi = _code + 'ffffffff-ffff-ffff-ffff-ffffffffffff'.slice(_code.length);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=gte.${_lo}&id=lte.${_hi}&select=email&limit=1`, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
   });
   if (!res.ok) return;
@@ -457,6 +505,76 @@ async function notifierAffilie(refCode, filleulEmail, plan) {
   });
 }
 
+
+/* Paliers du programme d'affiliation — même définition que api/parrainage.js */
+const PALIERS = [
+  { seuil: 5, recompense: '1 mois Pro offert' },
+  { seuil: 10, recompense: 'Créatis Pro à vie' },
+  { seuil: 25, recompense: '100€ cash' },
+  { seuil: 50, recompense: 'Commission passe à 35%' },
+  { seuil: 100, recompense: 'Commission passe à 40%' }
+];
+
+function palierAtteint(nbActifs) {
+  let idx = 0;
+  for (let i = 0; i < PALIERS.length; i++) {
+    if (nbActifs >= PALIERS[i].seuil) idx = i + 1;
+  }
+  return idx;
+}
+
+/* Recalcule le nombre de filleuls actifs d'un affilié et alerte contact@creatis.app
+   si un nouveau palier de récompense (5/10/25/50/100) vient d'être franchi. */
+async function verifierPalierAffilie(refCode) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
+  const _code = String(refCode || '').toLowerCase();
+  const _lo = _code + '00000000-0000-0000-0000-000000000000'.slice(_code.length);
+  const _hi = _code + 'ffffffff-ffff-ffff-ffff-ffffffffffff'.slice(_code.length);
+
+  // Identité + palier déjà enregistré pour cet affilié
+  const affRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=gte.${_lo}&id=lte.${_hi}&select=id,email,nom,affiliate_highest_tier&limit=1`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const affRows = affRes.ok ? await affRes.json() : [];
+  const affilie = affRows[0];
+  if (!affilie) return;
+
+  // Filleuls actuellement actifs (abonnement payant en cours) sous ce code
+  const filRes = await fetch(`${SUPABASE_URL}/rest/v1/users?referred_by=eq.${_code}&select=plan`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+  });
+  const filleuls = filRes.ok ? await filRes.json() : [];
+  const actifs = filleuls.filter(u => u.plan && u.plan !== 'gratuit').length;
+
+  const nouveauPalier = palierAtteint(actifs);
+  const ancienPalier = affilie.affiliate_highest_tier || 0;
+  if (nouveauPalier <= ancienPalier) return; // pas de nouveau palier franchi
+
+  // Mémoriser le nouveau palier pour ne pas réalerter au prochain paiement
+  await supabasePatch('users', { id: affilie.id }, { affiliate_highest_tier: nouveauPalier });
+
+  if (!process.env.BREVO_API_KEY) return;
+  const recompense = PALIERS[nouveauPalier - 1].recompense;
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: 'contact@creatis.app' }],
+      subject: `🏆 ${affilie.email} vient d'atteindre un palier affiliation (${actifs} actifs)`,
+      htmlContent: `
+        <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+          <h2>Palier d'affiliation franchi</h2>
+          <p><strong>${affilie.nom || affilie.email}</strong> (${affilie.email}) a maintenant <strong>${actifs} filleuls actifs</strong>.</p>
+          <p>Palier atteint : <strong>${PALIERS[nouveauPalier - 1].seuil} parrainages</strong></p>
+          <p>Récompense à honorer manuellement : <strong style="color:#10b981;">${recompense}</strong></p>
+          <p style="color:#6b7280;font-size:13px;margin-top:24px;">Code affilié : ${refCode}</p>
+        </div>
+      `
+    })
+  });
+}
 
 async function getRawBody(req) {
   return new Promise((resolve, reject) => {

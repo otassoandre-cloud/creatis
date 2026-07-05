@@ -18,9 +18,11 @@
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
-      {"@type":"Question","name":"Comment je génère mon lien affilié ?","acceptedAnswer":{"@type":"Answer","text":"Crée un compte gratuit sur Créatis puis reviens sur la page affiliation. Ton lien unique est généré automatiquement dans le tableau de bord."}},
-      {"@type":"Question","name":"Quand je reçois mes commissions ?","acceptedAnswer":{"@type":"Answer","text":"Dès 20€ cumulés, un virement est initié via Stripe. Tu reçois une notification email pour chaque abonnement généré."}},
-      {"@type":"Question","name":"La commission dure vraiment à vie ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois, sans limite de durée."}}
+      {"@type":"Question","name":"Quand et comment suis-je payé ?","acceptedAnswer":{"@type":"Answer","text":"Dès 20€ de commissions cumulées, écris à contact@creatis.app pour demander ton virement. Le paiement est traité manuellement par l'équipe — il n'y a pas de virement automatique."}},
+      {"@type":"Question","name":"La commission dure combien de temps ?","acceptedAnswer":{"@type":"Answer","text":"Tant que la personne que tu as parrainée reste abonnée à Créatis Pro, tu touches 30% de commission chaque mois — sans limite de durée."}},
+      {"@type":"Question","name":"Comment est tracké mon lien affilié ?","acceptedAnswer":{"@type":"Answer","text":"Ton code est ajouté à l'URL via le paramètre ?ref=. Dès qu'un visiteur clique ton lien, ce code est mémorisé dans son navigateur et associé à son compte s'il s'inscrit."}},
+      {"@type":"Question","name":"Puis-je promouvoir sur TikTok, Instagram ou YouTube ?","acceptedAnswer":{"@type":"Answer","text":"Oui, sur n'importe quelle plateforme. Aucune audience minimale n'est requise."}},
+      {"@type":"Question","name":"Y a-t-il un minimum pour être payé ?","acceptedAnswer":{"@type":"Answer","text":"Oui, 20€ de commissions cumulées minimum avant de pouvoir demander ton virement."}}
     ]
   }
   </script>
@@ -29,6 +31,8 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="css/style.css">
   <script>
     try {
@@ -41,29 +45,41 @@
   <style>
     * { box-sizing:border-box; }
     body { min-height:100vh; background:var(--bg); font-family:'Inter',sans-serif; color:var(--texte); margin:0; }
-    .page { max-width:680px; margin:0 auto; padding:32px 20px 80px; }
-    .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:64px; }
+    .page { max-width:680px; margin:0 auto; padding:0 20px 80px; }
     .logo { font-size:22px; font-weight:800; color:var(--texte); text-decoration:none; }
     .logo span { color:var(--vert); }
     .btn-app { background:var(--vert); color:#000; padding:8px 18px; border-radius:8px; font-weight:700; font-size:13px; text-decoration:none; }
 
-    .hero { text-align:center; margin-bottom:56px; }
-    .hero-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.25); border-radius:20px; padding:6px 14px; font-size:13px; color:var(--vert); font-weight:600; margin-bottom:20px; }
-    .hero h1 { font-size:38px; font-weight:800; line-height:1.15; margin:0 0 16px; }
-    .hero h1 span { color:var(--vert); }
-    .hero-sub { font-size:16px; color:var(--texte-doux); max-width:480px; margin:0 auto 36px; line-height:1.65; }
-    .kpis { display:flex; justify-content:center; gap:28px; margin-bottom:36px; flex-wrap:wrap; }
-    .kpi { text-align:center; }
-    .kpi-val { font-size:32px; font-weight:800; color:var(--vert); }
-    .kpi-label { font-size:12px; color:var(--texte-muted); margin-top:3px; }
+    /* ===== NAV PILL FLOTTANTE (reprend le pattern nav du site, en gardant notre DA) ===== */
+    .aff-navbar { position:sticky; top:14px; z-index:60; padding:0 14px; margin-bottom:44px; font-family:'Hanken Grotesk',system-ui,sans-serif; }
+    .aff-nav-inner {
+      max-width:1080px; margin:0 auto;
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding:12px 12px 12px 18px;
+      background:rgba(8,10,15,.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+      border:1px solid var(--bordure); border-radius:99px;
+    }
+    .aff-nav-logo { display:flex; align-items:center; gap:9px; font-weight:800; font-size:16px; color:var(--texte); text-decoration:none; flex-shrink:0; }
+    .aff-nav-logomark { width:24px; height:24px; border-radius:7px; background:linear-gradient(180deg,var(--vert),#059669); color:#05140B; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .aff-nav-links { display:flex; align-items:center; gap:22px; }
+    .aff-nav-link { font-size:13.5px; font-weight:600; color:var(--texte-doux); text-decoration:none; white-space:nowrap; }
+    .aff-nav-link:hover { color:var(--texte); }
+    .aff-nav-link-active { color:var(--vert); }
+    .aff-nav-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+    .aff-nav-ghost { font-size:13px; font-weight:600; color:var(--texte-doux); text-decoration:none; padding:9px 14px; border-radius:99px; white-space:nowrap; }
+    .aff-nav-ghost:hover { color:var(--texte); }
+    .aff-nav-cta { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(180deg,var(--vert),#059669); color:#05140B; font-weight:700; font-size:13px; padding:10px 18px; border-radius:99px; text-decoration:none; white-space:nowrap; }
+
+    @media (max-width:860px) {
+      .aff-nav-links { display:none; }
+    }
+    @media (max-width:480px) {
+      .aff-nav-ghost { display:none; }
+      .aff-nav-logo span.aff-nav-word { display:none; }
+    }
+
     .btn-primary { background:var(--vert); color:#000; padding:16px 36px; border-radius:10px; font-weight:800; font-size:16px; text-decoration:none; display:inline-block; transition:opacity .15s; }
     .btn-primary:hover { opacity:.85; }
-
-    .steps { display:grid; gap:14px; margin-bottom:56px; }
-    .step { display:flex; gap:16px; align-items:flex-start; background:var(--bg-card); border:1px solid var(--bordure); border-radius:14px; padding:20px 22px; }
-    .step-num { width:34px; height:34px; border-radius:50%; background:rgba(16,185,129,.12); color:var(--vert); font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .step-content h3 { font-size:15px; font-weight:700; margin:0 0 4px; }
-    .step-content p { font-size:14px; color:var(--texte-doux); margin:0; line-height:1.5; }
 
     .card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:28px; margin-bottom:20px; }
     .card-title { font-size:12px; font-weight:700; color:var(--texte-muted); text-transform:uppercase; letter-spacing:.07em; margin-bottom:18px; }
@@ -90,53 +106,388 @@
     details p { margin:12px 0 0; color:var(--texte-doux); font-size:14px; line-height:1.6; }
 
     .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--vert); color:#000; padding:10px 22px; border-radius:10px; font-size:13px; font-weight:700; display:none; z-index:99; }
-    @media(max-width:600px) { .hero h1 { font-size:28px; } .stats-grid,.commission-grid { grid-template-columns:1fr; } .kpis { gap:20px; } }
+    @media(max-width:600px) { .stats-grid,.commission-grid { grid-template-columns:1fr; } .kpis { gap:20px; } }
+
+    /* ===== LARGEUR + SPLIT 2 COLONNES (desktop) — évite le vide sur grand écran ===== */
+    .aff-wide { max-width:1080px; margin:0 auto; padding:0 24px; }
+    .aff-split { display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:start; }
+    .aff-split.aff-split-center { align-items:center; }
+    .aff-split-text { text-align:left; }
+    .aff-split-text .aff-hero-sub,
+    .aff-split-text .aff-promesse-sub,
+    .aff-split-text .aff-paliers-sub,
+    .aff-split-text .aff-playbook-sub { margin-left:0; margin-right:0; max-width:none; }
+    .aff-split-text .aff-cta-row { justify-content:flex-start; }
+    @media (max-width:900px) {
+      .aff-wide { padding:0 20px; }
+      .aff-split { grid-template-columns:1fr; gap:36px; }
+      .aff-split-text { text-align:center; }
+      .aff-split-text .aff-hero-sub,
+      .aff-split-text .aff-promesse-sub,
+      .aff-split-text .aff-paliers-sub,
+      .aff-split-text .aff-playbook-sub { margin-left:auto; margin-right:auto; }
+      .aff-split-text .aff-cta-row { justify-content:center; }
+      .aff-timeline { margin:0 auto; }
+      .aff-simu-card { margin-left:auto; margin-right:auto; }
+    }
+
+    /* ===== NOUVEAU HERO — DA "Remakeit" (dotgrid, glows, pill, Hanken Grotesk) — étape 1 ===== */
+    .aff-hero-v2 {
+      position: relative;
+      overflow: hidden;
+      padding: 8px 0 56px;
+      margin-bottom: 56px;
+      font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+    }
+    .aff-dotgrid { position:absolute; inset:-40px -20px; z-index:0; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size:24px 24px; pointer-events:none; }
+    .aff-glow { position:absolute; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none; }
+    .aff-glow-green { background:rgba(16,185,129,0.5); opacity:.4; width:480px; height:340px; top:-140px; left:50%; transform:translateX(-50%); }
+    .aff-glow-orange { background:rgba(245,158,11,0.4); opacity:.22; width:280px; height:200px; top:120px; right:-60px; }
+
+    .aff-hero-v2 > * { position:relative; z-index:1; }
+
+    .aff-hero-badge { display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--vert); border:1px solid rgba(16,185,129,.25); background:rgba(16,185,129,.08); padding:9px 18px; border-radius:99px; margin-bottom:22px; }
+    .aff-hero-v2 h1 { font-family:'Hanken Grotesk',sans-serif; font-weight:500; letter-spacing:-.02em; line-height:1.14; font-size:36px; margin:0 0 16px; color:var(--texte); }
+    .aff-hero-v2 h1 strong { font-weight:800; color:var(--vert); }
+    .aff-hero-sub { font-size:16px; color:var(--texte-doux); max-width:460px; margin:0 auto 36px; line-height:1.6; }
+
+    /* Simulateur */
+    .aff-simu-card {
+      max-width: 420px;
+      text-align: center;
+      margin: 0 auto 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--bordure);
+      border-radius: 18px;
+      padding: 28px 26px 22px;
+      box-shadow: 0 30px 70px -30px rgba(0,0,0,.7);
+    }
+    .aff-simu-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--texte-muted); margin-bottom:18px; }
+    .aff-simu-slider { width:100%; -webkit-appearance:none; appearance:none; height:6px; border-radius:99px; background: linear-gradient(90deg, var(--vert) 0%, var(--vert) var(--pct,5%), rgba(255,255,255,.1) var(--pct,5%), rgba(255,255,255,.1) 100%); outline:none; margin:0 0 6px; cursor:pointer; }
+    .aff-simu-slider::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; border:3px solid var(--vert); box-shadow:0 2px 10px rgba(0,0,0,.4); cursor:pointer; }
+    .aff-simu-slider::-moz-range-thumb { width:20px; height:20px; border-radius:50%; background:#fff; border:3px solid var(--vert); box-shadow:0 2px 10px rgba(0,0,0,.4); cursor:pointer; border:3px solid var(--vert); }
+    .aff-simu-n { font-size:13px; color:var(--texte-doux); margin-bottom:20px; }
+    .aff-simu-n strong { color:var(--texte); font-weight:700; }
+    .aff-simu-result {
+      background:linear-gradient(155deg, rgba(16,185,129,.12) 0%, var(--bg) 70%);
+      border:1px solid rgba(16,185,129,.3); border-radius:14px;
+      padding:20px 22px; text-align:center;
+    }
+    .aff-simu-result-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--texte-muted); margin-bottom:8px; }
+    .aff-simu-mensuel { font-size:38px; font-weight:800; color:var(--vert); line-height:1; }
+    .aff-simu-mensuel-lbl { font-size:15px; font-weight:600; color:var(--texte-muted); margin-left:6px; }
+    .aff-simu-annuel { font-size:13px; color:var(--texte-doux); margin-top:8px; }
+    .aff-simu-annuel strong { color:var(--texte); font-weight:700; }
+    .aff-simu-formule { font-size:11px; color:var(--texte-muted); font-family:monospace; margin-top:12px; padding-top:12px; border-top:1px solid var(--bordure); }
+    .aff-simu-note { font-size:11.5px; color:var(--texte-muted); margin:16px 0 0; line-height:1.5; }
+
+    .aff-btn-grad {
+      display:inline-flex; align-items:center; gap:9px;
+      background: linear-gradient(180deg, var(--vert), #059669);
+      color:#05140B; font-weight:700; font-family:'Hanken Grotesk',sans-serif;
+      padding:16px 34px; border-radius:99px; font-size:16px;
+      text-decoration:none; box-shadow:0 14px 40px -14px rgba(16,185,129,.6);
+      transition: transform .15s ease;
+    }
+    .aff-btn-grad:hover { transform: translateY(-2px); }
+
+    .aff-cta-row { display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }
+    .aff-btn-outline {
+      display:inline-flex; align-items:center; gap:8px;
+      border:1px solid rgba(16,185,129,.4); color:var(--vert);
+      font-weight:600; font-family:'Hanken Grotesk',sans-serif;
+      padding:15px 26px; border-radius:99px; font-size:15px;
+      text-decoration:none; background:transparent; transition:background .15s;
+    }
+    .aff-btn-outline:hover { background:rgba(16,185,129,.08); }
+
+    /* ===== LA PROMESSE — preuve de récurrence ===== */
+    .aff-promesse { padding:44px 0; margin-bottom:12px; font-family:'Hanken Grotesk',system-ui,sans-serif; }
+    .aff-promesse h2 { font-family:'Hanken Grotesk',sans-serif; font-weight:500; letter-spacing:-.01em; line-height:1.15; font-size:30px; margin:0 0 12px; color:var(--texte); }
+    .aff-promesse h2 strong { font-weight:800; color:var(--vert); }
+    .aff-promesse-sub { font-size:14px; color:var(--texte-doux); max-width:440px; margin:0 auto 28px; line-height:1.6; }
+
+    .aff-promesse-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+    .aff-promesse-stat { background:var(--bg-card); border:1px solid var(--bordure); border-radius:14px; padding:22px 14px; text-align:center; }
+    .aff-promesse-val { font-size:30px; font-weight:800; color:var(--texte); }
+    .aff-promesse-lbl { font-size:12px; color:var(--texte-muted); margin-top:6px; line-height:1.4; }
+    .aff-promesse-lbl strong { color:var(--texte-doux); font-weight:700; }
+
+    .aff-promesse-timeline { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .aff-promesse-month { background:var(--bg); border:1px solid var(--bordure); border-radius:12px; padding:16px 10px; text-align:center; }
+    .aff-promesse-month-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--texte-muted); }
+    .aff-promesse-month-pct { font-size:22px; font-weight:800; color:var(--vert); margin:6px 0 2px; }
+    .aff-promesse-month-sub { font-size:11px; color:var(--texte-muted); }
+
+    @media (max-width:600px) {
+      .aff-promesse h2 { font-size:24px; }
+      .aff-promesse-val { font-size:24px; }
+    }
+
+    @media (max-width:600px) {
+      .aff-hero-v2 h1 { font-size:27px; }
+      .aff-simu-card { padding:24px 20px 18px; }
+      .aff-simu-mensuel { font-size:32px; }
+    }
+
+    /* ===== PALIERS DE RÉCOMPENSES — étape 2 ===== */
+    .aff-paliers { position:relative; padding:44px 0; margin-bottom:12px; font-family:'Hanken Grotesk',system-ui,sans-serif; }
+    .aff-eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--vert); border:1px solid rgba(16,185,129,.25); background:rgba(16,185,129,.08); padding:7px 16px; border-radius:99px; margin-bottom:16px; }
+    .aff-paliers h2 { font-family:'Hanken Grotesk',sans-serif; font-weight:500; letter-spacing:-.01em; line-height:1.2; font-size:26px; margin:0 0 10px; color:var(--texte); }
+    .aff-paliers h2 strong { font-weight:800; color:var(--vert); }
+    .aff-paliers-sub { font-size:13.5px; color:var(--texte-muted); max-width:420px; margin:0; line-height:1.55; }
+
+    .aff-timeline { position:relative; max-width:480px; }
+    .aff-timeline::before {
+      content:''; position:absolute; left:27px; top:8px; bottom:8px; width:2px;
+      background:linear-gradient(180deg, rgba(16,185,129,.5), rgba(16,185,129,.05));
+    }
+    .aff-tier { position:relative; display:flex; align-items:flex-start; gap:18px; padding-left:0; margin-bottom:14px; }
+    .aff-tier:last-child { margin-bottom:0; }
+    .aff-tier-icon {
+      position:relative; z-index:1; flex-shrink:0;
+      width:56px; height:56px; border-radius:50%;
+      background:var(--bg-card); border:1px solid var(--bordure);
+      display:flex; align-items:center; justify-content:center; font-size:22px;
+    }
+    .aff-tier-card {
+      flex:1; display:flex; align-items:center; justify-content:space-between; gap:14px;
+      background:var(--bg-card); border:1px solid var(--bordure); border-radius:14px;
+      padding:16px 20px; min-height:24px;
+    }
+    .aff-tier-seuil { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--texte-muted); margin-bottom:4px; }
+    .aff-tier-recompense { font-size:15px; font-weight:700; color:var(--texte); }
+    .aff-tier-lock { flex-shrink:0; font-size:15px; opacity:.5; }
+
+    /* Dernier palier — accent visuel (objectif ultime) */
+    .aff-tier.aff-tier-top .aff-tier-icon { background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.4); }
+    .aff-tier.aff-tier-top .aff-tier-card { border-color:rgba(16,185,129,.35); background:linear-gradient(155deg, rgba(16,185,129,.08) 0%, var(--bg-card) 70%); }
+    .aff-tier.aff-tier-top .aff-tier-recompense { color:var(--vert); }
+
+    @media (max-width:600px) {
+      .aff-paliers h2 { font-size:22px; }
+      .aff-tier-icon { width:46px; height:46px; font-size:19px; }
+      .aff-timeline::before { left:22px; }
+      .aff-tier-card { padding:14px 16px; flex-direction:column; align-items:flex-start; gap:4px; }
+      .aff-tier-lock { position:absolute; top:14px; right:14px; }
+    }
+
+    /* ===== PLAYBOOK AFFILIÉ — étape 3 ===== */
+    .aff-playbook { padding:44px 0; margin-bottom:12px; font-family:'Hanken Grotesk',system-ui,sans-serif; }
+    .aff-playbook h2 { font-family:'Hanken Grotesk',sans-serif; font-weight:500; letter-spacing:-.01em; line-height:1.2; font-size:26px; margin:0 0 10px; color:var(--texte); }
+    .aff-playbook h2 strong { font-weight:800; color:var(--vert); }
+    .aff-playbook-sub { font-size:13.5px; color:var(--texte-muted); max-width:420px; margin:0; line-height:1.55; }
+
+    .aff-playbook-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+    .aff-play-card { background:var(--bg-card); border:1px solid var(--bordure); border-radius:16px; padding:22px 22px 20px; }
+    .aff-play-num { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:linear-gradient(155deg,var(--vert),#059669); color:#05140B; font-size:13px; font-weight:800; margin-bottom:14px; }
+    .aff-play-card h3 { font-size:15.5px; font-weight:700; color:var(--texte); margin:0 0 7px; line-height:1.3; }
+    .aff-play-card p { font-size:13.5px; color:var(--texte-doux); line-height:1.55; margin:0; }
+    .aff-play-card .aff-play-tag { display:inline-block; margin-top:12px; font-size:11px; font-weight:700; color:var(--jaune); background:rgba(245,158,11,.12); padding:4px 10px; border-radius:6px; }
+
+    @media (max-width:900px) {
+      .aff-playbook-grid { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:640px) {
+      .aff-playbook-grid { grid-template-columns:1fr; }
+      .aff-playbook h2 { font-size:22px; }
+    }
+
+    /* ===== FOOTER — étape 4 (repris du footer existant du site) ===== */
+    .aff-footer { border-top:1px solid var(--bordure); padding:40px 0 26px; margin-top:16px; font-family:'Hanken Grotesk',system-ui,sans-serif; }
+    .aff-foot-grid { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:22px; margin-bottom:26px; }
+    .aff-foot-about .aff-foot-logo { font-weight:800; font-size:17px; color:var(--texte); }
+    .aff-foot-about .aff-foot-logo span { color:var(--vert); }
+    .aff-foot-about p { font-size:12.5px; color:var(--texte-muted); margin-top:10px; line-height:1.55; max-width:220px; }
+    .aff-foot-grid h4 { font-size:11px; color:var(--texte-muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+    .aff-foot-grid a { display:block; font-size:12.5px; color:var(--texte-doux); margin-bottom:8px; text-decoration:none; }
+    .aff-foot-grid a:hover { color:var(--texte); }
+    .aff-foot-bottom { border-top:1px solid var(--bordure); padding-top:18px; font-size:11.5px; color:var(--texte-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+
+    @media (max-width:600px) {
+      .aff-foot-grid { grid-template-columns:1fr 1fr; }
+      .aff-foot-about { grid-column:1/-1; margin-bottom:6px; }
+    }
   </style>
+  <script src="/js/ref-capture.js"></script>
 </head>
 <body>
+  <nav class="aff-navbar">
+    <div class="aff-nav-inner">
+      <a href="index.html" class="aff-nav-logo"><span class="aff-nav-logomark">C</span> <span class="aff-nav-word">Créatis</span></a>
+      <div class="aff-nav-links">
+        <a href="/index.html#comment-ca-marche" class="aff-nav-link">Comment ça marche</a>
+        <a href="/index.html#fonctionnalites" class="aff-nav-link">Fonctionnalités</a>
+        <a href="/index.html#resultats" class="aff-nav-link">Résultats</a>
+        <a href="/index.html#tarifs" class="aff-nav-link">Tarifs</a>
+        <a href="/affiliation" class="aff-nav-link aff-nav-link-active">Affiliation</a>
+      </div>
+      <div class="aff-nav-actions">
+        <a href="auth.html?returnUrl=/affiliation" class="aff-nav-ghost">Connexion</a>
+        <a href="#auth-wall" class="aff-nav-cta">Devenir affilié →</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero + simulateur (étape 1) -->
+  <section class="aff-hero-v2">
+    <div class="aff-dotgrid"></div>
+    <span class="aff-glow aff-glow-green"></span>
+    <span class="aff-glow aff-glow-orange"></span>
+
+    <div class="aff-wide">
+      <div class="aff-split aff-split-center">
+        <div class="aff-split-text">
+          <div class="aff-hero-badge">Programme Partenaire</div>
+          <h1>Gagne 30% de commission récurrente,<br><strong>chaque mois, à vie du client</strong>.</h1>
+          <p class="aff-hero-sub">Chaque abonné Pro que tu amènes te rapporte une commission tant qu'il reste actif. Aucune audience minimale.</p>
+          <div class="aff-cta-row">
+            <a href="#auth-wall" class="aff-btn-grad" id="cta-rejoindre">Devenir affilié →</a>
+            <a href="#playbook" class="aff-btn-outline">Voir le guide</a>
+          </div>
+        </div>
+
+        <div class="aff-simu-card">
+          <div class="aff-simu-label">Simule tes revenus</div>
+          <input type="range" class="aff-simu-slider" id="aff-simu-slider" min="1" max="200" value="10"
+            style="--pct:5%" oninput="majSimulateurAffiliation(this.value)">
+          <div class="aff-simu-n"><strong id="aff-simu-n-val">10</strong> abonné(s) parrainé(s)</div>
+          <div class="aff-simu-result">
+            <div class="aff-simu-result-lbl">Tu gagnerais</div>
+            <div><span class="aff-simu-mensuel" id="aff-simu-mensuel">60€</span><span class="aff-simu-mensuel-lbl">/ mois</span></div>
+            <div class="aff-simu-annuel">soit <strong id="aff-simu-annuel">720€</strong> / an, en automatique</div>
+            <div class="aff-simu-formule" id="aff-simu-formule">10 × 19,90€ × 30% = 60€/mois</div>
+          </div>
+          <p class="aff-simu-note">Simulation basée sur l'abonnement Pro mensuel à 19,90€.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- La Promesse — preuve de récurrence -->
+  <section class="aff-promesse">
+    <div class="aff-wide">
+      <div class="aff-split">
+        <div>
+          <div class="aff-promesse-stats">
+            <div class="aff-promesse-stat">
+              <div class="aff-promesse-val">30%</div>
+              <div class="aff-promesse-lbl">sur chaque paiement, <strong>chaque mois</strong></div>
+            </div>
+            <div class="aff-promesse-stat">
+              <div class="aff-promesse-val">0€</div>
+              <div class="aff-promesse-lbl">plafond, quota, surprise</div>
+            </div>
+            <div class="aff-promesse-stat">
+              <div class="aff-promesse-val">10</div>
+              <div class="aff-promesse-lbl">parraine 10 abonnés → <strong>Pro à vie</strong></div>
+            </div>
+          </div>
+          <div class="aff-promesse-timeline">
+            <div class="aff-promesse-month"><div class="aff-promesse-month-lbl">Mois 1</div><div class="aff-promesse-month-pct">30%</div><div class="aff-promesse-month-sub">5,97€ / filleul</div></div>
+            <div class="aff-promesse-month"><div class="aff-promesse-month-lbl">Mois 12</div><div class="aff-promesse-month-pct">30%</div><div class="aff-promesse-month-sub">toujours payé</div></div>
+            <div class="aff-promesse-month"><div class="aff-promesse-month-lbl">Mois 60</div><div class="aff-promesse-month-pct">30%</div><div class="aff-promesse-month-sub">toujours payé</div></div>
+          </div>
+        </div>
+
+        <div class="aff-split-text">
+          <div class="aff-eyebrow">La promesse</div>
+          <h2>Sois payé. <strong>À vie.</strong></h2>
+          <p class="aff-promesse-sub">Une inscription. Des paiements à vie. Tant que ton filleul reste abonné, tu continues à gagner — chaque mois.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Paliers de récompenses — étape 2 -->
+  <section class="aff-paliers">
+    <div class="aff-wide">
+      <div class="aff-split">
+        <div class="aff-split-text">
+          <div class="aff-eyebrow">Paliers de récompenses</div>
+          <h2>Plus tu recrutes, <strong>plus tu gagnes</strong>.</h2>
+          <p class="aff-paliers-sub">Parrainage actif = abonné payant avec abonnement en cours.</p>
+        </div>
+
+        <div class="aff-timeline">
+          <div class="aff-tier">
+            <div class="aff-tier-icon">🎁</div>
+            <div class="aff-tier-card">
+              <div><div class="aff-tier-seuil">5 parrainages actifs</div><div class="aff-tier-recompense">1 mois Pro offert</div></div>
+              <div class="aff-tier-lock">🔒</div>
+            </div>
+          </div>
+          <div class="aff-tier">
+            <div class="aff-tier-icon">⭐</div>
+            <div class="aff-tier-card">
+              <div><div class="aff-tier-seuil">10 parrainages actifs</div><div class="aff-tier-recompense">Créatis Pro à vie</div></div>
+              <div class="aff-tier-lock">🔒</div>
+            </div>
+          </div>
+          <div class="aff-tier">
+            <div class="aff-tier-icon">💰</div>
+            <div class="aff-tier-card">
+              <div><div class="aff-tier-seuil">25 parrainages actifs</div><div class="aff-tier-recompense">Bonus 100€ cash</div></div>
+              <div class="aff-tier-lock">🔒</div>
+            </div>
+          </div>
+          <div class="aff-tier">
+            <div class="aff-tier-icon">📈</div>
+            <div class="aff-tier-card">
+              <div><div class="aff-tier-seuil">50 parrainages actifs</div><div class="aff-tier-recompense">Commission → 35%</div></div>
+              <div class="aff-tier-lock">🔒</div>
+            </div>
+          </div>
+          <div class="aff-tier aff-tier-top">
+            <div class="aff-tier-icon">🏆</div>
+            <div class="aff-tier-card">
+              <div><div class="aff-tier-seuil">100 parrainages actifs</div><div class="aff-tier-recompense">Commission → 40%</div></div>
+              <div class="aff-tier-lock">🔒</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Playbook affilié — étape 3 -->
+  <section class="aff-playbook" id="playbook">
+    <div class="aff-wide">
+      <div class="aff-split">
+        <div class="aff-playbook-grid">
+          <div class="aff-play-card">
+            <div class="aff-play-num">1</div>
+            <h3>Crée tes clips AVEC Créatis, et poste-les</h3>
+            <p>Pas besoin de vendre l'outil — ta vidéo qui cartonne EST la preuve. Le contenu convainc mieux que n'importe quel argumentaire.</p>
+          </div>
+          <div class="aff-play-card">
+            <div class="aff-play-num">2</div>
+            <h3>Le format qui marche</h3>
+            <p>Une démo de 30-60 secondes. Hook direct genre "personne ne m'avait dit que…". Montre l'outil en action, pas une présentation.</p>
+            <span class="aff-play-tag">Hook découverte</span>
+          </div>
+          <div class="aff-play-card">
+            <div class="aff-play-num">3</div>
+            <h3>Lien en bio + commentaire épinglé</h3>
+            <p>Ton lien affilié dans la bio ET épinglé en commentaire sous chaque post. Deux points de conversion valent mieux qu'un.</p>
+          </div>
+          <div class="aff-play-card">
+            <div class="aff-play-num">4</div>
+            <h3>Le rythme qui paie</h3>
+            <p>2 à 3 Shorts par semaine. La régularité bat le coup de génie isolé — l'algorithme récompense la constance, pas le one-shot.</p>
+          </div>
+        </div>
+
+        <div class="aff-split-text">
+          <div class="aff-eyebrow">Le guide</div>
+          <h2>Comment gagner <strong>tes premières commissions</strong></h2>
+          <p class="aff-playbook-sub">Pas de théorie. Ce qui marche vraiment pour les clippeurs TikTok/Instagram.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div class="page">
-    <div class="header">
-      <a href="index.html" class="logo">Créatis<span>.</span></a>
-      <a href="app.html" class="btn-app">Ouvrir l'app →</a>
-    </div>
-
-    <!-- Hero -->
-    <div class="hero">
-      <div class="hero-badge">Programme Partenaire</div>
-      <h1>Recommande Créatis.<br><span>Gagne 30% à vie.</span></h1>
-      <p class="hero-sub">Chaque abonné Pro que tu amènes te rapporte une commission récurrente, tant qu'il reste actif. Aucune audience minimale.</p>
-      <div class="kpis">
-        <div class="kpi"><div class="kpi-val">30%</div><div class="kpi-label">Commission récurrente</div></div>
-        <div class="kpi"><div class="kpi-val">À vie</div><div class="kpi-label">Tant qu'il reste actif</div></div>
-      </div>
-      <a href="auth.html?returnUrl=/affiliation" class="btn-primary" id="cta-rejoindre">Obtenir mon lien affilié →</a>
-    </div>
-
-    <!-- Comment ça marche -->
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-content">
-          <h3>Crée ton compte gratuit</h3>
-          <p>Ton lien affilié personnalisé est généré automatiquement en 30 secondes.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-content">
-          <h3>Partage ton lien</h3>
-          <p>TikTok, YouTube, newsletter, Discord — montre l'outil en action à ton audience.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-content">
-          <h3>Encaisse chaque mois</h3>
-          <p>30% récurrent sur chaque abonné Pro actif. Virement mensuel dès que tu atteins le seuil.</p>
-        </div>
-      </div>
-    </div>
-
     <!-- Dashboard (connecté) -->
     <div id="dashboard" style="display:none">
       <div class="card">
@@ -179,22 +530,81 @@
     <div class="faq">
       <div class="faq-title">Questions fréquentes</div>
       <details>
-        <summary>La commission dure vraiment à vie ? <span style="color:var(--vert)">+</span></summary>
-        <p>Oui. Tant que la personne reste abonnée à Créatis Pro, tu touches 30% chaque mois — sans limite de durée. Elle reste 2 ans, tu touches 2 ans de commissions.</p>
+        <summary>Quand et comment suis-je payé ? <span style="color:var(--vert)">+</span></summary>
+        <p>Dès 20€ de commissions cumulées, écris à contact@creatis.app pour demander ton virement. Le paiement est traité manuellement par l'équipe — il n'y a pas de virement automatique, mais tu reçois un email à chaque commission générée pour suivre ton solde.</p>
+      </details>
+      <details>
+        <summary>La commission dure combien de temps ? <span style="color:var(--vert)">+</span></summary>
+        <p>Tant que la personne que tu as parrainée reste abonnée à Créatis Pro, tu touches 30% chaque mois — sans limite de durée. Elle reste 2 ans, tu touches 2 ans de commissions.</p>
+      </details>
+      <details>
+        <summary>Comment est tracké mon lien affilié ? <span style="color:var(--vert)">+</span></summary>
+        <p>Ton code est ajouté à l'URL via le paramètre <code>?ref=</code>. Dès qu'un visiteur clique ton lien, ce code est mémorisé dans son navigateur et associé à son compte s'il s'inscrit ensuite — même si ce n'est pas immédiat.</p>
+      </details>
+      <details>
+        <summary>Puis-je promouvoir sur TikTok, Instagram ou YouTube ? <span style="color:var(--vert)">+</span></summary>
+        <p>Oui, sur n'importe quelle plateforme. Aucune audience minimale n'est requise.</p>
+      </details>
+      <details>
+        <summary>Y a-t-il un minimum pour être payé ? <span style="color:var(--vert)">+</span></summary>
+        <p>Oui, 20€ de commissions cumulées minimum avant de pouvoir demander ton virement.</p>
       </details>
       <details>
         <summary>Je dois avoir une grosse audience ? <span style="color:var(--vert)">+</span></summary>
         <p>Non. Ce qui compte c'est que ton audience soit composée de créateurs YouTube ou aspirants créateurs. 1 000 followers engagés dans cette niche convertissent mieux que 100 000 hors cible.</p>
       </details>
-      <details>
-        <summary>Quand et comment je reçois mes commissions ? <span style="color:var(--vert)">+</span></summary>
-        <p>Écris à contact@creatis.app pour demander ton virement dès que tu atteins le seuil. Tu reçois aussi un email automatique pour chaque abonnement que tu génères.</p>
-      </details>
     </div>
 
   </div>
 
+  <footer class="aff-footer">
+    <div class="page" style="padding-top:0;padding-bottom:0">
+      <div class="aff-foot-grid">
+        <div class="aff-foot-about">
+          <div class="aff-foot-logo">Créatis<span>.</span></div>
+          <p>La plateforme IA pour créateurs YouTube. Génère du contenu professionnel en quelques secondes.</p>
+        </div>
+        <div>
+          <h4>Produit</h4>
+          <a href="/index.html#tarifs">Tarifs</a>
+          <a href="/index.html#comment-ca-marche">Comment ça marche</a>
+          <a href="/blog.html">Blog</a>
+          <a href="/affiliation">Affiliation</a>
+        </div>
+        <div>
+          <h4>Légal</h4>
+          <a href="/mentions-legales.html">Mentions légales</a>
+          <a href="/cgu.html">CGU</a>
+          <a href="/confidentialite.html">Confidentialité</a>
+          <a href="mailto:contact@creatis.app">Contact</a>
+        </div>
+      </div>
+      <div class="aff-foot-bottom">
+        <span>© 2026 Créatis · contact@creatis.app</span>
+        <span>Fait avec ❤️ pour les créateurs de contenu</span>
+      </div>
+    </div>
+  </footer>
+
   <div class="toast" id="toast">✅ Copié !</div>
+
+  <script>
+    // Simulateur de gains — étape 1
+    function majSimulateurAffiliation(valeur) {
+      const n = parseInt(valeur, 10);
+      // Calcul en centimes entiers pour éviter les erreurs d'arrondi flottant (19.90 * 0.30 en JS)
+      const mensuel = Math.round(n * 1990 * 30 / 100 / 100);
+      const annuel = mensuel * 12;
+      const slider = document.getElementById('aff-simu-slider');
+      const pct = ((n - slider.min) / (slider.max - slider.min)) * 100;
+      slider.style.setProperty('--pct', pct + '%');
+      document.getElementById('aff-simu-n-val').textContent = n;
+      document.getElementById('aff-simu-mensuel').textContent = mensuel.toLocaleString('fr-FR') + '€';
+      document.getElementById('aff-simu-annuel').textContent = annuel.toLocaleString('fr-FR') + '€';
+      document.getElementById('aff-simu-formule').textContent = `${n} × 19,90€ × 30% = ${mensuel.toLocaleString('fr-FR')}€/mois`;
+    }
+    majSimulateurAffiliation(document.getElementById('aff-simu-slider').value);
+  </script>
 
   <script>
     // Show immediately from localStorage — no SDK wait needed for non-logged visitors
@@ -279,17 +689,17 @@
 
     function partagerWhatsApp() {
       const link = document.getElementById('ref-link').value;
-      window.open(`https://wa.me/?text=${encodeURIComponent(`J'utilise Créatis pour mes scripts vidéo en 30s avec l'IA 🎬 Essai gratuit → ${link}`)}`, '_blank');
+      window.open(`https://wa.me/?text=${encodeURIComponent(`J'utilise Créatis pour transformer mes vidéos longues en 10 clips viraux avec l'IA 🎬 Sous-titres inclus. Essai gratuit → ${link}`)}`, '_blank');
     }
 
     function partagerTwitter() {
       const link = document.getElementById('ref-link').value;
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Créatis génère mon script vidéo complet en 30 secondes ⚡\nScript, titre, miniature — tout d'un coup.\nEssai gratuit → ${link}`)}`, '_blank');
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Créatis transforme une vidéo longue (podcast, live, interview) en 10 clips viraux automatiquement ⚡\nSous-titres karaoke inclus. Alternative FR à Opus Clip.\nEssai gratuit → ${link}`)}`, '_blank');
     }
 
     function copierScriptTikTok() {
       const link = document.getElementById('ref-link').value;
-      const script = `Hook : "Cet outil génère mon script en 30 secondes..."\n\nTu tapes ton sujet — Créatis te donne 5 titres, un script complet, une description SEO et la miniature. Avant ça prenait 2h. Maintenant 30 secondes.\n\nGratuit pour commencer → ${link}`;
+      const script = `Hook : "Cet outil transforme 1h de vidéo en 10 clips viraux en 60 secondes..."\n\nTu uploades ton podcast / live / vidéo longue — Créatis repère les 10 meilleurs moments, les découpe en 9:16 et ajoute les sous-titres karaoke. Avant ça prenait des heures. Maintenant 60 secondes.\n\nGratuit pour commencer → ${link}`;
       navigator.clipboard.writeText(script).catch(() => {});
       afficherToast('Script TikTok copié !');
     }

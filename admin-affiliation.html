@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Affiliation — Créatis Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: var(--bg); min-height: 100vh; }
+
+    .admin-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--bordure);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-header h1 { font-size: 16px; font-weight: 700; color: var(--texte); margin: 0; }
+    .admin-header .badge-admin { background: rgba(239,68,68,0.15); color: var(--rouge); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-left: 10px; }
+
+    .admin-body { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    .aff-stats-barre { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .aff-stat { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: var(--radius); padding: 14px 20px; }
+    .aff-stat .val { font-size: 22px; font-weight: 800; color: var(--vert); }
+    .aff-stat .lbl { font-size: 12px; color: var(--texte-muted); }
+
+    .aff-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border: 1px solid var(--bordure); border-radius: var(--radius); overflow: hidden; }
+    .aff-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-muted); padding: 12px 14px; border-bottom: 1px solid var(--bordure); }
+    .aff-table td { padding: 12px 14px; font-size: 13px; color: var(--texte); border-bottom: 1px solid var(--bordure); vertical-align: middle; }
+    .aff-table tr:last-child td { border-bottom: none; }
+    .aff-table tr:hover td { background: var(--bg-card-hover, rgba(255,255,255,.02)); }
+
+    .aff-nom { font-weight: 600; }
+    .aff-email { color: var(--texte-muted); font-size: 12px; font-family: monospace; }
+    .aff-code { font-family: monospace; font-size: 11px; color: var(--texte-muted); }
+
+    .aff-palier-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(16,185,129,.14); color: var(--vert); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+    .aff-palier-badge.aucun { background: none; color: var(--texte-muted); }
+
+    .aff-progress-wrap { display: flex; align-items: center; gap: 8px; }
+    .aff-progress-bar { flex: 1; min-width: 80px; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .aff-progress-fill { height: 100%; background: var(--vert); border-radius: 3px; }
+    .aff-progress-txt { font-size: 11px; color: var(--texte-muted); white-space: nowrap; }
+
+    .aff-vide { text-align: center; padding: 60px 20px; color: var(--texte-muted); }
+    .aff-loading { text-align: center; padding: 60px 20px; color: var(--texte-muted); }
+
+    @media (max-width: 700px) {
+      .aff-table thead { display: none; }
+      .aff-table, .aff-table tbody, .aff-table tr, .aff-table td { display: block; width: 100%; }
+      .aff-table tr { border-bottom: 1px solid var(--bordure); padding: 12px 14px; }
+      .aff-table td { border: none; padding: 3px 0; }
+      .aff-table td::before { content: attr(data-label); display: block; font-size: 10px; text-transform: uppercase; color: var(--texte-muted); margin-bottom: 2px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <h1>Affiliation <span class="badge-admin">ADMIN</span></h1>
+    <a href="/affiliation" class="btn-ghost btn-sm" style="text-decoration:none">Page publique →</a>
+  </header>
+
+  <div class="admin-body">
+    <div class="aff-stats-barre" id="aff-stats-barre"></div>
+    <div id="aff-contenu"><div class="aff-loading">Chargement des affiliés…</div></div>
+  </div>
+
+  <script>
+    const PALIER_ICONES = ['', '🎁', '⭐', '💰', '📈', '🏆'];
+
+    function getToken(forcerPrompt) {
+      let token = sessionStorage.getItem('creatis_admin_token');
+      if (!token || forcerPrompt) {
+        token = prompt('Token admin (variable Vercel ADMIN_TOKEN) :') || '';
+        sessionStorage.setItem('creatis_admin_token', token);
+      }
+      return token;
+    }
+
+    async function charger(forcerPrompt) {
+      const contenu = document.getElementById('aff-contenu');
+      const statsBarre = document.getElementById('aff-stats-barre');
+      const token = getToken(forcerPrompt);
+
+      try {
+        const res = await fetch('/api/parrainage?admin=1', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (res.status === 401) {
+          sessionStorage.removeItem('creatis_admin_token');
+          contenu.innerHTML = `<div class="aff-vide">Token incorrect. <button class="btn-primaire btn-sm" onclick="charger(true)">Réessayer</button></div>`;
+          statsBarre.innerHTML = '';
+          return;
+        }
+
+        const data = await res.json();
+        const affilies = data.affilies || [];
+
+        if (data.error) {
+          contenu.innerHTML = `<div class="aff-vide">Erreur serveur : ${data.error}</div>`;
+          statsBarre.innerHTML = '';
+          return;
+        }
+
+        if (!affilies.length) {
+          contenu.innerHTML = '<div class="aff-vide">Aucun affilié avec au moins un filleul pour l\'instant.</div>';
+          statsBarre.innerHTML = '';
+          return;
+        }
+
+        const totalActifs = affilies.reduce((s, a) => s + a.actifs, 0);
+        const totalInscrits = affilies.reduce((s, a) => s + a.inscrits, 0);
+        const auMoinsUnPalier = affilies.filter(a => a.palierActuel > 0).length;
+
+        statsBarre.innerHTML = `
+          <div class="aff-stat"><div class="val">${affilies.length}</div><div class="lbl">affiliés actifs</div></div>
+          <div class="aff-stat"><div class="val">${totalActifs}</div><div class="lbl">filleuls payants (total)</div></div>
+          <div class="aff-stat"><div class="val">${totalInscrits}</div><div class="lbl">filleuls inscrits (total)</div></div>
+          <div class="aff-stat"><div class="val">${auMoinsUnPalier}</div><div class="lbl">ont atteint un palier</div></div>
+        `;
+
+        contenu.innerHTML = `
+          <table class="aff-table">
+            <thead>
+              <tr>
+                <th>Affilié</th>
+                <th>Code</th>
+                <th>Filleuls actifs</th>
+                <th>Palier atteint</th>
+                <th>Progression</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${affilies.map(a => {
+                const prochain = a.prochainPalier;
+                const pctProchain = prochain ? Math.min(100, Math.round((a.actifs / prochain.seuil) * 100)) : 100;
+                return `
+                <tr>
+                  <td data-label="Affilié">
+                    <div class="aff-nom">${a.nom || '(sans nom)'}</div>
+                    <div class="aff-email">${a.email}</div>
+                  </td>
+                  <td data-label="Code"><span class="aff-code">${a.code}</span></td>
+                  <td data-label="Filleuls actifs">${a.actifs} <span style="color:var(--texte-muted);font-size:11px">/ ${a.inscrits} inscrits</span></td>
+                  <td data-label="Palier atteint">
+                    ${a.palierActuel > 0
+                      ? `<span class="aff-palier-badge">${PALIER_ICONES[a.palierActuel]} ${a.recompenseActuelle}</span>`
+                      : `<span class="aff-palier-badge aucun">— aucun</span>`}
+                  </td>
+                  <td data-label="Progression">
+                    ${prochain
+                      ? `<div class="aff-progress-wrap">
+                          <div class="aff-progress-bar"><div class="aff-progress-fill" style="width:${pctProchain}%"></div></div>
+                          <span class="aff-progress-txt">${a.actifs}/${prochain.seuil}</span>
+                        </div>`
+                      : `<span class="aff-progress-txt">Tous les paliers atteints 🎉</span>`}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        contenu.innerHTML = `<div class="aff-vide">Erreur de chargement : ${e.message}</div>`;
+      }
+    }
+
+    charger();
+  </script>
+</body>
+</html>
