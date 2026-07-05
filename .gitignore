@@ -16,6 +16,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 
+# Bibliothèque de skills tierce (installée via marketplace, pas du code Créatis)
+.agents/
+skills-lock.json
+
 # Build et cache
 .cache/
 dist/
