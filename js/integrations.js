@@ -165,9 +165,11 @@ const Stripe_Integration = {
   },
 
   /* Sauvegarde le plan cible avant l'auth OAuth */
-  sauvegarderPlanCible(plan) {
+  sauvegarderPlanCible(plan, annuel = false) {
     if (plan && CONFIG.PLANS[plan] && plan !== 'gratuit') {
       localStorage.setItem('creatis_plan_cible', plan);
+      if (annuel) localStorage.setItem('creatis_plan_cible_annuel', '1');
+      else localStorage.removeItem('creatis_plan_cible_annuel');
     }
   },
 
@@ -176,6 +178,13 @@ const Stripe_Integration = {
     const plan = localStorage.getItem('creatis_plan_cible');
     localStorage.removeItem('creatis_plan_cible');
     return plan;
+  },
+
+  /* Récupère et efface le flag annuel du plan cible */
+  getAnnuelCible() {
+    const annuel = localStorage.getItem('creatis_plan_cible_annuel') === '1';
+    localStorage.removeItem('creatis_plan_cible_annuel');
+    return annuel;
   },
 
   /* Lance une session de paiement Stripe Checkout */

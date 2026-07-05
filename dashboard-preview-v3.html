@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard V2 Colors — Créatis</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080A0F;
+    --bg-2: #0C0F16;
+    --card: #10141C;
+    --card-2: #141A23;
+    --paper: #F2F4F7;
+    --muted: #8A93A3;
+    --line: rgba(255,255,255,0.08);
+    --green: #10b981;
+    --green-2: #059669;
+    --green-soft: rgba(16,185,129,0.14);
+    --green-glow: rgba(16,185,129,0.5);
+    --font: 'Hanken Grotesk', system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050505; color: var(--paper); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+
+  .tabs { display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .tab { flex: 1; padding: 14px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; transition: all .2s; letter-spacing: 0.3px; }
+  .tab:hover { color: var(--paper); }
+  .tab.active { color: var(--green); background: var(--bg-2); }
+  .version { display: none; padding: 65px 20px 40px; }
+  .version.active { display: flex; justify-content: center; }
+
+  .modal { width: 100%; max-width: 960px; display: flex; overflow: hidden; }
+
+  /* ═══════════════════════════════════════════ */
+  /* VERSION D — Minimal Premium (V2 colors)    */
+  /* ═══════════════════════════════════════════ */
+  #vd .modal { background: var(--bg-2); border-radius: 20px; border: 1px solid var(--line); box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(16,185,129,0.03); }
+
+  #vd .player { width: 300px; flex-shrink: 0; background: #000; border-radius: 20px 0 0 20px; overflow: hidden; display: flex; flex-direction: column; }
+  #vd .player-area { aspect-ratio: 9/16; width: 100%; background: var(--bg); position: relative; display: flex; align-items: center; justify-content: center; }
+  #vd .player-area img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+  #vd .play-btn { position: absolute; width: 50px; height: 50px; border-radius: 14px; background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
+  #vd .play-btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.2); }
+  #vd .play-btn svg { width: 18px; height: 18px; fill: #fff; margin-left: 2px; }
+  #vd .sub-preview { position: absolute; bottom: 60px; left: 20px; right: 20px; text-align: center; font-weight: 800; font-size: 15px; color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
+  #vd .sub-preview .hl { color: var(--green); }
+  #vd .controls { height: 40px; background: rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+  #vd .prog { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  #vd .prog-fill { height: 100%; width: 35%; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--green-2)); }
+  #vd .time { font-size: 10px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  #vd .settings { flex: 1; display: flex; flex-direction: column; }
+  #vd .s-head { padding: 20px 24px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  #vd .s-head-left { display: flex; align-items: center; gap: 12px; }
+  #vd .s-score { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--green), var(--green-2)); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; box-shadow: 0 4px 16px rgba(16,185,129,0.2); }
+  #vd .s-title { font-size: 16px; font-weight: 800; color: var(--paper); letter-spacing: -0.3px; }
+  #vd .s-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  #vd .s-close { width: 32px; height: 32px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  #vd .s-close:hover { background: var(--card-2); color: var(--paper); }
+
+  #vd .s-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  /* Presets */
+  #vd .preset-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+  #vd .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 22px; }
+  #vd .preset { border-radius: 12px; background: var(--card); border: 1.5px solid var(--line); cursor: pointer; transition: all .2s; overflow: hidden; }
+  #vd .preset:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
+  #vd .preset.active { border-color: var(--green); box-shadow: 0 0 0 1px var(--green), 0 4px 20px rgba(16,185,129,0.12); }
+  #vd .preset-vis { height: 48px; display: flex; align-items: center; justify-content: center; }
+  #vd .preset-txt { font-weight: 800; font-size: 14px; }
+  #vd .preset-name { padding: 6px 8px; font-size: 9px; font-weight: 700; color: var(--muted); text-align: center; letter-spacing: 0.3px; border-top: 1px solid var(--line); }
+  #vd .preset.active .preset-name { color: var(--green); }
+
+  #vd .p-none .preset-vis { background: var(--bg); }
+  #vd .p-none .preset-txt { color: #222; font-size: 16px; }
+  #vd .p-bold .preset-vis { background: linear-gradient(135deg, var(--card), var(--card-2)); }
+  #vd .p-bold .preset-txt { color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+  #vd .p-min .preset-vis { background: var(--card); }
+  #vd .p-min .preset-txt { color: rgba(255,255,255,0.6); font-weight: 500; font-size: 12px; }
+  #vd .p-karaoke .preset-vis { background: linear-gradient(135deg, #0a1a12, var(--bg)); }
+  #vd .p-karaoke .preset-txt { color: #fff; }
+  #vd .p-karaoke .hl { color: var(--green); }
+  #vd .p-neon .preset-vis { background: radial-gradient(circle, var(--green-soft), var(--bg)); }
+  #vd .p-neon .preset-txt { color: var(--green); text-shadow: 0 0 8px var(--green), 0 0 20px rgba(16,185,129,0.3); }
+  #vd .p-more .preset-vis { background: var(--bg); }
+  #vd .p-more .preset-txt { color: var(--muted); font-size: 20px; font-weight: 400; }
+  #vd .p-more:hover .preset-txt { color: var(--green); }
+
+  /* Controls row */
+  #vd .ctrl-row { display: flex; gap: 24px; align-items: flex-end; margin-bottom: 22px; }
+  #vd .ctrl-group {}
+  #vd .ctrl-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  #vd .sz-row { display: flex; gap: 4px; }
+  #vd .sz-btn { width: 34px; height: 34px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+  #vd .sz-btn:hover { border-color: rgba(255,255,255,0.15); color: var(--paper); }
+  #vd .sz-btn.active { background: var(--green); border-color: var(--green); color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
+  #vd .clr-row { display: flex; gap: 8px; align-items: center; }
+  #vd .clr { width: 30px; height: 30px; border-radius: 8px; border: 2px solid var(--line); cursor: pointer; transition: border-color .15s; }
+  #vd .clr:hover { border-color: rgba(255,255,255,0.2); }
+  #vd .clr-lbl { font-size: 10px; color: var(--muted); font-weight: 600; }
+
+  /* Divider */
+  #vd .divider { height: 1px; background: var(--line); margin: 2px 0 16px; }
+
+  /* Toggle row */
+  #vd .tgl-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+  #vd .tgl-left { display: flex; align-items: center; gap: 12px; }
+  #vd .tgl-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  #vd .tgl-title { font-size: 13px; font-weight: 700; color: var(--paper); }
+  #vd .tgl-desc { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  #vd .tgl { width: 42px; height: 24px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); position: relative; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+  #vd .tgl::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); top: 2px; left: 2px; transition: all .2s; }
+  #vd .tgl.on { background: var(--green); border-color: var(--green); box-shadow: 0 0 12px rgba(16,185,129,0.25); }
+  #vd .tgl.on::after { transform: translateX(18px); background: #fff; }
+
+  /* Actions */
+  #vd .actions { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  #vd .btn-edit { width: 100%; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--font); }
+  #vd .btn-edit:hover { background: var(--card-2); border-color: rgba(255,255,255,0.12); color: var(--paper); }
+  #vd .btn-dl { width: 100%; padding: 14px; border-radius: 12px; background: linear-gradient(180deg, var(--green), var(--green-2)); border: none; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font); box-shadow: 0 8px 30px -8px var(--green-glow); letter-spacing: -0.2px; }
+  #vd .btn-dl:hover { transform: translateY(-1px); box-shadow: 0 12px 40px -8px var(--green-glow); }
+  #vd .btn-dl svg { width: 16px; height: 16px; }
+
+
+  /* ═══════════════════════════════════════════ */
+  /* VERSION E — Pro Studio (V2 colors)         */
+  /* ═══════════════════════════════════════════ */
+  #ve .modal { background: var(--bg); border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0,0,0,0.7); }
+
+  #ve .player { width: 290px; flex-shrink: 0; background: #000; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+  #ve .player-area { aspect-ratio: 9/16; width: 100%; background: #050505; position: relative; display: flex; align-items: center; justify-content: center; }
+  #ve .player-area img { width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+  #ve .play-btn { position: absolute; width: 46px; height: 46px; border-radius: 50%; background: var(--green-soft); border: 2px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
+  #ve .play-btn:hover { background: rgba(16,185,129,0.25); border-color: var(--green); }
+  #ve .play-btn svg { width: 16px; height: 16px; fill: var(--green); margin-left: 2px; }
+  #ve .sub-preview { position: absolute; bottom: 55px; left: 16px; right: 16px; text-align: center; font-weight: 800; font-size: 14px; color: #fff; }
+  #ve .sub-preview .hl { color: var(--green); }
+  #ve .controls { height: 38px; background: var(--bg); border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+  #ve .prog { flex: 1; height: 2px; border-radius: 2px; background: var(--card); }
+  #ve .prog-fill { height: 100%; width: 35%; background: var(--green); border-radius: 2px; }
+  #ve .time { font-size: 10px; color: var(--green); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  #ve .settings { flex: 1; display: flex; flex-direction: column; background: var(--bg); }
+  #ve .s-head { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  #ve .s-head-left { display: flex; align-items: center; gap: 10px; }
+  #ve .s-score { padding: 5px 12px; border-radius: 8px; background: var(--green-soft); border: 1px solid rgba(16,185,129,0.2); font-size: 13px; font-weight: 800; color: var(--green); }
+  #ve .s-title { font-size: 15px; font-weight: 800; color: var(--paper); letter-spacing: -0.3px; }
+  #ve .s-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  #ve .s-close { width: 28px; height: 28px; border-radius: 8px; background: transparent; border: 1px solid var(--line); color: var(--muted); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  #ve .s-close:hover { border-color: var(--green); color: var(--green); }
+
+  #ve .s-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+  /* Tab bar */
+  #ve .sec-tabs { display: flex; gap: 0; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  #ve .sec-tab { flex: 1; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer; text-align: center; transition: all .15s; background: transparent; }
+  #ve .sec-tab:hover { color: var(--paper); background: var(--card); }
+  #ve .sec-tab.active { color: var(--green); background: var(--green-soft); }
+
+  /* Categories */
+  #ve .cats { display: flex; gap: 6px; margin-bottom: 12px; }
+  #ve .cat { padding: 5px 12px; border-radius: 99px; background: transparent; border: 1px solid var(--line); font-size: 10px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all .15s; }
+  #ve .cat:hover { border-color: rgba(255,255,255,0.15); color: var(--paper); }
+  #ve .cat.active { background: var(--green-soft); border-color: rgba(16,185,129,0.25); color: var(--green); }
+
+  /* Style cards */
+  #ve .styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 18px; }
+  #ve .st-card { border-radius: 10px; background: var(--card); border: 1px solid var(--line); cursor: pointer; transition: all .15s; overflow: hidden; }
+  #ve .st-card:hover { border-color: rgba(255,255,255,0.12); }
+  #ve .st-card.active { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  #ve .st-vis { height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  #ve .st-name { padding: 5px; font-size: 9px; font-weight: 600; color: var(--muted); text-align: center; border-top: 1px solid var(--line); }
+  #ve .st-card.active .st-name { color: var(--green); }
+
+  #ve .st-none .st-vis { background: var(--bg); color: #1a1a1a; }
+  #ve .st-bold .st-vis { background: linear-gradient(135deg, var(--card), var(--card-2)); color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+  #ve .st-karaoke .st-vis { background: linear-gradient(135deg, #0a1a12, var(--bg)); color: #fff; }
+  #ve .st-karaoke .hl { color: var(--green); }
+  #ve .st-neon .st-vis { background: radial-gradient(circle, var(--green-soft), var(--bg)); color: var(--green); text-shadow: 0 0 8px var(--green); }
+  #ve .st-spot .st-vis { background: var(--bg); color: #222; }
+  #ve .st-spot .hl { color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.7); }
+  #ve .st-more .st-vis { background: var(--bg); color: var(--muted); font-size: 18px; font-weight: 400; }
+
+  /* Controls */
+  #ve .inline-ctrls { display: flex; gap: 20px; align-items: flex-end; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  #ve .ctrl-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  #ve .sz-row { display: flex; gap: 3px; }
+  #ve .sz-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+  #ve .sz-btn.active { background: var(--card); border-color: var(--green); color: var(--green); }
+  #ve .clr-row { display: flex; gap: 6px; align-items: center; }
+  #ve .clr { width: 28px; height: 28px; border-radius: 7px; border: 2px solid var(--line); cursor: pointer; }
+  #ve .clr-lbl { font-size: 9px; color: var(--muted); font-weight: 600; }
+
+  /* Toggle */
+  #ve .tgl-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+  #ve .tgl-title { font-size: 12px; font-weight: 700; color: var(--paper); }
+  #ve .tgl-desc { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  #ve .tgl { width: 40px; height: 22px; border-radius: 11px; background: var(--card); border: 1px solid var(--line); position: relative; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+  #ve .tgl::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); top: 2px; left: 2px; transition: all .2s; }
+  #ve .tgl.on { background: var(--green); border-color: var(--green); }
+  #ve .tgl.on::after { transform: translateX(18px); background: #fff; }
+
+  /* Actions */
+  #ve .actions { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  #ve .btn-edit { width: 100%; padding: 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--font); transition: all .15s; }
+  #ve .btn-edit:hover { border-color: rgba(255,255,255,0.12); color: var(--paper); }
+  #ve .btn-dl { width: 100%; padding: 13px; border-radius: 10px; background: linear-gradient(180deg, var(--green), var(--green-2)); border: none; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font); box-shadow: 0 8px 24px -6px var(--green-glow); transition: all .15s; }
+  #ve .btn-dl:hover { transform: translateY(-1px); box-shadow: 0 12px 32px -6px var(--green-glow); }
+  #ve .btn-dl svg { width: 15px; height: 15px; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" onclick="sw(0)">D — Minimal Premium</div>
+  <div class="tab" onclick="sw(1)">E — Pro Studio</div>
+</div>
+
+<!-- VERSION D -->
+<div class="version active" id="vd">
+<div class="modal">
+  <div class="player">
+    <div class="player-area">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=60" alt="">
+      <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="sub-preview">un edge flow <span class="hl">et</span></div>
+    </div>
+    <div class="controls">
+      <div class="prog"><div class="prog-fill"></div></div>
+      <span class="time">0:12 / 0:45</span>
+    </div>
+  </div>
+  <div class="settings">
+    <div class="s-head">
+      <div class="s-head-left">
+        <div class="s-score">95</div>
+        <div><div class="s-title">Création de faces</div><div class="s-meta">06:38 → 07:38 · 60s</div></div>
+      </div>
+      <div class="s-close">✕</div>
+    </div>
+    <div class="s-body">
+      <div class="preset-label">Sous-titres</div>
+      <div class="presets">
+        <div class="preset p-none"><div class="preset-vis"><span class="preset-txt">—</span></div><div class="preset-name">Aucun</div></div>
+        <div class="preset p-bold"><div class="preset-vis"><span class="preset-txt">Wow</span></div><div class="preset-name">Bold</div></div>
+        <div class="preset p-min"><div class="preset-vis"><span class="preset-txt">Wow</span></div><div class="preset-name">Minimal</div></div>
+        <div class="preset active p-karaoke"><div class="preset-vis"><span class="preset-txt">W<span class="hl">ow</span></span></div><div class="preset-name">Karaoke</div></div>
+        <div class="preset p-neon"><div class="preset-vis"><span class="preset-txt">Wow</span></div><div class="preset-name">Néon</div></div>
+        <div class="preset p-more"><div class="preset-vis"><span class="preset-txt">+</span></div><div class="preset-name">Plus</div></div>
+      </div>
+
+      <div class="ctrl-row">
+        <div class="ctrl-group">
+          <div class="ctrl-label">Taille</div>
+          <div class="sz-row">
+            <div class="sz-btn active">S</div><div class="sz-btn">M</div><div class="sz-btn">L</div><div class="sz-btn">XL</div>
+          </div>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-label">Couleurs</div>
+          <div class="clr-row">
+            <div class="clr" style="background:#fff"></div><span class="clr-lbl">Texte</span>
+            <div class="clr" style="background:#000"></div><span class="clr-lbl">Fond</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="tgl-row">
+        <div class="tgl-left">
+          <div class="tgl-icon">👤</div>
+          <div><div class="tgl-title">Centrer le visage</div><div class="tgl-desc">Recadrage auto sur le sujet</div></div>
+        </div>
+        <div class="tgl on"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="actions">
+        <button class="btn-edit">✏️ Modifier les sous-titres</button>
+        <button class="btn-dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger ce clip 9:16</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- VERSION E -->
+<div class="version" id="ve">
+<div class="modal">
+  <div class="player">
+    <div class="player-area">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=60" alt="">
+      <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="sub-preview">un edge flow <span class="hl">et</span></div>
+    </div>
+    <div class="controls">
+      <div class="prog"><div class="prog-fill"></div></div>
+      <span class="time">0:12 / 0:45</span>
+    </div>
+  </div>
+  <div class="settings">
+    <div class="s-head">
+      <div class="s-head-left">
+        <div><div class="s-title">Création de faces</div><div class="s-meta">06:38 → 07:38 · 60s</div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="s-score">95</div>
+        <div class="s-close">✕</div>
+      </div>
+    </div>
+    <div class="s-body">
+      <div class="sec-tabs">
+        <div class="sec-tab active">Sous-titres</div>
+        <div class="sec-tab">Hook</div>
+        <div class="sec-tab">Recadrage</div>
+      </div>
+      <div class="cats">
+        <div class="cat active">Populaire</div>
+        <div class="cat">Minimal</div>
+        <div class="cat">Dynamique</div>
+        <div class="cat">Tous</div>
+      </div>
+      <div class="styles">
+        <div class="st-card st-none"><div class="st-vis">—</div><div class="st-name">Aucun</div></div>
+        <div class="st-card st-bold"><div class="st-vis">Wow</div><div class="st-name">Bold</div></div>
+        <div class="st-card active st-karaoke"><div class="st-vis">W<span class="hl">ow</span></div><div class="st-name">Karaoke</div></div>
+        <div class="st-card st-neon"><div class="st-vis">Wow</div><div class="st-name">Néon</div></div>
+        <div class="st-card st-spot"><div class="st-vis">W<span class="hl">ow</span></div><div class="st-name">Spotlight</div></div>
+        <div class="st-card st-more"><div class="st-vis">+</div><div class="st-name">Plus</div></div>
+      </div>
+      <div class="inline-ctrls">
+        <div class="ctrl-group">
+          <div class="ctrl-label">Taille</div>
+          <div class="sz-row">
+            <div class="sz-btn active">S</div><div class="sz-btn">M</div><div class="sz-btn">L</div><div class="sz-btn">XL</div>
+          </div>
+        </div>
+        <div class="ctrl-group">
+          <div class="ctrl-label">Couleurs</div>
+          <div class="clr-row">
+            <div class="clr" style="background:#fff"></div><span class="clr-lbl">Texte</span>
+            <div class="clr" style="background:#000"></div><span class="clr-lbl">Fond</span>
+          </div>
+        </div>
+      </div>
+      <div class="tgl-row">
+        <div><div class="tgl-title">Centrer le visage</div><div class="tgl-desc">Recadrage auto sur le sujet</div></div>
+        <div class="tgl on"></div>
+      </div>
+      <div class="actions">
+        <button class="btn-edit">✏️ Modifier les sous-titres</button>
+        <button class="btn-dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger ce clip 9:16</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function sw(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.version').forEach((v,i) => v.classList.toggle('active', i===n));
+}
+</script>
+</body>
+</html>

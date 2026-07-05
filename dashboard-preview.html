@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard DA — Créatis</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050505; color: #fff; font-family: 'Inter', sans-serif; }
+
+  /* Tab switcher */
+  .tabs { display: flex; gap: 0; position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #0a0a0a; border-bottom: 1px solid #222; }
+  .tab { flex: 1; padding: 16px; text-align: center; font-size: 13px; font-weight: 700; color: #666; cursor: pointer; transition: all .2s; border-bottom: 2px solid transparent; }
+  .tab:hover { color: #aaa; }
+  .tab.active { color: #10b981; border-bottom-color: #10b981; }
+  .version { display: none; padding: 70px 30px 40px; }
+  .version.active { display: flex; justify-content: center; }
+
+  /* Shared modal structure */
+  .modal {
+    width: 100%;
+    max-width: 940px;
+    display: flex;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .player {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .player-area {
+    aspect-ratio: 9/16;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-area img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
+  .play-btn { position: absolute; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .play-btn svg { width: 22px; height: 22px; fill: #fff; margin-left: 3px; }
+  .controls { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+  .prog { flex: 1; height: 3px; border-radius: 2px; position: relative; }
+  .prog-fill { height: 100%; border-radius: 2px; width: 30%; }
+  .time { font-size: 10px; font-weight: 700; }
+
+  .settings {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 85vh;
+  }
+  .s-header { padding: 18px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; }
+  .s-title { font-size: 15px; font-weight: 800; }
+  .s-meta { font-size: 11px; margin-top: 3px; }
+  .s-score { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+  .s-close { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; margin-left: 8px; }
+
+  .s-body { padding: 0 22px 22px; }
+  .s-section { margin-bottom: 18px; }
+  .s-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+  /* Style grid */
+  .sg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .sg-btn { padding: 5px 4px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: all .15s; font-size: 9px; font-weight: 600; }
+  .sg-prev { width: 100%; height: 34px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+
+  /* Size buttons */
+  .sz-row { display: flex; gap: 5px; }
+  .sz { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s; }
+
+  /* Color picker */
+  .cp-row { display: flex; align-items: center; gap: 14px; }
+  .cp-label { font-size: 11px; font-weight: 600; }
+  .cp { width: 30px; height: 30px; border-radius: 6px; border: none; cursor: pointer; padding: 0; }
+
+  /* Toggle */
+  .tgl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; }
+  .tgl-info {}
+  .tgl-title { font-size: 13px; font-weight: 700; }
+  .tgl-desc { font-size: 10px; margin-top: 2px; }
+  .tgl { width: 42px; height: 24px; border-radius: 12px; position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; }
+  .tgl::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform .2s; }
+  .tgl.on::after { transform: translateX(18px); }
+
+  /* Action buttons */
+  .action-btn { width: 100%; padding: 13px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all .15s; border: none; }
+
+  /* ═══════════════════════════════════════ */
+  /* VERSION A — Glass / Neumorphism       */
+  /* ═══════════════════════════════════════ */
+  #va .modal { background: rgba(18,18,22,0.95); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(40px); box-shadow: 0 25px 80px rgba(0,0,0,0.6); }
+  #va .player { background: #000; }
+  #va .player-area { background: #0a0a0a; }
+  #va .play-btn { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15); }
+  #va .controls { background: rgba(0,0,0,0.6); }
+  #va .prog { background: rgba(255,255,255,0.1); }
+  #va .prog-fill { background: #10b981; }
+  #va .time { color: rgba(255,255,255,0.5); }
+
+  #va .settings { background: transparent; }
+  #va .s-title { color: #fff; }
+  #va .s-meta { color: rgba(255,255,255,0.35); }
+  #va .s-score { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+  #va .s-close { background: rgba(255,255,255,0.06); color: #666; }
+  #va .s-close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  #va .s-label { color: rgba(255,255,255,0.25); }
+
+  #va .sg-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+  #va .sg-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+  #va .sg-btn.active { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.4); color: #10b981; }
+  #va .sg-prev { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.04); }
+
+  #va .sz { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #666; }
+  #va .sz:hover { border-color: rgba(255,255,255,0.15); color: #aaa; }
+  #va .sz.active { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.4); color: #10b981; }
+
+  #va .tgl-title { color: rgba(255,255,255,0.8); }
+  #va .tgl-desc { color: rgba(255,255,255,0.3); }
+  #va .tgl { background: rgba(255,255,255,0.1); }
+  #va .tgl.on { background: #10b981; }
+
+  #va .action-btn.primary { background: #fff; color: #000; }
+  #va .action-btn.primary:hover { background: #e5e5e5; }
+  #va .action-btn.secondary { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.08); }
+
+  #va .s-body { border-top: 1px solid rgba(255,255,255,0.05); }
+  #va .s-section + .s-section { border-top: 1px solid rgba(255,255,255,0.04); padding-top: 16px; }
+
+  /* Karaoke preview */
+  #va .k-prev { color: #fff; }
+  #va .k-prev .hl { color: #10b981; }
+  #va .n-prev { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981; }
+
+  /* ═══════════════════════════════════════ */
+  /* VERSION B — Sections cards             */
+  /* ═══════════════════════════════════════ */
+  #vb .modal { background: #111114; border: 1px solid #1e1e22; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  #vb .player { background: #000; }
+  #vb .player-area { background: #080808; }
+  #vb .play-btn { background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); }
+  #vb .controls { background: #0a0a0c; border-top: 1px solid #1a1a1e; }
+  #vb .prog { background: #222; }
+  #vb .prog-fill { background: #10b981; }
+  #vb .time { color: #555; }
+
+  #vb .settings { background: #111114; }
+  #vb .s-header { border-bottom: 1px solid #1e1e22; padding-bottom: 14px; }
+  #vb .s-title { color: #eee; }
+  #vb .s-meta { color: #555; }
+  #vb .s-score { background: #10b981; color: #fff; }
+  #vb .s-close { background: #1a1a1e; color: #666; }
+  #vb .s-close:hover { background: #252528; color: #fff; }
+  #vb .s-label { color: #444; }
+
+  #vb .s-section { background: #16161a; border: 1px solid #1e1e22; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  #vb .s-section .s-label { margin-top: 0; }
+
+  #vb .sg-btn { background: #111114; border: 1px solid #222226; color: #555; }
+  #vb .sg-btn:hover { border-color: #333; color: #999; }
+  #vb .sg-btn.active { border-color: #10b981; background: rgba(16,185,129,0.06); color: #10b981; }
+  #vb .sg-prev { background: #0c0c0e; }
+
+  #vb .sz { background: #111114; border: 1px solid #222226; color: #555; }
+  #vb .sz.active { border-color: #10b981; background: rgba(16,185,129,0.06); color: #10b981; }
+
+  #vb .tgl-title { color: #ddd; }
+  #vb .tgl-desc { color: #555; }
+  #vb .tgl { background: #222226; }
+  #vb .tgl.on { background: #10b981; }
+
+  #vb .action-btn.primary { background: #10b981; color: #fff; border-radius: 12px; }
+  #vb .action-btn.primary:hover { background: #0ea572; }
+  #vb .action-btn.secondary { background: #16161a; color: #aaa; border: 1px solid #222226; border-radius: 12px; }
+
+  #vb .k-prev { color: #fff; }
+  #vb .k-prev .hl { color: #10b981; }
+  #vb .n-prev { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981; }
+
+  /* ═══════════════════════════════════════ */
+  /* VERSION C — Pro Studio / Cinéma        */
+  /* ═══════════════════════════════════════ */
+  #vc .modal { background: #0c0c0c; border: 1px solid #1a1a1a; box-shadow: 0 0 0 1px rgba(16,185,129,0.05), 0 30px 80px rgba(0,0,0,0.7); }
+  #vc .player { background: #000; border-right: 1px solid #1a1a1a; }
+  #vc .player-area { background: #050505; }
+  #vc .play-btn { background: rgba(16,185,129,0.15); border: 2px solid rgba(16,185,129,0.3); }
+  #vc .play-btn svg { fill: #10b981; }
+  #vc .controls { background: #0a0a0a; border-top: 1px solid #1a1a1a; }
+  #vc .prog { background: #1a1a1a; }
+  #vc .prog-fill { background: linear-gradient(90deg, #10b981, #34d399); }
+  #vc .time { color: #10b981; }
+
+  #vc .settings { background: #0c0c0c; }
+  #vc .s-header { border-bottom: 1px solid #1a1a1a; padding-bottom: 14px; }
+  #vc .s-title { color: #fff; }
+  #vc .s-meta { color: #444; }
+  #vc .s-score { background: transparent; color: #10b981; border: 2px solid #10b981; font-size: 14px; }
+  #vc .s-close { background: transparent; color: #444; border: 1px solid #222; }
+  #vc .s-close:hover { border-color: #10b981; color: #10b981; }
+  #vc .s-label { color: #10b981; font-size: 9px; letter-spacing: 1.5px; }
+
+  #vc .s-section + .s-section { border-top: 1px solid #141414; padding-top: 16px; }
+
+  #vc .sg-btn { background: #0f0f0f; border: 1px solid #1a1a1a; color: #555; }
+  #vc .sg-btn:hover { border-color: #10b981; color: #aaa; }
+  #vc .sg-btn.active { border-color: #10b981; background: rgba(16,185,129,0.06); color: #10b981; box-shadow: 0 0 8px rgba(16,185,129,0.1); }
+  #vc .sg-prev { background: #080808; border: 1px solid #111; }
+
+  #vc .sz { background: #0f0f0f; border: 1px solid #1a1a1a; color: #444; }
+  #vc .sz:hover { border-color: #10b981; }
+  #vc .sz.active { border-color: #10b981; background: #0f0f0f; color: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.1); }
+
+  #vc .tgl-title { color: #ccc; }
+  #vc .tgl-desc { color: #444; }
+  #vc .tgl { background: #1a1a1a; }
+  #vc .tgl.on { background: #10b981; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
+
+  #vc .action-btn.primary { background: transparent; color: #10b981; border: 2px solid #10b981; letter-spacing: 0.5px; text-transform: uppercase; font-size: 12px; }
+  #vc .action-btn.primary:hover { background: #10b981; color: #000; }
+  #vc .action-btn.secondary { background: #0f0f0f; color: #666; border: 1px solid #1a1a1a; }
+  #vc .action-btn.secondary:hover { border-color: #10b981; color: #10b981; }
+
+  #vc .k-prev { color: #fff; }
+  #vc .k-prev .hl { color: #10b981; }
+  #vc .n-prev { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981; }
+</style>
+</head>
+<body>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="sw(0)">A — Glass</div>
+  <div class="tab" onclick="sw(1)">B — Cards</div>
+  <div class="tab" onclick="sw(2)">C — Pro Studio</div>
+</div>
+
+<!-- VERSION A -->
+<div class="version active" id="va">
+<div class="modal">
+  <div class="player">
+    <div class="player-area">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=60" alt="">
+      <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+    </div>
+    <div class="controls">
+      <div class="prog"><div class="prog-fill"></div></div>
+      <span class="time">0:12 / 0:45</span>
+    </div>
+  </div>
+  <div class="settings">
+    <div class="s-header">
+      <div><div class="s-title">Création de faces</div><div class="s-meta">06:38 → 07:38 · 60s · Score 95/100</div></div>
+      <div style="display:flex;gap:6px;align-items:center"><div class="s-score">95</div><div class="s-close">✕</div></div>
+    </div>
+    <div class="s-body">
+      <div class="s-section">
+        <div class="s-label">Style sous-titres</div>
+        <div class="sg">
+          <div class="sg-btn"><div class="sg-prev" style="color:#333">—</div>Aucun</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#fff;font-weight:900;text-shadow:2px 2px 0 #000,-1px -1px 0 #000">Wow</div>Bold</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:rgba(255,255,255,0.7);font-weight:500;font-size:11px">Wow</div>Minimal</div>
+          <div class="sg-btn active"><div class="sg-prev k-prev">W<span class="hl">ow</span></div>Karaoke</div>
+          <div class="sg-btn"><div class="sg-prev n-prev">Wow</div>Néon</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#888;font-size:18px">+</div>Plus</div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div style="display:flex;gap:30px">
+          <div><div class="s-label">Taille</div>
+            <div class="sz-row">
+              <div class="sz active">S</div><div class="sz">M</div><div class="sz">L</div><div class="sz">XL</div>
+            </div>
+          </div>
+          <div><div class="s-label">Couleurs</div>
+            <div class="cp-row"><div class="cp" style="background:#fff;border-radius:6px"></div><span class="cp-label" style="color:#666">Texte</span><div class="cp" style="background:#000;border:1px solid #333;border-radius:6px"></div><span class="cp-label" style="color:#666">Fond</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div class="tgl-row">
+          <div class="tgl-info"><div class="tgl-title">Centrer le visage</div><div class="tgl-desc">Recadrage automatique sur le visage</div></div>
+          <div class="tgl on"></div>
+        </div>
+      </div>
+      <div class="s-section" style="border:none">
+        <button class="action-btn secondary" style="margin-bottom:8px">✏️ Modifier les sous-titres</button>
+        <button class="action-btn primary">⬇ Télécharger ce clip 9:16</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- VERSION B -->
+<div class="version" id="vb">
+<div class="modal">
+  <div class="player">
+    <div class="player-area">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=60" alt="">
+      <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+    </div>
+    <div class="controls">
+      <div class="prog"><div class="prog-fill"></div></div>
+      <span class="time">0:12 / 0:45</span>
+    </div>
+  </div>
+  <div class="settings">
+    <div class="s-header">
+      <div><div class="s-title">Création de faces</div><div class="s-meta">06:38 → 07:38 · 60s · Score 95/100</div></div>
+      <div style="display:flex;gap:6px;align-items:center"><div class="s-score">95</div><div class="s-close">✕</div></div>
+    </div>
+    <div class="s-body">
+      <div class="s-section">
+        <div class="s-label">Style sous-titres</div>
+        <div class="sg">
+          <div class="sg-btn"><div class="sg-prev" style="color:#333">—</div>Aucun</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#fff;font-weight:900;text-shadow:2px 2px 0 #000,-1px -1px 0 #000">Wow</div>Bold</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:rgba(255,255,255,0.7);font-weight:500;font-size:11px">Wow</div>Minimal</div>
+          <div class="sg-btn active"><div class="sg-prev k-prev">W<span class="hl">ow</span></div>Karaoke</div>
+          <div class="sg-btn"><div class="sg-prev n-prev">Wow</div>Néon</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#888;font-size:18px">+</div>Plus</div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div style="display:flex;gap:30px">
+          <div><div class="s-label">Taille</div>
+            <div class="sz-row">
+              <div class="sz active">S</div><div class="sz">M</div><div class="sz">L</div><div class="sz">XL</div>
+            </div>
+          </div>
+          <div><div class="s-label">Couleurs</div>
+            <div class="cp-row"><div class="cp" style="background:#fff;border-radius:6px"></div><span class="cp-label" style="color:#666">Texte</span><div class="cp" style="background:#000;border:1px solid #333;border-radius:6px"></div><span class="cp-label" style="color:#666">Fond</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div class="tgl-row">
+          <div class="tgl-info"><div class="tgl-title">Centrer le visage</div><div class="tgl-desc">Recadrage automatique sur le visage</div></div>
+          <div class="tgl on"></div>
+        </div>
+      </div>
+      <div class="s-section" style="border:none;background:transparent;padding:0 0 14px">
+        <button class="action-btn secondary" style="margin-bottom:8px">✏️ Modifier les sous-titres</button>
+        <button class="action-btn primary">⬇ Télécharger ce clip 9:16</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- VERSION C -->
+<div class="version" id="vc">
+<div class="modal">
+  <div class="player">
+    <div class="player-area">
+      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=60" alt="">
+      <div class="play-btn"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+    </div>
+    <div class="controls">
+      <div class="prog"><div class="prog-fill"></div></div>
+      <span class="time">0:12 / 0:45</span>
+    </div>
+  </div>
+  <div class="settings">
+    <div class="s-header">
+      <div><div class="s-title">Création de faces</div><div class="s-meta">06:38 → 07:38 · 60s · Score 95/100</div></div>
+      <div style="display:flex;gap:6px;align-items:center"><div class="s-score">95</div><div class="s-close">✕</div></div>
+    </div>
+    <div class="s-body">
+      <div class="s-section">
+        <div class="s-label">Style sous-titres</div>
+        <div class="sg">
+          <div class="sg-btn"><div class="sg-prev" style="color:#333">—</div>Aucun</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#fff;font-weight:900;text-shadow:2px 2px 0 #000,-1px -1px 0 #000">Wow</div>Bold</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:rgba(255,255,255,0.7);font-weight:500;font-size:11px">Wow</div>Minimal</div>
+          <div class="sg-btn active"><div class="sg-prev k-prev">W<span class="hl">ow</span></div>Karaoke</div>
+          <div class="sg-btn"><div class="sg-prev n-prev">Wow</div>Néon</div>
+          <div class="sg-btn"><div class="sg-prev" style="color:#888;font-size:18px">+</div>Plus</div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div style="display:flex;gap:30px">
+          <div><div class="s-label">Taille</div>
+            <div class="sz-row">
+              <div class="sz active">S</div><div class="sz">M</div><div class="sz">L</div><div class="sz">XL</div>
+            </div>
+          </div>
+          <div><div class="s-label">Couleurs</div>
+            <div class="cp-row"><div class="cp" style="background:#fff;border-radius:6px"></div><span class="cp-label" style="color:#666">Texte</span><div class="cp" style="background:#000;border:1px solid #333;border-radius:6px"></div><span class="cp-label" style="color:#666">Fond</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div class="tgl-row">
+          <div class="tgl-info"><div class="tgl-title">Centrer le visage</div><div class="tgl-desc">Recadrage automatique sur le visage</div></div>
+          <div class="tgl on"></div>
+        </div>
+      </div>
+      <div class="s-section" style="border:none">
+        <button class="action-btn secondary" style="margin-bottom:8px">✏️ Modifier les sous-titres</button>
+        <button class="action-btn primary">⬇ TÉLÉCHARGER CE CLIP 9:16</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function sw(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.version').forEach((v,i) => v.classList.toggle('active', i===n));
+}
+</script>
+</body>
+</html>

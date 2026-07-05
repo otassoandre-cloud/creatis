@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Preview styles V2 — Créatis</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0d0d; color: #fff; font-family: 'Inter', Arial, sans-serif; padding: 40px; display: flex; gap: 50px; flex-wrap: wrap; }
+  h2 { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .section { min-width: 300px; max-width: 420px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sb {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 5px 4px 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .2s, background .2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .sb:hover { border-color: #444; background: #181818; }
+  .sb.active { border-color: #10b981; background: rgba(16,185,129,0.08); }
+  .sb .lbl { font-size: 9px; color: #666; font-weight: 600; }
+
+  /* Mini preview with gradient bg */
+  .mp {
+    width: 100%;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    overflow: hidden;
+    position: relative;
+  }
+  .mt {
+    font-weight: 800;
+    font-size: 13px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Version A : dégradé coloré dans chaque preview ── */
+  .va .mp { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+
+  .va [data-s="none"] .mp { background: #111; }
+  .va [data-s="none"] .mt { color: #444; font-weight: 400; font-size: 10px; font-style: italic; }
+
+  .va [data-s="bold"] .mt { color: #fff; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+
+  .va [data-s="minimal"] .mt { color: rgba(255,255,255,0.85); font-weight: 500; font-size: 11px; letter-spacing: 0.5px; }
+
+  .va [data-s="karaoke"] .mt { color: #fff; }
+  .va [data-s="karaoke"] .hl { color: #10b981; }
+
+  .va [data-s="neon"] .mt { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981, 0 0 28px rgba(16,185,129,0.3); }
+
+  .va [data-s="spotlight"] .mp { background: linear-gradient(135deg, #0a0a0a, #1a1a1a); }
+  .va [data-s="spotlight"] .mt { color: #333; }
+  .va [data-s="spotlight"] .hl { color: #fff; text-shadow: 0 0 14px rgba(255,255,255,0.7); }
+
+  .va [data-s="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
+
+  .va [data-s="wordpop"] .mt { color: #fff; }
+  .va [data-s="wordpop"] .hl { display: inline-block; transform: scale(1.35); color: #fbbf24; margin: 0 1px; }
+
+  .va [data-s="slide"] .mt { color: #fff; animation: aSlide 1.5s ease infinite; }
+
+  .va [data-s="shake"] .mt { color: #fff; font-weight: 900; animation: aShake 0.4s ease infinite; }
+
+  .va [data-s="wave"] .mt { font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: aWave 2s linear infinite; }
+
+  @keyframes aSlide { 0% { transform: translateY(100%); opacity: 0; } 20% { transform: translateY(0); opacity: 1; } 80% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100%); opacity: 0; } }
+  @keyframes aShake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-2px) rotate(-1deg); } 75% { transform: translateX(2px) rotate(1deg); } }
+  @keyframes aWave { 0% { background-position: 0%; } 100% { background-position: 200%; } }
+
+
+  /* ── Version B : photo blur en fond ── */
+  .vb .mp {
+    background: url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=30') center/cover;
+    position: relative;
+  }
+  .vb .mp::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .vb [data-s="none"] .mp { background: #111; }
+  .vb [data-s="none"] .mp::before { display: none; }
+  .vb [data-s="none"] .mt { color: #444; font-weight: 400; font-size: 10px; font-style: italic; }
+
+  .vb [data-s="bold"] .mt { color: #fff; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+  .vb [data-s="minimal"] .mt { color: rgba(255,255,255,0.85); font-weight: 500; font-size: 11px; }
+  .vb [data-s="karaoke"] .mt { color: #fff; }
+  .vb [data-s="karaoke"] .hl { color: #10b981; }
+  .vb [data-s="neon"] .mt { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981, 0 0 28px rgba(16,185,129,0.3); }
+  .vb [data-s="spotlight"] .mp { background: #080808; }
+  .vb [data-s="spotlight"] .mp::before { background: rgba(0,0,0,0.8); }
+  .vb [data-s="spotlight"] .mt { color: #333; }
+  .vb [data-s="spotlight"] .hl { color: #fff; text-shadow: 0 0 14px rgba(255,255,255,0.7); }
+  .vb [data-s="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
+  .vb [data-s="wordpop"] .mt { color: #fff; }
+  .vb [data-s="wordpop"] .hl { display: inline-block; transform: scale(1.35); color: #fbbf24; margin: 0 1px; }
+  .vb [data-s="slide"] .mt { color: #fff; animation: aSlide 1.5s ease infinite; }
+  .vb [data-s="shake"] .mt { color: #fff; font-weight: 900; animation: aShake 0.4s ease infinite; }
+  .vb [data-s="wave"] .mt { font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: aWave 2s linear infinite; }
+
+
+  /* ── Version C : fond uni sombre avec accent couleur par style ── */
+  .vc .mp { background: #0f0f0f; border: 1px solid #1a1a1a; }
+
+  .vc [data-s="none"] .mt { color: #333; font-weight: 400; font-size: 10px; }
+  .vc [data-s="bold"] .mp { background: #0f0f0f; }
+  .vc [data-s="bold"] .mt { color: #fff; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+
+  .vc [data-s="minimal"] .mp { background: #0f0f0f; }
+  .vc [data-s="minimal"] .mt { color: rgba(255,255,255,0.7); font-weight: 500; font-size: 11px; }
+
+  .vc [data-s="karaoke"] .mp { background: linear-gradient(135deg, #0a1f15, #0f0f0f); }
+  .vc [data-s="karaoke"] .mt { color: #fff; }
+  .vc [data-s="karaoke"] .hl { color: #10b981; }
+
+  .vc [data-s="neon"] .mp { background: radial-gradient(circle at center, rgba(16,185,129,0.1), #0a0a0a); }
+  .vc [data-s="neon"] .mt { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981; }
+
+  .vc [data-s="spotlight"] .mp { background: #080808; }
+  .vc [data-s="spotlight"] .mt { color: #333; }
+  .vc [data-s="spotlight"] .hl { color: #fff; text-shadow: 0 0 14px rgba(255,255,255,0.7); }
+
+  .vc [data-s="typewriter"] .mp { background: #0a0f0a; }
+  .vc [data-s="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
+
+  .vc [data-s="wordpop"] .mp { background: linear-gradient(135deg, #1a1505, #0f0f0f); }
+  .vc [data-s="wordpop"] .mt { color: #fff; }
+  .vc [data-s="wordpop"] .hl { display: inline-block; transform: scale(1.35); color: #fbbf24; margin: 0 1px; }
+
+  .vc [data-s="slide"] .mt { color: #fff; animation: aSlide 1.5s ease infinite; }
+  .vc [data-s="shake"] .mt { color: #fff; font-weight: 900; animation: aShake 0.4s ease infinite; }
+  .vc [data-s="wave"] .mt { font-weight: 800; background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: aWave 2s linear infinite; }
+
+  /* Hook styles */
+  .hgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+
+  .hb { background: #141414; border: 1px solid #222; border-radius: 10px; padding: 5px 4px 5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all .15s; }
+  .hb:hover { border-color: #444; }
+  .hb.active { border-color: #10b981; background: rgba(16,185,129,0.08); }
+  .hb .lbl { font-size: 9px; color: #666; font-weight: 600; }
+
+  .hb .mp { background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); }
+
+  .hb[data-h="pill"] .mt { color: #fff; font-weight: 800; font-size: 11px; background: rgba(0,0,0,0.9); padding: 4px 10px; border-radius: 6px; }
+  .hb[data-h="clean"] .mt { color: #fff; font-weight: 800; font-size: 11px; text-shadow: 2px 2px 8px rgba(0,0,0,0.95), -1px -1px 4px rgba(0,0,0,0.8); }
+  .hb[data-h="outline"] .mt { color: #fff; font-weight: 800; font-size: 11px; -webkit-text-stroke: 1.5px #000; paint-order: stroke fill; text-shadow: 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000; }
+
+  /* Separator */
+  .sep { height: 1px; background: #222; margin: 20px 0 16px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ VERSION A : Dégradé bleu sombre ═══ -->
+<div class="section va">
+  <h2>A — Dégradé bleu nuit</h2>
+  <div class="grid">
+    <div class="sb" data-s="none"><div class="mp"><span class="mt">—</span></div><span class="lbl">Aucun</span></div>
+    <div class="sb" data-s="bold"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Bold</span></div>
+    <div class="sb" data-s="minimal"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Minimal</span></div>
+    <div class="sb active" data-s="karaoke"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Karaoke</span></div>
+    <div class="sb" data-s="neon"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Néon</span></div>
+    <div class="sb" data-s="spotlight"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Spotlight</span></div>
+    <div class="sb" data-s="typewriter"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Typewriter</span></div>
+    <div class="sb" data-s="wordpop"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Word Pop</span></div>
+    <div class="sb" data-s="slide"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Slide</span></div>
+    <div class="sb" data-s="shake"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Shake</span></div>
+    <div class="sb" data-s="wave"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Color Wave</span></div>
+  </div>
+  <div class="hgrid">
+    <div class="hb active" data-h="pill"><div class="mp"><span class="mt">Hook</span></div><span class="lbl">Pill</span></div>
+    <div class="hb" data-h="clean"><div class="mp"><span class="mt">Hook</span></div><span class="lbl">Clean</span></div>
+    <div class="hb" data-h="outline"><div class="mp"><span class="mt">Hook</span></div><span class="lbl">Outline</span></div>
+  </div>
+</div>
+
+<!-- ═══ VERSION B : Photo blur ═══ -->
+<div class="section vb">
+  <h2>B — Photo floutée en fond</h2>
+  <div class="grid">
+    <div class="sb" data-s="none"><div class="mp"><span class="mt">—</span></div><span class="lbl">Aucun</span></div>
+    <div class="sb" data-s="bold"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Bold</span></div>
+    <div class="sb" data-s="minimal"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Minimal</span></div>
+    <div class="sb active" data-s="karaoke"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Karaoke</span></div>
+    <div class="sb" data-s="neon"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Néon</span></div>
+    <div class="sb" data-s="spotlight"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Spotlight</span></div>
+    <div class="sb" data-s="typewriter"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Typewriter</span></div>
+    <div class="sb" data-s="wordpop"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Word Pop</span></div>
+    <div class="sb" data-s="slide"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Slide</span></div>
+    <div class="sb" data-s="shake"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Shake</span></div>
+    <div class="sb" data-s="wave"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Color Wave</span></div>
+  </div>
+</div>
+
+<!-- ═══ VERSION C : Fond uni avec accents ═══ -->
+<div class="section vc">
+  <h2>C — Fond noir + accent par style</h2>
+  <div class="grid">
+    <div class="sb" data-s="none"><div class="mp"><span class="mt">—</span></div><span class="lbl">Aucun</span></div>
+    <div class="sb" data-s="bold"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Bold</span></div>
+    <div class="sb" data-s="minimal"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Minimal</span></div>
+    <div class="sb active" data-s="karaoke"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Karaoke</span></div>
+    <div class="sb" data-s="neon"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Néon</span></div>
+    <div class="sb" data-s="spotlight"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Spotlight</span></div>
+    <div class="sb" data-s="typewriter"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Typewriter</span></div>
+    <div class="sb" data-s="wordpop"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span class="lbl">Word Pop</span></div>
+    <div class="sb" data-s="slide"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Slide</span></div>
+    <div class="sb" data-s="shake"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Shake</span></div>
+    <div class="sb" data-s="wave"><div class="mp"><span class="mt">Wow</span></div><span class="lbl">Color Wave</span></div>
+  </div>
+</div>
+
+</body>
+</html>

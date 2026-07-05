@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dusk Green — Variantes</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding:40px 20px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:32px; max-width:1400px; margin:0 auto; }
+.label { color:#fff; font-size:13px; font-weight:700; margin-bottom:10px; opacity:.5; letter-spacing:.08em; text-transform:uppercase; }
+
+/* ── CARD SHELL ── */
+.card { border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+.nav { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; }
+.logo { font-size:16px; font-weight:900; letter-spacing:-1px; }
+.logo span { color: var(--accent); }
+.btn-connect { padding:8px 18px; border-radius:8px; font-size:12px; font-weight:700; border:none; cursor:pointer; background:var(--accent); color:var(--btn-txt,#000); }
+.hero { padding:28px 20px 20px; text-align:center; }
+.badge { display:inline-block; padding:5px 14px; border-radius:999px; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:16px; border:1px solid var(--accent); color:var(--accent); background:rgba(0,0,0,.3); }
+.h1 { font-size:28px; font-weight:900; line-height:1.1; letter-spacing:-1.5px; margin-bottom:6px; }
+.h1 span { color:var(--accent); }
+.sub { font-size:12px; color:var(--text-soft); margin-bottom:20px; }
+.drop { border:1.5px dashed var(--border-drop); border-radius:14px; padding:24px; text-align:center; margin-bottom:14px; background:var(--drop-bg); }
+.drop-icon { font-size:28px; margin-bottom:8px; }
+.drop-title { font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:4px; }
+.drop-sub { font-size:11px; color:var(--text-soft); }
+.btn-cta { width:100%; padding:14px; border-radius:12px; font-size:14px; font-weight:800; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; }
+.clips-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.clip { border-radius:10px; padding:12px; }
+.clip-score { font-size:10px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.clip-title { font-size:11px; font-weight:700; color:var(--text-main); line-height:1.4; }
+.clip-bar { height:2px; border-radius:1px; margin-top:8px; background:var(--accent); opacity:.6; }
+.swatches { display:flex; gap:10px; padding:14px 20px; align-items:center; }
+.swatch { width:28px; height:28px; border-radius:50%; border:1px solid rgba(255,255,255,.1); }
+.swatch-label { font-size:9px; color:#555; margin-top:4px; text-align:center; }
+.swatch-wrap { display:flex; flex-direction:column; align-items:center; }
+</style>
+</head>
+<body>
+<div style="text-align:center;margin-bottom:40px">
+  <h1 style="color:#fff;font-size:24px;font-weight:900;margin-bottom:8px">Dusk × Créatis — Variantes Vertes</h1>
+  <p style="color:#555;font-size:14px">6 déclinaisons du style Dusk avec le vert émeraude de Créatis</p>
+</div>
+
+<div class="grid">
+
+<!-- 1. Dusk Émeraude Pur -->
+<div>
+  <div class="label">1 — Émeraude Pur</div>
+  <div class="card" style="--accent:#10b981;--text-main:#e6f4ef;--text-soft:#4d7a66;--border-drop:#1a3d2e;--drop-bg:rgba(16,185,129,.04);background:linear-gradient(160deg,#0a1a14 0%,#0a0f0a 60%);">
+    <div class="nav" style="border-bottom:1px solid #0f2419">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">Outil de découpage vidéo IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title">Dépose ta vidéo ici</div>
+        <div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:linear-gradient(135deg,#10b981,#059669);color:#000;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#0e1e17;border:1px solid #1a3028">
+          <div class="clip-score">Score 94</div>
+          <div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar"></div>
+        </div>
+        <div class="clip" style="background:#0e1e17;border:1px solid #1a3028">
+          <div class="clip-score">Score 87</div>
+          <div class="clip-title">Moment viral — tension maximale</div>
+          <div class="clip-bar"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#0a1a14"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#0e1e17"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#10b981"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Dusk Minuit Vert -->
+<div>
+  <div class="label">2 — Minuit Vert (néon)</div>
+  <div class="card" style="--accent:#00ff87;--text-main:#ccffe8;--text-soft:#336655;--border-drop:#0f3326;--drop-bg:rgba(0,255,135,.03);background:linear-gradient(160deg,#060e0a 0%,#040808 60%);">
+    <div class="nav" style="border-bottom:1px solid #0a1f15">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect" style="background:#00ff87;color:#000">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge" style="border-color:#00ff87;color:#00ff87">Outil de découpage vidéo IA</div>
+      <div class="h1" style="color:#e0fff0">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub" style="color:#336655">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop" style="border-color:#0f3326;background:rgba(0,255,135,.03)">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title" style="color:#e0fff0">Dépose ta vidéo ici</div>
+        <div class="drop-sub" style="color:#336655">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:linear-gradient(135deg,#00ff87,#00cc6a);color:#000;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#080f0b;border:1px solid #0f2a1c">
+          <div class="clip-score" style="color:#00ff87">Score 94</div>
+          <div class="clip-title" style="color:#ccffe8">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar" style="background:#00ff87"></div>
+        </div>
+        <div class="clip" style="background:#080f0b;border:1px solid #0f2a1c">
+          <div class="clip-score" style="color:#00ff87">Score 87</div>
+          <div class="clip-title" style="color:#ccffe8">Moment viral — tension maximale</div>
+          <div class="clip-bar" style="background:#00ff87"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#060e0a"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#080f0b"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#00ff87"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Dusk Jade (vert + or) -->
+<div>
+  <div class="label">3 — Jade & Or</div>
+  <div class="card" style="--accent:#10b981;--text-main:#edf7f0;--text-soft:#5a7a65;--border-drop:#1e3528;--drop-bg:rgba(16,185,129,.05);background:linear-gradient(160deg,#0d1a11 0%,#080e09 100%);">
+    <div class="nav" style="border-bottom:1px solid #142019">
+      <div class="logo" style="color:#edf7f0">Créa<span style="color:#10b981">tis</span></div>
+      <button class="btn-connect" style="background:linear-gradient(135deg,#d4a017,#f0c040);color:#000">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge" style="border-color:#d4a017;color:#d4a017;background:rgba(212,160,23,.08)">Outil de découpage vidéo IA</div>
+      <div class="h1" style="color:#edf7f0">1 longue vidéo,<br><span style="color:#10b981">10 clips viraux.</span></div>
+      <div class="sub" style="color:#5a7a65">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop" style="border-color:#1e3528;background:rgba(16,185,129,.04)">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title" style="color:#edf7f0">Dépose ta vidéo ici</div>
+        <div class="drop-sub" style="color:#5a7a65">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:linear-gradient(135deg,#10b981 0%,#d4a017 100%);color:#000;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#0d1a12;border:1px solid #1c3022">
+          <div class="clip-score" style="color:#10b981">Score 94</div>
+          <div class="clip-title" style="color:#edf7f0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar" style="background:linear-gradient(90deg,#10b981,#d4a017)"></div>
+        </div>
+        <div class="clip" style="background:#0d1a12;border:1px solid #1c3022">
+          <div class="clip-score" style="color:#10b981">Score 87</div>
+          <div class="clip-title" style="color:#edf7f0">Moment viral — tension maximale</div>
+          <div class="clip-bar" style="background:linear-gradient(90deg,#10b981,#d4a017)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#0d1a11"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#0d1a12"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:linear-gradient(135deg,#10b981,#d4a017)"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Dusk Carbone Vert -->
+<div>
+  <div class="label">4 — Carbone Vert</div>
+  <div class="card" style="--accent:#10b981;background:linear-gradient(160deg,#141414 0%,#0c0c0c 100%);">
+    <div class="nav" style="border-bottom:1px solid #1f1f1f">
+      <div class="logo" style="color:#fff">Créa<span style="color:#10b981">tis</span></div>
+      <button class="btn-connect" style="background:transparent;border:1.5px solid #10b981;color:#10b981">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge" style="border-color:#252525;color:#10b981;background:#141414">Outil de découpage vidéo IA</div>
+      <div class="h1" style="color:#fff">1 longue vidéo,<br><span style="color:#10b981">10 clips viraux.</span></div>
+      <div class="sub" style="color:#444">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop" style="border-color:#1e3d2e;background:#111">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title" style="color:#fff">Dépose ta vidéo ici</div>
+        <div class="drop-sub" style="color:#444">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:#10b981;color:#000;font-weight:800;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#141414;border:1px solid #252525">
+          <div class="clip-score" style="color:#10b981">Score 94</div>
+          <div class="clip-title" style="color:#ccc">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar" style="background:#10b981"></div>
+        </div>
+        <div class="clip" style="background:#141414;border:1px solid #252525">
+          <div class="clip-score" style="color:#10b981">Score 87</div>
+          <div class="clip-title" style="color:#ccc">Moment viral — tension maximale</div>
+          <div class="clip-bar" style="background:#10b981"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#141414"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#0c0c0c"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#10b981"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Dusk Aurora (vert + cyan) -->
+<div>
+  <div class="label">5 — Aurora (vert → cyan)</div>
+  <div class="card" style="background:linear-gradient(160deg,#080f14 0%,#060a0a 100%);">
+    <div class="nav" style="border-bottom:1px solid #0d1a20">
+      <div class="logo" style="color:#e0f7f4">Créa<span style="background:linear-gradient(90deg,#10b981,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent">tis</span></div>
+      <button class="btn-connect" style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#000">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge" style="border-color:#0e2a30;color:#06b6d4;background:rgba(6,182,212,.06)">Outil de découpage vidéo IA</div>
+      <div class="h1" style="color:#e0f7f4">1 longue vidéo,<br><span style="background:linear-gradient(90deg,#10b981,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent">10 clips viraux.</span></div>
+      <div class="sub" style="color:#2a5560">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop" style="border-color:#0e2530;background:rgba(6,182,212,.03)">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title" style="color:#e0f7f4">Dépose ta vidéo ici</div>
+        <div class="drop-sub" style="color:#2a5560">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#000;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#080f14;border:1px solid #0d2028">
+          <div class="clip-score" style="color:#10b981">Score 94</div>
+          <div class="clip-title" style="color:#b0e8e2">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+        </div>
+        <div class="clip" style="background:#080f14;border:1px solid #0d2028">
+          <div class="clip-score" style="color:#06b6d4">Score 87</div>
+          <div class="clip-title" style="color:#b0e8e2">Moment viral — tension maximale</div>
+          <div class="clip-bar" style="background:linear-gradient(90deg,#10b981,#06b6d4)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#080f14"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#060a0a"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:linear-gradient(135deg,#10b981,#06b6d4)"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. Dusk Forêt (vert profond) -->
+<div>
+  <div class="label">6 — Forêt (vert profond)</div>
+  <div class="card" style="background:linear-gradient(160deg,#071008 0%,#040a04 100%);">
+    <div class="nav" style="border-bottom:1px solid #0e2010">
+      <div class="logo" style="color:#c8f0d0">Créa<span style="color:#34d399">tis</span></div>
+      <button class="btn-connect" style="background:#1a5c30;color:#34d399;border:1px solid #2a7a40">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge" style="border-color:#163a20;color:#34d399;background:rgba(52,211,153,.06)">Outil de découpage vidéo IA</div>
+      <div class="h1" style="color:#c8f0d0">1 longue vidéo,<br><span style="color:#34d399">10 clips viraux.</span></div>
+      <div class="sub" style="color:#2d6040">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop" style="border-color:#163a20;background:rgba(52,211,153,.04)">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-title" style="color:#c8f0d0">Dépose ta vidéo ici</div>
+        <div class="drop-sub" style="color:#2d6040">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="btn-cta" style="background:linear-gradient(135deg,#166534,#34d399);color:#fff;">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip" style="background:#071008;border:1px solid #0e2010">
+          <div class="clip-score" style="color:#34d399">Score 94</div>
+          <div class="clip-title" style="color:#c8f0d0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="clip-bar" style="background:#34d399"></div>
+        </div>
+        <div class="clip" style="background:#071008;border:1px solid #0e2010">
+          <div class="clip-score" style="color:#34d399">Score 87</div>
+          <div class="clip-title" style="color:#c8f0d0">Moment viral — tension maximale</div>
+          <div class="clip-bar" style="background:#34d399"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="swatch-wrap"><div class="swatch" style="background:#071008"></div><div class="swatch-label">fond 1</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#0e1a0f"></div><div class="swatch-label">fond 2</div></div>
+      <div class="swatch-wrap"><div class="swatch" style="background:#34d399"></div><div class="swatch-label">accent</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

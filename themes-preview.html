@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Créatis — Aperçu des thèmes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#111; font-family:'Inter',sans-serif; padding:40px 20px; }
+  h1 { color:#fff; text-align:center; font-size:28px; font-weight:800; margin-bottom:8px; }
+  .subtitle { color:#666; text-align:center; font-size:14px; margin-bottom:48px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:28px; max-width:1200px; margin:0 auto; }
+
+  .theme-card {
+    border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 40px rgba(0,0,0,.6);
+    cursor:pointer; transition:transform .2s, box-shadow .2s;
+  }
+  .theme-card:hover { transform:translateY(-4px); box-shadow:0 16px 60px rgba(0,0,0,.8); }
+
+  .theme-label {
+    padding:10px 16px;
+    font-size:13px; font-weight:700; letter-spacing:.3px;
+    display:flex; align-items:center; gap:8px;
+    background:#1a1a1a; color:#fff;
+  }
+  .theme-label .badge {
+    font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px;
+  }
+
+  /* ── MOCKUP SHELL ── */
+  .mock {
+    padding:20px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+
+  /* Nav */
+  .mock-nav {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-radius:10px;
+  }
+  .mock-logo { font-size:14px; font-weight:800; }
+  .mock-btn-nav { font-size:11px; font-weight:700; padding:6px 14px; border-radius:7px; border:none; cursor:default; }
+
+  /* Hero */
+  .mock-hero { text-align:center; padding:18px 8px 10px; }
+  .mock-badge { display:inline-block; font-size:9px; font-weight:700; letter-spacing:1.5px; padding:3px 10px; border-radius:20px; margin-bottom:10px; text-transform:uppercase; }
+  .mock-h1 { font-size:22px; font-weight:800; line-height:1.25; margin-bottom:6px; }
+  .mock-sub { font-size:11px; }
+
+  /* Drop zone */
+  .mock-drop {
+    border-radius:12px; padding:20px 16px; text-align:center;
+    border:2px dashed; margin:0 4px;
+  }
+  .mock-drop-icon { font-size:20px; margin-bottom:6px; }
+  .mock-drop-text { font-size:11px; font-weight:600; margin-bottom:2px; }
+  .mock-drop-sub { font-size:10px; }
+
+  /* CTA */
+  .mock-cta {
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:12px; border-radius:10px; border:none; cursor:default;
+    font-size:13px; font-weight:700; margin:0 4px;
+  }
+
+  /* Progress bar */
+  .mock-prog { height:3px; border-radius:2px; margin:0 4px; overflow:hidden; }
+  .mock-prog-fill { height:100%; width:60%; border-radius:2px; }
+
+  /* Clips row */
+  .mock-clips { display:flex; gap:8px; padding:0 4px; }
+  .mock-clip { flex:1; border-radius:9px; padding:10px 8px; }
+  .mock-clip-score { font-size:9px; font-weight:700; margin-bottom:4px; }
+  .mock-clip-title { font-size:10px; font-weight:600; margin-bottom:6px; line-height:1.3; }
+  .mock-clip-bar { height:2px; border-radius:1px; width:70%; }
+
+  /* Color swatches */
+  .swatches { display:flex; gap:6px; padding:10px 20px 14px; }
+  .swatch { width:28px; height:28px; border-radius:50%; border:2px solid rgba(255,255,255,.1); }
+  .swatch-label { font-size:9px; color:#666; margin-top:4px; text-align:center; }
+
+</style>
+</head>
+<body>
+
+<h1>Créatis — 10 Thèmes</h1>
+<p class="subtitle">Clique sur un thème pour le choisir — aperçu fidèle de l'interface réelle</p>
+
+<div class="grid">
+
+  <!-- 1. ACTUEL — EMERALD NIGHT -->
+  <div class="theme-card" style="border:1px solid #1a2a1a">
+    <div class="theme-label" style="background:#0d1a0d">
+      <span>1</span> Emerald Night <span style="color:#888;font-weight:400;font-size:11px">— actuel</span>
+    </div>
+    <div class="mock" style="background:#0a0f0a">
+      <div class="mock-nav" style="background:#0d0d0d;border:1px solid #1a2a1a">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#10b981">tis</span></span>
+        <button class="mock-btn-nav" style="background:#10b981;color:#000">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#10b981">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#4a4a4a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#1a2a1a;background:#0d0d0d">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#4a4a4a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:#fff;color:#000">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#1a2a1a">
+        <div class="mock-prog-fill" style="background:#10b981"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#0d0d0d;border:1px solid #1a2a1a">
+          <div class="mock-clip-score" style="color:#10b981">Score 94</div>
+          <div class="mock-clip-title" style="color:#f0f0f0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#10b981"></div>
+        </div>
+        <div class="mock-clip" style="background:#0d0d0d;border:1px solid #1a2a1a">
+          <div class="mock-clip-score" style="color:#10b981">Score 87</div>
+          <div class="mock-clip-title" style="color:#f0f0f0">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#10b981;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#0a0f0a"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#0d0d0d"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#10b981"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 2. CYBER VIOLET ★ -->
+  <div class="theme-card" style="border:1px solid #3b1f6b">
+    <div class="theme-label" style="background:#120a22">
+      <span>2</span> ⚡ Cyber Violet
+      <span class="badge" style="background:rgba(168,85,247,.2);color:#a855f7;border:1px solid rgba(168,85,247,.3)">RECOMMANDÉ</span>
+    </div>
+    <div class="mock" style="background:#07060f">
+      <div class="mock-nav" style="background:#0e0c1a;border:1px solid #2d1f4a">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#a855f7">tis</span></span>
+        <button class="mock-btn-nav" style="background:#a855f7;color:#fff">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#a855f7">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#4a3a6a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#2d1f4a;background:#0e0c1a;border-style:dashed">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#4a3a6a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 0 20px rgba(168,85,247,.3)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#2d1f4a">
+        <div class="mock-prog-fill" style="background:linear-gradient(90deg,#a855f7,#7c3aed)"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#0e0c1a;border:1px solid #2d1f4a">
+          <div class="mock-clip-score" style="color:#a855f7">Score 94</div>
+          <div class="mock-clip-title" style="color:#e0d0ff">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#a855f7"></div>
+        </div>
+        <div class="mock-clip" style="background:#0e0c1a;border:1px solid #2d1f4a">
+          <div class="mock-clip-score" style="color:#a855f7">Score 87</div>
+          <div class="mock-clip-title" style="color:#e0d0ff">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#a855f7;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#07060f"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#0e0c1a"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#a855f7"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 3. ROUGE VIRAL ★ -->
+  <div class="theme-card" style="border:1px solid #3a1010">
+    <div class="theme-label" style="background:#1a0808">
+      <span>3</span> 🔥 Rouge Viral
+      <span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)">RECOMMANDÉ</span>
+    </div>
+    <div class="mock" style="background:#0a0505">
+      <div class="mock-nav" style="background:#130808;border:1px solid #2a1010">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#ef4444">tis</span></span>
+        <button class="mock-btn-nav" style="background:#ef4444;color:#fff">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#ef4444">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#5a3a3a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#2a1010;background:#130808">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#5a3a3a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 0 20px rgba(239,68,68,.25)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#2a1010">
+        <div class="mock-prog-fill" style="background:#ef4444"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#130808;border:1px solid #2a1010">
+          <div class="mock-clip-score" style="color:#ef4444">Score 94</div>
+          <div class="mock-clip-title" style="color:#ffe0e0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#ef4444"></div>
+        </div>
+        <div class="mock-clip" style="background:#130808;border:1px solid #2a1010">
+          <div class="mock-clip-score" style="color:#ef4444">Score 87</div>
+          <div class="mock-clip-title" style="color:#ffe0e0">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#ef4444;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#0a0505"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#130808"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#ef4444"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 4. OCÉAN PROFOND -->
+  <div class="theme-card" style="border:1px solid #0a2030">
+    <div class="theme-label" style="background:#030e1a">
+      <span>4</span> 🌊 Océan Profond
+    </div>
+    <div class="mock" style="background:#020c18">
+      <div class="mock-nav" style="background:#061624;border:1px solid #0d2a3a">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#06b6d4">tis</span></span>
+        <button class="mock-btn-nav" style="background:#06b6d4;color:#000">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(6,182,212,.1);color:#06b6d4;border:1px solid rgba(6,182,212,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#06b6d4">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#2a4a5a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#0d2a3a;background:#061624">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#2a4a5a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:#06b6d4;color:#000;font-weight:800">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#0d2a3a">
+        <div class="mock-prog-fill" style="background:#06b6d4"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#061624;border:1px solid #0d2a3a">
+          <div class="mock-clip-score" style="color:#06b6d4">Score 94</div>
+          <div class="mock-clip-title" style="color:#d0f0ff">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#06b6d4"></div>
+        </div>
+        <div class="mock-clip" style="background:#061624;border:1px solid #0d2a3a">
+          <div class="mock-clip-score" style="color:#06b6d4">Score 87</div>
+          <div class="mock-clip-title" style="color:#d0f0ff">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#06b6d4;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#020c18"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#061624"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#06b6d4"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 5. SOLAIRE AMBRE ★ -->
+  <div class="theme-card" style="border:1px solid #3a2800">
+    <div class="theme-label" style="background:#1a1000">
+      <span>5</span> 🌅 Solaire Ambre
+      <span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">RECOMMANDÉ</span>
+    </div>
+    <div class="mock" style="background:#0c0800">
+      <div class="mock-nav" style="background:#140e00;border:1px solid #2a1c00">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#f59e0b">tis</span></span>
+        <button class="mock-btn-nav" style="background:#f59e0b;color:#000">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#f59e0b">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#5a4a2a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#2a1c00;background:#140e00">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#5a4a2a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-weight:800">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#2a1c00">
+        <div class="mock-prog-fill" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#140e00;border:1px solid #2a1c00">
+          <div class="mock-clip-score" style="color:#f59e0b">Score 94</div>
+          <div class="mock-clip-title" style="color:#fff3cc">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#f59e0b"></div>
+        </div>
+        <div class="mock-clip" style="background:#140e00;border:1px solid #2a1c00">
+          <div class="mock-clip-score" style="color:#f59e0b">Score 87</div>
+          <div class="mock-clip-title" style="color:#fff3cc">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#f59e0b;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#0c0800"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#140e00"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#f59e0b"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 6. ROSE NÉON -->
+  <div class="theme-card" style="border:1px solid #3a0025">
+    <div class="theme-label" style="background:#150010">
+      <span>6</span> 🌸 Rose Néon / Gen Z
+    </div>
+    <div class="mock" style="background:#0a0008">
+      <div class="mock-nav" style="background:#130010;border:1px solid #2a0020">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#ec4899">tis</span></span>
+        <button class="mock-btn-nav" style="background:#ec4899;color:#fff">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(236,72,153,.1);color:#ec4899;border:1px solid rgba(236,72,153,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="color:#ec4899">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#5a2a4a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#2a0020;background:#130010">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#5a2a4a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;box-shadow:0 0 20px rgba(236,72,153,.3)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#2a0020">
+        <div class="mock-prog-fill" style="background:#ec4899"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#130010;border:1px solid #2a0020">
+          <div class="mock-clip-score" style="color:#ec4899">Score 94</div>
+          <div class="mock-clip-title" style="color:#ffe0f0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#ec4899"></div>
+        </div>
+        <div class="mock-clip" style="background:#130010;border:1px solid #2a0020">
+          <div class="mock-clip-score" style="color:#ec4899">Score 87</div>
+          <div class="mock-clip-title" style="color:#ffe0f0">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#ec4899;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#0a0008"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#130010"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#ec4899"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 7. DUSK GRADIENT -->
+  <div class="theme-card" style="border:1px solid #2a1a0a">
+    <div class="theme-label" style="background:#100a05">
+      <span>7</span> 🌌 Dusk — Violet/Orange
+    </div>
+    <div class="mock" style="background:linear-gradient(160deg,#0d0818 0%,#100a05 100%)">
+      <div class="mock-nav" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px)">
+        <span class="mock-logo" style="color:#f0f0f0">Créa<span style="color:#f97316">tis</span></span>
+        <button class="mock-btn-nav" style="background:#f97316;color:#fff">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#f0f0f0">1 longue vidéo,<br><span style="background:linear-gradient(90deg,#f97316,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#5a4a3a">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04)">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#f0f0f0">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#5a4a3a">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:linear-gradient(135deg,#f97316,#a855f7);color:#fff;box-shadow:0 0 24px rgba(249,115,22,.3)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:rgba(255,255,255,.08)">
+        <div class="mock-prog-fill" style="background:linear-gradient(90deg,#f97316,#a855f7)"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">
+          <div class="mock-clip-score" style="color:#f97316">Score 94</div>
+          <div class="mock-clip-title" style="color:#f0e8e0">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:linear-gradient(90deg,#f97316,#a855f7)"></div>
+        </div>
+        <div class="mock-clip" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">
+          <div class="mock-clip-score" style="color:#a855f7">Score 87</div>
+          <div class="mock-clip-title" style="color:#f0e8e0">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:linear-gradient(90deg,#a855f7,#f97316);width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#0d0818"></div><div class="swatch-label" style="color:#555">fond 1</div></div>
+      <div><div class="swatch" style="background:#100a05"></div><div class="swatch-label" style="color:#555">fond 2</div></div>
+      <div><div class="swatch" style="background:linear-gradient(90deg,#f97316,#a855f7)"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 8. ARCTIC MINIMAL — light -->
+  <div class="theme-card" style="border:1px solid #d0d8e0">
+    <div class="theme-label" style="background:#e8f0f8;color:#1a2a3a">
+      <span style="color:#1a2a3a">8</span> <span style="color:#1a2a3a">🤍 Arctic Minimal</span>
+      <span class="badge" style="background:rgba(14,165,233,.1);color:#0ea5e9;border:1px solid rgba(14,165,233,.3)">LIGHT MODE</span>
+    </div>
+    <div class="mock" style="background:#f8fafc">
+      <div class="mock-nav" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <span class="mock-logo" style="color:#0f172a">Créa<span style="color:#0ea5e9">tis</span></span>
+        <button class="mock-btn-nav" style="background:#0ea5e9;color:#fff">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:#e0f7ff;color:#0ea5e9;border:1px solid #b0e8ff">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#0f172a">1 longue vidéo,<br><span style="color:#0ea5e9">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#94a3b8">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#cbd5e1;background:#fff;border-style:dashed">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#0f172a">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#94a3b8">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:#0ea5e9;color:#fff;box-shadow:0 2px 12px rgba(14,165,233,.3)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#e2e8f0">
+        <div class="mock-prog-fill" style="background:#0ea5e9"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+          <div class="mock-clip-score" style="color:#0ea5e9">Score 94</div>
+          <div class="mock-clip-title" style="color:#0f172a">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#0ea5e9"></div>
+        </div>
+        <div class="mock-clip" style="background:#fff;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+          <div class="mock-clip-score" style="color:#0ea5e9">Score 87</div>
+          <div class="mock-clip-title" style="color:#0f172a">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#0ea5e9;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#f8fafc;border-color:#d0d8e0"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#fff;border-color:#d0d8e0"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#0ea5e9"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 9. MONOCHROME INK -->
+  <div class="theme-card" style="border:1px solid #222">
+    <div class="theme-label" style="background:#0a0a0a">
+      <span>9</span> 🖤 Monochrome Ink
+    </div>
+    <div class="mock" style="background:#000">
+      <div class="mock-nav" style="background:#0a0a0a;border:1px solid #1a1a1a">
+        <span class="mock-logo" style="color:#fff">Créa<span style="color:#fff;text-decoration:underline;text-decoration-color:#fff">tis</span></span>
+        <button class="mock-btn-nav" style="background:#fff;color:#000;border:none">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.12)">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#fff">1 longue vidéo,<br><span style="color:#fff">10 clips viraux.</span></div>
+        <div class="mock-sub" style="color:#444">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#222;background:#0a0a0a">
+        <div class="mock-drop-icon">📤</div>
+        <div class="mock-drop-text" style="color:#fff">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#444">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:#fff;color:#000;font-weight:800">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#1a1a1a">
+        <div class="mock-prog-fill" style="background:#fff"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#0a0a0a;border:1px solid #222">
+          <div class="mock-clip-score" style="color:#888">Score 94</div>
+          <div class="mock-clip-title" style="color:#fff">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#fff"></div>
+        </div>
+        <div class="mock-clip" style="background:#0a0a0a;border:1px solid #222">
+          <div class="mock-clip-score" style="color:#888">Score 87</div>
+          <div class="mock-clip-title" style="color:#fff">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#fff;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#000"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#0a0a0a"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#fff"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+  <!-- 10. MATRIX TERMINAL -->
+  <div class="theme-card" style="border:1px solid #003010">
+    <div class="theme-label" style="background:#000">
+      <span>10</span> 🟢 Matrix Terminal
+    </div>
+    <div class="mock" style="background:#000">
+      <div class="mock-nav" style="background:#050f05;border:1px solid #003010">
+        <span class="mock-logo" style="color:#00ff41;font-family:monospace">Créa<span style="color:#00ff41">tis</span></span>
+        <button class="mock-btn-nav" style="background:#00ff41;color:#000;font-family:monospace">Se connecter</button>
+      </div>
+      <div class="mock-hero">
+        <div class="mock-badge" style="background:rgba(0,255,65,.08);color:#00ff41;border:1px solid rgba(0,255,65,.2);font-family:monospace">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+        <div class="mock-h1" style="color:#00ff41;font-family:monospace;font-size:18px">1 longue vidéo,<br>10 clips viraux.</div>
+        <div class="mock-sub" style="color:#005020;font-family:monospace">Transcription · Recadrage 9:16 · Export MP4</div>
+      </div>
+      <div class="mock-drop" style="border-color:#003010;background:#050f05">
+        <div class="mock-drop-icon" style="color:#00ff41">▶</div>
+        <div class="mock-drop-text" style="color:#00ff41;font-family:monospace">Dépose ta vidéo ici</div>
+        <div class="mock-drop-sub" style="color:#005020;font-family:monospace">MP4 · MOV · AVI jusqu'à 2 Go</div>
+      </div>
+      <button class="mock-cta" style="background:#00ff41;color:#000;font-family:monospace;font-weight:800;box-shadow:0 0 20px rgba(0,255,65,.3)">⚡ Créer les Shorts</button>
+      <div class="mock-prog" style="background:#003010">
+        <div class="mock-prog-fill" style="background:#00ff41;box-shadow:0 0 8px #00ff41"></div>
+      </div>
+      <div class="mock-clips">
+        <div class="mock-clip" style="background:#050f05;border:1px solid #003010">
+          <div class="mock-clip-score" style="color:#00ff41;font-family:monospace">Score 94</div>
+          <div class="mock-clip-title" style="color:#00cc33;font-family:monospace">Hook parfait pour accrocher dès la 1ère seconde</div>
+          <div class="mock-clip-bar" style="background:#00ff41"></div>
+        </div>
+        <div class="mock-clip" style="background:#050f05;border:1px solid #003010">
+          <div class="mock-clip-score" style="color:#00ff41;font-family:monospace">Score 87</div>
+          <div class="mock-clip-title" style="color:#00cc33;font-family:monospace">Moment viral — tension maximale</div>
+          <div class="mock-clip-bar" style="background:#00ff41;width:85%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div><div class="swatch" style="background:#000"></div><div class="swatch-label" style="color:#555">fond</div></div>
+      <div><div class="swatch" style="background:#050f05"></div><div class="swatch-label" style="color:#555">card</div></div>
+      <div><div class="swatch" style="background:#00ff41"></div><div class="swatch-label" style="color:#555">accent</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;margin:48px auto;color:#444;font-size:13px;max-width:600px">
+  Dis à Claude le numéro de ton thème préféré — il l'applique sur tout le site en quelques minutes.
+</div>
+
+</body>
+</html>

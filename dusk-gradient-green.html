@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dusk — Dégradés Verts</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0d0d0d; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding:40px 20px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:28px; max-width:1300px; margin:0 auto; }
+.num { color:#fff; font-size:11px; font-weight:700; margin-bottom:8px; opacity:.4; letter-spacing:.1em; text-transform:uppercase; }
+
+.card {
+  border-radius:18px; overflow:hidden;
+  background:linear-gradient(160deg,#1a1025 0%,#0e0c14 60%,#0a0a0a 100%);
+  border:1px solid rgba(255,255,255,.06);
+}
+.nav { display:flex; justify-content:space-between; align-items:center; padding:13px 18px; border-bottom:1px solid rgba(255,255,255,.05); }
+.logo { font-size:15px; font-weight:900; letter-spacing:-1px; color:#fff; }
+.logo span { background:var(--g); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.btn-connect { padding:7px 16px; border-radius:8px; font-size:11.5px; font-weight:700; border:none; cursor:pointer; background:var(--g); color:#000; }
+.hero { padding:24px 18px 18px; text-align:center; }
+.badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:9.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.35); }
+.h1 { font-size:26px; font-weight:900; line-height:1.1; letter-spacing:-1.5px; margin-bottom:5px; color:#fff; }
+.h1 span { background:var(--g); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.sub { font-size:11px; color:#3a3a3a; margin-bottom:18px; }
+.drop { border:1.5px dashed rgba(255,255,255,.08); border-radius:12px; padding:20px; text-align:center; margin-bottom:12px; background:rgba(255,255,255,.02); }
+.drop-icon { font-size:24px; margin-bottom:6px; }
+.drop-title { font-size:12px; font-weight:700; color:#ccc; margin-bottom:3px; }
+.drop-sub { font-size:10px; color:#3a3a3a; }
+.btn-cta { width:100%; padding:13px; border-radius:11px; font-size:13.5px; font-weight:800; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; margin-bottom:12px; background:var(--g); color:#000; }
+.clips-row { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.clip { border-radius:9px; padding:11px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); }
+.clip-score { font-size:9.5px; font-weight:700; margin-bottom:3px; background:var(--g); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.clip-title { font-size:10.5px; font-weight:700; color:#bbb; line-height:1.4; }
+.clip-bar { height:2px; border-radius:1px; margin-top:7px; background:var(--g); }
+.swatches { display:flex; gap:8px; padding:12px 18px; border-top:1px solid rgba(255,255,255,.04); }
+.sw-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.sw { width:24px; height:24px; border-radius:50%; border:1px solid rgba(255,255,255,.1); }
+.sw-lbl { font-size:8px; color:#333; }
+.gradient-pill { width:64px; height:24px; border-radius:12px; }
+</style>
+</head>
+<body>
+<div style="text-align:center;margin-bottom:36px">
+  <h1 style="color:#fff;font-size:22px;font-weight:900;margin-bottom:6px">Dusk — Dégradés Verts</h1>
+  <p style="color:#444;font-size:13px">Même thème Dusk, accent remplacé par dégradé vert</p>
+</div>
+<div class="grid">
+
+<!-- 1 -->
+<div>
+  <div class="num">1 — Émeraude → Lime</div>
+  <div class="card" style="--g:linear-gradient(135deg,#10b981,#84cc16)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#10b981,#84cc16)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 2 -->
+<div>
+  <div class="num">2 — Vert → Cyan</div>
+  <div class="card" style="--g:linear-gradient(135deg,#10b981,#06b6d4)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#10b981,#06b6d4)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 -->
+<div>
+  <div class="num">3 — Émeraude → Menthe</div>
+  <div class="card" style="--g:linear-gradient(135deg,#059669,#34d399)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#059669,#34d399)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4 -->
+<div>
+  <div class="num">4 — Vert → Jaune Vif</div>
+  <div class="card" style="--g:linear-gradient(135deg,#10b981,#eab308)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#10b981,#eab308)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5 -->
+<div>
+  <div class="num">5 — Néon → Vert Flash</div>
+  <div class="card" style="--g:linear-gradient(135deg,#00ff87,#10b981)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#00ff87,#10b981)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 6 -->
+<div>
+  <div class="num">6 — Vert → Blanc Lait</div>
+  <div class="card" style="--g:linear-gradient(135deg,#10b981,#d1fae5)">
+    <div class="nav">
+      <div class="logo">Créa<span>tis</span></div>
+      <button class="btn-connect">Se connecter</button>
+    </div>
+    <div class="hero">
+      <div class="badge">OUTIL DE DÉCOUPAGE VIDÉO IA</div>
+      <div class="h1">1 longue vidéo,<br><span>10 clips viraux.</span></div>
+      <div class="sub">Transcription · Recadrage 9:16 · Export MP4</div>
+      <div class="drop"><div class="drop-icon">🎬</div><div class="drop-title">Dépose ta vidéo ici</div><div class="drop-sub">MP4 · MOV · AVI jusqu'à 2 Go</div></div>
+      <button class="btn-cta">⚡ Créer les Shorts</button>
+      <div class="clips-row">
+        <div class="clip"><div class="clip-score">Score 94</div><div class="clip-title">Hook parfait pour accrocher dès la 1ère seconde</div><div class="clip-bar"></div></div>
+        <div class="clip"><div class="clip-score">Score 87</div><div class="clip-title">Moment viral — tension maximale</div><div class="clip-bar"></div></div>
+      </div>
+    </div>
+    <div class="swatches">
+      <div class="sw-wrap"><div class="sw" style="background:#1a1025"></div><div class="sw-lbl">fond 1</div></div>
+      <div class="sw-wrap"><div class="sw" style="background:#0e0c14"></div><div class="sw-lbl">fond 2</div></div>
+      <div class="sw-wrap"><div class="gradient-pill" style="background:linear-gradient(135deg,#10b981,#d1fae5)"></div><div class="sw-lbl">accent</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
