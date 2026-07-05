@@ -16,7 +16,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Créatis">
   <meta property="og:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
-  <meta property="og:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta property="og:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,95€ le 1er mois.">
   <meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -28,7 +28,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@creatisapp">
   <meta name="twitter:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
-  <meta name="twitter:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta name="twitter:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,95€ le 1er mois.">
   <meta name="twitter:image" content="https://creatis.app/images/og-clips-viraux.png">
 
   <!-- ===== SCHEMA.ORG SaaS ===== -->
@@ -43,8 +43,8 @@
     "description": "Plateforme IA pour créateurs de contenu YouTube francophones. Génère automatiquement clips viraux, scripts, miniatures et stratégie de contenu en quelques secondes.",
     "offers": [
       { "@type": "Offer", "name": "Plan Gratuit", "price": "0", "priceCurrency": "EUR", "description": "1 génération gratuite pour découvrir, sans carte bancaire" },
-      { "@type": "Offer", "name": "Plan Pro", "price": "19", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } },
-      { "@type": "Offer", "name": "Plan Studio", "price": "49", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } }
+      { "@type": "Offer", "name": "Plan Pro Mensuel", "price": "19.90", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } },
+      { "@type": "Offer", "name": "Plan Pro Annuel", "price": "149", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1Y" } }
     ],
     "provider": { "@type": "Organization", "name": "Créatis SAS", "url": "https://creatis.app", "contactPoint": { "@type": "ContactPoint", "email": "contact@creatis.app", "contactType": "customer support" } }
   }
@@ -58,7 +58,7 @@
     "mainEntity": [
       { "@type": "Question", "name": "Comment générer des titres YouTube avec l'IA ?", "acceptedAnswer": { "@type": "Answer", "text": "Créatis génère automatiquement 5 titres YouTube optimisés pour le CTR en quelques secondes. Connecte ta chaîne YouTube et remplis le sujet de ta vidéo." } },
       { "@type": "Question", "name": "Comment créer une miniature YouTube style top créateurs YouTube ?", "acceptedAnswer": { "@type": "Answer", "text": "L'agent Miniature Pro de Créatis génère des visuels HD 1536×1024px via l'IA gpt-image-1, style top créateurs YouTube. Télécharge en un clic." } },
-      { "@type": "Question", "name": "Créatis est-il gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, Créatis propose 1 génération gratuite pour découvrir, sans carte bancaire. Le plan Pro à 19€/mois donne accès à 50 générations/mois." } }
+      { "@type": "Question", "name": "Créatis est-il gratuit ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, Créatis propose 1 génération gratuite pour découvrir, sans carte bancaire. Le plan Pro à 19,90€/mois donne accès à des générations illimitées." } }
     ]
   }
   </script>
@@ -142,7 +142,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; font-size: 16px; }
+html { scroll-behavior: smooth; font-size: 16px; overflow-x: hidden; max-width: 100vw; }
 body { background: var(--bg); color: var(--paper); font-family: var(--font); -webkit-font-smoothing: antialiased; line-height: 1.5; overflow-x: hidden; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
@@ -314,7 +314,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
 
 /* ===== HERO ===== */
 .hero { position: relative; padding: 20px 0 0; overflow: hidden; }
-.hero-grid { display: flex; align-items: flex-start; min-height: calc(100vh - 120px); }
+.hero-grid { display: flex; align-items: flex-start; min-height: 0; }
 .hero-left { text-align: left; flex: 0 0 55%; max-width: 55%; }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 9px;
@@ -397,9 +397,22 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   position: relative; width: 100%; height: 100%;
   border-radius: 44px; overflow: hidden;
   background: #000;
+  /* Fix Safari iOS : le filter:blur() du fond peut déborder du border-radius
+     sans forcer sa propre couche de composition */
+  transform: translateZ(0);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 .iphone-img {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 2;
+}
+.iphone-img-bg {
+  position: absolute; inset: -5%; width: 110%; height: 110%; object-fit: cover;
+  filter: blur(22px) brightness(0.55) saturate(1.2); z-index: 1;
+}
+.iphone-ui-fade {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,.9) 0%, rgba(0,0,0,.55) 22%, rgba(0,0,0,.05) 45%, transparent 60%),
+              linear-gradient(to bottom, rgba(0,0,0,.7) 0%, rgba(0,0,0,.15) 14%, transparent 26%);
 }
 
 /* UI overlay TikTok-style */
@@ -506,6 +519,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   .stage { margin: 20px auto 0; max-width: 320px; min-height: 480px; }
   .iphone { width: 240px; height: 500px; }
   .float-card { display: none; }
+  .sparkle { display: none; }
 }
 @media (max-width: 520px) {
   .upload-pill-go-txt { display: none; }
@@ -879,12 +893,13 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   scroll-margin-top: 100px;
 }
 </style>
+  <script src="/js/ref-capture.js"></script>
 </head>
 <body>
 
 <!-- ===== BANDEAU OFFRE DE LANCEMENT ===== -->
 <div id="bandeau-lancement">
-  🎁 Offre de lancement — <strong>-50% le 1er mois</strong> · Limité dans le temps
+  🎁 Offre de lancement — <strong>-50% sur ton 1er mois</strong> · 9,95€ puis 19,90€/mois
   <a href="#tarifs" style="color:#000;text-decoration:underline;margin-left:10px;font-weight:800">En profiter →</a>
   <button onclick="document.getElementById('bandeau-lancement').style.display='none'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#000;opacity:.6;line-height:1">✕</button>
 </div>
@@ -899,6 +914,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <a href="#fonctionnalites" class="lien">Fonctionnalités</a>
       <a href="#resultats" class="lien">Résultats</a>
       <a href="#tarifs" class="lien">Tarifs</a>
+      <a href="/affiliation" class="lien">Affiliation</a>
       <a href="#faq" class="lien">FAQ</a>
       <a href="/blog.html" class="lien">Blog</a>
       <a href="auth.html" class="btn-ghost btn-sm">Se connecter</a>
@@ -915,6 +931,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   <a href="#fonctionnalites" class="lien" onclick="fermerMenu()">Fonctionnalités</a>
   <a href="#resultats" class="lien" onclick="fermerMenu()">Résultats</a>
   <a href="#tarifs" class="lien" onclick="fermerMenu()">Tarifs</a>
+  <a href="/affiliation" class="lien" onclick="fermerMenu()">Affiliation</a>
   <a href="#faq" class="lien" onclick="fermerMenu()">FAQ</a>
   <a href="/blog.html" class="lien" onclick="fermerMenu()">Blog</a>
   <a href="auth.html" class="btn-ghost" style="margin-top:8px">Se connecter</a>
@@ -954,25 +971,25 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         <div class="stage">
           <span class="glow green" style="width:500px;height:500px;top:-40px;left:50%;transform:translateX(-50%);opacity:0.5"></span>
 
-          <!-- Cartes flottantes derrière — finance + gaming -->
+          <!-- Cartes flottantes derrière — plongée + gaming -->
           <div class="float-card fc1">
-            <img src="/images/clips/finance.webp" alt="Clip viral finance">
+            <img src="/images/clips/short-plongee-1.webp" alt="Clip viral plongée">
             <div class="fc-overlay">
-              <div class="fc-avatar"><img src="/images/clips/finance.webp" alt="Clip viral finance"></div>
+              <div class="fc-avatar"><img src="/images/clips/short-plongee-1.webp" alt="Clip viral plongée"></div>
               <div class="fc-info">
-                <div class="fc-desc">comment j'ai investi 1000€…</div>
-                <div class="fc-tags">#finance #trading #crypto</div>
+                <div class="fc-desc">Attends… c'est quoi CE truc ?!</div>
+                <div class="fc-tags">#plongée #chasse #ocean</div>
                 <div class="fc-stats"><span>♥ 89K</span><span>💬 412</span></div>
               </div>
             </div>
           </div>
           <div class="float-card fc2">
-            <img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok">
+            <img src="/images/clips/clips-the-finals.png" alt="Clip gaming TikTok">
             <div class="fc-overlay">
-              <div class="fc-avatar"><img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok"></div>
+              <div class="fc-avatar"><img src="/images/clips/clips-the-finals.png" alt="Clip gaming TikTok"></div>
               <div class="fc-info">
-                <div class="fc-desc">ce setup gaming est INSANE 🔥</div>
-                <div class="fc-tags">#gaming #setup #streamer</div>
+                <div class="fc-desc">déjà sur le point 🔥</div>
+                <div class="fc-tags">#gaming #thefinals #clutch</div>
                 <div class="fc-stats"><span>♥ 1.2M</span><span>💬 8K</span></div>
               </div>
             </div>
@@ -992,12 +1009,14 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             <div class="iphone-shine"></div>
             <div class="iphone-screen">
               <!-- CHANGE CE SRC POUR UN AUTRE CLIP -->
-              <img src="/images/clips/short-podcast-1.webp" alt="Clip viral podcast" class="iphone-img">
+              <img src="/images/clips/short-plongee-2.webp" alt="" class="iphone-img-bg" aria-hidden="true">
+              <img src="/images/clips/short-plongee-2.webp" alt="Clip viral plongée" class="iphone-img">
+              <div class="iphone-ui-fade"></div>
               <div class="iphone-ui-score">97</div>
               <div class="iphone-ui-rail">
                 <!-- Avatar + follow -->
                 <div class="iphone-ui-avatar">
-                  <img src="/images/clips/short-podcast-1.webp" alt="Short podcast extrait" class="iphone-ui-av-img">
+                  <img src="/images/clips/short-plongee-2.webp" alt="Short plongée extrait" class="iphone-ui-av-img">
                   <div class="iphone-ui-av-plus">+</div>
                 </div>
                 <!-- Heart -->
@@ -1021,8 +1040,8 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
                   <span>2 817</span>
                 </div>
               </div>
-              <div class="iphone-ui-capt">le secret que personne ne dit sur TikTok…</div>
-              <div class="iphone-ui-tags">#podcast #motivation #mindset #pourtoi #fyp #viral</div>
+              <div class="iphone-ui-capt">Le MONSTRE que personne ne croyait</div>
+              <div class="iphone-ui-tags">#plongée #chasse #ocean #pourtoi #fyp #viral</div>
             </div>
           </div>
 
@@ -1301,14 +1320,6 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <span class="pill-label">Tarifs</span>
       <h2>Teste gratuitement. <strong>Passe Pro quand tu es prêt.</strong></h2>
     </div>
-    <!-- Toggle -->
-    <div class="tarifs-toggle-wrap">
-      <span class="toggle-label" id="toggle-label-mens">Mensuel</span>
-      <button class="toggle-switch" id="toggle-facturation" onclick="toggleFacturation()" aria-label="Toggle annuel/mensuel">
-        <span class="toggle-thumb" id="toggle-thumb"></span>
-      </button>
-      <span class="toggle-label" id="toggle-label-ann">Annuel <span style="background:var(--green);color:#05140B;font-size:0.7rem;font-weight:800;padding:3px 8px;border-radius:99px;margin-left:6px">-20%</span></span>
-    </div>
     <div class="price-grid reveal">
       <!-- Gratuit -->
       <div class="plan">
@@ -1325,12 +1336,12 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         </ul>
         <a href="auth.html" class="btn-outline" style="justify-content:center">Commencer gratuitement</a>
       </div>
-      <!-- Pro -->
+      <!-- Pro Mensuel -->
       <div class="plan plan-feat">
         <span class="glow green" style="width:200px;height:200px;top:-80px;right:-50px;"></span>
-        <h3 style="color:var(--green)">Pro ⭐</h3>
-        <div class="plan-price"><span id="prix-pro">9,90</span>€ <span class="plan-price-sub">le 1er mois</span></div>
-        <div class="plan-note">puis <span id="prix-pro-normal">19,90€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</div>
+        <h3 style="color:var(--green)">Pro Mensuel ⭐</h3>
+        <div class="plan-price">9,95€ <span class="plan-price-sub">le 1er mois</span></div>
+        <div class="plan-note">puis 19,90€/mois · résiliable à tout moment</div>
         <ul>
           <li>Clips Viraux illimités</li>
           <li>Script, titres, miniatures, idées IA</li>
@@ -1341,19 +1352,20 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         </ul>
         <a href="auth.html?plan=pro" class="btn-grad" style="justify-content:center">⚡ Démarrer le Pro</a>
       </div>
-      <!-- Studio -->
-      <div class="plan plan-soon">
-        <h3>Studio</h3>
-        <div class="plan-price"><span id="prix-studio">49</span>€ <span class="plan-price-sub">/mois</span></div>
-        <div class="plan-note">pour les créateurs multi-chaînes</div>
+      <!-- Pro Annuel -->
+      <div class="plan">
+        <h3 style="color:var(--green)">Pro Annuel 🔥</h3>
+        <div class="plan-price">149€ <span class="plan-price-sub">/an</span></div>
+        <div class="plan-note">soit 12,42€/mois · économise ~90€/an</div>
         <ul>
-          <li>Tous les outils en illimité</li>
-          <li>100 crédits image / mois</li>
-          <li>3 chaînes YouTube indépendantes</li>
+          <li>Tout le plan Pro, en illimité</li>
+          <li>Script, titres, miniatures, idées IA</li>
+          <li>Tous les outils créateur débloqués</li>
+          <li>30 crédits image / mois</li>
           <li>Recyclage multiplateforme</li>
-          <li>Support dédié</li>
+          <li>Support prioritaire</li>
         </ul>
-        <span class="plan-soon-tag">BIENTÔT DISPONIBLE</span>
+        <a href="auth.html?plan=pro&annuel=1" class="btn-grad" style="justify-content:center">🔥 Prendre l'annuel</a>
       </div>
     </div>
   </div>
@@ -1428,7 +1440,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       </div>
       <div><h4>Produit</h4><a href="#fonctionnalites">Fonctionnalités</a><a href="#tarifs">Tarifs</a><a href="#comment-ca-marche">Comment ça marche</a><a href="/blog.html">Blog</a><a href="affiliation">Affiliation</a></div>
       <div><h4>Agents IA</h4><a href="clips-v2.html">Clips Viraux</a><a href="auth.html">YouTube Complet</a><a href="auth.html">Miniature IA</a><a href="auth.html">Analyse Vidéo</a></div>
-      <div><h4>Alternatives</h4><a href="/alternatives/opus-clip.html">Opus Clip alternative</a><a href="/alternatives/vidyo-ai.html">Vidyo AI alternative</a><a href="/alternatives/klap.html">Klap alternative</a><a href="/blog.html">Blog</a></div>
+      <div><h4>Ressources</h4><a href="/alternatives/">Comparatifs</a><a href="/clips-podcast.html">Clips de podcast</a><a href="/clips-twitch.html">Clips Twitch (VOD)</a></div>
       <div><h4>Légal</h4><a href="mentions-legales.html">Mentions légales</a><a href="cgu.html">CGU</a><a href="confidentialite.html">Confidentialité</a><a href="mailto:contact@creatis.app">Contact</a></div>
     </div>
     <div class="foot-bottom">
@@ -1652,27 +1664,7 @@ window.soumettreLead=function(){
   window.location.href='/auth.html?'+p;
 };
 
-// Pricing toggle
-let annuel=false;
-document.addEventListener('DOMContentLoaded',toggleFacturation);
-function toggleFacturation(){
-  annuel=!annuel;
-  const thumb=document.getElementById('toggle-thumb');
-  const labelMens=document.getElementById('toggle-label-mens');
-  const labelAnn=document.getElementById('toggle-label-ann');
-  if(thumb)thumb.style.transform=annuel?'translateX(22px)':'';
-  if(labelMens)labelMens.style.color=annuel?'var(--muted)':'var(--paper)';
-  if(labelAnn)labelAnn.style.color=annuel?'var(--paper)':'var(--muted)';
-  const elPro=document.getElementById('prix-pro');
-  const elProNormal=document.getElementById('prix-pro-normal');
-  const elProNormalPeriode=document.getElementById('prix-pro-normal-periode');
-  if(elPro)elPro.textContent=annuel?'7,90':'9,90';
-  if(elProNormal)elProNormal.textContent=annuel?'15,90€':'19,90€';
-  if(elProNormalPeriode)elProNormalPeriode.textContent=annuel?'/mois, facturé annuellement':'/mois';
-  const elStudio=document.getElementById('prix-studio');
-  if(elStudio)elStudio.textContent=annuel?'39':'49';
-}
-window.toggleFacturation=toggleFacturation;
+// Toggle tarifs retiré — offre fixe à 2 plans (mensuel 9,95€/19,90€ · annuel 149€)
 
 // Cookies
 window.accepterCookies=function(){localStorage.setItem('creatis_cookies','accepted');document.getElementById('bandeau-cookies').style.display='none';};
@@ -1736,25 +1728,15 @@ document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale')
 // Animation clips viraux (16:9 → 9:16)
 (function(){
   const VIDEOS=[
-    {label:'Gaming',dur:'42:10',bg:'linear-gradient(135deg,#1a0533,#0d0117)',thumb:'/images/clips/demo-gaming.webp',
-     icon:'<rect x="2" y="6" width="20" height="12" rx="2" stroke="#a855f7" stroke-width="1.5" fill="none"/>',
-     url:'gaming-stream-live.mp4',
+    {label:'Plongée',dur:'18:45',bg:'linear-gradient(135deg,#00243d,#000d17)',thumb:'/images/clips/demo-plongee.webp',
+     icon:'<path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0" stroke="#0ea5e9" stroke-width="2" fill="none" stroke-linecap="round"/>',
+     url:'chasse-sous-marine.mp4',
      shorts:[
-       {score:99,hook:'IMPOSSIBLE ??? Je viens de le faire',ts:'7:42',tint:'rgba(168,85,247,.08)',img:'/images/clips/short-gaming-1.webp'},
-       {score:97,hook:'Le clutch du siècle 🏆',ts:'15:30',tint:'rgba(139,92,246,.07)',img:'/images/clips/short-gaming-2.webp'},
-       {score:95,hook:"Comment j'ai trompé tout le monde",ts:'23:15',tint:'rgba(124,58,237,.06)',img:'/images/clips/short-gaming-3.webp'},
-       {score:93,hook:'GG WP les gars',ts:'31:08',tint:'rgba(109,40,217,.05)',img:'/images/clips/short-gaming-4.webp'},
-       {score:91,hook:"Le move qui m'a coûté la game",ts:'39:55',tint:'rgba(91,33,182,.04)',img:'/images/clips/short-gaming-5.webp'}
-     ]},
-    {label:'Podcast',dur:'1:24:32',bg:'linear-gradient(135deg,#2a1800,#0d0a00)',thumb:'/images/clips/demo-podcast.webp',
-     icon:'<path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#10b981"/>',
-     url:'podcast-interview.mp4',
-     shorts:[
-       {score:99,hook:"Je n'aurais JAMAIS dû dire ça…",ts:'2:14',tint:'rgba(255,140,50,.05)',img:'/images/clips/short-podcast-1.webp'},
-       {score:97,hook:'La vérité que personne ne dit',ts:'8:47',tint:'rgba(255,110,30,.04)',img:'/images/clips/short-podcast-2.webp'},
-       {score:95,hook:"Sa réponse m'a laissé sans mots",ts:'34:22',tint:'rgba(240,90,20,.04)',img:'/images/clips/short-podcast-3.webp'},
-       {score:93,hook:'Le moment qui a tout changé',ts:'48:05',tint:'rgba(200,70,10,.04)',img:'/images/clips/short-podcast-4.webp'},
-       {score:91,hook:'Il a finalement tout avoué',ts:'1:12:30',tint:'rgba(180,50,5,.03)',img:'/images/clips/short-podcast-5.webp'}
+       {score:99,hook:'Le MONSTRE que personne ne croyait',ts:'16:52',tint:'rgba(6,182,212,.08)',img:'/images/clips/short-plongee-2.webp'},
+       {score:97,hook:'Regarde CES pinces énormes 😱',ts:'11:20',tint:'rgba(14,165,233,.07)',img:'/images/clips/short-plongee-1.webp'},
+       {score:95,hook:'Ils sont vraiment différents, ils sont ornés',ts:'7:45',tint:'rgba(2,132,199,.06)',img:'/images/clips/short-plongee-5.webp'},
+       {score:93,hook:'Attends… C\'est quoi CE truc ?!',ts:'2:05',tint:'rgba(3,105,161,.05)',img:'/images/clips/short-plongee-4.webp'},
+       {score:91,hook:"L'eau est limpide, regarde ce fond",ts:'14:38',tint:'rgba(7,89,133,.04)',img:'/images/clips/short-plongee-3.webp'}
      ]}
   ];
   const PLATS=[
