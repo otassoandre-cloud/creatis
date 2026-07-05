@@ -379,7 +379,7 @@
   <!-- Badge plan -->
   <div class="badge-plan" id="badge-plan">
     <div class="badge-plan-inner">
-      ✨ Plan <span id="badge-plan-nom">Pro</span> sélectionné — <span id="badge-plan-prix">9,50€ le 1er mois</span>
+      ✨ Plan <span id="badge-plan-nom">Pro</span> sélectionné — <span id="badge-plan-prix">9,95€ le 1er mois</span>
       <span style="background:#f97316;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;">-50%</span>
     </div>
   </div>
@@ -452,6 +452,7 @@
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const planCible = urlParams.get('plan');
+  const annuelCible = urlParams.get('annuel') === '1';
   let modeConnexion = false;
   if (urlParams.get('ref') === 'lp-clips') {
     document.getElementById('demo-block').style.display = 'none';
@@ -501,13 +502,18 @@
       const planConfig = CONFIG.PLANS[planCible];
       document.getElementById('badge-plan').style.display = 'block';
       document.getElementById('badge-plan-nom').textContent = planConfig.nom;
-      document.getElementById('badge-plan-prix').textContent = planCible === 'pro' ? '9,50€ le 1er mois' : `${planConfig.prix}€/mois`;
-      if (typeof Stripe_Integration !== 'undefined') Stripe_Integration.sauvegarderPlanCible(planCible);
+      document.getElementById('badge-plan-prix').textContent = annuelCible ? '149€/an' : '19,90€/mois';
+      if (typeof Stripe_Integration !== 'undefined') Stripe_Integration.sauvegarderPlanCible(planCible, annuelCible);
     }
 
     // Déjà connecté → rediriger (exclure sessions démo)
     await Auth.init();
     if (Auth.estAuthentifie() && !Auth.estDemoMode()) {
+      // Plan choisi via un CTA pricing → lancer le paiement directement (au lieu du dashboard)
+      if (planCible && CONFIG.PLANS[planCible] && planCible !== 'gratuit') {
+        await verifierPlanPostAuth();
+        return;
+      }
       const returnUrl = urlParams.get('returnUrl');
       window.location.href = returnUrl || 'app.html';
     }
@@ -656,8 +662,9 @@
   async function verifierPlanPostAuth() {
     if (typeof Stripe_Integration !== 'undefined') {
       const plan = Stripe_Integration.getPlanCible();
+      const annuel = Stripe_Integration.getAnnuelCible();
       if (plan && CONFIG.PLANS[plan]) {
-        await Stripe_Integration.lancerPaiement(plan);
+        await Stripe_Integration.lancerPaiement(plan, annuel);
         return;
       }
     }

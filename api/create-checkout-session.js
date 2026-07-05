@@ -26,15 +26,11 @@ module.exports = async (req, res) => {
   // Email fiable : userEmail explicite, sinon userId si c'est un email
   const customerEmail = userEmail || (userId && userId.includes('@') ? userId : null);
 
-  // Appliquer directement -50% sur le premier mois Pro (sans code promo requis)
+  // -50% sur le 1er mois — Pro mensuel uniquement (pas l'annuel)
   let launchCouponId = null;
   if ((plan === 'pro' || !plan) && !annuel) {
     try {
-      const coupon = await stripe.coupons.create({
-        percent_off: 50,
-        duration: 'once',
-        name: 'Offre lancement -50% 1er mois'
-      });
+      const coupon = await stripe.coupons.create({ percent_off: 50, duration: 'once', name: 'Offre lancement -50% 1er mois' });
       launchCouponId = coupon.id;
     } catch (e) { /* silencieux si création échoue */ }
   }

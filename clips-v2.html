@@ -1116,7 +1116,7 @@ const V2 = (() => {
     document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
     const el = document.getElementById('state-' + id);
     if (el) el.classList.add('active');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }
 
   // ── AI Scan Animation ──
@@ -1241,6 +1241,8 @@ const V2 = (() => {
   // → export quasi-instantané quand l'utilisateur clique
   async function _precacheSegmentsAsync(clips) {
     if (!_file || !clips?.length) return;
+    // Skip on mobile — ffmpeg.wasm uses ~500MB RAM and crashes mobile browser tabs
+    if (_isIOS() || /Android/i.test(navigator.userAgent)) return;
     try {
       const authH = {};
       if (typeof Auth !== 'undefined' && Auth.getToken()) authH['Authorization'] = `Bearer ${Auth.getToken()}`;
@@ -1401,7 +1403,7 @@ const V2 = (() => {
       try {
         const data = await Promise.race([Auth.getPlanDistant(), new Promise(r => setTimeout(() => r(null), 3000))]);
         if (data?.plan) _userPlan = data.plan;
-        if (data?.repurpose_count !== undefined) _repurposeCount = data.repurpose_count;
+        if (data?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, data.repurpose_count);
       } catch {}
     }
     if (window.posthog) posthog.capture('video_uploaded', { source: _ytUrl ? 'youtube' : 'file', plan: _userPlan });
@@ -1644,15 +1646,17 @@ const V2 = (() => {
     _stopScanAnim();
     setState('studio');
     setTimeout(() => toast(`🎬 ${_clips.length} clips prêts — clique sur un clip pour personnaliser et télécharger`, 'succes', 5000), 600);
-    // Generate thumbnails + pré-analyser visages en arrière-plan
+    // Generate thumbnails + pré-analyser visages en arrière-plan (desktop seulement pour les fichiers)
+    const _onMobile = _isIOS() || /Android/i.test(navigator.userAgent);
     if (_file) {
-      setTimeout(() => generateThumbnails(), 200);
-      // Analyser les visages des 5 premiers clips (pour preview instantanée)
-      setTimeout(() => {
-        for (let i = 0; i < Math.min(5, _clips.length); i++) _analyzeClipFaces(i);
-      }, 500);
+      if (!_onMobile) {
+        setTimeout(() => generateThumbnails(), 200);
+        setTimeout(() => {
+          for (let i = 0; i < Math.min(5, _clips.length); i++) _analyzeClipFaces(i);
+        }, 500);
+      }
     } else if (_ytUrl) {
-      setTimeout(() => generateThumbnails(), 200);
+      setTimeout(() => generateThumbnails(), 200); // YouTube = juste des URLs img, safe sur mobile
     }
   }
 
@@ -1818,7 +1822,7 @@ const V2 = (() => {
         <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé ton essai gratuit</h2>
         <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter tous tes clips — sans watermark, en illimité.</p>
         <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:18px;margin-bottom:20px;text-align:left;">
-          <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,90€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
+          <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,95€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
           <div style="font-size:0.78rem;color:#8A93A3;margin-bottom:12px">puis 19,90€/mois · résiliable à tout moment</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:0.8rem;color:#f2f4f7;">
             <div>✓ Clips viraux illimités</div>
@@ -1850,9 +1854,10 @@ const V2 = (() => {
         userId: currentUser.id || currentUser.email || null,
         userEmail: currentUser.email || null
       }));
-      window.location.href = '/paiement.html';
+      (window.top || window).location.href = '/paiement.html';
     } else {
-      window.location.href = '/lp.html#tarifs';
+      // CONFIG absent dans clips-v2 → passer par auth.html qui charge config.js et lance le paiement
+      (window.top || window).location.href = '/auth.html?plan=pro';
     }
   };
   function closeUpgradeModal() {}
@@ -1871,8 +1876,10 @@ const V2 = (() => {
     _resetModalBtn(document.getElementById('modal-dl-btn'));
     _modalIdx = i;
     _livePreds = null; // reset détection live pour ce nouveau clip
-    _analyzeClipFaces(i);
-    _showPodcastIfMultiFace(i);
+    if (!_isIOS() && !/Android/i.test(navigator.userAgent)) {
+      _analyzeClipFaces(i);
+      _showPodcastIfMultiFace(i);
+    }
     const sc = scoreColor(clip.score);
     const start = clip.start_time ?? clip.start;
     const end = clip.end_time ?? clip.end;
@@ -1981,6 +1988,10 @@ const V2 = (() => {
       video.addEventListener('loadedmetadata', () => {
         video.currentTime = clipStart;
         _updateCropPreview();
+      }, { once: true });
+      video.addEventListener('seeked', () => {
+        // Force le rendu de la frame (sinon player reste noir)
+        video.play().then(() => { setTimeout(() => video.pause(), 80); }).catch(() => {});
       }, { once: true });
 
       // Drag & édition sur les overlays
@@ -3041,11 +3052,21 @@ const V2 = (() => {
 
   async function exportFromModal() {
     if (_modalIdx === null) return;
-    // Gratuit : 1 essai avec watermark, ensuite paywall
+    // Gratuit : le SERVEUR est la source de vérité. On resynchronise le compteur AVANT d'autoriser
+    // → empêche tout contournement (reload, nouvelle vidéo, plusieurs onglets, cache local).
+    if (_userPlan === 'gratuit') {
+      try {
+        const d = await Auth.getPlanDistant();
+        if (d?.plan) _userPlan = d.plan;
+        if (d?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, d.repurpose_count);
+      } catch {}
+    }
     if (_userPlan === 'gratuit' && _repurposeCount >= FREE_CLIP_LIMIT) {
       if (window.posthog) posthog.capture('paywall_shown', { trigger: 'free_limit_reached', repurpose_count: _repurposeCount });
       showUpgradeModal(); return;
     }
+    // Incrémenter + ATTENDRE l'écriture serveur avant de lancer l'export (bloque toute 2e tentative)
+    if (_userPlan === 'gratuit') { _repurposeCount++; await logClipExport(1); }
     if (window.posthog) { posthog.capture('export_clicked', { clip_index: _modalIdx, plan: _userPlan }); posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' }); }
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
@@ -3088,8 +3109,6 @@ const V2 = (() => {
         if (mobProg) mobProg.style.width = '100%';
       } else {
         const objUrl = URL.createObjectURL(result.blob);
-        logClipExport(1);
-        if (_userPlan === 'gratuit') { _repurposeCount++; }
 
         // Stopper le canvas preview et cacher les overlays (la vidéo exportée a déjà les sous-titres brûlés)
         if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
@@ -3345,6 +3364,19 @@ const V2 = (() => {
   // ── Export ──
   async function startExport() {
     if (_selectedIds.size === 0) return;
+    // Export groupé = Pro. Gratuit = 1 seul clip via le téléchargement unitaire (modale).
+    // On resynchronise le plan/compteur serveur avant de décider.
+    if (_userPlan === 'gratuit') {
+      try {
+        const d = await Auth.getPlanDistant();
+        if (d?.plan) _userPlan = d.plan;
+        if (d?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, d.repurpose_count);
+      } catch {}
+      if (_userPlan === 'gratuit') {
+        if (window.posthog) posthog.capture('paywall_shown', { trigger: 'batch_export_free', repurpose_count: _repurposeCount });
+        showUpgradeModal(); return;
+      }
+    }
     if (_segments.length === 0) {
       toast('⚠️ Aucun segment de transcription — les sous-titres ne seront pas générés. Vérifie la console (F12) pour les détails.', 'info', 6000);
       console.warn('[startExport] _segments vide au moment de l\'export !');
@@ -4184,11 +4216,11 @@ const V2 = (() => {
     try {
       const user = await Auth.getUser();
       if (!user?.email) return;
-      fetch('/api/user-sync', {
+      await fetch('/api/user-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, action: 'log_clip_export', metadata: { nb } })
-      }).catch(() => {});
+      });
     } catch (e) { /* silencieux */ }
   }
 

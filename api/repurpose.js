@@ -156,7 +156,7 @@ async function _scheduleClipsRelanceEmail(userId) {
             <div style="color:#aaa;font-size:13px;">Score 94 · Score 91 · Score 89 · Score 87…</div>
           </div>
           <a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;margin-bottom:20px;">
-            Débloquer tous mes clips — 9,50€ →
+            Débloquer tous mes clips — 9,95€ →
           </a>
           <p style="color:#555;font-size:12px;">Offre -50% le 1er mois · Annulable à tout moment</p>
         </div>`

@@ -90,7 +90,7 @@ async function checkQuota(userId) {
       }
     } else if (user.plan === 'pro') {
       if (used >= PRO_GENERATION_LIMIT) {
-        return { ok: false, error: `Tu as atteint les ${PRO_GENERATION_LIMIT} générations Pro ce mois-ci. Passe au plan Studio pour des générations illimitées.` };
+        return { ok: false, error: `Tu as atteint les ${PRO_GENERATION_LIMIT} générations Pro ce mois-ci — ça se réinitialise le mois prochain. Besoin de plus ? Écris-nous à contact@creatis.app.` };
       }
     }
     return { ok: true };

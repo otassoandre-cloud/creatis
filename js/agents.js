@@ -586,23 +586,21 @@ Réponds en français. Sois précis et concret — cite des éléments spécifiq
 ## CONNAISSANCE DE L'APPLICATION CRÉATIS
 
 **C'est quoi Créatis ?**
-Créatis est un SaaS IA pour créateurs YouTube francophones. Il génère en 30 secondes : scripts complets, titres, descriptions SEO, idées de vidéos, stratégie de croissance, et clips viraux à partir de vidéos uploadées.
+Créatis est un SaaS IA pour créateurs YouTube francophones. Son agent principal, Clips Viraux, transforme une vidéo longue en 10 Shorts viraux prêts à publier. Il propose aussi 6 autres agents pour scripts, miniatures, idées et analyse de contenu.
 
 **Les agents disponibles :**
-- YouTube Complet : script + titre + description + hashtags en une génération
-- YouTube Short : script vertical optimisé pour les Shorts
-- Idées Vidéos : 10 idées avec angles et hooks selon la niche
-- Titres Viraux : 10 variantes de titres A/B testables
-- Description SEO : description optimisée avec mots-clés YouTube
-- Miniature IA : génération d'image miniature 16:9 par IA
-- Stratégie Croissance : plan d'action 30 jours personnalisé
-- Clips Viraux : découpe automatique d'une longue vidéo en 10 clips courts 9:16
+- Clips Viraux (agent principal) : transforme n'importe quelle vidéo en 10 Shorts viraux 9:16 prêts à publier
+- YouTube Complet : titres, script complet, plan, description SEO et tags optimisés en une génération
+- Miniature Pro : génère un fond réaliste sur-mesure par IA à partir d'une description
+- Recyclage Contenu : colle l'URL d'une vidéo → récupère le transcript et génère des posts LinkedIn, Twitter/X, Instagram, Newsletter
+- Idées de Vidéos : 30 idées personnalisées basées sur la niche et les tendances actuelles
+- Réponses Commentaires : colle l'URL d'une vidéo → récupère les vrais commentaires et génère des réponses personnalisées
+- Analyse Vidéo : colle une vidéo virale → décrypte pourquoi elle a explosé et extrait la formule à reproduire
 
 **Plans :**
-- Gratuit : 10 générations/mois pour tester, agents de base
-- Pro : générations illimitées, tous les agents, clips viraux
-- Studio : tout illimité, plusieurs chaînes
-- Pour connaître les tarifs exacts ou upgrader : cliquer sur "Upgrade" dans le tableau de bord
+- Gratuit : 1 génération gratuite pour découvrir (Clips Viraux uniquement, avec watermark)
+- Pro (19,90€/mois, ou 149€/an) : générations illimitées, tous les agents, 30 miniatures/mois
+- Pour upgrader : cliquer sur "Upgrade" dans le tableau de bord
 
 **Programme Affilié :**
 - 30% de commission récurrente à vie sur chaque abonné Pro parrainé
@@ -611,7 +609,7 @@ Créatis est un SaaS IA pour créateurs YouTube francophones. Il génère en 30 
 **Questions fréquentes support :**
 - "Comment uploader une vidéo pour les clips ?" → Dans l'agent Clips Viraux, glisser-déposer ou cliquer pour choisir un fichier MP4/MOV depuis l'appareil
 - "Le téléchargement de clip ne fonctionne pas" → Sur mobile, l'app utilise le partage natif iOS/Android. Sur desktop, le clip se télécharge en MP4.
-- "Comment connecter ma chaîne YouTube ?" → Dans le tableau de bord, section "Chaîne YouTube", cliquer sur "Connecter"
+- "Comment connecter ma chaîne YouTube ?" → Dans le tableau de bord, section "Connecte ta chaîne YouTube", entrer son @handle ou l'URL de la chaîne et cliquer sur "Analyser"
 - "Mes générations ne s'affichent plus" → L'historique est accessible via "Navigation > Historique" dans la sidebar
 - "Bug ou problème technique persistant" → Écrire à contact@creatis.app en décrivant le problème
 

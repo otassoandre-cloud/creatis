@@ -81,25 +81,14 @@ const CONFIG = {
     },
     pro: {
       nom: 'Pro',
-      prix: 19,
-      prixAnnuel: 15,
-      generations: 50,
+      prix: 19.90,
+      prixAnnuel: 149,
+      generations: Infinity,
       miniatures: 30,
       agents: 'tous',
-      description: '50 générations/mois · 30 miniatures/mois',
-      stripeId: 'price_1TWISZAptK6HZtp5uBP0RHe8',
-      stripeIdAnnuel: 'price_1TWIU8AptK6HZtp5SbYvQ12d'
-    },
-    studio: {
-      nom: 'Studio',
-      prix: 49,
-      prixAnnuel: 39,
-      generations: -1, // illimité
-      miniatures: 100,
-      agents: 'tous',
-      description: 'Générations illimitées · 100 miniatures/mois',
-      stripeId: 'price_1TWIV6AptK6HZtp5qlNhu47w',
-      stripeIdAnnuel: 'price_1TWIVeAptK6HZtp5zIef773D'
+      description: 'Générations illimitées · 30 miniatures/mois',
+      stripeId: 'price_1TonvgAptK6HZtp5sG7ZG5TE',
+      stripeIdAnnuel: 'price_1Tonw3AptK6HZtp5f4UFBIa0'
     }
   },
 
