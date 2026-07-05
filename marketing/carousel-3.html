@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a1a; display:flex; flex-wrap:wrap; gap:16px; padding:20px; font-family:'Hanken Grotesk',sans-serif; }
+.slide { width:1080px; height:1080px; background:#080A0F; display:flex; flex-direction:column; padding:60px; position:relative; overflow:hidden; flex-shrink:0; }
+.slide::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%); top:-200px; right:-200px; pointer-events:none; }
+.logo { position:absolute; bottom:40px; right:60px; display:flex; align-items:center; gap:8px; font-size:18px; font-weight:800; color:rgba(255,255,255,0.25); }
+.logo-mark { width:30px; height:30px; background:#10b981; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#080A0F; }
+.dots { position:absolute; bottom:42px; left:60px; display:flex; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.12); }
+.dot.active { background:#10b981; width:24px; border-radius:4px; }
+.s-cover { justify-content:center; align-items:center; text-align:center; }
+.pill { display:inline-block; padding:8px 20px; border:1px solid rgba(16,185,129,0.3); border-radius:99px; font-size:16px; font-weight:700; color:#10b981; margin-bottom:28px; letter-spacing:1px; }
+.big { font-size:76px; font-weight:900; color:#fff; line-height:1.1; letter-spacing:-2px; }
+.green { color:#10b981; }
+.tag { font-size:20px; color:rgba(255,255,255,0.3); margin-top:28px; font-weight:600; }
+.s-style { justify-content:center; align-items:center; }
+.style-name { font-size:28px; font-weight:800; color:#10b981; margin-bottom:20px; letter-spacing:1px; text-transform:uppercase; }
+.style-demo { width:800px; height:500px; background:#0c0f16; border-radius:20px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:80px; position:relative; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+.style-demo::before { content:''; position:absolute; inset:0; background:linear-gradient(transparent 50%, rgba(0,0,0,0.6)); }
+.style-text { position:relative; z-index:1; font-weight:900; font-size:48px; text-align:center; line-height:1.3; }
+.style-desc { margin-top:24px; font-size:22px; color:rgba(255,255,255,0.4); font-weight:500; text-align:center; max-width:700px; }
+.style-stat { margin-top:16px; font-size:20px; color:#10b981; font-weight:700; }
+.s-cta { justify-content:center; align-items:center; text-align:center; }
+.cta-text { font-size:52px; font-weight:900; color:#fff; line-height:1.2; letter-spacing:-1px; margin-bottom:36px; }
+.cta-btn { background:linear-gradient(180deg,#10b981,#059669); color:#fff; font-size:24px; font-weight:800; padding:20px 50px; border-radius:99px; box-shadow:0 12px 40px rgba(16,185,129,0.35); }
+.cta-url { margin-top:20px; font-size:20px; color:rgba(255,255,255,0.25); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="slide s-cover">
+  <div class="pill">COMPARATIF</div>
+  <div class="big">3 styles de<br>sous-titres qui<br><span class="green">explosent</span></div>
+  <div class="tag">Lequel choisir ? →</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-style">
+  <div class="style-name">🏆 N°1 — Karaoke</div>
+  <div class="style-demo">
+    <div class="style-text" style="color:#fff">chaque <span style="color:#10b981">mot</span> se colore</div>
+  </div>
+  <div class="style-desc">Le mot actif change de couleur en temps réel. Utilisé par MrBeast, Hormozi, et les plus gros créateurs.</div>
+  <div class="style-stat">+40% de rétention vs sans sous-titres</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-style">
+  <div class="style-name">N°2 — Bold</div>
+  <div class="style-demo">
+    <div class="style-text" style="color:#fff;text-shadow:3px 3px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000">texte gras contrasté</div>
+  </div>
+  <div class="style-desc">Blanc sur fond sombre. Classique, lisible partout. Le choix safe pour tous les contenus.</div>
+  <div class="style-stat">Le plus lisible sur tous les fonds</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-style">
+  <div class="style-name">N°3 — Néon</div>
+  <div class="style-demo">
+    <div class="style-text" style="color:#10b981;text-shadow:0 0 10px #10b981,0 0 20px #10b981,0 0 40px rgba(16,185,129,0.3)">effet glow néon</div>
+  </div>
+  <div class="style-desc">Halo lumineux autour du texte. Tendance 2026, parfait pour les contenus tech, gaming et lifestyle.</div>
+  <div class="style-stat">Le plus tendance en 2026</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-cta">
+  <div class="cta-text">11 styles de<br>sous-titres.<br><span class="green">1 clic.</span></div>
+  <div class="cta-btn">Teste-les gratuitement →</div>
+  <div class="cta-url">creatis.app</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
+</div>
+</body>
+</html>

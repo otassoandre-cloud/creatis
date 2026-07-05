@@ -1,0 +1,194 @@
+[
+  {
+    "handle": "Romainlanery",
+    "email": "contact@technewsandtests.com",
+    "prenom": "Romain",
+    "abonnes": "1,01M",
+    "type": "reviewer",
+    "note": "Teste des outils tech/créateur — chaîne TechNewsAndTests"
+  },
+  {
+    "handle": "GuillaumeSlash",
+    "email": "contact@guillaumeslash.fr",
+    "prenom": "Guillaume",
+    "abonnes": "208K",
+    "type": "createur",
+    "note": "Créateur contenu outils numériques FR"
+  },
+  {
+    "handle": "Hardisk",
+    "email": "sales@hardisk.me",
+    "prenom": "Hardisk",
+    "abonnes": "276K",
+    "type": "tech",
+    "note": "Tech FR, matériel et outils"
+  },
+  {
+    "handle": "BenjaminCode",
+    "email": "b1jam1code@gmail.com",
+    "prenom": "Benjamin",
+    "abonnes": "55,8K",
+    "type": "dev",
+    "note": "Dev / outils FR"
+  },
+  {
+    "handle": "Monologix",
+    "email": "monologixfr@gmail.com",
+    "prenom": "Monologix",
+    "abonnes": "25,9K",
+    "type": "tech",
+    "note": "Tech FR niche"
+  },
+  {
+    "handle": "ExplorIA",
+    "email": "hello@explorialabs.com",
+    "prenom": "ExplorIA",
+    "abonnes": "35,3K",
+    "type": "ia",
+    "note": "IA pour tous les francophones"
+  },
+  {
+    "handle": "NoCodeLowCode",
+    "email": "contact@nocodelowcode.fr",
+    "prenom": "L'équipe",
+    "abonnes": "-",
+    "type": "blog",
+    "note": "Blog outils no-code/IA, couvre tools créateurs"
+  },
+  {
+    "handle": "Plateya",
+    "email": "contact@plateya.fr",
+    "prenom": "Damien",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "A testé Vizard (concurrent direct de Créatis)"
+  },
+  {
+    "handle": "YassineSdiri",
+    "email": "yassine@chatflowai.co",
+    "prenom": "Yassine",
+    "abonnes": "115K",
+    "type": "ia",
+    "note": "Fondateur ChatflowAI, 115K subs IA FR"
+  },
+  {
+    "handle": "Synthographie",
+    "email": "contact@synthographie.fr",
+    "prenom": "Ludovic",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "A écrit un test complet Opus Clip — cible parfaite"
+  },
+  {
+    "handle": "DroneAndCam",
+    "email": "contact@droneandcam.com",
+    "prenom": "Guillaume",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "2 articles sur OpusClip — YouTube @droneandcam"
+  },
+  {
+    "handle": "LeFilreIA",
+    "email": "contact@lefiltreia.fr",
+    "prenom": "L'équipe",
+    "abonnes": "-",
+    "type": "blog",
+    "note": "Blog avis outils IA, a testé Opus Clip"
+  },
+  {
+    "handle": "YouFeel",
+    "email": "contact@youfeel.fr",
+    "prenom": "Eric",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "Eric Brasseur — test complet Opus Clip 2026"
+  },
+  {
+    "handle": "LesMakers",
+    "email": "contact@lesmakers.fr",
+    "prenom": "Quentin",
+    "abonnes": "-",
+    "type": "blog",
+    "note": "Guide complet se lancer YouTube 2026 — audience créateurs"
+  },
+  {
+    "handle": "IbrahimKamara",
+    "email": "contact@ibrahimkamara.com",
+    "prenom": "Ibrahim",
+    "abonnes": "600K+",
+    "type": "createur",
+    "note": "600K+ abonnés YouTube cumulés, créateur FR multi-chaînes"
+  },
+  {
+    "handle": "AlexRafaitin",
+    "email": "alex@brainlab.club",
+    "prenom": "Alex",
+    "abonnes": "650K",
+    "type": "createur",
+    "note": "650K followers — fondateur Père & Fish, Brainlab, Greenbull Media. Newsletter marketing FR."
+  },
+  {
+    "handle": "KevinDufraisse",
+    "email": "kevin@formation-growth-hacking.fr",
+    "prenom": "Kevin",
+    "abonnes": "21K",
+    "type": "blog",
+    "note": "Growth hacking FR — 21K Substack, formateur, HEC/Mines. Audience entrepreneurs FR."
+  },
+  {
+    "handle": "Jeanviet",
+    "email": "jeanviet@gmail.com",
+    "prenom": "Jean-Baptiste",
+    "abonnes": "90K",
+    "type": "createur",
+    "note": "90K subs YouTube @Jeanviet — IA/tech, newsletter tousinfluenceurs.fr 211K abonnés"
+  },
+  {
+    "handle": "ThomasBerton",
+    "email": "contact@thomas-berton.com",
+    "prenom": "Thomas",
+    "abonnes": "-",
+    "type": "ia",
+    "note": "Consultant IA, fondateur Azuro AI — YouTube/TikTok IA accessible, audience créateurs"
+  },
+  {
+    "handle": "PaulIrolla",
+    "email": "contact@automata.expert",
+    "prenom": "Paul",
+    "abonnes": "-",
+    "type": "ia",
+    "note": "PhD IA, YouTube @automata_pi — a écrit 'j'ai créé une usine à shorts 100% automatisée' = cible parfaite"
+  },
+  {
+    "handle": "Estherium",
+    "email": "diane@splashr.io",
+    "prenom": "Diane",
+    "abonnes": "588K",
+    "type": "ia",
+    "note": "Diane Benhamou — 588K TikTok, CMO Jaws Group, vulgarise outils IA"
+  },
+  {
+    "handle": "HugoBentz",
+    "email": "hugo@lachapelle.club",
+    "prenom": "Hugo",
+    "abonnes": "211K",
+    "type": "blog",
+    "note": "La Soucoupe — 211K Substack, La Chapelle startup studio. A déjà sponsorisé Submagic (concurrent Créatis)."
+  },
+  {
+    "handle": "OlivierJuprelle",
+    "email": "bonjour@strategievideo.com",
+    "prenom": "Olivier",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "Stratégie Vidéo — expert YouTube, 863 vidéos publiées, conseils créateurs FR, audience 100% créateurs YouTube"
+  },
+  {
+    "handle": "MichaelZimon",
+    "email": "michael@apprendrelavideo.fr",
+    "prenom": "Michael",
+    "abonnes": "-",
+    "type": "reviewer",
+    "note": "apprendrelavideo.fr — blog création vidéo YouTube, public : créateurs qui apprennent à faire des vidéos"
+  }
+]

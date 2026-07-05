@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a1a; display:flex; flex-wrap:wrap; gap:16px; padding:20px; font-family:'Hanken Grotesk',sans-serif; }
+.slide { width:1080px; height:1080px; background:#080A0F; display:flex; flex-direction:column; padding:60px; position:relative; overflow:hidden; flex-shrink:0; }
+.slide::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%); top:-200px; right:-200px; pointer-events:none; }
+.logo { position:absolute; bottom:40px; right:60px; display:flex; align-items:center; gap:8px; font-size:18px; font-weight:800; color:rgba(255,255,255,0.25); }
+.logo-mark { width:30px; height:30px; background:#10b981; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#080A0F; }
+.dots { position:absolute; bottom:42px; left:60px; display:flex; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.12); }
+.dot.active { background:#10b981; width:24px; border-radius:4px; }
+.s-cover { justify-content:center; align-items:center; text-align:center; }
+.pill { display:inline-block; padding:8px 20px; border:1px solid rgba(16,185,129,0.3); border-radius:99px; font-size:16px; font-weight:700; color:#10b981; margin-bottom:28px; letter-spacing:1px; }
+.big { font-size:82px; font-weight:900; color:#fff; line-height:1.1; letter-spacing:-3px; }
+.green { color:#10b981; }
+.tag { font-size:20px; color:rgba(255,255,255,0.3); margin-top:28px; font-weight:600; }
+.s-step { justify-content:center; }
+.step-num { font-size:140px; font-weight:900; color:rgba(16,185,129,0.06); position:absolute; top:20px; right:40px; }
+.step-badge { display:inline-block; padding:6px 14px; background:rgba(16,185,129,0.1); border-radius:6px; font-size:14px; font-weight:800; color:#10b981; letter-spacing:1px; margin-bottom:16px; }
+.step-icon { font-size:52px; margin-bottom:16px; }
+.step-title { font-size:44px; font-weight:900; color:#fff; line-height:1.15; margin-bottom:16px; letter-spacing:-1px; }
+.step-desc { font-size:24px; color:rgba(255,255,255,0.45); line-height:1.5; font-weight:500; }
+.step-result { margin-top:28px; padding:20px 28px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.15); border-radius:14px; font-size:22px; color:#fff; font-weight:700; line-height:1.4; }
+.s-cta { justify-content:center; align-items:center; text-align:center; }
+.cta-text { font-size:52px; font-weight:900; color:#fff; line-height:1.2; letter-spacing:-1px; margin-bottom:36px; }
+.cta-btn { background:linear-gradient(180deg,#10b981,#059669); color:#fff; font-size:24px; font-weight:800; padding:20px 50px; border-radius:99px; box-shadow:0 12px 40px rgba(16,185,129,0.35); }
+.cta-url { margin-top:20px; font-size:20px; color:rgba(255,255,255,0.25); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="slide s-cover">
+  <div class="pill">TUTORIEL</div>
+  <div class="big">10 Shorts<br>en <span class="green">2 minutes</span></div>
+  <div class="tag">La méthode étape par étape →</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-step">
+  <div class="step-num">01</div>
+  <div class="step-badge">ÉTAPE 1</div>
+  <div class="step-icon">📤</div>
+  <div class="step-title">Upload ta vidéo longue</div>
+  <div class="step-desc">Podcast, vlog, tuto, live — tout fonctionne. Glisse ton fichier ou colle un lien YouTube.</div>
+  <div class="step-result">⏱ 10 secondes</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-step">
+  <div class="step-num">02</div>
+  <div class="step-badge">ÉTAPE 2</div>
+  <div class="step-icon">🤖</div>
+  <div class="step-title">L'IA analyse et découpe</div>
+  <div class="step-desc">Détection des moments forts, scoring de viralité 0-100, découpage automatique en 10 clips.</div>
+  <div class="step-result">⏱ 60 secondes — tu ne fais rien</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-step">
+  <div class="step-num">03</div>
+  <div class="step-badge">ÉTAPE 3</div>
+  <div class="step-icon">🎨</div>
+  <div class="step-title">Personnalise et exporte</div>
+  <div class="step-desc">Choisis ton style de sous-titres, ajoute un hook, recadre en 9:16. Un clic = téléchargement.</div>
+  <div class="step-result">⏱ 30 secondes par clip</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide s-cta">
+  <div class="cta-text">1 vidéo longue.<br><span class="green">10 Shorts.</span><br>2 minutes.</div>
+  <div class="cta-btn">Essaie gratuitement →</div>
+  <div class="cta-url">creatis.app</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
+</div>
+</body>
+</html>
