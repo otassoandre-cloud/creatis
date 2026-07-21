@@ -27,6 +27,12 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("creatis")
 
+try:
+    import cv2 as _cv2_check
+    logger.info(f"[startup] cv2 {_cv2_check.__version__} — CascadeClassifier={hasattr(_cv2_check, 'CascadeClassifier')}")
+except Exception as _e:
+    logger.error(f"[startup] cv2 import failed: {_e}")
+
 GEMINI_API_KEY        = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
 SERVICE_SECRET        = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
@@ -35,6 +41,10 @@ YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
 RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
 BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
 RAPIDAPI_KEY          = os.environ.get("RAPIDAPI_KEY", "")
+# youtube-download-api.org — API tierce qui gère la bot-detection YouTube côté serveur (IP
+# résidentielles). Utilisée en priorité #0 quand la clé est présente ; fallback gratuit sinon.
+YT_DOWNLOAD_API_KEY   = os.environ.get("YT_DOWNLOAD_API_KEY", "")
+YT_DOWNLOAD_API_BASE  = os.environ.get("YT_DOWNLOAD_API_BASE", "https://youtube-download-api.org")
 # Fallback public — utilisé si BGUTIL_URL interne inaccessible depuis ce service
 BGUTIL_PUBLIC_URL     = "https://bgutil-ytdlp-pot-provider-production-ff91.up.railway.app"
 
@@ -48,6 +58,7 @@ CLIPS:        dict = {}
 CLIP_EXPORTS: dict = {}
 UPLOAD_JOBS:  dict = {}
 RAW_SEGMENTS: dict = {}
+PREVIEW_CLIPS: dict = {}
 
 # Limite les ffmpeg lourds en parallèle — initialisé au premier appel async
 _FFMPEG_SEM = None
@@ -733,6 +744,85 @@ def _get_innertube_audio_url(video_id: str) -> Optional[tuple]:
     return None
 
 
+def _ytapi_fetch(youtube_url: str, fmt: str, dest_path: Path, poll_timeout: int = 420) -> Optional[str]:
+    """Télécharge une vidéo/audio via youtube-download-api.org (soumission → polling → download).
+    fmt : "1080"|"720"|"480"|"360"|"mp3". Retourne le titre si OK, None sinon (jamais d'exception
+    remontée — l'appelant retombe sur le chemin gratuit yt-dlp). Best-effort, non bloquant."""
+    if not YT_DOWNLOAD_API_KEY:
+        return None
+    headers = {"Authorization": f"Bearer {YT_DOWNLOAD_API_KEY}", "Content-Type": "application/json"}
+    try:
+        # timeout court pour submit/poll, mais long en lecture pour le download d'un gros fichier
+        with httpx.Client(timeout=httpx.Timeout(30.0, read=600.0)) as hc:
+            # 1) Soumission du job
+            r = hc.post(f"{YT_DOWNLOAD_API_BASE}/api/v2/download",
+                        json={"url": youtube_url, "format": fmt}, headers=headers)
+            if r.status_code not in (200, 201, 202):
+                logger.warning(f"[ytapi] submit HTTP {r.status_code}: {r.text[:200]}")
+                return None
+            data = r.json()
+            job_id = data.get("jobId") or data.get("job_id") or data.get("id")
+            title  = data.get("title", "")
+            # Certaines réponses renvoient directement l'URL si déjà en cache
+            download_url = data.get("downloadUrl") or data.get("download_url")
+            if not job_id and not download_url:
+                logger.warning(f"[ytapi] pas de jobId/downloadUrl: {str(data)[:200]}")
+                return None
+
+            # 2) Polling jusqu'à COMPLETED
+            if not download_url:
+                deadline = _time.time() + poll_timeout
+                while _time.time() < deadline:
+                    _time.sleep(3)
+                    sr = hc.get(f"{YT_DOWNLOAD_API_BASE}/api/v2/download/{job_id}", headers=headers)
+                    if sr.status_code != 200:
+                        continue
+                    sd = sr.json()
+                    st = (sd.get("status") or "").upper()
+                    if st in ("COMPLETED", "DONE", "SUCCESS"):
+                        download_url = sd.get("downloadUrl") or sd.get("download_url")
+                        title = title or sd.get("title", "")
+                        break
+                    if st in ("FAILED", "ERROR", "CANCELLED"):
+                        logger.warning(f"[ytapi] job {job_id} status={st}: {sd.get('error','')}")
+                        return None
+                if not download_url:
+                    logger.warning(f"[ytapi] job {job_id} timeout après {poll_timeout}s")
+                    return None
+
+            # 3) Téléchargement du fichier résultat vers dest_path (streaming)
+            with hc.stream("GET", download_url, headers=headers) as resp:
+                if resp.status_code != 200:
+                    logger.warning(f"[ytapi] download HTTP {resp.status_code}")
+                    return None
+                with open(dest_path, "wb") as f:
+                    for chunk in resp.iter_bytes(1024 * 256):
+                        f.write(chunk)
+            if dest_path.exists() and dest_path.stat().st_size > 10_000:
+                logger.info(f"[ytapi] OK {fmt} → {dest_path.name} ({dest_path.stat().st_size // 1024} KB)")
+                return title or "video"
+            logger.warning(f"[ytapi] fichier trop petit/absent")
+            dest_path.unlink(missing_ok=True)
+            return None
+    except Exception as e:
+        logger.warning(f"[ytapi] exception: {e}")
+        try: dest_path.unlink(missing_ok=True)
+        except Exception: pass
+        return None
+
+
+def _ytapi_cached_video(video_id: str, fmt: str = "480") -> Optional[Path]:
+    """Télécharge la vidéo complète via l'API tierce UNE FOIS et la met en cache par video_id —
+    réutilisée par tous les segments/previews/exports (économise le quota API). None si indispo."""
+    if not YT_DOWNLOAD_API_KEY:
+        return None
+    cache = WORK_DIR / f"ytapi_{video_id}.mp4"
+    if cache.exists() and cache.stat().st_size > 10_000:
+        return cache
+    title = _ytapi_fetch(f"https://www.youtube.com/watch?v={video_id}", fmt, cache)
+    return cache if title else None
+
+
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     """Télécharge audio via InnerTube direct puis yt-dlp fallback.
     Stratégie 0 : InnerTube ANDROID_VR/ANDROID/IOS — URL directe, pas de bot detection.
@@ -827,6 +917,15 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                 # Si le proxy résidentiel est cassé, inutile de continuer les formats
                 if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
                     break
+
+    # DERNIER RECOURS : API tierce (mp3, léger ~3 Mo donc quasi 0 crédit) — seulement si tous
+    # les chemins gratuits ci-dessus ont été bot-bloqués. Rare.
+    if YT_DOWNLOAD_API_KEY:
+        api_out = out_dir / "audio_api.mp3"
+        title = _ytapi_fetch(youtube_url, "mp3", api_out)
+        if title:
+            logger.info("[audio] secours API mp3 utilisé (chemins gratuits épuisés)")
+            return str(api_out), title
 
     raise RuntimeError(f"Téléchargement audio échoué: {last_err}")
 
@@ -943,6 +1042,22 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
             if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
                 break
 
+    # Secours API (rare — seulement si yt-dlp bot-bloqué) : vidéo complète en cache puis découpe
+    # locale de la section. Consomme du crédit, donc utilisé uniquement après échec du gratuit.
+    _mv = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
+    _vid = _mv.group(1) if _mv else None
+    if _vid and YT_DOWNLOAD_API_KEY:
+        cached = _ytapi_cached_video(_vid, "480")
+        if cached and cached.exists():
+            api_seg = out_dir / "source_apiseg.mp4"
+            r = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(start), "-t", str(end - start),
+                 "-i", str(cached), "-c", "copy", str(api_seg)],
+                capture_output=True)
+            if r.returncode == 0 and api_seg.exists() and api_seg.stat().st_size > 10_000:
+                logger.info("[section] secours API utilisé (yt-dlp bot-bloqué)")
+                return str(api_seg)
+
     logger.warning(f"Section download failed ({last_err}), fallback vers téléchargement complet")
     return download_video(youtube_url, out_dir)
 
@@ -1007,12 +1122,27 @@ async def _transcribe_groq(media_path: str) -> Dict:
         Path(audio_path).unlink(missing_ok=True)
 
 
+_whisper_model_cache = None
+
+def _get_whisper_model():
+    # Rechargé sur chaque appel avant ce fix : coûteux et inutile, le modèle ne change jamais
+    # (aggrave le risque de timeout sur les vidéos longues qui retombent déjà sur ce fallback CPU).
+    global _whisper_model_cache
+    if _whisper_model_cache is None:
+        from faster_whisper import WhisperModel
+        logger.info(f"[whisper-local] chargement modèle model={WHISPER_MODEL} device=cpu")
+        _whisper_model_cache = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    return _whisper_model_cache
+
 def _transcribe_local(media_path: str) -> Dict:
-    from faster_whisper import WhisperModel
     logger.info(f"[whisper-local] model={WHISPER_MODEL} device=cpu")
-    model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    model = _get_whisper_model()
+    # beam_size=5 (Ret) était trop lent en CPU pur sur les vidéos longues — beam_size=1 est
+    # nettement plus rapide (quasi le seul levier dispo sur ce fallback) pour rester sous le
+    # timeout client, au prix d'une précision légèrement inférieure à celle de Groq (fallback
+    # seulement, pas le chemin principal).
     segs_iter, info = model.transcribe(
-        media_path, beam_size=5, vad_filter=True, condition_on_previous_text=False
+        media_path, beam_size=1, vad_filter=True, condition_on_previous_text=False
     )
     segments = [
         {"start": float(s.start), "end": float(s.end), "text": (s.text or "").strip()}
@@ -1024,12 +1154,24 @@ def _transcribe_local(media_path: str) -> Dict:
 
 
 async def transcribe(media_path: str) -> Dict:
-    """Groq Whisper en priorité (rapide), local en fallback."""
+    """Groq Whisper en priorité (rapide), local en fallback.
+    Un 429 (rate limit, cf. quota Groq free 30 RPM) tombait direct sur le fallback local
+    lent — un seul retry après un court backoff évite ce fallback pour ce qui n'est qu'un
+    pic de charge temporaire, pas une vraie panne Groq."""
     if GROQ_API_KEY:
-        try:
-            return await _transcribe_groq(media_path)
-        except Exception as e:
-            logger.warning(f"Groq Whisper failed ({e}) — fallback local")
+        for attempt in range(2):
+            try:
+                return await _transcribe_groq(media_path)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429 and attempt == 0:
+                    logger.warning("Groq Whisper rate-limited (429) — retry dans 3s avant fallback local")
+                    await asyncio.sleep(3)
+                    continue
+                logger.warning(f"Groq Whisper failed ({e}) — fallback local")
+                break
+            except Exception as e:
+                logger.warning(f"Groq Whisper failed ({e}) — fallback local")
+                break
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, lambda: _transcribe_local(media_path))
 
@@ -1067,7 +1209,9 @@ Rules:
 - Clips must not overlap significantly with each other
 - Score 0-100 on viral potential (not general quality)
 - Generate at least {min_clips} highlights
-- Include hook_sentence (the opening line) and virality_reason (one sentence why this is viral)
+- Include hook_sentence: a short, punchy line (max ~12 words) capturing the most attention-grabbing
+  moment IN this specific clip — the twist, the reveal, the punchline. Not necessarily its literal
+  opening line. Also include virality_reason (one sentence why this is viral)
 
 Respond ONLY with valid JSON (no markdown, no explanation):
 {{"highlights":[{{"title":"string","start_time":float,"end_time":float,"score":int,"hook_sentence":"string","virality_reason":"string"}}]}}"""
@@ -1234,17 +1378,51 @@ def _make_hook_pill_png(text: str, fg_hex: str, bg_hex: str, font_size_pt: int, 
     return buf.getvalue(), ph
 
 
+def _detect_letterbox(in_path: str, src_w: int, src_h: int):
+    """Détecte des bandes noires déjà présentes DANS la source (fréquent avec du contenu
+    re-téléchargé/recompilé) via cropdetect ffmpeg. Sans ça, une source déjà proche du
+    9:16 mais avec des bandes noires intégrées passe telle quelle (bug rapporté :
+    bordures noires visibles en haut/bas sur l'export final, présentes dès la source).
+    Retourne (x,y,w,h) de la zone utile, ou None si rien de significatif détecté."""
+    try:
+        r = subprocess.run(
+            ["ffmpeg", "-i", in_path, "-t", "8", "-vf", "cropdetect=50:2:0", "-f", "null", "-"],
+            capture_output=True, text=True, timeout=30,
+        )
+        matches = re.findall(r"crop=(\d+):(\d+):(\d+):(\d+)", r.stderr)
+        if not matches:
+            return None
+        w, h, x, y = (int(v) for v in matches[-1])
+        # Ignore si ça ne retire presque rien (évite les faux positifs sur scènes sombres)
+        if w >= src_w * 0.97 and h >= src_h * 0.97:
+            return None
+        logger.info(f"[letterbox] détecté dans la source : zone utile {w}x{h}@{x},{y} (source {src_w}x{src_h})")
+        return (x, y, w, h)
+    except Exception as e:
+        logger.info(f"[letterbox] détection échouée ({e}), ignorée")
+        return None
+
+
 def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
     tw, th = (float(x) for x in aspect_ratio.split(":"))
     target_ratio = tw / th
 
     src_w, src_h = _get_video_dimensions(in_path)
+
+    lb = _detect_letterbox(in_path, src_w, src_h)
+    lb_prefix = ""
+    lb_x = 0
+    if lb:
+        lb_x, lb_y, lb_w, lb_h = lb
+        lb_prefix = f"crop={lb_w}:{lb_h}:{lb_x}:{lb_y},"
+        src_w, src_h = lb_w, lb_h  # tout le calcul qui suit se base sur la zone utile réelle
+
     src_ratio = src_w / src_h
 
     # Déjà au bon ratio (±1.5%) → juste scale à 720×1280, pas de crop
     if abs(src_ratio - target_ratio) / target_ratio < 0.015:
         logger.info(f"[reframe] already {aspect_ratio} ({src_w}x{src_h}) — scale only, no crop")
-        vf = "scale=720:1280"
+        vf = f"{lb_prefix}scale=720:1280"
     else:
         # Calcule le crop vers le ratio cible
         if target_ratio < src_ratio:
@@ -1293,12 +1471,18 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
                         fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
                         centers.append(int((fx + fw // 2) / scale))
                 cap.release()
-                if centers:
+                # Exige un visage détecté dans au moins la moitié des frames échantillonnées —
+                # sinon un faux positif isolé (élément de HUD/texture de jeu confondu avec un
+                # visage par le Haar cascade, contenu gaming notamment) suffisait à décaler tout
+                # le crop vers un bord de l'image au lieu de rester centré.
+                if len(centers) >= max(2, len(sample_frames) // 2):
                     median_cx = sorted(centers)[len(centers) // 2]
+                    if lb_x:  # cv2 lit in_path en coordonnées d'origine — recale sur la zone utile post-letterbox
+                        median_cx -= lb_x
                     x_crop = max(0, min(src_w - crop_w, median_cx - crop_w // 2))
-                    logger.info(f"[reframe] face tracking: médiane={median_cx}px ({len(centers)}/3 frames)")
+                    logger.info(f"[reframe] face tracking: médiane={median_cx}px ({len(centers)}/{len(sample_frames)} frames)")
                 else:
-                    logger.info("[reframe] face tracking: aucun visage — crop centré")
+                    logger.info(f"[reframe] face tracking: signal trop faible ({len(centers)}/{len(sample_frames)} frames) — crop centré")
             except Exception as e:
                 logger.info(f"[reframe] face tracking skipped ({e}) — crop centré")
         else:
@@ -1313,10 +1497,10 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             ch = max(2, int(crop_h * sx / 2) * 2)
             xc = max(0, min(pw - cw, int(x_crop * sx)))
             yy = max(0, int(y0 * sx))
-            vf = f"scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
+            vf = f"{lb_prefix}scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
             logger.info(f"[reframe] pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
         else:
-            vf = f"crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
+            vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
     _enc_tail = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
@@ -1754,14 +1938,75 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
         return None
 
 
+_GROQ_CONTENT_TYPE_PROMPT = """Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence,
+commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :
+{"content_type": "...", "hint": "1 phrase sur ce qui rend CE type de contenu viral en clip court"}"""
+
+
+async def _classify_content_type_groq(sample_text: str) -> Dict:
+    try:
+        async with httpx.AsyncClient(timeout=20) as c:
+            r = await c.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "llama-3.3-70b-versatile",
+                      "messages": [{"role": "user", "content": f"{_GROQ_CONTENT_TYPE_PROMPT}\n\nExtrait :\n{sample_text[:2000]}"}],
+                      "temperature": 0.3, "max_tokens": 200},
+            )
+            r.raise_for_status()
+            raw = r.json()["choices"][0]["message"]["content"].strip()
+        return _parse_json(raw)
+    except Exception as e:
+        logger.warning(f"[identify_clips] classification type échouée: {e}")
+        return {"content_type": "autre", "hint": ""}
+
+
+def _chunk_segments(segments: List[Dict], chunk_chars: int = 7000, overlap: int = 5, max_chunks: int = 8) -> List[List[Dict]]:
+    """Découpe les segments en morceaux d'environ chunk_chars caractères, avec un léger
+    chevauchement entre morceaux pour ne pas rater un moment fort à cheval sur une coupure."""
+    chunks: List[List[Dict]] = []
+    cur: List[Dict] = []
+    cur_len = 0
+    chunk_start = 0  # index du 1er segment du morceau en cours
+    i = 0
+    while i < len(segments):
+        s = segments[i]
+        cur.append(s)
+        cur_len += len(s.get("text", "")) + 20
+        is_last = i == len(segments) - 1
+        if cur_len >= chunk_chars or is_last:
+            chunks.append(cur)
+            if is_last:
+                break
+            # Prochain morceau : recule de `overlap` segments (sans dépasser le début du morceau
+            # courant, pour toujours avancer) — évite de rater un moment fort à cheval sur la coupure.
+            i = max(chunk_start, i - overlap + 1) + 1
+            chunk_start = i
+            cur, cur_len = [], 0
+        else:
+            i += 1
+    return chunks[:max_chunks]
+
+
 async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
     if GROQ_API_KEY:
-        transcript_text = "\n".join(
-            f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in transcript["segments"]
-        )
-        prompt = f"""Tu es un expert en contenu viral TikTok/Shorts/Reels pour créateurs francophones.
+        segments = transcript["segments"]
+        full_text = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in segments)
 
-Analyse cette transcription et identifie les {n} meilleurs segments à extraire en clips courts viraux.
+        # Découpage multi-passes : avant ce fix, le transcript était tronqué à 8000 caractères
+        # (~8-10min de parole) — pour une vidéo de 50min, l'IA ne voyait donc jamais 80% du contenu
+        # et ne pouvait choisir des clips que dans les toutes premières minutes.
+        chunks = _chunk_segments(segments)
+        content_info = await _classify_content_type_groq(full_text) if len(chunks) > 1 else {"content_type": "", "hint": ""}
+        content_hint = f"\nType de contenu détecté : {content_info.get('content_type', '')}. {content_info.get('hint', '')}\n" if content_info.get("content_type") else ""
+
+        per_chunk_n = max(2, min(n, 4)) if len(chunks) > 1 else n
+
+        async def analyze_chunk(chunk_segments: List[Dict]) -> List[Dict]:
+            chunk_text = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in chunk_segments)
+            prompt = f"""Tu es un expert en contenu viral TikTok/Shorts/Reels pour créateurs francophones.
+{content_hint}
+Analyse cet EXTRAIT de transcription et identifie les {per_chunk_n} meilleurs segments à extraire en clips courts viraux.
 
 Critères de sélection (score chaque critère sur 20, total sur 100) :
 1. ACCROCHE (0-20) : le segment commence par quelque chose qui accroche immédiatement (question, chiffre, affirmation forte, paradoxe)
@@ -1774,24 +2019,45 @@ Règles strictes :
 - Durée : entre 30 et 90 secondes (OBLIGATOIRE)
 - Pas de chevauchement entre les segments
 - Privilégier les moments avec une conclusion claire (pas coupé au milieu d'une idée)
-- Le hook doit être la première phrase prononcée dans le segment
+- Le hook est une phrase courte et percutante (10 mots max) qui capture ce qu'il y a de plus
+  accrocheur DANS ce segment précis (le twist, la révélation, la punchline) — ce n'est pas
+  forcément la première phrase prononcée, choisis ce qui donne le plus envie de regarder
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
-{{"clips":[{{"start_time":12.5,"end_time":67.0,"title":"Titre accrocheur max 8 mots","hook":"Première phrase exacte du segment","score":88,"virality_reason":"Pourquoi ce moment va performer"}}]}}
+{{"clips":[{{"start_time":12.5,"end_time":67.0,"title":"Titre accrocheur max 8 mots","hook":"Phrase d'accroche courte et percutante tirée du segment","score":88,"virality_reason":"Pourquoi ce moment va performer"}}]}}
 
-Transcription :
-{transcript_text[:8000]}"""
-        async with httpx.AsyncClient(timeout=60) as c:
-            r = await c.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
-                      "temperature": 0.7, "max_tokens": 2048},
-            )
-            r.raise_for_status()
-            raw = r.json()["choices"][0]["message"]["content"].strip()
-        data = _parse_json(raw)
-        return data.get("clips", [])
+Transcription (extrait) :
+{chunk_text}"""
+            try:
+                async with httpx.AsyncClient(timeout=60) as c:
+                    r = await c.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                        json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                              "temperature": 0.7, "max_tokens": 2048},
+                    )
+                    r.raise_for_status()
+                    raw = r.json()["choices"][0]["message"]["content"].strip()
+                data = _parse_json(raw)
+                return data.get("clips", [])
+            except Exception as e:
+                logger.warning(f"[identify_clips] morceau échoué: {e}")
+                return []
+
+        # Concurrence bornée — ne pas taper trop fort sur les limites de débit Groq (30 RPM en free)
+        sem = asyncio.Semaphore(3)
+        async def bounded(c_segs):
+            async with sem:
+                return await analyze_chunk(c_segs)
+
+        results = await asyncio.gather(*(bounded(c) for c in chunks))
+        all_clips = [clip for chunk_clips in results for clip in chunk_clips]
+        logger.info(f"[identify_clips] {len(chunks)} morceau(x), {len(all_clips)} candidats avant dédoublonnage")
+
+        # Garde-fou anti-chevauchement en code (pas seulement dans le prompt) — nécessaire dès que
+        # plusieurs morceaux sont fusionnés, et rattrape aussi le cas où le modèle suit mal la consigne.
+        deduped = _dedupe_highlights(all_clips)
+        return deduped[:n]
 
     # fallback Gemini
     highlights = await get_highlights(transcript, n)
@@ -2130,12 +2396,54 @@ async def upload_video(file: UploadFile = File(...), tasks: BackgroundTasks = Ba
     return {"ok": True, "job_id": job_id, "video_id": video_id}
 
 
+@app.post("/upload-chunk")
+async def upload_chunk(
+    video_id: str = Form(...), chunk_index: int = Form(...), is_last: str = Form("false"),
+    chunk: UploadFile = File(...), _=Depends(auth),
+):
+    """Upload du fichier source par petits morceaux (envoyés séquentiellement, chacun avec son
+    propre retry côté client) — un seul gros POST de 500-800Mo+ échouait trop souvent sur une
+    connexion mobile instable, et un échec faisait tout recommencer depuis zéro. Ici, seul le
+    morceau en échec est retenté, jamais tout le fichier."""
+    upload_path = UPLOAD_DIR / video_id
+    upload_path.mkdir(parents=True, exist_ok=True)
+    file_path = upload_path / "source.mp4"
+    data = await chunk.read()
+    mode = "ab" if (chunk_index > 0 and file_path.exists()) else "wb"
+    with open(file_path, mode) as f:
+        f.write(data)
+    size_mb = file_path.stat().st_size / 1_048_576
+    if is_last == "true":
+        logger.info(f"[upload-chunk] {video_id} terminé — {size_mb:.1f} MB")
+        return {"ok": True, "done": True, "video_id": video_id}
+    return {"ok": True, "done": False}
+
+
 @app.get("/upload-status/{job_id}")
 def upload_status(job_id: str, _=Depends(auth)):
     job = UPLOAD_JOBS.get(job_id)
     if not job:
         raise HTTPException(404, "Job introuvable")
     return job
+
+
+@app.post("/thumbnail")
+async def thumbnail_endpoint(video_id: str = Form(...), t: float = Form(0.0), _=Depends(auth)):
+    """Extrait une frame JPEG basse résolution — miniature légère côté serveur, évite de décoder
+    la vidéo dans le navigateur mobile (cause de crashs mémoire avec l'approche <video>+<canvas>)."""
+    source = UPLOAD_DIR / video_id / "source.mp4"
+    if not source.exists():
+        raise HTTPException(400, f"Fichier pré-uploadé introuvable: {video_id}")
+    out_path = WORK_DIR / f"thumb_{uuid.uuid4().hex[:8]}.jpg"
+    # 480px (pas 180) : les cartes miniatures affichent bien plus large que 180px sur mobile,
+    # d'où le flou remonté — -q:v 3 pour une qualité JPEG correcte, fichier reste petit (~20-30KB)
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(max(0, t)),
+           "-i", str(source), "-vframes", "1", "-vf", "scale=480:-2", "-q:v", "3", str(out_path)]
+    r = subprocess.run(cmd, capture_output=True, timeout=20)
+    if r.returncode != 0 or not out_path.exists() or out_path.stat().st_size == 0:
+        raise HTTPException(500, "Extraction de la miniature échouée")
+    return FileResponse(str(out_path), media_type="image/jpeg",
+        background=BackgroundTask(lambda: out_path.unlink(missing_ok=True)))
 
 
 @app.post("/reframe-clip")
@@ -2165,9 +2473,102 @@ async def reframe_clip_endpoint(file: UploadFile = File(...), _=Depends(auth)):
         raise HTTPException(500, str(e))
 
 
+def _compute_audio_energy_peaks(audio_path: str, top_fraction: float = 0.15) -> List[float]:
+    """Détecte les pics de volume/énergie audio (cri, rire, réaction forte, silence dramatique) —
+    un signal auxiliaire qu'une analyse texte-only ignore complètement (deux phrases identiques à
+    l'écrit peuvent être dites calmement ou hurlées). Retourne les timestamps (s) des fenêtres de
+    1s les plus fortes en RMS, à passer à l'IA de sélection de clips comme indice supplémentaire."""
+    try:
+        cmd = [
+            "ffmpeg", "-i", audio_path,
+            "-af", "aresample=8000,asetnsamples=n=8000,astats=metadata=1:reset=1,"
+                   "ametadata=mode=print:key=lavfi.astats.Overall.RMS_level:file=-",
+            "-f", "null", "-",
+        ]
+        r = subprocess.run(cmd, capture_output=True, timeout=30, text=True)
+        lines = (r.stdout + "\n" + r.stderr).splitlines()
+        levels = []
+        cur_t = None
+        for line in lines:
+            m_t = re.search(r"pts_time:(-?\d+\.?\d*)", line)
+            if m_t:
+                cur_t = float(m_t.group(1))
+                continue
+            m_rms = re.search(r"RMS_level=(-?\d+\.?\d*|-inf)", line)
+            if m_rms and cur_t is not None:
+                val = m_rms.group(1)
+                if val != "-inf":
+                    levels.append((cur_t, float(val)))
+                cur_t = None
+        if len(levels) < 5:
+            return []
+        rms_sorted = sorted(v for _, v in levels)
+        threshold = rms_sorted[max(0, int(len(rms_sorted) * (1 - top_fraction)) - 1)]
+        peaks = sorted(t for t, v in levels if v >= threshold)
+        return peaks
+    except Exception as e:
+        logger.info(f"[energy] détection échouée ({e}), ignorée")
+        return []
+
+
+async def _transcribe_audio_core(audio_path: Path) -> Dict:
+    """Logique de transcription pure (Groq Whisper ou fallback local) + pics d'énergie audio.
+    Extraite de l'ancien endpoint /transcribe-audio pour être réutilisée par la version job async
+    (upload-token + poll) qui résiste aux coupures réseau/mise en veille mobile — contrairement à
+    l'ancienne requête unique tenue ouverte jusqu'à 10 min, dont la moindre suspension d'onglet iOS
+    en cours de route faisait perdre toute l'analyse."""
+    size_mb = audio_path.stat().st_size / 1_048_576
+    logger.info(f"[transcribe-audio] {audio_path.name} {size_mb:.1f}MB")
+    if GROQ_API_KEY and size_mb <= 24:
+        async with httpx.AsyncClient(timeout=180) as c:
+            with open(audio_path, "rb") as af:
+                r = await c.post(
+                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
+                          "timestamp_granularities[]": "word"},
+                    files={"file": ("audio.mp3", af, "audio/mpeg")},
+                )
+        r.raise_for_status()
+        data = r.json()
+        duration = float(data.get("duration", 0))
+        raw_words = data.get("words", [])
+        if raw_words:
+            # Regrouper les mots en lignes de 4 mots avec timing précis par mot
+            WORDS_PER_LINE = 4
+            segments = []
+            for i in range(0, len(raw_words), WORDS_PER_LINE):
+                chunk = raw_words[i:i + WORDS_PER_LINE]
+                t0 = float(chunk[0].get("start", 0))
+                t1 = float(chunk[-1].get("end", t0 + 1))
+                text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
+                if text.strip():
+                    segments.append({"start": t0, "end": t1, "text": text})
+            logger.info(f"[transcribe-audio] word-level: {len(raw_words)} mots → {len(segments)} lignes")
+        else:
+            # Fallback : timestamps par segment
+            segments = [
+                {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
+                for s in data.get("segments", [])
+            ]
+        if not duration and segments:
+            duration = segments[-1]["end"]
+        result = {"segments": segments, "duration": duration}
+    else:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, lambda: _transcribe_local(str(audio_path)))
+    if not result.get("segments"):
+        raise ValueError("Aucun segment — vidéo sans paroles détectées")
+    loop = asyncio.get_event_loop()
+    energy_peaks = await loop.run_in_executor(None, lambda: _compute_audio_energy_peaks(str(audio_path)))
+    logger.info(f"[transcribe-audio] {len(result['segments'])} segments {result['duration']:.0f}s, {len(energy_peaks)} pics d'énergie")
+    return {"segments": result["segments"], "duration": result["duration"], "energy_peaks": energy_peaks}
+
+
 @app.post("/transcribe-audio")
 async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth)):
-    """Transcription d'un fichier audio uploadé (extrait en local via ffmpeg.wasm dans le browser)."""
+    """Transcription d'un fichier audio uploadé (extrait en local via ffmpeg.wasm dans le browser).
+    Requête unique bloquante — gardée pour compat, préférer /transcribe-audio-start + polling."""
     import shutil
     tmp_dir = WORK_DIR / f"ta_{uuid.uuid4().hex[:8]}"
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -2179,51 +2580,10 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth
                 if not chunk:
                     break
                 f.write(chunk)
-        size_mb = audio_path.stat().st_size / 1_048_576
-        logger.info(f"[transcribe-audio] {file.filename} {size_mb:.1f}MB")
-        # Envoi direct à Groq sans ré-extraction (l'audio est déjà extrait par le browser)
-        if GROQ_API_KEY and size_mb <= 24:
-            async with httpx.AsyncClient(timeout=180) as c:
-                with open(audio_path, "rb") as af:
-                    r = await c.post(
-                        "https://api.groq.com/openai/v1/audio/transcriptions",
-                        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                        data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
-                              "timestamp_granularities[]": "word"},
-                        files={"file": ("audio.mp3", af, "audio/mpeg")},
-                    )
-            r.raise_for_status()
-            data = r.json()
-            duration = float(data.get("duration", 0))
-            raw_words = data.get("words", [])
-            if raw_words:
-                # Regrouper les mots en lignes de 4 mots avec timing précis par mot
-                WORDS_PER_LINE = 4
-                segments = []
-                for i in range(0, len(raw_words), WORDS_PER_LINE):
-                    chunk = raw_words[i:i + WORDS_PER_LINE]
-                    t0 = float(chunk[0].get("start", 0))
-                    t1 = float(chunk[-1].get("end", t0 + 1))
-                    text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
-                    if text.strip():
-                        segments.append({"start": t0, "end": t1, "text": text})
-                logger.info(f"[transcribe-audio] word-level: {len(raw_words)} mots → {len(segments)} lignes")
-            else:
-                # Fallback : timestamps par segment
-                segments = [
-                    {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
-                    for s in data.get("segments", [])
-                ]
-            if not duration and segments:
-                duration = segments[-1]["end"]
-            result = {"segments": segments, "duration": duration}
-        else:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, lambda: _transcribe_local(str(audio_path)))
-        if not result.get("segments"):
-            raise HTTPException(502, "Aucun segment — vidéo sans paroles détectées")
-        logger.info(f"[transcribe-audio] {len(result['segments'])} segments {result['duration']:.0f}s")
-        return {"ok": True, "segments": result["segments"], "duration": result["duration"]}
+        result = await _transcribe_audio_core(audio_path)
+        return {"ok": True, **result}
+    except ValueError as e:
+        raise HTTPException(502, str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -2231,6 +2591,51 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...), _=Depends(auth
         raise HTTPException(502, str(e))
     finally:
         shutil.rmtree(str(tmp_dir), ignore_errors=True)
+
+
+# ── Version job async : upload rapide puis polling, résiste aux mises en veille mobile ──
+_transcribe_jobs: Dict[str, Dict] = {}
+
+async def _run_transcribe_job(job_id: str, tmp_dir: Path, audio_path: Path):
+    import shutil
+    try:
+        result = await _transcribe_audio_core(audio_path)
+        _transcribe_jobs[job_id] = {"status": "done", "ts": _time.time(), **result}
+    except Exception as e:
+        logger.error(f"[transcribe-job {job_id}] erreur: {e}")
+        _transcribe_jobs[job_id] = {"status": "error", "ts": _time.time(), "error": str(e)}
+    finally:
+        shutil.rmtree(str(tmp_dir), ignore_errors=True)
+
+
+@app.post("/transcribe-audio-start")
+async def transcribe_audio_start(file: UploadFile = File(...), _=Depends(auth)):
+    """Démarre la transcription en tâche de fond et retourne immédiatement un job_id — le client
+    sonde /transcribe-audio-status ensuite. Chaque requête (démarrage + sondages) est courte, donc
+    une brève suspension d'onglet mobile en cours de route ne casse plus toute l'analyse."""
+    for jid in [j for j, v in list(_transcribe_jobs.items()) if _time.time() - v.get("ts", _time.time()) > 7200]:
+        _transcribe_jobs.pop(jid, None)
+    tmp_dir = WORK_DIR / f"ta_{uuid.uuid4().hex[:8]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    audio_path = tmp_dir / "audio.mp3"
+    with open(audio_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+    job_id = uuid.uuid4().hex
+    _transcribe_jobs[job_id] = {"status": "processing", "ts": _time.time()}
+    asyncio.create_task(_run_transcribe_job(job_id, tmp_dir, audio_path))
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/transcribe-audio-status")
+async def transcribe_audio_status(job_id: str, _=Depends(auth)):
+    job = _transcribe_jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable ou expiré")
+    return {"ok": True, **{k: v for k, v in job.items() if k != "ts"}}
 
 
 @app.get("/transcript/{video_id}")
@@ -2299,6 +2704,21 @@ async def get_transcript(video_id: str, _=Depends(auth)):
         logger.warning(f"[transcript/ytdlp] {video_id} failed: {e}")
 
     raise HTTPException(status_code=404, detail="Aucun sous-titre disponible pour cette vidéo")
+
+
+@app.get("/test-ytapi")
+def test_ytapi(video_id: str = "dQw4w9WgXcQ", fmt: str = "mp3"):
+    """Debug: teste youtube-download-api.org de bout en bout (submit→poll→download)."""
+    if not YT_DOWNLOAD_API_KEY:
+        return {"ok": False, "error": "YT_DOWNLOAD_API_KEY absente sur Railway"}
+    out = WORK_DIR / f"ytapitest_{uuid.uuid4().hex[:6]}.{'mp3' if fmt.lower()=='mp3' else 'mp4'}"
+    t0 = _time.time()
+    title = _ytapi_fetch(f"https://www.youtube.com/watch?v={video_id}", fmt, out, poll_timeout=180)
+    dt = round(_time.time() - t0, 1)
+    size_kb = out.stat().st_size // 1024 if out.exists() else 0
+    out.unlink(missing_ok=True)
+    return {"ok": bool(title), "title": title, "fmt": fmt, "size_kb": size_kb, "seconds": dt,
+            "api_base": YT_DOWNLOAD_API_BASE, "has_key": bool(YT_DOWNLOAD_API_KEY)}
 
 
 @app.get("/test-bgutil")
@@ -2370,8 +2790,8 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
 
 
 @app.get("/test-formats")
-def test_formats(video_id: str = "NwlPz4RaZ8s"):
-    """Debug: liste les formats yt-dlp disponibles avec PoToken."""
+def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False):
+    """Debug: teste l'extraction yt-dlp. use_proxy=false = chemin gratuit réel (cookies+bgutil, IP Railway)."""
     import yt_dlp
     output = []
     class LogCollector:
@@ -2380,21 +2800,30 @@ def test_formats(video_id: str = "NwlPz4RaZ8s"):
         def error(self, msg): output.append(f"ERR: {msg}")
     opts = {
         "quiet": False, "no_warnings": False,
-        "listformats": True,
         "extractor_args": _yt_extractor_args(),
         "logger": LogCollector(),
+        "skip_download": True,
     }
     cookies_file = _get_cookies_file()
     if cookies_file:
         opts["cookiefile"] = cookies_file
-    if RESIDENTIAL_PROXY_URL:
+    if use_proxy and RESIDENTIAL_PROXY_URL:
         opts["proxy"] = RESIDENTIAL_PROXY_URL
+    result = {"video_id": video_id, "use_proxy": use_proxy, "has_cookies": bool(cookies_file)}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            fmts = [f for f in (info or {}).get("formats", []) if f.get("url")]
+            audio = [f for f in fmts if f.get("acodec") not in (None, "none")]
+            result["ok"] = len(fmts) > 0
+            result["title"] = (info or {}).get("title", "")[:80]
+            result["total_formats"] = len(fmts)
+            result["audio_formats"] = len(audio)
     except Exception as e:
-        output.append(f"EXCEPTION: {e}")
-    return {"bgutil_url": BGUTIL_URL, "logs": output[:80]}
+        result["ok"] = False
+        result["error"] = str(e)[:300]
+    result["logs"] = [l for l in output if any(k in l.lower() for k in ("error", "bot", "sign in", "proxy", "402", "forbidden", "unavailable", "po token", "potoken"))][:15]
+    return result
 
 
 @app.get("/test-rapidapi")
@@ -2479,6 +2908,9 @@ class RawSegmentRequest(BaseModel):
 async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str, out_dir: Path):
     RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Connexion YouTube…"}
     try:
+        duration = end - start
+        out_path = out_dir / "clip.mp4"
+
         _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
         _IOS_KEY     = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
         it_clients = [
@@ -2543,9 +2975,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             except Exception as e:
                 logger.warning(f"[raw-segment] {c['name']} err: {e}")
 
-        out_path = out_dir / "clip.mp4"
-        duration  = end - start
-
+        # out_path et duration déjà définis en haut de la fonction (avant la tentative API)
         if stream_url:
             RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
             proc = await asyncio.create_subprocess_exec(
@@ -2568,17 +2998,14 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 if proc2.returncode != 0:
                     raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
         else:
-            # Fallback yt-dlp avec bgutil plugin — télécharge uniquement la section
-            RAW_SEGMENTS[job_id]["progress"] = "Téléchargement via yt-dlp…"
+            # PRIORITÉ : yt-dlp télécharge UNIQUEMENT la section de 60s (efficace, 0 crédit API,
+            # 720p). L'API tierce n'est qu'un secours si yt-dlp se fait bot-bloquer.
+            RAW_SEGMENTS[job_id]["progress"] = "Téléchargement du segment…"
             youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-            # Format timestamps HH:MM:SS pour --download-sections
-            def _ts(s: float) -> str:
-                h, r = divmod(int(s), 3600); m, sec = divmod(r, 60)
-                return f"{h:02d}:{m:02d}:{sec:02d}"
-            section = f"*{_ts(max(0, start - 1))}-{_ts(end + 1)}"
             tmp_path = out_dir / "full.%(ext)s"
             ydl_opts = {
-                "format": "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+                # Préférer H.264 (avc1) + AAC (mp4a) — lisibles nativement par tous les navigateurs.
+                "format": "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[height<=720][vcodec^=avc1]/best[height<=720]/best",
                 "merge_output_format": "mp4",
                 "outtmpl": str(tmp_path),
                 "download_ranges": lambda _, __: [{"start_time": max(0, start - 1), "end_time": end + 1}],
@@ -2592,6 +3019,8 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             cookies_file = _get_cookies_file()
             if cookies_file:
                 ydl_opts["cookiefile"] = cookies_file
+
+            segment_ready = False
             try:
                 loop = asyncio.get_event_loop()
                 def _dl():
@@ -2599,24 +3028,46 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([youtube_url])
                 await asyncio.wait_for(loop.run_in_executor(None, _dl), timeout=180)
+                downloaded = next(out_dir.glob("full.*"), None)
+                if downloaded:
+                    RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
+                    offset = start - max(0, start - 1)  # décalage dû au pré-roll de 1s
+                    # Ré-encodage H.264/AAC (pas -c copy) — garantit la lecture navigateur.
+                    proc = await asyncio.create_subprocess_exec(
+                        "ffmpeg", "-y", "-ss", str(offset), "-t", str(duration),
+                        "-i", str(downloaded),
+                        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+                    )
+                    await asyncio.wait_for(proc.communicate(), timeout=180)
+                    downloaded.unlink(missing_ok=True)
+                    if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1000:
+                        segment_ready = True
             except Exception as e:
-                raise RuntimeError(f"yt-dlp segment: {e}")
+                logger.warning(f"[raw-segment] yt-dlp segment échoué ({str(e)[:120]}), secours API")
 
-            # Trouver le fichier téléchargé et couper précisément
-            downloaded = next(out_dir.glob("full.*"), None)
-            if not downloaded:
-                raise RuntimeError("yt-dlp: fichier segment introuvable")
-            RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
-            offset = start - max(0, start - 1)  # décalage dû au pré-roll de 1s
-            proc = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-y", "-ss", str(offset), "-t", str(duration),
-                "-i", str(downloaded), "-c", "copy", "-movflags", "faststart", str(out_path),
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-            downloaded.unlink(missing_ok=True)
-            if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
-                raise RuntimeError(f"ffmpeg cut: {stderr.decode()[-200:]}")
+            # DERNIER RECOURS : API tierce (rare — seulement si yt-dlp bot-bloqué). Télécharge la
+            # vidéo complète (cache par video_id), puis découpe. Consomme du crédit API, d'où le
+            # fait de ne l'utiliser qu'ici, jamais en premier.
+            if not segment_ready:
+                if not YT_DOWNLOAD_API_KEY:
+                    raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
+                RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
+                cached = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _ytapi_cached_video(video_id, "480"))
+                if not cached or not cached.exists():
+                    raise RuntimeError("yt-dlp et API de secours ont tous deux échoué")
+                RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
+                proc = await asyncio.create_subprocess_exec(
+                    "ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", str(cached),
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+                )
+                _, stderr = await asyncio.wait_for(proc.communicate(), timeout=180)
+                if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+                    raise RuntimeError(f"ffmpeg cut (API): {stderr.decode()[-200:]}")
 
         size_kb = out_path.stat().st_size // 1024
         logger.info(f"[raw-segment] {job_id} done {size_kb}KB")
@@ -2653,6 +3104,110 @@ def raw_segment_file_endpoint(job_id: str, filename: str):
     if not path.exists():
         raise HTTPException(404, "Fichier introuvable")
     return FileResponse(str(path), media_type="video/mp4", filename=filename)
+
+
+class PreviewClipRequest(BaseModel):
+    video_id: str
+    start: float
+    end: float
+
+
+async def _run_preview_clip(video_id: str, start: float, end: float, job_id: str, out_dir: Path):
+    """Découpe juste ce clip (quelques Mo, quelques secondes) depuis le fichier source déjà
+    uploadé — pour que le navigateur mobile n'ait plus jamais à chercher une position profonde
+    dans un fichier de plusieurs centaines de Mo à quelques Go, ce qui reste bloqué en silence
+    sur certains appareils (décodeur matériel iOS moins robuste que sur PC pour un seek dans un
+    gros blob local). Le petit fichier obtenu démarre à 0 — instantané et fiable à charger.
+    Toujours ré-encodé en H.264 (jamais de -c copy) : une simple copie de flux garderait le codec
+    de la source (HEVC ou autre) — si ce codec n'est pas décodable par le navigateur, le clip
+    découpé serait tout aussi illisible que l'original malgré la découpe réussie côté serveur."""
+    try:
+        source = UPLOAD_DIR / video_id / "source.mp4"
+        if not source.exists():
+            raise RuntimeError(f"Fichier pré-uploadé introuvable: {video_id}")
+        out_path = out_dir / "clip.mp4"
+        duration = max(0.5, end - start)
+        # Limite la largeur à 720px : encodage plus rapide, fichier plus léger — un aperçu n'a pas
+        # besoin de la pleine résolution 4K de la source, et ça allège d'autant la charge mémoire
+        # du <video> côté mobile pendant que le clip reste ouvert.
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-ss", str(max(0, start)), "-t", str(duration),
+            "-i", str(source),
+            "-vf", "scale='min(720,iw)':-2",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+            "-c:a", "aac", "-movflags", "+faststart", str(out_path),
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+        if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+            raise RuntimeError(f"ffmpeg: {stderr.decode()[-200:]}")
+        size_kb = out_path.stat().st_size // 1024
+        logger.info(f"[preview-clip] {job_id} done {size_kb}KB")
+        PREVIEW_CLIPS[job_id] = {"status": "done"}
+    except Exception as e:
+        logger.error(f"[preview-clip] {job_id} error: {e}")
+        PREVIEW_CLIPS[job_id] = {"status": "error", "error": str(e)}
+
+
+@app.post("/preview-clip-start")
+async def preview_clip_start_endpoint(req: PreviewClipRequest, tasks: BackgroundTasks, _=Depends(auth)):
+    job_id = uuid.uuid4().hex[:12]
+    out_dir = WORK_DIR / f"pv_{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    PREVIEW_CLIPS[job_id] = {"status": "processing"}
+    tasks.add_task(_run_preview_clip, req.video_id, req.start, req.end, job_id, out_dir)
+    return {"ok": True, "job_id": job_id}
+
+
+@app.get("/preview-clip-status/{job_id}")
+def preview_clip_status_endpoint(job_id: str, _=Depends(auth)):
+    job = PREVIEW_CLIPS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job introuvable")
+    return job
+
+
+@app.get("/preview-clip-file/{job_id}/clip.mp4")
+def preview_clip_file_endpoint(job_id: str):
+    path = WORK_DIR / f"pv_{job_id}" / "clip.mp4"
+    if not path.exists():
+        raise HTTPException(404, "Fichier introuvable")
+    return FileResponse(str(path), media_type="video/mp4", filename="clip.mp4")
+
+
+@app.post("/reencode-preview")
+async def reencode_preview_endpoint(file: UploadFile = File(...), _=Depends(auth)):
+    """Ré-encode en H.264 un petit clip déjà découpé côté client (mp4box.js) — ce découpage local
+    est rapide (pas d'upload du fichier entier) mais ne fait que recopier le codec d'origine sans
+    le transcoder : si ce codec (HEVC, etc.) n'est pas décodable par le navigateur, le clip extrait
+    "tourne" (la durée avance) sans jamais afficher d'image, malgré une découpe réussie. Le fichier
+    entrant est déjà petit (quelques Mo, un seul clip) → traitement synchrone rapide, pas de job."""
+    import shutil
+    tmp_dir = WORK_DIR / f"re_{uuid.uuid4().hex[:10]}"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    in_path = tmp_dir / "in.mp4"
+    out_path = tmp_dir / "out.mp4"
+    try:
+        with open(in_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-i", str(in_path),
+            "-vf", "scale='min(720,iw)':-2",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+            "-c:a", "aac", "-movflags", "+faststart", str(out_path),
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+        if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 500:
+            raise HTTPException(502, f"ffmpeg: {stderr.decode()[-200:]}")
+        return FileResponse(str(out_path), media_type="video/mp4", filename="clip.mp4",
+                             background=BackgroundTask(lambda: shutil.rmtree(str(tmp_dir), ignore_errors=True)))
+    except HTTPException:
+        shutil.rmtree(str(tmp_dir), ignore_errors=True)
+        raise
+    except Exception as e:
+        shutil.rmtree(str(tmp_dir), ignore_errors=True)
+        raise HTTPException(502, str(e))
 
 
 @app.post("/stream-url")
@@ -2919,10 +3474,19 @@ async def process_clip_endpoint(
     try:
         if video_id:
             upload_source = UPLOAD_DIR / video_id / "source.mp4"
-            if not upload_source.exists():
+            if upload_source.exists():
+                shutil.copy2(str(upload_source), str(in_path))
+                logger.info(f"[process-clip] pré-upload {video_id} ({in_path.stat().st_size/1_048_576:.1f} MB)")
+            elif YT_DOWNLOAD_API_KEY and re.fullmatch(r"[a-zA-Z0-9_-]{11}", video_id):
+                # Source YouTube (pas d'upload) → récupère la vidéo complète via l'API (cache partagé)
+                api_video = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _ytapi_cached_video(video_id, "480"))
+                if not api_video or not api_video.exists():
+                    raise HTTPException(400, f"Téléchargement API échoué pour {video_id}")
+                shutil.copy2(str(api_video), str(in_path))
+                logger.info(f"[process-clip] source API {video_id} ({in_path.stat().st_size/1_048_576:.1f} MB)")
+            else:
                 raise HTTPException(400, f"Fichier pré-uploadé introuvable: {video_id}")
-            shutil.copy2(str(upload_source), str(in_path))
-            logger.info(f"[process-clip] pré-upload {video_id} ({in_path.stat().st_size/1_048_576:.1f} MB)")
         elif file:
             with open(in_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
@@ -2965,6 +3529,23 @@ async def process_clip_endpoint(
             h = h.lstrip("#").upper().zfill(6)
             return f"&HA6{h[4:6]}{h[2:4]}{h[0:2]}"
         ct_dim = hex_to_ass_dim(color_text)
+
+        def _rainbow_palette(n=24):
+            # Dégradé lissé (pas 4 couleurs franches qui jurent) — mêmes teintes que
+            # l'aperçu du bouton de style (émeraude → bleu → violet → rose → émeraude)
+            anchors = [(16, 185, 129), (59, 130, 246), (139, 92, 246), (236, 72, 153), (16, 185, 129)]
+            segs = len(anchors) - 1
+            out = []
+            for i in range(n):
+                pos = i / n * segs
+                seg = min(int(pos), segs - 1)
+                t = pos - seg
+                r = int(anchors[seg][0] + (anchors[seg + 1][0] - anchors[seg][0]) * t)
+                g = int(anchors[seg][1] + (anchors[seg + 1][1] - anchors[seg][1]) * t)
+                b = int(anchors[seg][2] + (anchors[seg + 1][2] - anchors[seg][2]) * t)
+                out.append(f"&H00{b:02X}{g:02X}{r:02X}")
+            return out
+
         margin_v = int((1 - sub_y / 100) * 1280)
         _x_px = int(max(0, min(100, sub_x)) / 100 * 720)
         _y_px = int(max(0, min(100, sub_y)) / 100 * 1280)
@@ -2976,15 +3557,12 @@ async def process_clip_endpoint(
         FM = "DejaVu Sans Mono"
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
-            "minimal":   f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&H99000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
             "karaoke":   f"Style: Default,{F},{font_size},{ct},{ct_dim},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
-            "neon":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,6,0,2,44,44,{margin_v},1",
-            "spotlight": f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HD0000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
             "typewriter":f"Style: Default,{FM},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
             "wordpop":   f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
-            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,0,0,2,44,44,{margin_v},1",
+            "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,10,0,2,44,44,{margin_v},1",
             "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
-            "wave":      f"Style: Default,{F},{font_size},&H006BFF6B,{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
+            "wave":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
@@ -3069,6 +3647,59 @@ async def process_clip_endpoint(
                                     parts.append(f"{{\\1c{clr}}}"); cur_clr = clr
                                 if j == wi:
                                     parts.append(f"{{\\fscx112\\fscy112}}{w}{{\\fscx100\\fscy100}}")
+                                else:
+                                    parts.append(w)
+                                if j < n_w - 1:
+                                    parts.append(" ")
+                            ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{_pos_tag}{''.join(parts)}")
+                    elif style == "shake":
+                        # Un seul événement (pas de découpage en tranches — ça créait des
+                        # textes dupliqués/superposés à l'export). Le tremblement vient de
+                        # \t chaînés qui animent une légère rotation dans le temps.
+                        dur_ms = max(1, int((t1 - t0) * 1000))
+                        seg_ms = 120
+                        n_steps = max(1, dur_ms // seg_ms)
+                        transforms = []
+                        for i in range(n_steps):
+                            a = 2.5 if i % 2 == 0 else -2.5
+                            transforms.append(f"\\t({i*seg_ms},{(i+1)*seg_ms},\\frz{a})")
+                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an2\\org({_x_px},{_y_px})" + "".join(transforms) + "}"
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{tag}{txt}")
+                    elif style == "wave":
+                        # Dégradé arc-en-ciel qui défile vraiment (pas figé) — toujours un seul
+                        # événement (pas de découpage en tranches, source des doublons constatés),
+                        # chaque lettre anime sa propre couleur via \t chaînés (transform ASS
+                        # natif, comme pour shake) au lieu de créer plusieurs Dialogue.
+                        _palette = _rainbow_palette(12)
+                        n_pal = len(_palette)
+                        dur_ms = max(1, int((t1 - t0) * 1000))
+                        step_ms = 350
+                        n_steps = max(2, dur_ms // step_ms)
+                        parts = []
+                        for i, chch in enumerate(txt):
+                            colors = [_palette[(i + s) % n_pal] for s in range(n_steps + 1)]
+                            transforms = "".join(f"\\t({s*step_ms},{(s+1)*step_ms},\\1c{colors[s+1]})" for s in range(n_steps))
+                            parts.append(f"{{\\1c{colors[0]}{transforms}}}{chch}")
+                        colored_txt = "".join(parts)
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{_pos_tag}{colored_txt}")
+                    elif style == "slide":
+                        # Fondu à l'apparition, position fixe — \move combiné à la boîte de fond
+                        # (BorderStyle=3) empêchait la boîte de s'afficher à l'export.
+                        dur_ms = max(1, min(300, int((t1 - t0) * 1000)))
+                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an2\\fad({dur_ms},0)" + "}"
+                        ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{tag}{txt}")
+                    elif style == "wordpop":
+                        # Chaque mot apparaît avec un effet de zoom (\t anime l'échelle de 60% à 100%)
+                        words = txt.split()
+                        n_w = max(len(words), 1)
+                        dt = (t1 - t0) / n_w
+                        for wi in range(n_w):
+                            wt0 = t0 + wi * dt
+                            wt1 = t0 + (wi + 1) * dt if wi < n_w - 1 else t1
+                            parts = []
+                            for j, w in enumerate(words):
+                                if j == wi:
+                                    parts.append("{\\fscx60\\fscy60\\t(0,150,\\fscx100\\fscy100)}" + w + "{\\r}")
                                 else:
                                     parts.append(w)
                                 if j < n_w - 1:

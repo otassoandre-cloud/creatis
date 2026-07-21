@@ -432,24 +432,46 @@ async function transcribeAudioUrl(audioUrl) {
   return { segments, duration: d.duration || 0 };
 }
 
-// Identification des clips viraux via Groq LLM
-async function identifyViralClips(segments, videoId, title, nClips) {
-  const _dbg = { groq: !!GROQ_KEY, gemini: !!GEMINI_KEY, together: !!TOGETHER_KEY, segments: segments.length, provider: 'none', groq_status: null, gemini_status: null, raw_sample: '' };
-  console.log(`[clips] start — GROQ:${_dbg.groq} GEMINI:${_dbg.gemini} TOGETHER:${_dbg.together} segments:${_dbg.segments}`);
-  // Échantillonnage uniforme sur toute la vidéo (pas juste le début)
-  const MAX_CHARS = 7500;
-  let sampled = segments;
-  if (segments.length > 0) {
-    const avgLen = segments.slice(0, 30).reduce((a, s) => a + `[${s.start.toFixed(1)}s] ${s.text}\n`.length, 0) / Math.min(30, segments.length);
-    const maxSegs = Math.max(1, Math.floor(MAX_CHARS / avgLen));
-    if (segments.length > maxSegs) {
-      const step = segments.length / maxSegs;
-      sampled = Array.from({ length: maxSegs }, (_, i) => segments[Math.floor(i * step)]);
+// Découpe les segments en morceaux CONTIGUS d'environ chunkChars caractères, avec un léger
+// chevauchement — contrairement à un échantillonnage épars (1 segment sur N), ça garde à chaque
+// fois un contexte local cohérent (nécessaire pour juger si un clip a un début/fin propre) tout
+// en couvrant la vidéo entière au fil des morceaux, pas juste les 8-10 premières minutes.
+function _chunkSegmentsForClips(segments, chunkChars = 7500, overlap = 5, maxChunks = 8) {
+  const chunks = [];
+  let cur = [], curLen = 0, chunkStart = 0, i = 0;
+  while (i < segments.length) {
+    const s = segments[i];
+    cur.push(s);
+    curLen += (s.text || '').length + 20;
+    const isLast = i === segments.length - 1;
+    if (curLen >= chunkChars || isLast) {
+      chunks.push(cur);
+      if (isLast) break;
+      i = Math.max(chunkStart, i - overlap + 1) + 1;
+      chunkStart = i;
+      cur = []; curLen = 0;
+    } else {
+      i++;
     }
   }
-  const transcript = sampled.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n').substring(0, MAX_CHARS);
+  return chunks.slice(0, maxChunks);
+}
 
-  const prompt = `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cette transcription et sélectionne les ${nClips} MEILLEURS moments qui feront le plus de vues.
+async function _mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+function _buildClipsPrompt(transcript, title, n, isChunk, extraHint = '') {
+  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et sélectionne les ${n} MEILLEURS moments qui feront le plus de vues.
 
 CRITÈRES DE SÉLECTION (par ordre de priorité) :
 1. HOOK fort dès les 3 premières secondes — phrase qui accroche immédiatement ("j'ai failli mourir", "personne ne le sait mais...", chiffre choc, question rhétorique)
@@ -458,28 +480,61 @@ CRITÈRES DE SÉLECTION (par ordre de priorité) :
 4. TENSION ou CURIOSITÉ — l'audience veut savoir la suite
 5. RÉPARTITION — couvre différentes parties de la vidéo, pas tous au même endroit
 
-ÉVITER : moments trop longs sans action, transitions, intros/outros, passages plats sans émotion.
+ÉVITER : moments trop longs sans action, transitions, intros/outros, passages plats sans émotion.${extraHint}
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
-{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"première phrase exacte du clip qui accroche","score":88}]}
+{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"phrase d'accroche courte et percutante (max 8-10 mots) que TU rédiges pour donner envie de regarder — pas besoin d'être une citation exacte du transcript, reformule/résume l'idée choc du clip (ex: \"Il a perdu 50 000€ en 3 minutes\")","score":88}]}
 
 Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral), ne coupe pas au milieu d'une phrase.
 
-Transcription "${title}" :
+Transcription "${title}"${isChunk ? ' (extrait)' : ''} :
 ${transcript}`;
+}
 
+// Classifie le type de contenu (podcast, tuto, débat...) pour adapter les critères de viralité —
+// un extrait de tutoriel ne se juge pas comme un extrait de débat. Un seul appel léger, réutilisé
+// pour tous les morceaux du découpage.
+async function _classifyContentType(sampleText) {
+  if (!GROQ_KEY || !sampleText) return null;
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }],
+        temperature: 0.3, max_tokens: 200, response_format: { type: 'json_object' },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const raw = d.choices?.[0]?.message?.content?.trim() || '';
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+// Traduit les pics de volume audio tombant dans la fenêtre [start,end] d'un morceau en un indice
+// textuel pour le LLM — signal invisible à l'écrit (cri, rire, réaction) qu'une analyse texte-only rate.
+function _energyHintForRange(energyPeaks, start, end) {
+  if (!energyPeaks?.length) return '';
+  const inRange = energyPeaks.filter(t => t >= start && t <= end).map(t => Math.round(t));
+  if (!inRange.length) return '';
+  return `\n\nPICS DE VOLUME AUDIO détectés (indice supplémentaire — cri, rire, réaction forte, souvent invisible dans le texte) aux secondes : ${inRange.slice(0, 40).join(', ')}. À qualité égale, privilégie les clips qui contiennent un de ces pics.`;
+}
+
+// Chaîne de fallback Groq → Gemini → Together, retourne le texte brut du LLM ou null si tout échoue.
+async function _callClipLLM(prompt, _dbg) {
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
     signal: AbortSignal.timeout(60000),
   });
-  _dbg.groq_status = r.status; _dbg.provider = r.ok ? 'groq' : 'none';
-  console.log('[clips] Groq status:', r.status);
+  _dbg.groq_status = r.status;
+  if (r.ok) _dbg.provider = 'groq';
 
-  // Fallback Gemini Flash
   if (!r.ok && GEMINI_KEY) {
-    console.warn(`[clips] Groq ${r.status} → Gemini Flash`);
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -487,18 +542,15 @@ ${transcript}`;
       signal: AbortSignal.timeout(60000),
     });
     _dbg.gemini_status = geminiRes.status;
-    console.log('[clips] Gemini status:', geminiRes.status);
     if (geminiRes.ok) {
       const gd = await geminiRes.json();
       const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      _dbg.provider = 'gemini'; _dbg.raw_sample = gt.slice(0, 200);
+      _dbg.provider = 'gemini';
       r = { ok: true, json: async () => ({ choices: [{ message: { content: gt } }] }) };
     } else { r = geminiRes; }
   }
 
-  // Fallback Together AI si Groq et Gemini indisponibles
   if (!r.ok && TOGETHER_KEY) {
-    console.warn(`[clips] Gemini aussi KO → Together AI`);
     const tr = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
@@ -512,39 +564,20 @@ ${transcript}`;
       }),
       signal: AbortSignal.timeout(60000),
     });
-    console.log('[clips] Together status:', tr.status);
     if (tr.ok) {
       const td = await tr.json();
       const tt = td.choices?.[0]?.message?.content || '';
-      _dbg.provider = 'together'; _dbg.raw_sample = tt.slice(0, 200);
-      console.log('[clips] Together raw:', tt.slice(0, 300));
+      _dbg.provider = 'together';
       r = { ok: true, json: async () => ({ choices: [{ message: { content: tt } }] }) };
-    } else {
-      const errT = await tr.text().catch(() => '');
-      console.warn('[clips] Together error:', tr.status, errT.slice(0, 100));
-      r = tr;
-    }
+    } else { r = tr; }
   }
 
-  // Tous les LLM KO → découpage uniforme
-  if (!r.ok) {
-    const errBody = typeof r.text === 'function' ? await r.text() : String(r.status);
-    _dbg.provider = 'fallback'; _dbg.error = errBody.slice(0, 100);
-    console.warn(`[clips] tous LLM KO, découpage uniforme. debug:`, JSON.stringify(_dbg));
-    if (segments.length === 0) throw new Error(`LLM error ${r.status}`);
-    const totalDur2 = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-    const fallbackClips = Array.from({ length: nClips }, (_, i) => {
-      const s2 = Math.floor((totalDur2 / (nClips + 1)) * (i + 1));
-      const seg2 = segments.find(s => s.start >= s2) || segments[Math.floor(i / nClips * segments.length)];
-      const st2 = seg2 ? seg2.start : s2;
-      return { video_id: videoId, start: st2, end: Math.min(st2 + 60, totalDur2), title: `Moment ${i + 1}`, hook: seg2?.text?.substring(0, 80) || '', score: 70, _dbg };
-    });
-    return fallbackClips;
-  }
+  if (!r.ok) return null;
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
-  _dbg.raw_sample = raw.slice(0, 200);
-  console.log('[clips] raw LLM response:', raw.slice(0, 400));
-  // Extraire le JSON en trouvant le premier { et dernier } (ignore le texte autour)
+  return raw;
+}
+
+function _parseClipsFromRaw(raw, videoId) {
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
   const jsonStr = firstBrace !== -1 && lastBrace > firstBrace ? raw.slice(firstBrace, lastBrace + 1) : raw;
@@ -556,8 +589,7 @@ ${transcript}`;
     const s = raw.indexOf('['), e = raw.lastIndexOf(']');
     if (s !== -1 && e > s) try { clips = JSON.parse(raw.slice(s, e + 1)); } catch {}
   }
-  console.log(`[clips] parsed ${clips.length} clips avant filtre, sample:`, JSON.stringify(clips[0] || {}).slice(0, 200));
-  clips = clips
+  return clips
     .map(c => ({
       video_id: videoId,
       // Accepte noms EN et FR
@@ -575,21 +607,116 @@ ${transcript}`;
       const end = dur < minDur ? c.start + targetDur : Math.min(c.end, c.start + maxDur);
       return { ...c, end };
     });
+}
 
-  // Fallback : LLM n'a rien retourné d'utilisable → découpage uniforme
-  if (clips.length === 0 && segments.length > 0) {
+// Garde-fou anti-chevauchement en code (pas seulement dans le prompt) — nécessaire dès que
+// plusieurs morceaux sont fusionnés, et rattrape aussi le cas où le modèle suit mal la consigne.
+function _dedupeClips(clips) {
+  const sorted = [...clips].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const kept = [];
+  for (const c of sorted) {
+    const dur = c.end - c.start;
+    const overlaps = kept.some(k => Math.min(c.end, k.end) - Math.max(c.start, k.start) > 0.5 * dur);
+    if (!overlaps) kept.push(c);
+  }
+  return kept;
+}
+
+function _uniformFallbackClips(segments, videoId, nClips, _dbg) {
+  const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
+  return Array.from({ length: nClips }, (_, i) => {
+    const start = Math.floor((totalDur / (nClips + 1)) * (i + 1));
+    const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / nClips * segments.length)];
+    const s = seg ? seg.start : start;
+    return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70, _dbg };
+  });
+}
+
+// Identification des clips viraux via LLM (Groq → Gemini → Together), en plusieurs passes pour
+// couvrir toute la vidéo sur les contenus longs.
+async function identifyViralClips(segments, videoId, title, nClips, energyPeaks = []) {
+  const _dbg = { groq: !!GROQ_KEY, gemini: !!GEMINI_KEY, together: !!TOGETHER_KEY, segments: segments.length, provider: 'none', groq_status: null, gemini_status: null, raw_sample: '', chunks: 0, content_type: null, energy_peaks: energyPeaks.length };
+  console.log(`[clips] start — GROQ:${_dbg.groq} GEMINI:${_dbg.gemini} TOGETHER:${_dbg.together} segments:${_dbg.segments} energy_peaks:${energyPeaks.length}`);
+
+  if (segments.length === 0) throw new Error('Transcription vide');
+
+  const chunks = _chunkSegmentsForClips(segments);
+  _dbg.chunks = chunks.length;
+  const isChunked = chunks.length > 1;
+  const perChunkN = isChunked ? Math.max(2, Math.min(nClips, 4)) : nClips;
+  console.log(`[clips] ${chunks.length} morceau(x) (${_dbg.segments} segments)`);
+
+  let contentHint = '';
+  const typeInfo = await _classifyContentType(chunks[0].map(s => s.text).join(' '));
+  if (typeInfo?.content_type) {
+    contentHint = `\n\nType de contenu détecté : ${typeInfo.content_type}. ${typeInfo.hint || ''}`;
+    _dbg.content_type = typeInfo.content_type;
+  }
+
+  const chunkResults = await _mapWithConcurrency(chunks, 3, async (chunkSegs) => {
+    try {
+      const transcript = chunkSegs.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n');
+      const energyHint = _energyHintForRange(energyPeaks, chunkSegs[0].start, chunkSegs[chunkSegs.length - 1].end);
+      const prompt = _buildClipsPrompt(transcript, title, perChunkN, isChunked, contentHint + energyHint);
+      const raw = await _callClipLLM(prompt, _dbg);
+      if (!raw) return [];
+      _dbg.raw_sample = raw.slice(0, 200);
+      return _parseClipsFromRaw(raw, videoId);
+    } catch (e) {
+      console.warn('[clips] morceau échoué:', e.message);
+      return [];
+    }
+  });
+
+  const allClips = chunkResults.flat();
+  console.log(`[clips] ${allClips.length} candidats avant dédoublonnage, sample:`, JSON.stringify(allClips[0] || {}).slice(0, 200));
+  let clips = _dedupeClips(allClips);
+
+  // Fallback : LLM n'a rien retourné d'utilisable sur AUCUN morceau → découpage uniforme
+  if (clips.length === 0) {
     _dbg.provider = _dbg.provider + '_empty';
     console.warn('[clips] 0 clips après parsing, découpage uniforme. debug:', JSON.stringify(_dbg));
-    const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-    const n = nClips;
-    clips = Array.from({ length: n }, (_, i) => {
-      const start = Math.floor((totalDur / (n + 1)) * (i + 1));
-      const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / n * segments.length)];
-      const s = seg ? seg.start : start;
-      return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70, _dbg };
-    });
+    return _uniformFallbackClips(segments, videoId, nClips, _dbg);
   }
-  return clips;
+
+  return clips.slice(0, nClips).map(c => ({ ...c, _dbg }));
+}
+
+// Reclassement visuel des clips candidats via Gemini Vision — combine le score texte (transcript)
+// avec un signal visuel réel (expression, action à l'écran, cadrage) sur UNE frame par candidat.
+// Ne prétend pas "regarder toute la vidéo" (source souvent longue, ça coûterait trop cher/trop
+// lent) : affine seulement la sélection déjà pré-filtrée par le texte. Retourne null en best-effort
+// (jamais bloquant) si Gemini est indisponible ou si le parsing échoue — l'appelant garde alors le
+// classement texte tel quel.
+async function rankClipsVisual(candidates, frames, nFinal) {
+  if (!GEMINI_KEY) return null;
+  const frameByIndex = new Map(frames.map(f => [f.i, f.data]));
+  const parts = [{ text:
+    `Tu es un expert en montage de clips viraux courts (TikTok/Reels/Shorts). Voici ${candidates.length} extraits candidats issus d'une même vidéo source, chacun avec son titre, son "hook" (accroche) et une frame représentative. Pour chaque candidat, évalue le potentiel viral RÉEL en te basant sur l'image (expression du visage, action à l'écran, qualité de cadrage, texte/graphismes visibles) ET les infos fournies. Choisis les ${nFinal} meilleurs et classe-les du meilleur au moins bon.\n\nRéponds UNIQUEMENT en JSON strict, sans texte autour, format exact :\n{"ranking":[{"i":<index du candidat>,"visual_score":<0-100>,"reason":"<1 phrase courte en français>"}]}\n(le tableau "ranking" doit contenir exactement ${nFinal} entrées, triées du meilleur au moins bon)\n\nCandidats :` }];
+  for (const c of candidates) {
+    const data = frameByIndex.get(c.i);
+    if (!data) continue;
+    parts.push({ text: `Candidat ${c.i} — titre: "${c.title}", hook: "${c.hook}", score texte: ${c.text_score ?? 'N/A'}` });
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data } });
+  }
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json' } }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!r.ok) { console.warn('[rank_clips_visual] Gemini', r.status, (await r.text().catch(() => '')).slice(0, 200)); return null; }
+  const gd = await r.json();
+  const raw = gd?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  try {
+    const parsed = JSON.parse(raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim());
+    const ranking = Array.isArray(parsed?.ranking) ? parsed.ranking : null;
+    if (!ranking?.length) return null;
+    return ranking.filter(x => typeof x.i === 'number').map(x => x.i);
+  } catch (e) {
+    console.warn('[rank_clips_visual] parse échoué:', e.message, raw.slice(0, 200));
+    return null;
+  }
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -776,7 +903,7 @@ module.exports = async (req, res) => {
   const url = body.url || '';
 
   // Modes publics — pas d'auth requise (analyse gratuite, paywall au téléchargement)
-  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'upload-status', 'log_lead', 'notify_clips_ready']);
+  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'rank_clips_visual', 'upload-status', 'log_lead', 'notify_clips_ready', 'debug_log']);
   const authUser = PUBLIC_MODES.has(mode) ? null : await verifyToken(token);
   if (!PUBLIC_MODES.has(mode) && !authUser && !isLocal) {
     return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
@@ -822,6 +949,14 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   }
 
+  // Debug temporaire : le client poste ici les infos de diagnostic qu'on ne peut pas voir depuis
+  // la console du téléphone de l'utilisateur — juste loggé côté serveur, à retirer une fois le
+  // bug de lecture mobile résolu.
+  if (mode === 'debug_log') {
+    console.log('[debug_log]', JSON.stringify(body.data || {}).slice(0, 500));
+    return res.status(200).json({ ok: true });
+  }
+
   // Upload token : credentials Railway pour upload direct
   if (mode === 'upload-token') {
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
@@ -855,7 +990,7 @@ module.exports = async (req, res) => {
       }
     }
     try {
-      const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
+      const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5, body.energy_peaks || []);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       const _debug = clips[0]?._dbg || null;
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
@@ -863,6 +998,18 @@ module.exports = async (req, res) => {
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });
+    }
+  }
+
+  // Affinage visuel des clips candidats (best-effort, jamais bloquant côté client)
+  if (mode === 'rank_clips_visual' && Array.isArray(body.candidates) && Array.isArray(body.frames)) {
+    try {
+      const nFinal = Math.max(1, Math.min(body.n_final || 10, body.candidates.length));
+      const order = await rankClipsVisual(body.candidates, body.frames, nFinal);
+      if (!order) return res.status(200).json({ ok: false, error: 'Analyse visuelle indisponible' });
+      return res.status(200).json({ ok: true, order });
+    } catch (err) {
+      return res.status(200).json({ ok: false, error: err.message });
     }
   }
 
@@ -899,6 +1046,50 @@ module.exports = async (req, res) => {
       if (data.status === 'done') {
         // On retourne l'URL directe du fichier (endpoint public sur Railway)
         data.file_url = `${REPURPOSE_SERVICE_URL}/raw-segment-file/${job_id}/clip.mp4`;
+      }
+      return res.status(r.ok ? 200 : r.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  // Aperçu serveur d'un clip issu d'un fichier local déjà pré-uploadé (mobile) — évite au
+  // navigateur de chercher une position profonde dans le fichier source entier (peu fiable sur
+  // certains iPhone), en découpant juste ce clip côté Railway (petit fichier, démarre à 0).
+  if (mode === 'preview_clip') {
+    const { video_id, start, end } = body;
+    console.log(`[preview_clip] video_id:${video_id} start:${start} end:${end}`);
+    if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/preview-clip-start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id, start, end }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      console.log(`[preview_clip] Railway status:${r.status}`, JSON.stringify(data).slice(0, 200));
+      if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway' });
+      return res.status(200).json(data);
+    } catch (err) {
+      console.log(`[preview_clip] erreur:`, err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'preview_clip_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/preview-clip-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (data.status === 'done') {
+        data.file_url = `${REPURPOSE_SERVICE_URL}/preview-clip-file/${job_id}/clip.mp4`;
       }
       return res.status(r.ok ? 200 : r.status).json(data);
     } catch (err) {

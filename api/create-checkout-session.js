@@ -49,9 +49,13 @@ module.exports = async (req, res) => {
             cancel_url: cancelUrl || `${APP_URL}/cancel.html`,
           }
       ),
+      // Stripe interdit de combiner discounts + allow_promotion_codes sur une même session —
+      // quand la réduction de lancement s'applique automatiquement, le champ code promo natif
+      // Stripe reste masqué (sinon erreur Stripe). Sinon (annuel, studio, ou coupon indisponible),
+      // le champ natif Stripe s'affiche normalement — y compris en embedded.
       ...(launchCouponId
         ? { discounts: [{ coupon: launchCouponId }] }
-        : (!embedded ? { allow_promotion_codes: allowPromoCodes !== false } : {})),
+        : { allow_promotion_codes: allowPromoCodes !== false }),
       billing_address_collection: 'auto',
       metadata: {
         plan: plan || 'pro',

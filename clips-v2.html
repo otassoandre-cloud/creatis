@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Studio Clips V2 — Créatis</title>
+  <title>Clips Viraux IA — Crée 10 Shorts en 60 secondes | Créatis</title>
+  <meta name="description" content="Transforme n'importe quelle vidéo en 10 clips viraux 9:16 prêts pour TikTok, Reels et Shorts. Détection IA, sous-titres automatiques, recadrage face tracking. Essai gratuit.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://creatis.app/clips-v2.html">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,10 +72,12 @@
     .url-sep { display: flex; align-items: center; gap: 12px; max-width: 600px; margin: 20px auto; color: var(--texte-muted); font-size: 13px; }
     .url-sep::before, .url-sep::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
 
-    .url-input-row { display: flex; gap: 8px; max-width: 600px; margin: 0 auto; }
+    .url-input-row { display: flex; gap: 8px; max-width: 600px; margin: 10px auto 0; }
     .url-input { flex: 1; background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte); font-size: 14px; padding: 12px 16px; border-radius: 10px; outline: none; }
     .url-input:focus { border-color: var(--vert); }
     .url-input::placeholder { color: var(--texte-muted); }
+    .upload-or { display: flex; align-items: center; gap: 12px; max-width: 600px; margin: 16px auto 0; color: var(--texte-muted); font-size: 12px; }
+    .upload-or::before, .upload-or::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
 
     .btn-analyze { background: #fff; color: #0a0f0a; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 24px auto 0; transition: opacity .2s; }
     .btn-analyze:disabled { opacity: .5; cursor: not-allowed; }
@@ -114,10 +119,7 @@
 
     /* Style previews */
     .prev-bold { background: #111; color: #fff; text-shadow: 0 0 4px #000, 0 2px 4px #000; font-size: 11px; font-weight: 900; letter-spacing: -.3px; padding: 4px 8px; border-radius: 4px; }
-    .prev-minimal { background: rgba(0,0,0,0.5); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 20px; }
     .prev-karaoke { background: #111; color: #FFE000; font-size: 11px; font-weight: 800; border-bottom: 2px solid #FFE000; }
-    .prev-neon { background: #0a0f0a; color: #00FF9C; font-size: 11px; font-weight: 800; text-shadow: 0 0 8px #00FF9C, 0 0 16px #00FF9C; }
-    .prev-spotlight { background: rgba(0,0,0,0.82); color: #fff; font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 4px; }
 
     /* Options panel */
     .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
@@ -161,7 +163,8 @@
     /* Thumbnail area */
     .clip-thumb-wrap { position: relative; width: 100%; aspect-ratio: 9/16; background: #0a100a; overflow: hidden; }
     .clip-thumb-wrap img, .clip-thumb-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .clip-thumb-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px; background: linear-gradient(160deg, #111911 0%, #0a0f0a 100%); }
+    .clip-thumb-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px; background: linear-gradient(100deg, #111911 40%, #1a231a 50%, #111911 60%); background-size: 250% 100%; animation: thumbShimmer 1.4s ease-in-out infinite; }
+    @keyframes thumbShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
     /* Simulated caption overlay on thumbnail */
     .clip-thumb-caption { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 4px #000, 0 2px 4px #000; letter-spacing: .2px; pointer-events: none; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
     /* Checkbox */
@@ -222,8 +225,17 @@
 
     /* Progress bar */
     .modal-controls { height: 38px; background: var(--bg); border-top: 1px solid var(--bordure); display: flex; align-items: center; gap: 8px; padding: 0 12px; flex-shrink: 0; }
-    .modal-prog-wrap { flex: 1; height: 2px; background: var(--bg-card); border-radius: 2px; cursor: pointer; position: relative; }
+    /* Zone de tap large (24px) autour d'une ligne fine visuelle — plus facile à viser/glisser au doigt */
+    .modal-prog-wrap { flex: 1; height: 24px; display: flex; align-items: center; cursor: pointer; position: relative; touch-action: none; }
+    .modal-prog-track { width: 100%; height: 2px; background: var(--bg-card); border-radius: 2px; position: relative; }
     .modal-prog-fill { height: 100%; background: var(--vert); border-radius: 2px; pointer-events: none; transition: width .1s linear; }
+    .modal-prog-wrap.dragging .modal-prog-fill { transition: none; }
+    .modal-prog-handle {
+      position: absolute; top: 50%; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--vert); box-shadow: 0 1px 4px rgba(0,0,0,.5);
+      transform: translate(-50%, -50%); pointer-events: none; transition: left .1s linear, transform .12s ease;
+    }
+    .modal-prog-wrap.dragging .modal-prog-handle { transition: none; transform: translate(-50%, -50%) scale(1.35); }
     .modal-time { font-size: 10px; font-weight: 700; color: var(--vert); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
     /* ── Settings column (right, desktop) ── */
@@ -267,15 +279,9 @@
     .ms-pill .mt { font-weight: 800; font-size: 13px; line-height: 1.15; text-align: center; }
     .ms-pill[data-style="none"] .mt { color: #333; font-weight: 400; font-size: 10px; }
     .ms-pill[data-style="bold"] .mt { color: #fff; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
-    .ms-pill[data-style="minimal"] .mt { color: rgba(255,255,255,0.7); font-weight: 500; font-size: 11px; }
     .ms-pill[data-style="karaoke"] .mp { background: linear-gradient(135deg, #0a1f15, #0f0f0f); }
     .ms-pill[data-style="karaoke"] .mt { color: #fff; }
     .ms-pill[data-style="karaoke"] .mt .hl { color: #10b981; }
-    .ms-pill[data-style="neon"] .mp { background: radial-gradient(circle at center, rgba(16,185,129,0.1), #0a0a0a); }
-    .ms-pill[data-style="neon"] .mt { color: #10b981; text-shadow: 0 0 6px #10b981, 0 0 14px #10b981; }
-    .ms-pill[data-style="spotlight"] .mp { background: #080808; }
-    .ms-pill[data-style="spotlight"] .mt { color: #333; }
-    .ms-pill[data-style="spotlight"] .mt .hl { color: #fff; text-shadow: 0 0 14px rgba(255,255,255,0.7); }
     .ms-pill[data-style="typewriter"] .mp { background: #0a0f0a; }
     .ms-pill[data-style="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
     .ms-pill[data-style="wordpop"] .mp { background: linear-gradient(135deg, #1a1505, #0f0f0f); }
@@ -406,6 +412,7 @@
     @keyframes slideUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
     @keyframes shakeTxt { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
     @keyframes waveGrad { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+    @keyframes waveBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     @keyframes charFadeIn { to { opacity:1; } }
 
     /* Draggable overlay hint */
@@ -628,6 +635,12 @@
           <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/x-m4v,video/mov,video/*" style="display:none" onchange="V2.onFileSelect(this)">
         </div>
 
+        <div class="upload-or"><span>ou colle un lien YouTube</span></div>
+        <div class="url-input-row">
+          <input type="url" id="yt-url-input" class="url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off"
+            oninput="V2.onUrlInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('btn-analyze').click();}">
+        </div>
+
         <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
           <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
           <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600" id="video-preview-dur"></div>
@@ -747,8 +760,11 @@
         </div>
       </div>
       <div class="modal-controls">
-        <div class="modal-prog-wrap" id="modal-prog-wrap" onclick="V2.seekFromBar(event)">
-          <div class="modal-prog-fill" id="modal-prog-fill" style="width:0%"></div>
+        <div class="modal-prog-wrap" id="modal-prog-wrap">
+          <div class="modal-prog-track">
+            <div class="modal-prog-fill" id="modal-prog-fill" style="width:0%"></div>
+            <div class="modal-prog-handle" id="modal-prog-handle" style="left:0%"></div>
+          </div>
         </div>
         <span class="modal-time" id="modal-time">0:00</span>
       </div>
@@ -800,16 +816,13 @@
 
         <!-- Section : Sous-titres -->
         <div class="mob-section mob-open" id="mob-sec-subs">
-          <div class="style-cats"><button class="style-cat active">Populaire</button><button class="style-cat">Dynamique</button></div>
+          <div class="style-cats"><button class="style-cat active" onclick="V2.selectStyleCat('pop', this)">Populaire</button><button class="style-cat" onclick="V2.selectStyleCat('dyn', this)">Dynamique</button></div>
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')"><div class="mp"><span class="mt">—</span></div><span>Aucun</span></button>
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Wow</span></div><span>Bold</span></button>
-            <button class="ms-pill" data-style="minimal" onclick="V2.setClipStyle('minimal')"><div class="mp"><span class="mt">Wow</span></div><span>Minimal</span></button>
             <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
-            <button class="ms-pill" data-style="neon" onclick="V2.setClipStyle('neon')"><div class="mp"><span class="mt">Wow</span></div><span>Néon</span></button>
             <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
-            <button class="ms-pill ms-extra" data-style="spotlight" onclick="V2.setClipStyle('spotlight')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Spotlight</span></button>
             <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Wow</span></div><span>Typewriter</span></button>
             <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Word Pop</span></button>
             <button class="ms-pill ms-extra" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Wow</span></div><span>Slide</span></button>
@@ -911,6 +924,7 @@ const V2 = (() => {
   // ── State ──
   let _file = null;           // File object (uploaded video)
   let _clipSegmentIds = {};   // key → Railway video_id (segment pré-uploadé par clip)
+  let _fullFileVideoId = null; // Railway video_id du fichier source complet (upload unique, mobile useServerSideCut)
   let _thumbs = {};           // index → dataUrl (sauvegardé pour la récupération)
   let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
   let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
@@ -925,6 +939,7 @@ const V2 = (() => {
   let _ffmpegLoading = null;
   let _fontData = null;       // TTF font bytes
   let _currentState = 'upload';
+  let _historyPushed = false;
 
   // ── Init ──
   async function init() {
@@ -951,6 +966,12 @@ const V2 = (() => {
 
     // Recovery : vérifier si une analyse récente est dans localStorage
     _checkRecovery();
+    if (localStorage.getItem('creatis_transcribe_job')) {
+      _resumeTranscribeJobIfAny(); // reprend le job en tâche de fond, ne bloque pas le reste de l'init
+    } else {
+      _checkAnalysisInterrupted();
+    }
+    _setupProgBarDrag();
     // Tracker upload_started au clic sur la zone d'upload
     const _dz = document.getElementById('drop-zone');
     if (_dz) _dz.addEventListener('click', () => { if (window.posthog) posthog.capture('upload_started', { plan: _userPlan, method: 'click' }); }, { capture: true });
@@ -987,6 +1008,7 @@ const V2 = (() => {
         segmentIds: _clipSegmentIds
       }));
     } catch {}
+    try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
     _stopSilentAudio();
     // Email notification (fire & forget)
     try {
@@ -997,6 +1019,22 @@ const V2 = (() => {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
           body: JSON.stringify({ mode: 'notify_clips_ready', count: clips.length, name })
         }).catch(() => {});
+      }
+    } catch {}
+  }
+
+  function _checkAnalysisInterrupted() {
+    try {
+      const raw = localStorage.getItem('creatis_analysis_marker');
+      localStorage.removeItem('creatis_analysis_marker');
+      if (!raw) return;
+      const { ts } = JSON.parse(raw);
+      // Marqueur non nettoyé (ni succès ni échec géré) → la page a rechargé pendant une analyse,
+      // très probablement l'OS mobile qui a suspendu/tué l'onglet en arrière-plan (verrouillage
+      // écran, changement d'appli). On l'explique au lieu de laisser l'utilisateur croire à un bug muet.
+      if (ts && Date.now() - ts < 20 * 60 * 1000) {
+        if (window.posthog) posthog.capture('analysis_interrupted_reload');
+        toast('⚠️ L\'analyse précédente a été interrompue (téléphone mis en veille). Relance-la en gardant l\'écran allumé et Créatis au premier plan.', 'erreur', 10000);
       }
     } catch {}
   }
@@ -1054,6 +1092,7 @@ const V2 = (() => {
       _segments = data.segments || [];
       _userPlan = data.plan || _userPlan;
       _clipSegmentIds = {}; // Reset : les IDs Railway de la session précédente sont expirés
+      _fullFileVideoId = null;
       _thumbs = data.thumbs || {};
       document.getElementById('recovery-banner')?.remove();
       renderStudio(data.name || 'Vidéo');
@@ -1117,15 +1156,43 @@ const V2 = (() => {
     const el = document.getElementById('state-' + id);
     if (el) el.classList.add('active');
     window.scrollTo(0, 0);
+    if (id === 'upload') {
+      _historyPushed = false;
+    } else if (!_historyPushed) {
+      // Un seul point de reprise : le premier retour navigateur depuis n'importe quel état de
+      // l'app ramène à l'écran d'upload (clips générés conservés en mémoire) au lieu de quitter
+      // directement vers la landing page — il faut appuyer une seconde fois pour vraiment sortir.
+      history.pushState({ creatisClipsCheckpoint: true }, '', location.href);
+      _historyPushed = true;
+    }
   }
+
+  window.addEventListener('popstate', () => {
+    if (_currentState !== 'upload') setState('upload');
+  });
 
   // ── AI Scan Animation ──
   let _scanIntervals = [];
   function _startScanAnim() {
-    // Copier la vidéo preview dans l'élément de fond
+    // Copier la vidéo preview dans l'élément de fond (fichier local)
     const src = document.getElementById('video-preview')?.src;
     const vid = document.getElementById('ai-scan-video');
-    if (vid && src) { vid.src = src; vid.play().catch(() => {}); }
+    const scanWrap = document.getElementById('ai-scan-wrap');
+    if (vid && src && _file) {
+      vid.style.display = '';
+      vid.src = src; vid.play().catch(() => {});
+      if (scanWrap) scanWrap.style.backgroundImage = '';
+    } else if (_ytUrl && scanWrap) {
+      // URL YouTube → pas de fichier local : afficher la miniature en fond (assombrie pour
+      // garder l'ambiance scanner, comme la vidéo locale à opacité 0.55).
+      const vidId = _ytVideoId();
+      if (vidId) {
+        scanWrap.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.45),rgba(0,0,0,0.45)), url(https://img.youtube.com/vi/${vidId}/hqdefault.jpg)`;
+        scanWrap.style.backgroundSize = 'cover';
+        scanWrap.style.backgroundPosition = 'center';
+      }
+      if (vid) vid.style.display = 'none';
+    }
 
     // Typewriter cycling
     const phrases = [
@@ -1171,7 +1238,9 @@ const V2 = (() => {
     _scanIntervals.forEach(clearTimeout);
     _scanIntervals = [];
     const vid = document.getElementById('ai-scan-video');
-    if (vid) { vid.pause(); vid.src = ''; }
+    if (vid) { vid.pause(); vid.src = ''; vid.style.display = ''; }
+    const scanWrap = document.getElementById('ai-scan-wrap');
+    if (scanWrap) scanWrap.style.backgroundImage = '';
     const wrap = document.getElementById('ai-scan-boxes');
     if (wrap) wrap.innerHTML = '';
   }
@@ -1199,14 +1268,23 @@ const V2 = (() => {
     setFile(f);
   }
 
-  function setYtUrl(val) {} // désactivé — URL YouTube masqué en frontend
+  function setYtUrl(val) { onUrlInput(val); }
 
   function setFile(f) {
     _file = f;
     _faceCache = {};
     _ytUrl = '';
+    const _urlIn = document.getElementById('yt-url-input'); if (_urlIn) _urlIn.value = '';
     _clipSegmentIds = {};
+    _fullFileVideoId = null;
+    _thumbs = {}; // nouvelle vidéo — les miniatures de la précédente ne s'appliquent plus
     if (window.posthog) posthog.capture('upload_file_selected', { file_size_mb: parseFloat((f.size / 1024 / 1024).toFixed(2)), file_type: f.type, plan: _userPlan });
+
+    // REVERT : démarrer l'upload complet dès la sélection (avant même "Analyser") allongeait trop
+    // la fenêtre où un gros traitement tourne pile pendant l'aperçu vidéo/sélection — lag/rechargement
+    // remonté sur mobile. Le déclenchement reste dans startAnalyze() (toujours en arrière-plan pendant
+    // la transcription, juste pas plus tôt que ça).
+
     const zone = document.getElementById('drop-zone');
     if (zone) zone.classList.add('has-file');
     document.getElementById('btn-analyze').disabled = false;
@@ -1263,23 +1341,260 @@ const V2 = (() => {
     } catch {}
   }
 
-  async function _uploadSegmentBlob(blob, tokData) {
-    return new Promise((resolve) => {
-      const fd = new FormData();
-      fd.append('file', blob, 'source.mp4');
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${tokData.railway_url}/upload-video?token=${encodeURIComponent(tokData.token)}`);
-      xhr.timeout = 300000;
-      xhr.onload = () => {
-        try { const d = JSON.parse(xhr.responseText); resolve(d.video_id || null); }
-        catch { resolve(null); }
-      };
-      xhr.onerror = xhr.ontimeout = () => resolve(null);
-      xhr.send(fd);
-    });
+  // Extraction MP4 partielle CÔTÉ CLIENT — lit juste la table d'échantillons (moov, petite) puis
+  // découpe uniquement les octets du clip demandé (quelques Mo au lieu de 500-800Mo). Safe mémoire
+  // sur mobile car on ne charge jamais le fichier entier, juste de petites tranches via File.slice().
+  // Retourne un Blob MP4 valide, ou null si l'extraction échoue (source sans moov exploitable, etc.)
+  // — dans ce cas l'appelant doit se rabattre sur l'upload complet (chunké) qui, lui, marche toujours.
+  let _mp4boxModulePromise = null;
+  async function _extractClipLocally(file, startSec, endSec) {
+    // Chargement paresseux — mp4box.js (~330Ko) n'est importé qu'au moment réel de l'export, jamais
+    // au chargement de la page. L'importer systématiquement (même en <script type="module"> déféré)
+    // ajoutait de la charge mémoire dès l'ouverture de l'app, ce qui contribuait à des crashs mobile
+    // en modifiant/prévisualisant un clip, bien avant tout export.
+    if (!_mp4boxModulePromise) _mp4boxModulePromise = import('/js/mp4box/mp4box.all.mjs').catch(() => null);
+    const mod = await _mp4boxModulePromise;
+    if (!mod) return null;
+    const { createFile, ISOFile, DataStream } = mod;
+
+    async function readSlice(start, end) {
+      const buf = await file.slice(start, end).arrayBuffer();
+      buf.fileStart = start;
+      return buf;
+    }
+
+    // 1) Localise les boîtes top-level 'ftyp' et 'moov' par un scan léger des en-têtes (8-16 octets
+    // chacun) — bien plus robuste que deviner une taille de tête/fin à lire : le moov peut être au
+    // début ("fast start"), ou juste après un mdat géant en fin de fichier (cas fréquent : ffmpeg
+    // sans +faststart), et dans ce 2e cas lire "les derniers N Mo" tombe en plein milieu du mdat,
+    // pas au début du moov — alors que ce scan le trouve exactement, quel que soit sa position.
+    async function findTopLevelBox(targetType) {
+      let pos = 0;
+      const maxIter = 10000; // garde-fou anti boucle infinie sur fichier malformé
+      for (let i = 0; i < maxIter && pos < file.size; i++) {
+        const hdrBuf = await file.slice(pos, Math.min(pos + 16, file.size)).arrayBuffer();
+        if (hdrBuf.byteLength < 8) break;
+        const dv = new DataView(hdrBuf);
+        let size = dv.getUint32(0, false);
+        const type = String.fromCharCode(dv.getUint8(4), dv.getUint8(5), dv.getUint8(6), dv.getUint8(7));
+        let hdrSize = 8;
+        if (size === 1 && hdrBuf.byteLength >= 16) {
+          size = dv.getUint32(8, false) * 4294967296 + dv.getUint32(12, false);
+          hdrSize = 16;
+        } else if (size === 0) {
+          size = file.size - pos;
+        }
+        if (type === targetType) return { start: pos, size, hdrSize };
+        if (size <= 0) break;
+        pos += size;
+      }
+      return null;
+    }
+
+    // mp4box.js suppose un flux CONTINU depuis la position 0, et son getInfo() interne accède
+    // TOUJOURS à ftyp.major_brand — donc ftyp et moov doivent être vus par la MÊME instance. Mais
+    // les donner à leur vraie position laisse un grand vide (souvent un mdat géant entre les deux)
+    // que le parseur ne sait pas franchir. Solution : leur assigner des positions ARTIFICIELLES
+    // contiguës (ftyp à 0, moov juste après) — sans incidence sur les offsets d'échantillons DANS
+    // le moov, qui sont des positions absolues dans le fichier ORIGINAL, indépendantes d'où on
+    // prétend que ftyp/moov eux-mêmes commencent.
+    async function probeMoov() {
+      const ftypInfo = await findTopLevelBox('ftyp');
+      const moovInfo = await findTopLevelBox('moov');
+      if (!ftypInfo || !moovInfo) return null;
+      const ftypAb = await readSlice(ftypInfo.start, ftypInfo.start + ftypInfo.size);
+      const moovAb = await readSlice(moovInfo.start, moovInfo.start + moovInfo.size);
+      ftypAb.fileStart = 0;
+      moovAb.fileStart = ftypInfo.size; // contigu artificiellement, juste après ftyp
+      const inst = createFile();
+      let ready = false;
+      inst.onReady = () => { ready = true; };
+      inst.onError = () => {};
+      inst.appendBuffer(ftypAb);
+      inst.appendBuffer(moovAb);
+      inst.flush();
+      return ready ? inst : null;
+    }
+
+    try {
+      const probe = await probeMoov();
+      if (!probe) { console.warn('[extract-local] moov introuvable'); return null; }
+
+      const movieInfo = probe.getInfo();
+      const vTrackInfo = movieInfo.tracks.find(t => t.type === 'video');
+      const aTrackInfo = movieInfo.tracks.find(t => t.type === 'audio');
+      if (!vTrackInfo) return null;
+      const videoTrak = probe.moov.traks.find(tr => tr.tkhd.track_id === vTrackInfo.id);
+      const audioTrak = aTrackInfo ? probe.moov.traks.find(tr => tr.tkhd.track_id === aTrackInfo.id) : null;
+
+      function sampleRangeFor(trak, s, e, requireSync) {
+        const samples = trak.samples;
+        const ts = trak.mdia.mdhd.timescale;
+        const startCts = s * ts, endCts = e * ts;
+        let startIdx = 0, endIdx = samples.length - 1;
+        for (let i = 0; i < samples.length; i++) {
+          if (samples[i].cts <= startCts && (!requireSync || samples[i].is_sync)) startIdx = i;
+          if (samples[i].cts >= endCts) { endIdx = i; break; }
+        }
+        return { startIdx, endIdx };
+      }
+      const vRange = sampleRangeFor(videoTrak, startSec, endSec, true);
+      const aRange = audioTrak ? sampleRangeFor(audioTrak, startSec, endSec, false) : null;
+
+      function byteRangeFor(trak, startIdx, endIdx) {
+        const samples = trak.samples;
+        let lo = Infinity, hi = 0;
+        for (let i = startIdx; i <= endIdx; i++) {
+          lo = Math.min(lo, samples[i].offset);
+          hi = Math.max(hi, samples[i].offset + samples[i].size);
+        }
+        return { lo, hi };
+      }
+      const vBytes = byteRangeFor(videoTrak, vRange.startIdx, vRange.endIdx);
+      const aBytes = aRange ? byteRangeFor(audioTrak, aRange.startIdx, aRange.endIdx) : vBytes;
+      const rangeLo = Math.min(vBytes.lo, aBytes.lo);
+      const rangeHi = Math.max(vBytes.hi, aBytes.hi);
+
+      const sliceBuf = await readSlice(rangeLo, rangeHi);
+      const sliceArr = new Uint8Array(sliceBuf);
+
+      function assignData(trak, startIdx, endIdx) {
+        for (let i = startIdx; i <= endIdx; i++) {
+          const s = trak.samples[i];
+          const localOffset = s.offset - rangeLo;
+          s.data = new Uint8Array(sliceArr.buffer.slice(localOffset, localOffset + s.size));
+          s.alreadyRead = s.size;
+        }
+      }
+      assignData(videoTrak, vRange.startIdx, vRange.endIdx);
+      if (audioTrak) assignData(audioTrak, aRange.startIdx, aRange.endIdx);
+
+      // Vide la table d'échantillons d'origine — sinon le moov déclare EN PLUS les échantillons de
+      // la vidéo source complète, avec des offsets qui n'existent plus dans notre petit fichier.
+      function emptyStbl(trak) {
+        const stbl = trak.mdia.minf.stbl;
+        if (stbl.stsz) { stbl.stsz.sample_sizes = []; stbl.stsz.sample_count = 0; }
+        if (stbl.stco) stbl.stco.chunk_offsets = [];
+        if (stbl.co64) stbl.co64.chunk_offsets = [];
+        if (stbl.stsc) { stbl.stsc.first_chunk = []; stbl.stsc.samples_per_chunk = []; stbl.stsc.sample_description_index = []; }
+        if (stbl.stts) { stbl.stts.sample_counts = []; stbl.stts.sample_deltas = []; }
+        if (stbl.ctts) { stbl.ctts.sample_counts = []; stbl.ctts.sample_offsets = []; }
+        if (stbl.stss) stbl.stss.sample_numbers = [];
+      }
+      emptyStbl(videoTrak);
+      if (audioTrak) emptyStbl(audioTrak);
+
+      const initSeg = ISOFile.writeInitializationSegment(probe.ftyp, probe.moov, movieInfo.duration, new Set());
+      const parts = [initSeg];
+
+      const vFragStream = new DataStream(undefined, 0, DataStream.BIG_ENDIAN);
+      probe.createFragment(vTrackInfo.id, vRange.startIdx, vRange.endIdx, vFragStream);
+      parts.push(vFragStream.buffer.slice(0, vFragStream.position));
+
+      if (audioTrak) {
+        const aFragStream = new DataStream(undefined, 0, DataStream.BIG_ENDIAN);
+        probe.createFragment(aTrackInfo.id, aRange.startIdx, aRange.endIdx, aFragStream);
+        parts.push(aFragStream.buffer.slice(0, aFragStream.position));
+      }
+
+      const blob = new Blob(parts, { type: 'video/mp4' });
+      console.log(`[extract-local] clip ${startSec}-${endSec}s : ${(blob.size/1024/1024).toFixed(1)}MB extraits (source ${(file.size/1024/1024).toFixed(0)}MB)`);
+      return blob;
+    } catch (e) {
+      console.warn('[extract-local] échoué, fallback upload complet:', e.message, e.stack);
+      return null;
+    }
   }
 
-  function onUrlInput(val) {} // YouTube URL supprimé
+  // Upload par morceaux de 8Mo, séquentiel, chaque morceau retenté indépendamment (jusqu'à 4 essais
+  // avec backoff) — un seul gros POST de 500-800Mo+ échouait bien trop souvent sur une connexion
+  // mobile instable, et un échec faisait TOUT recommencer depuis zéro (vu en prod : plusieurs
+  // ré-uploads complets + ré-transcriptions d'une même vidéo de 50min, aucun n'aboutissant).
+  // Ici seul le morceau en échec est retenté, jamais tout le fichier.
+  async function _uploadSegmentBlob(blob, tokData, onProgress) {
+    const CHUNK_SIZE = 8 * 1024 * 1024;
+    const videoId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    const totalChunks = Math.max(1, Math.ceil(blob.size / CHUNK_SIZE));
+
+    async function sendChunk(index, isLast, attempt = 1) {
+      const start = index * CHUNK_SIZE;
+      const end = Math.min(blob.size, start + CHUNK_SIZE);
+      const fd = new FormData();
+      fd.append('video_id', videoId);
+      fd.append('chunk_index', String(index));
+      fd.append('is_last', isLast ? 'true' : 'false');
+      fd.append('chunk', blob.slice(start, end), 'chunk.bin');
+      try {
+        // Timeout explicite — sans lui, une requête qui reste bloquée sur le réseau mobile (perte
+        // de connexion en plein milieu, bascule wifi/4G) ne rejette JAMAIS : elle reste juste en
+        // attente indéfiniment, et tout ce qui dépend de cet upload (l'aperçu serveur notamment)
+        // se bloque avec elle, sans jamais déclencher ni succès ni erreur.
+        const res = await fetch(`${tokData.railway_url}/upload-chunk?token=${encodeURIComponent(tokData.token)}`, { method: 'POST', body: fd, signal: AbortSignal.timeout(30000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error('réponse invalide');
+      } catch (e) {
+        if (attempt >= 4) throw e;
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+        return sendChunk(index, isLast, attempt + 1);
+      }
+    }
+
+    try {
+      for (let i = 0; i < totalChunks; i++) {
+        await sendChunk(i, i === totalChunks - 1);
+        if (onProgress) onProgress((i + 1) / totalChunks);
+      }
+      return videoId;
+    } catch (e) {
+      console.warn('[upload-chunk] échec définitif sur un morceau:', e.message);
+      return null;
+    }
+  }
+
+  // Upload unique du fichier source complet vers Railway, résultat mis en cache dans
+  // _fullFileVideoId — réutilisé par l'export (useServerSideCut) ET les miniatures serveur mobile,
+  // pour ne jamais ré-uploader le fichier entier plus d'une fois par session.
+  let _fullUploadPromise = null;
+  let _fullUploadProgressListeners = [];
+  // onProgress (0-1) optionnel — plusieurs appelants peuvent s'abonner au MÊME upload en cours
+  // (démarré tôt en arrière-plan pendant l'analyse, puis observé par l'export une fois lancé).
+  async function _ensureFullFileUploaded(tokData, onProgress) {
+    if (_fullFileVideoId) return _fullFileVideoId;
+    if (onProgress) _fullUploadProgressListeners.push(onProgress);
+    if (!_fullUploadPromise) {
+      _fullUploadPromise = _uploadSegmentBlob(_file, tokData, frac => {
+        _fullUploadProgressListeners.forEach(fn => { try { fn(frac); } catch {} });
+      }).then(vid => {
+        if (vid) _fullFileVideoId = vid;
+        return vid;
+      }).finally(() => { _fullUploadPromise = null; _fullUploadProgressListeners = []; });
+    }
+    return _fullUploadPromise;
+  }
+
+  function onUrlInput(val) {
+    val = (val || '').trim();
+    const btn = document.getElementById('btn-analyze');
+    const zone = document.getElementById('drop-zone');
+    const nameEl = document.getElementById('v1-upload-name');
+    // URL YouTube valide ? → active l'analyse, neutralise l'éventuel fichier sélectionné
+    const isYt = /(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(val);
+    if (isYt) {
+      _ytUrl = val;
+      _file = null;
+      _clipSegmentIds = {}; _fullFileVideoId = null; _thumbs = {}; _faceCache = {};
+      if (zone) zone.classList.remove('has-file');
+      if (nameEl) { nameEl.textContent = 'Cliquer ou déposer une vidéo ici'; nameEl.style.color = ''; }
+      const prevWrap = document.getElementById('video-preview-wrap');
+      if (prevWrap) prevWrap.style.display = 'none';
+      if (btn) btn.disabled = false;
+    } else {
+      _ytUrl = '';
+      // ne réactive/désactive le bouton que si aucun fichier n'est déjà chargé
+      if (btn && !_file) btn.disabled = true;
+    }
+  }
 
   function onWatermarkSelect(input) {
     const f = input.files?.[0];
@@ -1392,9 +1707,89 @@ const V2 = (() => {
     }
   };
 
+  // Sonde /transcribe-audio-status jusqu'à complétion. Une micro-coupure réseau pendant le
+  // sondage (bascule wifi/4G, quelques secondes de mise en veille) est tolérée en silence — on
+  // retente simplement au prochain tick au lieu d'abandonner toute l'analyse comme avant.
+  async function _pollTranscribeJob(railwayUrl, token, jobId, setBar, setMsg) {
+    setMsg('⏳ Analyse en cours — tu peux verrouiller ton écran, on continue…');
+    const maxWait = 15 * 60 * 1000;
+    const startTs = Date.now();
+    let consecutiveErrors = 0;
+    while (Date.now() - startTs < maxWait) {
+      await new Promise(r => setTimeout(r, 3000));
+      let data;
+      try {
+        const res = await fetch(`${railwayUrl}/transcribe-audio-status?job_id=${encodeURIComponent(jobId)}&token=${encodeURIComponent(token)}`);
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        data = await res.json();
+      } catch (e) {
+        consecutiveErrors++;
+        if (consecutiveErrors > 20) throw new Error('Connexion perdue pendant l\'analyse — réessaie');
+        continue;
+      }
+      consecutiveErrors = 0;
+      if (data.status === 'done') { setBar(75); return data; }
+      if (data.status === 'error') throw new Error(data.error || 'Transcription échouée');
+      setBar(60 + Math.min(14, Math.round((Date.now() - startTs) / 5000)));
+    }
+    throw new Error('Analyse trop longue — réessaie');
+  }
+
+  // Reprend un job de transcription laissé en cours si la page a rechargé pendant l'analyse
+  // (onglet mobile suspendu). Contrairement à _checkAnalysisInterrupted (qui se contente
+  // d'expliquer l'échec), ceci continue réellement le job en arrière-plan côté Railway et va
+  // jusqu'à l'identification des clips — seul le fichier vidéo local est perdu au reload (limite
+  // du navigateur), donc on termine sur le bandeau "Reprendre" existant pour le réattacher.
+  async function _resumeTranscribeJobIfAny() {
+    let marker;
+    try { marker = JSON.parse(localStorage.getItem('creatis_transcribe_job') || 'null'); } catch { marker = null; }
+    if (!marker || !marker.job_id) return false;
+    try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
+    const age = Date.now() - (marker.ts || 0);
+    if (age > 20 * 60 * 1000) { localStorage.removeItem('creatis_transcribe_job'); return false; }
+    localStorage.removeItem('creatis_transcribe_job'); // consommé — évite une boucle de reprise si ça échoue encore
+    setState('analyze');
+    _startScanAnim();
+    const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
+    const setBar = p => { const el = document.getElementById('analyze-bar'); if (el) el.style.width = p + '%'; };
+    const setMsg = t => { const el = document.getElementById('analyze-msg'); if (el) el.textContent = t; };
+    setStep(2); setBar(65);
+    const nameNoExt = (marker.name || 'vidéo').replace(/\.[^.]+$/, '');
+    try {
+      const transcribeData = await _pollTranscribeJob(marker.railway_url, marker.token, marker.job_id, setBar, setMsg);
+      _segments = transcribeData.segments || [];
+      setStep(3);
+      setMsg('Identification des meilleurs moments…');
+      const token = typeof Auth !== 'undefined' ? Auth.getToken() : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
+        mode: 'clips', segments: _segments, video_id: `local_${Date.now()}`, title: nameNoExt,
+        duration: transcribeData.duration, n_clips: 10, energy_peaks: transcribeData.energy_peaks || []
+      }) });
+      const clipsData = await clipsRes.json();
+      if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
+      _clips = clipsData.result.clips || [];
+      if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan, resumed: true });
+      _saveAnalysisAndNotify(_clips, _segments, nameNoExt);
+      setBar(100); setStep(4);
+      setState('upload'); // pas de fichier local après reload → bandeau "Reprendre" plutôt que le studio direct
+      toast('✅ Ton analyse interrompue est prête ! Recharge ta vidéo pour continuer.', 'succes', 8000);
+      _checkRecovery();
+    } catch (e) {
+      console.warn('[resume transcribe job]', e.message);
+      setState('upload');
+      toast(`⚠️ Impossible de reprendre l'analyse précédente (${e.message}) — relance-la.`, 'erreur', 8000);
+    }
+    return true;
+  }
+
   // ── Analyze pipeline ──
   async function startAnalyze() {
     if (!_file && !_ytUrl) { toast('❌ Sélectionne une vidéo d\'abord', 'erreur'); return; }
+    // Nouvelle analyse → vide le cache de segments de la précédente (indices périmés)
+    try { Object.values(_ytSegCache).forEach(u => URL.revokeObjectURL(u)); } catch {}
+    _ytSegCache = {}; _ytSegInflight = {}; _allReadyNotified = false;
     // Feedback immédiat — évite les double-clics pendant l'attente Supabase
     const analyzeBtn = document.getElementById('btn-analyze');
     if (analyzeBtn) { analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Préparation…'; }
@@ -1413,6 +1808,10 @@ const V2 = (() => {
     if (_pw) _pw.style.display = 'none';
     setState('analyze');
     _startScanAnim();
+    // Marqueur d'analyse en cours — si la page recharge sans qu'il soit nettoyé (onglet mobile
+    // suspendu/tué par l'OS en arrière-plan), on peut expliquer à l'utilisateur ce qui s'est passé
+    // au lieu de le renvoyer silencieusement sur l'écran d'upload.
+    try { localStorage.setItem('creatis_analysis_marker', JSON.stringify({ ts: Date.now() })); } catch {}
 
     const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
     const setBar = p => { const el = document.getElementById('analyze-bar'); if (el) el.style.width = p + '%'; };
@@ -1434,6 +1833,20 @@ const V2 = (() => {
       }
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // Mobile : démarre l'upload du fichier complet EN ARRIÈRE-PLAN dès maintenant, en parallèle
+      // de la transcription — l'upload (la partie la plus longue) tourne pendant que l'utilisateur
+      // regarde déjà l'écran d'analyse, donc les miniatures deviennent quasi instantanées une fois
+      // les clips affichés (au lieu d'attendre l'upload complet APRÈS la génération).
+      if (_file && (_isIOS() || /Android/i.test(navigator.userAgent))) {
+        (async () => {
+          try {
+            const upTokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+            const upTokData = await upTokRes.json();
+            if (upTokData.ok) await _ensureFullFileUploaded(upTokData);
+          } catch (e) { /* silencieux — l'export réessaiera l'upload plus tard si besoin */ }
+        })();
+      }
 
       if (_ytUrl) {
         // YouTube URL flow
@@ -1468,9 +1881,14 @@ const V2 = (() => {
         setStep(1); setBar(3);
         const _atEl2 = document.getElementById('analyze-title'); if (_atEl2) _atEl2.textContent = 'Analyse de ta vidéo…';
 
-        // Extraction audio : natif pour < 500 Mo, ffmpeg.wasm pour les fichiers plus lourds
+        // Extraction audio : natif (charge tout le fichier en mémoire + décode toute la piste
+        // audio via Web Audio API) vs ffmpeg.wasm (plus économe, traite en flux). Le natif est
+        // risqué sur mobile pour les gros fichiers (vidéo 4K notamment) — il pouvait faire planter
+        // silencieusement l'onglet iOS (aucune erreur JS à rattraper, juste un crash mémoire), ce
+        // qui laissait l'utilisateur bloqué en boucle sur "analyse interrompue" à chaque tentative.
         setMsg('Extraction audio…');
-        const FILE_LIMIT_NATIVE = 500 * 1024 * 1024; // 500 Mo
+        const _onMobileNative = _isIOS() || /Android/i.test(navigator.userAgent);
+        const FILE_LIMIT_NATIVE = (_onMobileNative ? 150 : 500) * 1024 * 1024;
         let audioBlob;
         if (_file.size <= FILE_LIMIT_NATIVE) {
           try {
@@ -1505,43 +1923,54 @@ const V2 = (() => {
 
         // Hack iOS : boucle audio silencieuse pour garder la page active en arrière-plan
         _startSilentAudio();
-        // Upload audio (quelques Mo) directement vers Railway
-        setMsg('⏳ Analyse en cours — tu peux verrouiller ton écran, on continue…');
+        // Upload audio (quelques Mo) directement vers Railway — juste le démarrage du job, la
+        // transcription elle-même tourne en tâche de fond et est sondée séparément (voir
+        // _pollTranscribeJob) : une brève coupure/mise en veille ne casse plus toute l'analyse,
+        // seule la requête d'upload (courte) a besoin d'une connexion continue.
+        setMsg('⏳ Envoi de l\'audio…');
         const audioFormData = new FormData();
         audioFormData.append('file', audioBlob, 'audio.wav');
-        let transcribeData = null;
+        let startData = null;
         for (let attempt = 1; attempt <= 3; attempt++) {
           if (attempt > 1) { setMsg(`Retry ${attempt}/3…`); await new Promise(r => setTimeout(r, 4000 * attempt)); }
           try {
-            transcribeData = await new Promise((resolve, reject) => {
+            startData = await new Promise((resolve, reject) => {
               const xhr = new XMLHttpRequest();
-              xhr.open('POST', `${tokData.railway_url}/transcribe-audio?token=${encodeURIComponent(tokData.token)}`);
-              xhr.timeout = 300000;
-              xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(50 + Math.round(e.loaded / e.total * 15)); };
+              xhr.open('POST', `${tokData.railway_url}/transcribe-audio-start?token=${encodeURIComponent(tokData.token)}`);
+              xhr.timeout = 60000;
+              xhr.upload.onprogress = e => { if (e.lengthComputable) setBar(50 + Math.round(e.loaded / e.total * 10)); };
               xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                   try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Réponse invalide')); }
-                } else if ((xhr.status === 502 || xhr.status === 503) && attempt < 3) {
+                } else if ([0, 502, 503, 504].includes(xhr.status) && attempt < 3) {
                   reject(new Error('retry'));
                 } else { reject(new Error(`Erreur ${xhr.status}`)); }
               };
-              xhr.onerror = () => reject(new Error('Erreur réseau'));
+              xhr.onerror = () => reject(new Error(attempt < 3 ? 'retry' : 'Erreur réseau'));
               xhr.ontimeout = () => reject(new Error('retry'));
               xhr.send(audioFormData);
             });
             break;
           } catch(e) { if (e.message !== 'retry' || attempt === 3) throw e; }
         }
-        if (!transcribeData?.ok) throw new Error(transcribeData?.error || 'Transcription échouée');
+        if (!startData?.ok) throw new Error(startData?.error || 'Envoi audio échoué');
+        setBar(60);
+        // Sauvegarde du job pour reprendre le sondage si la page recharge (mise en veille mobile)
+        try { localStorage.setItem('creatis_transcribe_job', JSON.stringify({ job_id: startData.job_id, railway_url: tokData.railway_url, token: tokData.token, ts: Date.now(), name: _file?.name || _ytUrl || 'vidéo' })); } catch {}
+        const transcribeData = await _pollTranscribeJob(tokData.railway_url, tokData.token, startData.job_id, setBar, setMsg);
+        try { localStorage.removeItem('creatis_transcribe_job'); } catch {}
         _segments = transcribeData.segments || [];
         const video_id = `local_${Date.now()}`;
         setBar(75); setStep(3);
 
-        // Identify clips via Groq
+        // Identify clips via Groq — on demande plus de candidats que le nombre final affiché
+        // (N_FINAL) pour pouvoir ensuite affiner avec l'analyse visuelle Gemini ci-dessous.
+        const N_FINAL = 10;
         setMsg('Identification des meilleurs moments…');
         const clipsRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
           mode: 'clips', segments: _segments, video_id: video_id,
-          title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: 10
+          title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: N_FINAL + 6,
+          energy_peaks: transcribeData.energy_peaks || []
         }) });
         const clipsData = await clipsRes.json();
         if (!clipsData.ok) {
@@ -1549,6 +1978,33 @@ const V2 = (() => {
           throw new Error(clipsData.error || 'Erreur identification clips');
         }
         _clips = clipsData.result.clips || [];
+        setBar(88);
+        // Affinage visuel : Gemini regarde une frame de chaque candidat (pas juste le texte du
+        // transcript) pour choisir les N_FINAL avec le meilleur potentiel viral réel — expression,
+        // action à l'écran, cadrage. Best-effort : si ça échoue, on garde simplement les N_FINAL
+        // premiers candidats du classement texte (comportement d'avant, jamais bloquant).
+        if (_clips.length > N_FINAL) {
+          try {
+            setMsg('Analyse visuelle des meilleurs moments…');
+            const times = _clips.map(c => Math.max(0, (c.start_time ?? c.start) + 2));
+            const frames = await _captureLocalFrames(_file, times);
+            const candidates = _clips.map((c, i) => ({ i, title: c.title || '', hook: c.hook || '', text_score: c.score ?? null }));
+            const framesPayload = frames.map((f, i) => f ? { i, data: f.split(',')[1] } : null).filter(Boolean);
+            if (framesPayload.length >= Math.min(4, _clips.length)) {
+              const rankRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({
+                mode: 'rank_clips_visual', candidates, frames: framesPayload, n_final: N_FINAL
+              }) });
+              const rankData = await rankRes.json();
+              if (rankData.ok && Array.isArray(rankData.order) && rankData.order.length) {
+                const byIndex = new Map(_clips.map((c, i) => [i, c]));
+                const reordered = rankData.order.map(i => byIndex.get(i)).filter(Boolean);
+                if (reordered.length) _clips = reordered;
+              }
+            }
+          } catch (e) { console.warn('[rank_clips_visual] échoué, fallback classement texte:', e.message); }
+        }
+        _clips = _clips.slice(0, N_FINAL);
+        setBar(95);
         if (window.posthog) { posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan, generation_time_ms: Date.now() - _genStart }); if (_repurposeCount === 0) posthog.capture('first_upload_completed', { plan: _userPlan, source: 'file' }); }
         _saveAnalysisAndNotify(_clips, _segments, _file?.name?.replace(/\.[^.]+$/, '') || 'vidéo');
         setBar(100); setStep(4);
@@ -1565,6 +2021,7 @@ const V2 = (() => {
     } catch(err) {
       if (window.posthog) { posthog.capture('analysis_error', { message: err.message, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' }); posthog.capture('generation_failed', { plan: _userPlan, reason: err.message?.substring(0, 100), source: _ytUrl ? 'youtube' : 'file' }); }
       toast(`❌ ${err.message}`, 'erreur', 8000);
+      try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
       _stopScanAnim();
       setState('upload');
       // Réactiver le bouton analyser
@@ -1646,17 +2103,25 @@ const V2 = (() => {
     _stopScanAnim();
     setState('studio');
     setTimeout(() => toast(`🎬 ${_clips.length} clips prêts — clique sur un clip pour personnaliser et télécharger`, 'succes', 5000), 600);
-    // Generate thumbnails + pré-analyser visages en arrière-plan (desktop seulement pour les fichiers)
+    // Generate thumbnails + pré-analyser visages en arrière-plan
+    // Mobile traité comme desktop : generateThumbnails() locale (<video>+<canvas>), une seule frame
+    // à la fois, séquentiel — même logique que l'aperçu vidéo du modal qui s'est avéré stable sur
+    // mobile. La version serveur (generateThumbnailsServerSide) attendait l'upload COMPLET du fichier
+    // vers Railway avant d'afficher la moindre image — d'où l'écran vide côté mobile pendant ~1 min
+    // alors que le PC affichait déjà tout instantanément.
     const _onMobile = _isIOS() || /Android/i.test(navigator.userAgent);
     if (_file) {
+      setTimeout(() => generateThumbnails(), 200);
       if (!_onMobile) {
-        setTimeout(() => generateThumbnails(), 200);
         setTimeout(() => {
           for (let i = 0; i < Math.min(5, _clips.length); i++) _analyzeClipFaces(i);
         }, 500);
       }
     } else if (_ytUrl) {
       setTimeout(() => generateThumbnails(), 200); // YouTube = juste des URLs img, safe sur mobile
+      // Pré-télécharge tous les segments en fond (3 en parallèle) → clips prêts vite, ouverture
+      // instantanée ensuite (plus de re-téléchargement). Démarre quasi tout de suite.
+      setTimeout(() => _prefetchYtSegments(), 400);
     }
   }
 
@@ -1782,8 +2247,13 @@ const V2 = (() => {
   let _modalVideoUrl = null;
   let _exportPreviewUrl = null;
   let _cropRaf = null;
+  let _ytSegCache = {};       // clipIdx -> blobUrl (segment YouTube téléchargé + mis en cache cette session)
+  let _ytSegInflight = {};    // clipIdx -> Promise (téléchargement en cours — évite les doublons)
   let _faceCache = {};        // { [clipIdx]: { cx, splitLeftCx, splitRightCx } | null | 'loading' }
   let _lastSegKey = null;
+  let _lastHookSig = null;
+  let _autoPauseTimer = null; // pause différée du "force-render frame" — annulée si l'utilisateur agit avant
+  let _userTookControl = false; // l'utilisateur a cliqué play/pause manuellement — le force-render frame ne doit plus jamais le re-pauser tout seul
   let _isDragging = false;
 
   function getClipOpts(i) {
@@ -1796,12 +2266,14 @@ const V2 = (() => {
       colorText: globalOpts.colorText || '#ffffff',
       colorBg: globalOpts.colorBg || '#000000',
       hookEnabled: globalOpts.hookEnabled || false,
-      hookText: globalOpts.hookText || '',
+      // Sans ça, le champ hook restait toujours vide/générique clip après clip — jamais rempli avec
+      // l'accroche que l'IA a spécifiquement générée pour CE clip (clip.hook).
+      hookText: globalOpts.hookText || _clips[i]?.hook || '',
       hookColor: globalOpts.hookColor || '#ffffff',
       hookPos: globalOpts.hookPos || 'top',
       subY: 82, subX: 50,
       hookY: 10, hookX: 50,
-      reframeMode: 'face',
+      reframeMode: 'center',
       wmEnabled: globalOpts.wmEnabled || false,
       wmPos: globalOpts.wmPos || 'tr',
       wmOpacity: globalOpts.wmOpacity || 0.8,
@@ -1914,7 +2386,7 @@ const V2 = (() => {
     const hookTxt = document.getElementById('modal-hook-txt');
     if (hookTxt) { hookTxt.value = opts.hookText; hookTxt.style.display = opts.hookEnabled ? 'block' : 'none'; }
     // Style pills + auto-expand if extra style selected
-    const extraStyles = ['spotlight','typewriter','wordpop','slide','shake','wave'];
+    const extraStyles = ['typewriter','wordpop','slide','shake','wave'];
     const grid = document.getElementById('modal-style-btns');
     if (grid) grid.classList.toggle('expanded', extraStyles.includes(opts.style));
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
@@ -1934,6 +2406,121 @@ const V2 = (() => {
 
     // Start video player
     _startModalVideo(clip, i, opts);
+  }
+
+  // Vérifie si la frame ACTUELLEMENT affichée par la vidéo (déjà rendue par _renderFirstFrame,
+  // aucun décodage supplémentaire) montre une vraie image plutôt qu'un écran noir uniforme —
+  // symptôme d'un codec source que le navigateur ne sait pas décoder. Si c'est le cas, bascule
+  // sur la vignette déjà générée côté serveur (existe déjà pour la grille du studio) plutôt que
+  // de laisser un rectangle noir : léger (une lecture de pixels, pas un deuxième décodage vidéo).
+  function _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl) {
+    if (!video.videoWidth) { _debugLog({ step: 'frame-check-skipped', reason: 'no-videoWidth-yet' }); return; }
+    try {
+      const c = document.createElement('canvas');
+      c.width = Math.min(video.videoWidth, 160);
+      c.height = Math.min(video.videoHeight, 160);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(video, 0, 0, c.width, c.height);
+      const data = ctx.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let idx = 0; idx < data.length; idx += 4) sum += data[idx] + data[idx + 1] + data[idx + 2];
+      const looksReal = sum / (data.length / 4) > 5;
+      _debugLog({ step: 'frame-check', looksReal, hasFallbackThumb: !!fallbackThumbUrl });
+      if (looksReal) return;
+      video.style.display = 'none';
+      if (!ph) return;
+      if (fallbackThumbUrl) {
+        ph.innerHTML = `<img src="${fallbackThumbUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:0">`;
+      } else {
+        // Pas de vignette dispo (pas encore générée) — au moins un message clair plutôt qu'un
+        // écran noir muet : l'export fonctionnera quand même normalement (traitement Railway).
+        ph.innerHTML = '<div style="text-align:center;padding:20px;color:#fff;font-size:12px">📹 Aperçu non disponible pour cette vidéo<br><span style="color:#8A93A3">(l\'export fonctionnera normalement)</span></div>';
+      }
+      ph.style.cssText = 'display:flex;align-items:center;justify-content:center;position:relative;width:100%;height:100%;';
+    } catch (e) { _debugLog({ step: 'frame-check-error', message: String(e?.message || e) }); }
+  }
+
+  // Câblage commun une fois qu'une source vidéo jouable est prête (blob local ou fichier serveur
+  // déjà découpé) — seekTarget = position à atteindre une fois chargé (temps réel du clip pour un
+  // blob local complet, 0 pour un fichier déjà recadré sur juste ce clip). fallbackThumbUrl (mobile
+  // uniquement) : vignette à afficher si la vidéo s'avère afficher un écran noir.
+  function _wirePlayableVideo(video, clip, i, seekTarget, fallbackThumbUrl) {
+    const ph = document.getElementById('modal-player-ph');
+    _userTookControl = false; // nouveau clip ouvert — réarme le garde-fou pour ce clip
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = seekTarget;
+      _updateCropPreview();
+    }, { once: true });
+    // Force le rendu de la frame (sinon player reste noir). Se déclenche via 'seeked' OU via le
+    // filet de sécurité 2s ci-dessous — les deux peuvent arriver APRÈS que l'utilisateur ait déjà
+    // cliqué play lui-même (seek profond lent sur mobile) : sans le garde _userTookControl, cette
+    // fonction rejouait puis re-pausait la vidéo 80ms plus tard, sous les pieds de l'utilisateur —
+    // d'où le "je dois cliquer 2 fois" (1er clic joue, le force-render la re-pause juste après).
+    let _seekRendered = false;
+    const _renderFirstFrame = () => {
+      if (_seekRendered) return;
+      _seekRendered = true;
+      if (_userTookControl) { _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl); return; }
+      video.play().then(() => {
+        _autoPauseTimer = setTimeout(() => {
+          _autoPauseTimer = null;
+          if (_userTookControl) { _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl); return; }
+          video.pause();
+          _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl);
+        }, 80);
+      }).catch(() => {});
+    };
+    video.addEventListener('seeked', _renderFirstFrame, { once: true });
+    // Filet de sécurité : 'seeked' peut ne jamais se déclencher (seek profond peu fiable, ou seek
+    // vers 0 traité comme un no-op par certains navigateurs) — sans lui le clip restait figé noir.
+    setTimeout(_renderFirstFrame, 2000);
+
+    const wrap = document.getElementById('modal-player-wrap');
+    const subOv = document.getElementById('modal-sub-overlay');
+    const hookOv = document.getElementById('modal-hook-overlay');
+    if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
+    if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
+    const subHandle = document.getElementById('modal-sub-handle');
+    const hookHandle = document.getElementById('modal-hook-handle');
+    if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
+    if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
+
+    _lastSegKey = null;
+    if (_subRaf) cancelAnimationFrame(_subRaf);
+    _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
+  }
+
+  // Debug temporaire — poste les infos de diagnostic vers les logs serveur (Vercel), qu'on peut
+  // consulter directement sans dépendre de la console du téléphone de l'utilisateur.
+  function _debugLog(data) {
+    try { fetch('/api/repurpose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'debug_log', data }) }).catch(() => {}); } catch {}
+  }
+
+  function _startModalVideoLocalBlob(clip, i, video, ph, _previewFailReason) {
+    if (_modalVideoUrl) URL.revokeObjectURL(_modalVideoUrl);
+    _modalVideoUrl = URL.createObjectURL(_file);
+    video.src = _modalVideoUrl;
+    video.style.display = 'block';
+    if (ph) ph.style.display = 'none';
+    // Si le navigateur n'arrive jamais à décoder ce fichier (codec non supporté...), aucun des
+    // événements de _wirePlayableVideo ne se déclenche — le player resterait figé sans explication.
+    const _thisVideoUrl = _modalVideoUrl;
+    video.addEventListener('error', () => {
+      // stopModalVideo() met video.src='' pour nettoyer le clip précédent, ce qui déclenche un
+      // événement error ASYNCHRONE — sans cette vérification, ce faux positif du clip d'avant
+      // s'affichait alors que CE clip-ci se charge et se lit très bien juste après.
+      if (video.src !== _thisVideoUrl) return;
+      console.warn('[modal-video] erreur chargement:', video.error?.message);
+      _debugLog({ step: 'local-blob-error', clipIdx: i, videoErrorCode: video.error?.code, videoErrorMessage: video.error?.message, previewFailReason: _previewFailReason });
+      if (window.posthog) posthog.capture('local_blob_playback_failed', { message: String(video.error?.message || '').slice(0, 200), preview_fail_reason: _previewFailReason ? String(_previewFailReason).slice(0, 200) : null, clip_index: i });
+      // Inclut la raison de l'échec de l'aperçu serveur (si tenté) — visible directement à
+      // l'écran pour diagnostiquer sans avoir besoin d'accéder à la console du téléphone.
+      const _detail = _previewFailReason ? ` (aperçu serveur : ${_previewFailReason})` : '';
+      toast(`⚠️ Impossible de lire cette vidéo — format non supporté par ton navigateur${_detail}.`, 'erreur', 9000);
+    }, { once: true });
+    const clipStart = clip.start_time ?? clip.start;
+    const _thumbUrl = _thumbs[i] || document.getElementById(`clip-thumb-${i}`)?.dataset?.thumb;
+    _wirePlayableVideo(video, clip, i, clipStart, _thumbUrl);
   }
 
   function _startModalVideo(clip, i, opts) {
@@ -1975,124 +2562,74 @@ const V2 = (() => {
     }
 
     if (_file) {
-      // Local file — play directly from start_time
-      if (_modalVideoUrl) URL.revokeObjectURL(_modalVideoUrl);
-      _modalVideoUrl = URL.createObjectURL(_file);
-      video.src = _modalVideoUrl;
-      video.style.display = 'block';
-      if (ph) ph.style.display = 'none';
-
-      const clipStart = clip.start_time ?? clip.start;
-      const clipEnd = clip.end_time ?? clip.end;
-
-      video.addEventListener('loadedmetadata', () => {
-        video.currentTime = clipStart;
-        _updateCropPreview();
-      }, { once: true });
-      video.addEventListener('seeked', () => {
-        // Force le rendu de la frame (sinon player reste noir)
-        video.play().then(() => { setTimeout(() => video.pause(), 80); }).catch(() => {});
-      }, { once: true });
-
-      // Drag & édition sur les overlays
-      const wrap = document.getElementById('modal-player-wrap');
-      const subOv = document.getElementById('modal-sub-overlay');
-      const hookOv = document.getElementById('modal-hook-overlay');
-      if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
-      if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
-      const subHandle = document.getElementById('modal-sub-handle');
-      const hookHandle = document.getElementById('modal-hook-handle');
-      if (subHandle) _setupResizeHandle(subHandle, 'fontSize');
-      if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
-
-      // Start subtitle loop
-      _lastSegKey = null;
-      _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
-
+      // Mobile traité EXACTEMENT comme desktop : même code, aucune étape d'extraction/conversion
+      // supplémentaire. L'extraction locale (mp4box.js) puis ré-encodage ajoutait de la lenteur
+      // et, pour certains clips précis (1-2 sur 10, pas tous), un résultat cassé — signe que
+      // c'était l'extraction elle-même qui introduisait un problème, pas le codec de la vidéo
+      // source. Lecture directe du blob avec seek : c'est ce qui fonctionne déjà nativement sur PC.
+      _debugLog({ step: 'modal-open', onMobile: _isIOS() || /Android/i.test(navigator.userAgent), ua: navigator.userAgent, clipIdx: i });
+      _startModalVideoLocalBlob(clip, i, video, ph);
     } else if (_ytUrl) {
-      // Mode URL YouTube — télécharge le segment brut via Railway puis le joue comme un fichier
+      // Mode URL YouTube — segment mis en cache (téléchargé une fois puis rejoué instantanément).
+      // Le pré-chargement en arrière-plan (_prefetchYtSegments) fait que la plupart sont déjà prêts.
       const clipStart = clip.start_time ?? clip.start;
-      const clipEnd   = clip.end_time   ?? clip.end;
       const videoId   = clip.video_id   || _ytVideoId();
       const wrap      = document.getElementById('modal-player-wrap');
       const oldBtn    = wrap?.querySelector('.yt-ext-btn');
       if (oldBtn) oldBtn.remove();
 
-      // État de chargement avec thumbnail de fond
-      if (ph) {
-        const thumbUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
-        if (thumbUrl) { ph.style.backgroundImage = `url(${thumbUrl})`; ph.style.backgroundSize = 'cover'; ph.style.backgroundPosition = 'center top'; }
-        ph.innerHTML = '<div style="background:rgba(0,0,0,.6);padding:8px 14px;border-radius:8px;color:#fff;font-size:12px;text-align:center">⏳ Téléchargement du clip…</div>';
-        ph.style.display = 'flex'; ph.style.alignItems = 'center'; ph.style.justifyContent = 'center';
-      }
-      video.style.display = 'none';
-
       if (!videoId) { if (ph) ph.innerHTML = '<div style="color:#f87171;background:rgba(0,0,0,.7);padding:8px 12px;border-radius:6px">ID vidéo manquant</div>'; return; }
 
-      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
-      const authHeaders = tok ? { 'Authorization': `Bearer ${tok}` } : {};
+      // Cache le bouton play pendant le téléchargement (sinon l'utilisateur clique dessus, rien
+      // ne se passe, et il croit que c'est cassé). Ré-affiché quand la vidéo est prête.
+      const _playOverlay = document.getElementById('modal-play-overlay');
+      const _alreadyCached = !!_ytSegCache[i];
+      if (!_alreadyCached && ph) {
+        if (_playOverlay) _playOverlay.style.display = 'none';
+        const thumbUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+        ph.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.55),rgba(0,0,0,0.55)), url(${thumbUrl})`;
+        ph.style.backgroundSize = 'cover'; ph.style.backgroundPosition = 'center top';
+        ph.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;text-align:center">
+            <div style="width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,0.2);border-top-color:#10b981;animation:spin .8s linear infinite"></div>
+            <div style="color:#fff;font-size:14px;font-weight:800">Téléchargement du clip…</div>
+            <div id="yt-dl-progress" style="color:#10b981;font-size:12px;font-weight:600">Récupération depuis YouTube</div>
+            <div style="color:rgba(255,255,255,0.7);font-size:11px;max-width:220px;line-height:1.4">⏳ Reste sur cette fenêtre — l'aperçu s'affiche dès que c'est prêt (~30s la 1ʳᵉ fois)</div>
+          </div>`;
+        ph.style.display = 'flex'; ph.style.alignItems = 'center'; ph.style.justifyContent = 'center';
+        video.style.display = 'none';
+      }
 
-      // Lance le job raw_segment sur Railway
-      fetch('/api/repurpose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd }),
+      const _applyBlob = (blobUrl) => {
+        if (_modalIdx !== i) return;
+        if (_playOverlay) _playOverlay.style.display = '';
+        video.src = blobUrl;
+        video.style.display = 'block';
+        if (ph) { ph.style.display = 'none'; ph.style.backgroundImage = ''; }
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = 0; // segment déjà découpé — commence à 0
+          _updateCropPreview();
+        }, { once: true });
+        clip._rawOffset = clipStart; // offset pour sous-titres
+        const subOv  = document.getElementById('modal-sub-overlay');
+        const hookOv = document.getElementById('modal-hook-overlay');
+        if (subOv  && wrap) _setupDraggable(subOv,  wrap, 'subY',  'subX');
+        if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
+        const subHandle  = document.getElementById('modal-sub-handle');
+        const hookHandle = document.getElementById('modal-hook-handle');
+        if (subHandle)  _setupResizeHandle(subHandle,  'fontSize');
+        if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
+        _lastSegKey = null;
+        cancelAnimationFrame(_subRaf);
+        _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
+      };
+
+      _getYtSegment(clip, i, (progress) => {
+        if (_modalIdx === i && !_ytSegCache[i]) { const d = document.getElementById('yt-dl-progress'); if (d) d.textContent = progress; }
       })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.ok || !data.job_id) throw new Error(data.error || 'Lancement impossible');
-        const job_id = data.job_id;
-
-        // Polling status toutes les 2s
-        const pollInterval = setInterval(async () => {
-          // Arrêter le poll si le modal a changé de clip
-          if (_modalIdx !== i) { clearInterval(pollInterval); return; }
-          try {
-            const sr = await fetch('/api/repurpose', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...authHeaders },
-              body: JSON.stringify({ mode: 'raw_segment_status', job_id }),
-            });
-            const st = await sr.json();
-            if (st.status === 'done' && st.file_url) {
-              clearInterval(pollInterval);
-              if (_modalIdx !== i) return;
-
-              video.src = st.file_url;
-              video.style.display = 'block';
-              if (ph) ph.style.display = 'none';
-
-              video.addEventListener('loadedmetadata', () => {
-                video.currentTime = 0; // segment déjà découpé — commence à 0
-                _updateCropPreview();
-              }, { once: true });
-
-              // Recalculer les temps relatifs du clip pour le sub loop
-              clip._rawOffset = clipStart; // offset pour sous-titres
-              const subOv  = document.getElementById('modal-sub-overlay');
-              const hookOv = document.getElementById('modal-hook-overlay');
-              if (subOv  && wrap) _setupDraggable(subOv,  wrap, 'subY',  'subX');
-              if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
-              const subHandle  = document.getElementById('modal-sub-handle');
-              const hookHandle = document.getElementById('modal-hook-handle');
-              if (subHandle)  _setupResizeHandle(subHandle,  'fontSize');
-              if (hookHandle) _setupResizeHandle(hookHandle, 'hookFontSize');
-
-              _lastSegKey = null;
-              cancelAnimationFrame(_subRaf);
-              _subRaf = requestAnimationFrame(() => _subLoop(video, clip));
-
-            } else if (st.status === 'error') {
-              clearInterval(pollInterval);
-              if (ph) ph.innerHTML = `<div style="background:rgba(0,0,0,.8);color:#f87171;padding:8px 12px;border-radius:6px;font-size:11px;max-width:80%;text-align:center">Erreur : ${st.error}</div>`;
-            } else if (st.progress && ph) {
-              ph.querySelector('div').textContent = `⏳ ${st.progress}`;
-            }
-          } catch (e) { console.warn('[raw_segment poll]', e); }
-        }, 2000);
-      })
+      .then(_applyBlob)
       .catch(err => {
-        if (ph) ph.innerHTML = `<div style="background:rgba(0,0,0,.8);color:#f87171;padding:8px 12px;border-radius:6px;font-size:11px;max-width:80%">Erreur : ${err.message}</div>`;
+        if (_modalIdx === i && ph) ph.innerHTML = `<div style="background:rgba(0,0,0,.8);color:#f87171;padding:8px 12px;border-radius:6px;font-size:11px;max-width:80%;text-align:center">Erreur : ${err.message}</div>`;
       });
 
     } else {
@@ -2108,11 +2645,104 @@ const V2 = (() => {
     }
   }
 
+  // Télécharge (ou récupère du cache) le segment vidéo d'un clip YouTube → blob URL réutilisable.
+  // Mis en cache par index de clip : un clip n'est jamais retéléchargé pendant la session.
+  function _getYtSegment(clip, i, onProgress) {
+    if (_ytSegCache[i]) return Promise.resolve(_ytSegCache[i]);
+    if (_ytSegInflight[i]) return _ytSegInflight[i];
+    const p = (async () => {
+      const clipStart = clip.start_time ?? clip.start;
+      const clipEnd   = clip.end_time   ?? clip.end;
+      const videoId   = clip.video_id   || _ytVideoId();
+      if (!videoId) throw new Error('ID vidéo manquant');
+      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      const authHeaders = tok ? { 'Authorization': `Bearer ${tok}` } : {};
+      const startRes = await fetch('/api/repurpose', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd }),
+      }).then(r => r.json());
+      if (!startRes.ok || !startRes.job_id) throw new Error(startRes.error || 'Lancement impossible');
+      const job_id = startRes.job_id;
+      for (let attempt = 0; attempt < 150; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const st = await fetch('/api/repurpose', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ mode: 'raw_segment_status', job_id }),
+        }).then(r => r.json());
+        if (st.status === 'done' && st.file_url) {
+          const blob = await fetch(st.file_url).then(r => r.blob());
+          const blobUrl = URL.createObjectURL(blob);
+          _ytSegCache[i] = blobUrl;
+          _markClipReady(i);
+          return blobUrl;
+        }
+        if (st.status === 'error') throw new Error(st.error || 'Téléchargement échoué');
+        if (onProgress && st.progress) onProgress(st.progress);
+      }
+      throw new Error('Délai dépassé');
+    })();
+    _ytSegInflight[i] = p;
+    p.catch(() => {}).finally(() => { delete _ytSegInflight[i]; });
+    return p;
+  }
+
+  // Pré-télécharge tous les segments en arrière-plan, 3 EN PARALLÈLE (YouTube limite chaque
+  // download, donc paralléliser = clips prêts ~3x plus vite) dès la fin de l'analyse.
+  async function _prefetchYtSegments() {
+    if (!_ytUrl) return;
+    const CONCURRENCY = 3;
+    let next = 0;
+    const worker = async () => {
+      while (next < _clips.length) {
+        const i = next++;
+        if (_ytSegCache[i]) continue;
+        try { await _getYtSegment(_clips[i], i); } catch (e) { /* silencieux — réessayé à l'ouverture */ }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, _clips.length) }, worker));
+  }
+
+  // Petit badge ✓ vert sur la vignette du clip quand son aperçu est prêt.
+  function _markClipReady(i) {
+    const card = document.getElementById(`clip-thumb-${i}`);
+    if (card && !card.querySelector('.clip-ready-badge')) {
+      const b = document.createElement('div');
+      b.className = 'clip-ready-badge';
+      b.style.cssText = 'position:absolute;top:6px;left:6px;z-index:4;background:#10b981;color:#04140d;font-size:10px;font-weight:800;padding:2px 6px;border-radius:20px;display:flex;align-items:center;gap:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)';
+      b.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>Prêt';
+      card.appendChild(b);
+    }
+    // Tous les aperçus prêts ? → petit signal
+    if (_ytUrl && _clips.length && Object.keys(_ytSegCache).length >= _clips.length && !_allReadyNotified) {
+      _allReadyNotified = true;
+      toast('✅ Tous les aperçus sont prêts — ouverture instantanée', 'succes', 4000);
+    }
+  }
+  let _allReadyNotified = false;
+
+  // Trouve le segment contenant l'instant t via recherche binaire (segments triés par start) —
+  // O(log n) au lieu d'un scan linéaire, appelé 60x/s depuis _subLoop.
+  function _findSegmentAt(segments, t) {
+    let lo = 0, hi = segments.length - 1, ans = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const ss = segments[mid].start ?? segments[mid].offset ?? 0;
+      if (ss <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    if (ans === -1) return null;
+    const s = segments[ans];
+    const ss = s.start ?? s.offset ?? 0;
+    const se = s.end ?? (ss + (s.duration ?? 2));
+    return (t >= ss && t < se) ? s : null;
+  }
+
   function _subLoop(video, clip) {
     const opts = getClipOpts(_modalIdx);
     const subEl = document.getElementById('modal-sub-overlay');
     const hookEl = document.getElementById('modal-hook-overlay');
     const progFill = document.getElementById('modal-prog-fill');
+    const progHandle = document.getElementById('modal-prog-handle');
+    const progWrap = document.getElementById('modal-prog-wrap');
     const timeEl = document.getElementById('modal-time');
     const clipStart = clip.start_time ?? clip.start;
     const clipEnd = clip.end_time ?? clip.end;
@@ -2125,18 +2755,21 @@ const V2 = (() => {
     if (!video.paused && rawOffset != null && video.currentTime >= clipDur) video.currentTime = 0;
     else if (!video.paused && rawOffset == null && t >= clipEnd) video.currentTime = clipStart;
 
-    if (progFill) progFill.style.width = Math.min(100, Math.max(0, rel / clipDur * 100)) + '%';
+    if (!progWrap || !progWrap.classList.contains('dragging')) {
+      const _pct = Math.min(100, Math.max(0, rel / clipDur * 100));
+      if (progFill) progFill.style.width = _pct + '%';
+      if (progHandle) progHandle.style.left = _pct + '%';
+    }
     if (timeEl) {
       const s = Math.max(0, rel);
       timeEl.textContent = `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')} / ${Math.floor(clipDur/60)}:${String(Math.floor(clipDur%60)).padStart(2,'0')}`;
     }
 
-    // Segment courant
-    const seg = _segments.find(s => {
-      const ss = s.start ?? s.offset ?? 0;
-      const se = s.end ?? (ss + (s.duration ?? 2));
-      return t >= ss && t < se;
-    });
+    // Segment courant — recherche binaire (segments triés chronologiquement) au lieu d'un scan
+    // linéaire complet : sur une vidéo de 50min (~1800+ segments), le .find() tournait 60x/s en
+    // continu (même en pause), soit des dizaines de milliers de comparaisons/seconde pour rien —
+    // une source de lag significative sur mobile pour les vidéos longues.
+    const seg = _findSegmentAt(_segments, t);
     const segKey = seg ? String(seg.start ?? seg.offset ?? 0) : null;
 
     if (subEl && !subEl.matches(':focus')) {
@@ -2159,49 +2792,58 @@ const V2 = (() => {
       const hookOn = document.getElementById('modal-hook-on')?.checked ?? opts.hookEnabled;
       if (hookOn && hookTxt) {
         const inWindow = rel >= 0 && rel < 3;
-        const sc = _previewScale();
-        const hookFs = Math.round((opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)) * sc);
-        const hookPad = Math.round(18 * sc);
-        hookEl.style.fontSize = hookFs + 'px';
-        hookEl.style.fontWeight = '900';
-        hookEl.style.color = opts.hookColor || '#ffffff';
-        hookEl.style.lineHeight = '1.3';
-        hookEl.style.borderRadius = '0';
-        hookEl.style.padding = `${hookPad}px`;
-        hookEl.style.left = `${Math.round(12 * sc)}px`;
-        hookEl.style.right = `${Math.round(12 * sc)}px`;
-        hookEl.style.width = 'auto';
-        hookEl.style.textShadow = 'none';
-        if (video.paused) {
-          hookEl.style.display = 'block';
-          hookEl.style.outline = inWindow ? 'none' : '1.5px dashed rgba(255,255,255,0.5)';
-          hookEl.style.background = 'none';
-        } else {
-          hookEl.style.display = inWindow ? 'block' : 'none';
-          hookEl.style.outline = 'none';
-          hookEl.style.background = 'none';
-        }
-        const _hbg3 = opts.hookBg || '#000000'; const _hr3=parseInt(_hbg3.slice(1,3),16),_hg3=parseInt(_hbg3.slice(3,5),16),_hb3=parseInt(_hbg3.slice(5,7),16);
-        hookEl.textContent = hookTxt;
-        if (_hookStyle === 'clean') {
-          hookEl.style.background = 'none';
-          hookEl.style.padding = '0';
+        // Le bloc ci-dessous réécrivait TOUS les styles inline du hook à CHAQUE frame (60x/s, même
+        // vidéo en pause), pour rien la plupart du temps puisque rien n'a changé d'une frame à
+        // l'autre — un coût CPU/reflow inutile en continu tant que le modal reste ouvert, d'autant
+        // plus lourd sur mobile. On ne recalcule que si un paramètre visible a réellement changé.
+        const sig = `${hookTxt}|${opts.hookColor}|${opts.hookBg}|${opts.hookFontSize}|${opts.fontSize}|${_hookStyle}|${opts.hookX}|${opts.hookY}|${inWindow}|${video.paused}`;
+        if (sig !== _lastHookSig) {
+          _lastHookSig = sig;
+          const sc = _previewScale();
+          const hookFs = Math.round((opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)) * sc);
+          const hookPad = Math.round(18 * sc);
+          hookEl.style.fontSize = hookFs + 'px';
+          hookEl.style.fontWeight = '900';
+          hookEl.style.color = opts.hookColor || '#ffffff';
+          hookEl.style.lineHeight = '1.3';
           hookEl.style.borderRadius = '0';
-          hookEl.style.textShadow = '2px 2px 8px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.7)';
-        } else if (_hookStyle === 'outline') {
-          hookEl.style.background = 'none';
-          hookEl.style.padding = '0';
-          hookEl.style.borderRadius = '0';
-          hookEl.style.textShadow = `0 2px 0 ${_hbg3},0 -2px 0 ${_hbg3},2px 0 0 ${_hbg3},-2px 0 0 ${_hbg3},1px 1px 0 ${_hbg3},-1px -1px 0 ${_hbg3},1px -1px 0 ${_hbg3},-1px 1px 0 ${_hbg3},0 3px 6px rgba(0,0,0,0.5)`;
-        } else {
-          hookEl.style.background = `rgba(${_hr3},${_hg3},${_hb3},0.93)`;
           hookEl.style.padding = `${hookPad}px`;
-          hookEl.style.borderRadius = `${Math.round(12 * sc)}px`;
+          hookEl.style.left = `${Math.round(12 * sc)}px`;
+          hookEl.style.right = `${Math.round(12 * sc)}px`;
+          hookEl.style.width = 'auto';
           hookEl.style.textShadow = 'none';
+          if (video.paused) {
+            hookEl.style.display = 'block';
+            hookEl.style.outline = inWindow ? 'none' : '1.5px dashed rgba(255,255,255,0.5)';
+            hookEl.style.background = 'none';
+          } else {
+            hookEl.style.display = inWindow ? 'block' : 'none';
+            hookEl.style.outline = 'none';
+            hookEl.style.background = 'none';
+          }
+          const _hbg3 = opts.hookBg || '#000000'; const _hr3=parseInt(_hbg3.slice(1,3),16),_hg3=parseInt(_hbg3.slice(3,5),16),_hb3=parseInt(_hbg3.slice(5,7),16);
+          hookEl.textContent = hookTxt;
+          if (_hookStyle === 'clean') {
+            hookEl.style.background = 'none';
+            hookEl.style.padding = '0';
+            hookEl.style.borderRadius = '0';
+            hookEl.style.textShadow = '2px 2px 8px rgba(0,0,0,0.9), -1px -1px 4px rgba(0,0,0,0.7)';
+          } else if (_hookStyle === 'outline') {
+            hookEl.style.background = 'none';
+            hookEl.style.padding = '0';
+            hookEl.style.borderRadius = '0';
+            hookEl.style.textShadow = `0 2px 0 ${_hbg3},0 -2px 0 ${_hbg3},2px 0 0 ${_hbg3},-2px 0 0 ${_hbg3},1px 1px 0 ${_hbg3},-1px -1px 0 ${_hbg3},1px -1px 0 ${_hbg3},-1px 1px 0 ${_hbg3},0 3px 6px rgba(0,0,0,0.5)`;
+          } else {
+            hookEl.style.background = `rgba(${_hr3},${_hg3},${_hb3},0.93)`;
+            hookEl.style.padding = `${hookPad}px`;
+            hookEl.style.borderRadius = `${Math.round(12 * sc)}px`;
+            hookEl.style.textShadow = 'none';
+          }
+          _applySubPosition(hookEl, opts.hookX ?? 50, opts.hookY ?? 10);
         }
-        _applySubPosition(hookEl, opts.hookX ?? 50, opts.hookY ?? 10);
-      } else {
+      } else if (hookEl.style.display !== 'none') {
         hookEl.style.display = 'none';
+        _lastHookSig = null;
       }
     }
 
@@ -2274,13 +2916,18 @@ const V2 = (() => {
     const bp = `${Math.round(4*sc)}px ${Math.round(12*sc)}px`;
 
     el.innerHTML = '';
+    // Reset des propriétés que seuls certains styles (wave, shake...) posent — sinon elles
+    // restent collées (ex: -webkit-text-fill-color transparent) quand on change de style ensuite.
+    el.style.animation = 'none';
+    el.style.backgroundSize = '';
+    el.style.webkitBackgroundClip = '';
+    el.style.backgroundClip = '';
+    el.style.webkitTextFillColor = '';
     // Tronque au max 5 mots (le CSS max-height: 2.6em assure les 2 lignes dans le preview)
     { const wArr = text.split(' ').filter(Boolean); if (wArr.length > 5) text = wArr.slice(0, 5).join(' '); }
 
     switch(style) {
-      case 'bold':
-      case 'wordpop':
-      case 'shake': {
+      case 'bold': {
         el.textContent = text;
         el.style.color = ct;
         el.style.fontSize = fs + 'px';
@@ -2292,23 +2939,37 @@ const V2 = (() => {
         el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
         break;
       }
-      case 'minimal': {
-        const span = document.createElement('span');
-        span.textContent = text;
-        span.style.background = 'rgba(0,0,0,0.60)';
-        span.style.padding = bp;
-        span.style.borderRadius = Math.round(6*sc) + 'px';
-        span.style.boxDecorationBreak = 'clone';
-        span.style.webkitBoxDecorationBreak = 'clone';
-        el.appendChild(span);
+      case 'shake': {
+        el.textContent = text;
         el.style.color = ct;
         el.style.fontSize = fs + 'px';
-        el.style.fontWeight = '700';
+        el.style.fontWeight = '900';
         el.style.fontFamily = 'inherit';
         el.style.background = 'none';
         el.style.padding = '0';
         el.style.borderRadius = '0';
-        el.style.textShadow = 'none';
+        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
+        el.style.display = 'inline-block';
+        el.style.animation = 'shakeTxt 0.5s ease-in-out infinite';
+        break;
+      }
+      case 'wordpop': {
+        el.style.color = ct;
+        el.style.fontSize = fs + 'px';
+        el.style.fontWeight = '900';
+        el.style.fontFamily = 'inherit';
+        el.style.background = 'none';
+        el.style.padding = '0';
+        el.style.borderRadius = '0';
+        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
+        text.split(' ').forEach((word, wi, arr) => {
+          const span = document.createElement('span');
+          // Pas d'espace de fin dans le span : display:inline-block le tronque (fond dans le vide)
+          span.textContent = word;
+          span.style.cssText = `display:inline-block;opacity:0;animation:wordPop 0.28s ease forwards;animation-delay:${wi * 0.12}s`;
+          el.appendChild(span);
+          if (wi < arr.length - 1) el.appendChild(document.createTextNode(' '));
+        });
         break;
       }
       case 'karaoke': {
@@ -2332,31 +2993,6 @@ const V2 = (() => {
         });
         break;
       }
-      case 'neon': {
-        el.textContent = text;
-        el.style.color = ct;
-        el.style.fontSize = fs + 'px';
-        el.style.fontWeight = '900';
-        el.style.fontFamily = 'inherit';
-        el.style.background = 'none';
-        el.style.padding = '0';
-        el.style.borderRadius = '0';
-        const np = Math.round(6 * sc);
-        el.style.textShadow = _ol(cb, 6) + `,0 0 ${np*2}px ${cb},0 0 ${np*3}px ${cb}`;
-        break;
-      }
-      case 'spotlight': {
-        el.textContent = text;
-        el.style.color = ct;
-        el.style.fontSize = fs + 'px';
-        el.style.fontWeight = '700';
-        el.style.fontFamily = 'inherit';
-        el.style.background = 'rgba(0,0,0,0.816)';
-        el.style.padding = bp;
-        el.style.borderRadius = '0';
-        el.style.textShadow = 'none';
-        break;
-      }
       case 'typewriter': {
         el.style.fontFamily = 'monospace';
         el.style.fontSize = fs + 'px';
@@ -2375,7 +3011,6 @@ const V2 = (() => {
         break;
       }
       case 'slide': {
-        el.textContent = text;
         el.style.color = ct;
         el.style.fontSize = fs + 'px';
         el.style.fontWeight = '700';
@@ -2384,18 +3019,38 @@ const V2 = (() => {
         el.style.padding = bp;
         el.style.borderRadius = '0';
         el.style.textShadow = 'none';
+        text.split(' ').forEach((word, wi, arr) => {
+          const span = document.createElement('span');
+          // Pas d'espace de fin dans le span : display:inline-block le tronque (fond dans le vide)
+          span.textContent = word;
+          span.style.cssText = `display:inline-block;opacity:0;animation:slideUp 0.3s ease forwards;animation-delay:${wi * 0.08}s`;
+          el.appendChild(span);
+          if (wi < arr.length - 1) el.appendChild(document.createTextNode(' '));
+        });
         break;
       }
       case 'wave': {
+        // Vrai dégradé lissé (identique au bouton de style), pas de couleurs franches par lettre
         el.textContent = text;
-        el.style.color = '#6BFF6B';
         el.style.fontSize = fs + 'px';
         el.style.fontWeight = '900';
         el.style.fontFamily = 'inherit';
-        el.style.background = 'none';
         el.style.padding = '0';
         el.style.borderRadius = '0';
-        el.style.textShadow = _ol(cb, 4) + ',' + _sh('rgba(0,0,0,0.5)', 2);
+        el.style.background = 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899, #10b981)';
+        el.style.backgroundSize = '250% 100%';
+        el.style.webkitBackgroundClip = 'text';
+        el.style.backgroundClip = 'text';
+        el.style.webkitTextFillColor = 'transparent';
+        el.style.color = 'transparent';
+        el.style.textShadow = _sh('rgba(0,0,0,0.6)', 3);
+        el.style.animation = 'waveGrad 2.2s linear infinite';
+        if (0) {
+          const span = document.createElement('span');
+          span.textContent = ch === ' ' ? ' ' : ch;
+          span.style.color = '#000';
+          el.appendChild(span);
+        }
         break;
       }
       default: {
@@ -2554,10 +3209,24 @@ const V2 = (() => {
     const btn = document.getElementById('modal-play-btn');
     const overlay = document.getElementById('modal-play-overlay');
     if (!video || (!_file && !video.src)) return;
+    // Annule la pause différée du "force-render frame" (voir _startModalVideo) — sinon elle peut
+    // se déclencher juste après ce play(), l'interrompre en plein milieu, et provoquer une
+    // AbortError ("The operation was aborted") affichée à tort comme un échec de lecture.
+    if (_autoPauseTimer) { clearTimeout(_autoPauseTimer); _autoPauseTimer = null; }
+    _userTookControl = true; // empêche aussi le 'seeked'/filet 2s (s'ils se déclenchent après coup) de re-pauser
     if (video.paused) {
-      video.play();
-      btn?.classList.remove('paused');
-      overlay?.classList.add('playing');
+      // video.play() retourne une promesse qui peut rejeter (format non supporté, restriction
+      // navigateur...) — sans .catch() l'échec était totalement silencieux : l'UI affichait "en
+      // lecture" alors que rien ne se passait, sans aucun message pour comprendre pourquoi.
+      video.play().then(() => {
+        btn?.classList.remove('paused');
+        overlay?.classList.add('playing');
+      }).catch(e => {
+        // Silencieux : segments désormais garantis H.264/AAC (lisibles partout). Un rejet ici est
+        // quasi toujours transitoire (source pas encore prête, action concurrente) — pas un vrai
+        // échec de format. On garde juste le log console pour le debug, sans toast anxiogène.
+        console.warn('[play] échec (silencieux):', e.name, e.message);
+      });
     } else {
       video.pause();
       btn?.classList.add('paused');
@@ -2565,15 +3234,54 @@ const V2 = (() => {
     }
   }
 
-  function seekFromBar(event) {
-    const video = document.getElementById('modal-video');
-    if (!video || _modalIdx === null) return;
-    const clip = _clips[_modalIdx];
-    const clipStart = clip.start_time ?? clip.start;
-    const clipEnd = clip.end_time ?? clip.end;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    video.currentTime = clipStart + pct * (clipEnd - clipStart);
+  // Barre de progression draggable (tap OU glisser) — zone de tap 24px, point visible,
+  // Pointer Events unifie souris/tactile (plus facile à viser/glisser au doigt que l'ancien tap seul).
+  function _setupProgBarDrag() {
+    const wrap = document.getElementById('modal-prog-wrap');
+    if (!wrap) return;
+    const fill = document.getElementById('modal-prog-fill');
+    const handle = document.getElementById('modal-prog-handle');
+    let dragging = false;
+
+    function pctFromEvent(e) {
+      const rect = wrap.getBoundingClientRect();
+      return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    }
+    function applyPct(pct) {
+      if (fill) fill.style.width = (pct * 100) + '%';
+      if (handle) handle.style.left = (pct * 100) + '%';
+    }
+    function seekTo(pct) {
+      const video = document.getElementById('modal-video');
+      const clip = _modalIdx !== null ? _clips[_modalIdx] : null;
+      if (!video || !clip) return;
+      const clipStart = clip.start_time ?? clip.start;
+      const clipEnd = clip.end_time ?? clip.end;
+      video.currentTime = clipStart + pct * (clipEnd - clipStart);
+    }
+
+    wrap.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      wrap.classList.add('dragging');
+      wrap.setPointerCapture(e.pointerId);
+      const pct = pctFromEvent(e);
+      applyPct(pct);
+      seekTo(pct);
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const pct = pctFromEvent(e);
+      applyPct(pct);
+      seekTo(pct);
+    });
+    const endDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      wrap.classList.remove('dragging');
+      try { wrap.releasePointerCapture(e.pointerId); } catch {}
+    };
+    wrap.addEventListener('pointerup', endDrag);
+    wrap.addEventListener('pointercancel', endDrag);
   }
 
   function setClipStyle(style) {
@@ -2582,12 +3290,12 @@ const V2 = (() => {
     _clipSettings[_modalIdx].style = style;
     _lastSegKey = null;
     const grid = document.getElementById('modal-style-btns');
-    const extraStyles = ['spotlight','typewriter','wordpop','slide','shake','wave'];
+    const extraStyles = ['typewriter','wordpop','slide','shake','wave'];
     if (extraStyles.includes(style) && grid && !grid.classList.contains('expanded')) grid.classList.add('expanded');
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.style === style);
     });
-    const defaults = { bold:'#ffffff', minimal:'#ffffff', karaoke:'#FFE000', neon:'#00FF9C', spotlight:'#ffffff', typewriter:'#ffffff', wordpop:'#ffffff', slide:'#ffffff', shake:'#ffffff', wave:'#ffffff' };
+    const defaults = { bold:'#ffffff', karaoke:'#FFE000', typewriter:'#ffffff', wordpop:'#ffffff', slide:'#ffffff', shake:'#ffffff', wave:'#ffffff' };
     const ct = document.getElementById('modal-color-text');
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
   }
@@ -2595,6 +3303,12 @@ const V2 = (() => {
   function toggleMoreStyles() {
     const grid = document.getElementById('modal-style-btns');
     if (grid) grid.classList.toggle('expanded');
+  }
+
+  function selectStyleCat(cat, btn) {
+    document.querySelectorAll('.style-cat').forEach(b => b.classList.toggle('active', b === btn));
+    const grid = document.getElementById('modal-style-btns');
+    if (grid) grid.classList.toggle('expanded', cat === 'dyn');
   }
 
   function deskTab(panel) {
@@ -2731,11 +3445,10 @@ const V2 = (() => {
       if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
-      // Rect 9:16 centré dans le canvas (letterbox/pillarbox noir)
-      const TARGET = 9 / 16;
-      let dw, dh, dx, dy;
-      if (cw / ch > TARGET) { dh = ch; dw = Math.floor(ch * TARGET); dx = Math.floor((cw - dw) / 2); dy = 0; }
-      else                  { dw = cw; dh = Math.floor(cw / TARGET); dx = 0; dy = Math.floor((ch - dh) / 2); }
+      // Remplit tout le canvas (son conteneur est déjà en 9:16 via CSS) — pas de rect
+      // centré avec marges noires : si le canvas réel dévie un peu du 9:16 (arrondis,
+      // contraintes mobiles), ça laissait des bordures noires visibles.
+      const dw = cw, dh = ch, dx = 0, dy = 0;
 
       // Détection live toutes les 500ms si BlazeFace chargé
       const now = performance.now();
@@ -2760,7 +3473,6 @@ const V2 = (() => {
         } else if (cache?.cx != null) {
           faceCx = cache.cx;
         }
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cw, ch);
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
 
       } else if (mode === 'split') {
@@ -2812,7 +3524,6 @@ const V2 = (() => {
         } else {
           activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
         }
-        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cw, ch);
         ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
       }
 
@@ -2851,7 +3562,10 @@ const V2 = (() => {
       wmOpacity: prev.wmOpacity ?? 0.8,
       subY: prev.subY ?? 82, subX: prev.subX ?? 50,
       hookY: prev.hookY ?? 10, hookX: prev.hookX ?? 50,
-      reframeMode: 'face',
+      // Préserve le mode existant au lieu de forcer 'face' à chaque changement de réglage —
+      // c'était pourquoi un export pouvait finir cadré différemment de l'aperçu (qui, lui,
+      // retombe sur 'center' par défaut) dès que l'utilisateur touchait n'importe quel réglage.
+      reframeMode: prev.reframeMode || 'center',
       segEdits: prev.segEdits || {},
     };
     _updateCropPreview();
@@ -2890,10 +3604,12 @@ const V2 = (() => {
     const overlay = document.getElementById('modal-play-overlay');
     overlay?.classList.remove('playing');
     // Réinitialiser les overlays cachés par l'export — sinon le clip suivant n'a plus de sous-titres/hook
+    // (exportFromModal pose visibility:hidden EN PLUS de display:none — les deux doivent être annulés,
+    // sinon l'overlay reste invisible même quand _subLoop remet display à 'block'.)
     const subOv = document.getElementById('modal-sub-overlay');
-    if (subOv) subOv.style.display = '';
+    if (subOv) { subOv.style.display = ''; subOv.style.visibility = ''; }
     const hookOv = document.getElementById('modal-hook-overlay');
-    if (hookOv) hookOv.style.display = 'none';
+    if (hookOv) { hookOv.style.display = 'none'; hookOv.style.visibility = ''; }
     const subH = document.getElementById('modal-sub-handle');
     if (subH) subH.style.display = 'none';
     const hookH = document.getElementById('modal-hook-handle');
@@ -3048,6 +3764,14 @@ const V2 = (() => {
     btn.disabled = false;
     btn.onclick = () => V2.exportFromModal();
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip 9:16';
+    // Le jumeau mobile (mob-dl-btn) a son onclick réécrit après un export (vers _iosSharePending
+    // ou _doDownload) — sans ce reset, il reste bloqué sur l'ancien clip pour toute la session.
+    const mobBtn = document.getElementById('mob-dl-btn');
+    const mobLabel = document.getElementById('mob-dl-label');
+    const mobProg = document.getElementById('mob-dl-progress');
+    if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = () => V2.exportFromModal(); }
+    if (mobLabel) mobLabel.textContent = 'Export';
+    if (mobProg) mobProg.style.width = '0%';
   }
 
   async function exportFromModal() {
@@ -3101,9 +3825,11 @@ const V2 = (() => {
       };
       if (_isIOS() && navigator.canShare) {
         _pendingDownload = { blob: result.blob, filename: result.filename };
+        // Pas d'appel auto à navigator.share() ici : Safari le refuse après l'attente réseau de
+        // l'export (le geste utilisateur d'origine n'est plus "frais"), ce qui affichait une erreur
+        // technique alors que l'export avait pourtant réussi. On attend le tap sur le bouton.
         if (status) status.textContent = 'Prêt ! Appuie sur le bouton ↓';
         if (btn) { btn.disabled = false; btn.innerHTML = '📲 Enregistrer dans Photos'; btn.onclick = () => V2._iosSharePending(); }
-        V2._iosSharePending();
         if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = () => V2._iosSharePending(); }
         if (mobLabel) mobLabel.textContent = '📲';
         if (mobProg) mobProg.style.width = '100%';
@@ -3259,6 +3985,52 @@ const V2 = (() => {
     return m ? m[1] : null;
   }
 
+  // Capture séquentielle de frames locales avec UN SEUL élément <video> réutilisé (pas un par
+  // timestamp) — évite d'épuiser le pool de décodeurs vidéo de Safari/WebKit sur mobile. Utilisé
+  // pour les miniatures de la grille ET pour l'analyse visuelle Gemini des meilleurs moments.
+  async function _captureLocalFrames(file, times) {
+    if (!file || !times.length) return [];
+    const videoUrl = URL.createObjectURL(file);
+    const vid = document.createElement('video');
+    vid.muted = true; vid.playsInline = true; vid.preload = 'auto';
+    vid.src = videoUrl;
+    await new Promise(resolve => {
+      let done = false;
+      const to = setTimeout(() => { if (!done) { done = true; resolve(); } }, 8000);
+      vid.addEventListener('loadedmetadata', () => { if (!done) { done = true; clearTimeout(to); resolve(); } }, { once: true });
+      vid.addEventListener('error', () => { if (!done) { done = true; clearTimeout(to); resolve(); } }, { once: true });
+      vid.load();
+    });
+    const seekAndCapture = time => new Promise(resolve => {
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true; clearTimeout(to);
+        try {
+          const c = document.createElement('canvas');
+          c.width = 180; c.height = 320;
+          const ctx = c.getContext('2d');
+          const srcW = vid.videoWidth || 1280;
+          const srcH = vid.videoHeight || 720;
+          const srcRatio = srcW / srcH;
+          const dstRatio = 180 / 320;
+          let sx, sy, sw, sh;
+          if (srcRatio > dstRatio) { sh = srcH; sw = srcH * dstRatio; sx = (srcW - sw) / 2; sy = 0; }
+          else { sw = srcW; sh = srcW / dstRatio; sx = 0; sy = (srcH - sh) / 2; }
+          ctx.drawImage(vid, sx, sy, sw, sh, 0, 0, 180, 320);
+          resolve(c.toDataURL('image/jpeg', 0.75));
+        } catch { resolve(null); }
+      };
+      const to = setTimeout(finish, 4000);
+      vid.addEventListener('seeked', finish, { once: true });
+      if (vid.fastSeek) vid.fastSeek(time); else vid.currentTime = time;
+    });
+    const out = [];
+    for (const t of times) out.push(await seekAndCapture(t));
+    vid.src = '';
+    URL.revokeObjectURL(videoUrl);
+    return out;
+  }
+
   async function generateThumbnails() {
     if (!_file && _ytUrl) {
       // Mode URL YouTube — thumbnail statique YouTube
@@ -3283,11 +4055,10 @@ const V2 = (() => {
       return;
     }
     if (!_file) return;
-    const videoUrl = URL.createObjectURL(_file);
+    const times = _clips.map(c => Math.max(0, (c.start_time ?? c.start) + 1));
+    const dataUrls = await _captureLocalFrames(_file, times);
     for (let i = 0; i < _clips.length; i++) {
-      const clip = _clips[i];
-      const t = Math.max(0, (clip.start_time ?? clip.start) + 1);
-      const dataUrl = await captureFrame(videoUrl, t);
+      const dataUrl = dataUrls[i];
       if (dataUrl) {
         const el = document.getElementById(`clip-thumb-${i}`);
         if (el) {
@@ -3305,9 +4076,7 @@ const V2 = (() => {
           _thumbs[i] = dataUrl;
         }
       }
-      await new Promise(r => setTimeout(r, 100));
     }
-    URL.revokeObjectURL(videoUrl);
     // Mise à jour localStorage avec les thumbnails
     try {
       const saved = localStorage.getItem('creatis_last_analysis');
@@ -3315,50 +4084,63 @@ const V2 = (() => {
     } catch {}
   }
 
-  function captureFrame(videoUrl, time) {
-    return new Promise(resolve => {
-      const vid = document.createElement('video');
-      vid.muted = true; vid.playsInline = true; vid.preload = 'auto';
-      let done = false;
-      const finish = () => {
-        if (done) return; done = true;
-        clearTimeout(to);
+  // Miniatures générées CÔTÉ SERVEUR (mobile) — évite de décoder la vidéo dans un <video>
+  // caché comme generateThumbnails(), qui contribuait aux crashs mémoire/rechargements d'onglet.
+  async function generateThumbnailsServerSide() {
+    if (!_file || !_clips.length) return;
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (typeof Auth !== 'undefined' && Auth.getToken()) headers['Authorization'] = `Bearer ${Auth.getToken()}`;
+      const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+      const tokData = await tokRes.json();
+      if (!tokData.ok) return;
+      const videoId = await _ensureFullFileUploaded(tokData);
+      if (!videoId) return;
+
+      // Requêtes en parallèle (par lots de 4) — en séquentiel ça prenait ~1 minute pour 8-10 clips,
+      // chaque extraction de frame côté Railway est indépendante et rapide.
+      async function fetchOne(i) {
+        if (_thumbs[i]) return; // déjà là (ex: restauré depuis localStorage)
+        const clip = _clips[i];
+        const t = Math.max(0, (clip.start_time ?? clip.start) + 1);
         try {
-          const c = document.createElement('canvas');
-          c.width = 180; c.height = 320;
-          const ctx = c.getContext('2d');
-          const srcW = vid.videoWidth || 1280;
-          const srcH = vid.videoHeight || 720;
-          const srcRatio = srcW / srcH;
-          const dstRatio = 180 / 320;
-          let sx, sy, sw, sh;
-          if (srcRatio > dstRatio) {
-            sh = srcH; sw = srcH * dstRatio; sx = (srcW - sw) / 2; sy = 0;
-          } else {
-            sw = srcW; sh = srcW / dstRatio; sx = 0; sy = (srcH - sh) / 2;
+          const fd = new FormData();
+          fd.append('video_id', videoId);
+          fd.append('t', String(t));
+          const res = await fetch(`${tokData.railway_url}/thumbnail?token=${encodeURIComponent(tokData.token)}`, { method: 'POST', body: fd });
+          if (!res.ok) return;
+          const blob = await res.blob();
+          const dataUrl = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+          if (!dataUrl) return;
+          const el = document.getElementById(`clip-thumb-${i}`);
+          if (el) {
+            const empty = el.querySelector('.clip-thumb-empty');
+            if (empty) {
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+              el.insertBefore(img, empty);
+              empty.remove();
+            }
+            el.dataset.thumb = dataUrl;
+            _thumbs[i] = dataUrl;
           }
-          ctx.drawImage(vid, sx, sy, sw, sh, 0, 0, 180, 320);
-          const data = c.toDataURL('image/jpeg', 0.75);
-          vid.src = '';
-          resolve(data);
-        } catch { vid.src = ''; resolve(null); }
-      };
-      const fail = () => { if (done) return; done = true; clearTimeout(to); vid.src = ''; resolve(null); };
-      const to = setTimeout(fail, 8000);
-      const doSeek = () => {
-        if (vid.fastSeek) vid.fastSeek(time);
-        else vid.currentTime = time;
-      };
-      vid.addEventListener('seeked', finish, { once: true });
-      vid.addEventListener('error', fail, { once: true });
-      vid.addEventListener('loadeddata', doSeek, { once: true });
-      vid.addEventListener('loadedmetadata', () => {
-        // fallback if loadeddata doesn't fire
-        setTimeout(() => { if (!done) doSeek(); }, 300);
-      }, { once: true });
-      vid.src = videoUrl;
-      vid.load();
-    });
+        } catch (e) { /* ignore erreurs individuelles */ }
+      }
+      const BATCH = 4;
+      for (let i = 0; i < _clips.length; i += BATCH) {
+        await Promise.all(_clips.slice(i, i + BATCH).map((_, j) => fetchOne(i + j)));
+      }
+      try {
+        const saved = localStorage.getItem('creatis_last_analysis');
+        if (saved) { const d = JSON.parse(saved); d.thumbs = _thumbs; localStorage.setItem('creatis_last_analysis', JSON.stringify(d)); }
+      } catch {}
+    } catch (e) { console.warn('[thumbnails-server] échoué:', e.message); }
   }
 
   // ── Export ──
@@ -3494,6 +4276,15 @@ const V2 = (() => {
     const usePreUpload = !!_clipSegmentIds[_segKey];
     // iOS OU fichier >150MB → Railway coupe côté serveur (évite ffmpeg.wasm sur gros fichiers)
     const useServerSideCut = !usePreUpload && (_isIOS() || (_file && _file.size > 150 * 1024 * 1024)) && _file;
+
+    // Jeton Railway récupéré tôt — réutilisé à la fois pour l'upload unique du fichier complet
+    // (mobile) et pour l'appel /process-clip plus bas.
+    const headers = { 'Content-Type': 'application/json' };
+    if (typeof Auth !== 'undefined' && Auth.getToken()) headers['Authorization'] = `Bearer ${Auth.getToken()}`;
+    const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
+    const tokData = await tokRes.json();
+    if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
+
     let segmentBlob = null, clipStartParam = -1, clipEndParam = -1;
     if (usePreUpload) {
       // Segment déjà sur Railway — uniquement le traitement (~5-10s)
@@ -3507,10 +4298,33 @@ const V2 = (() => {
       ]);
       segmentBlob = await cutWithTimeout;
     } else if (_file && useServerSideCut) {
-      segmentBlob = _file;
-      clipStartParam = start;
-      clipEndParam = end;
-      if (onMsg) onMsg('Envoi vers Railway…');
+      // Essaie D'ABORD l'extraction locale (mp4box.js) — ne lit/envoie que les quelques Mo du
+      // clip demandé au lieu du fichier entier (500-800Mo+). Si ça échoue (format non géré, moov
+      // introuvable...), on retombe sur l'ancien chemin fiable : upload complet chunké, plus lent
+      // mais qui marche toujours.
+      if (onMsg) onMsg('Extraction du clip…');
+      segmentBlob = await _extractClipLocally(_file, start, end).catch(() => null);
+      if (!segmentBlob) {
+        clipStartParam = start;
+        clipEndParam = end;
+        // Mobile : le fichier source complet n'est uploadé QU'UNE FOIS par session (via /upload-video,
+        // sans ffmpeg.wasm) puis réutilisé par video_id pour chaque clip — avant ce fix, chaque export
+        // ré-uploadait la vidéo entière depuis le téléphone, d'où des exports "beaucoup trop longs".
+        if (_fullFileVideoId) {
+          if (onMsg) onMsg('Traitement Railway…');
+        } else {
+          if (onMsg) onMsg('Envoi vers Railway (une seule fois pour cette vidéo)…');
+          try {
+            await _ensureFullFileUploaded(tokData, frac => {
+              // Reflète la progression réelle même si l'upload a été démarré plus tôt en arrière-plan —
+              // sans ça la barre restait figée pendant tout l'upload (semblait "bloqué").
+              if (onPct) onPct(5 + Math.round(frac * 14));
+              if (onMsg) onMsg(`Envoi de la vidéo ${Math.round(frac * 100)}% (une seule fois pour cette vidéo)…`);
+            });
+          } catch (e) { console.warn('[export] upload unique échoué:', e.message); }
+          if (!_fullFileVideoId) segmentBlob = _file; // fallback ultime : upload direct si tout échoue
+        }
+      }
     } else {
       segmentBlob = await fetchClipFromRailway(clip, onPct, onMsg);
     }
@@ -3518,15 +4332,11 @@ const V2 = (() => {
     if (onMsg) onMsg('Reframe 9:16 + sous-titres…');
 
     // Step 2 : Railway /process-clip — reframe + burn sous-titres en une passe, retourne URL directe
-    const headers = { 'Content-Type': 'application/json' };
-    if (typeof Auth !== 'undefined' && Auth.getToken()) headers['Authorization'] = `Bearer ${Auth.getToken()}`;
-    const tokRes = await fetch('/api/repurpose', { method: 'POST', headers, body: JSON.stringify({ mode: 'upload-token' }) });
-    const tokData = await tokRes.json();
-    if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
-
     const form = new FormData();
     if (usePreUpload) {
       form.append('video_id', _clipSegmentIds[_segKey]);
+    } else if (_fullFileVideoId && !segmentBlob) {
+      form.append('video_id', _fullFileVideoId);
     } else {
       form.append('file', segmentBlob, 'segment.mp4');
     }
@@ -3544,7 +4354,7 @@ const V2 = (() => {
     form.append('hook_bg',    opts.hookBg || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
     form.append('hook_style',   _hookStyle || 'pill');
-    form.append('reframe_mode', opts.reframeMode || 'face');
+    form.append('reframe_mode', opts.reframeMode || 'center');
     form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
@@ -3556,7 +4366,10 @@ const V2 = (() => {
           const xhr = new XMLHttpRequest();
           xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
           xhr.responseType = 'blob';
-          xhr.timeout = 300000;
+          // 20min (était 10min) — insuffisant si le cache video_id a échoué et que ce POST embarque
+          // le fichier source complet (500-800Mo+) en fallback ; le cas normal (video_id, corps minuscule)
+          // n'est jamais impacté par une limite plus haute.
+          xhr.timeout = 1200000;
           xhr.upload.onprogress = e => {
             if (e.lengthComputable) {
               if (onPct) onPct(20 + Math.round(e.loaded / e.total * 30));
@@ -3665,7 +4478,7 @@ const V2 = (() => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${tokData.railway_url}/reframe-clip?token=${encodeURIComponent(tokData.token)}`);
       xhr.responseType = 'blob';
-      xhr.timeout = 300000;
+      xhr.timeout = 600000; // 10min (était 5min — trop court pour le fallback whisper local sur vidéos longues)
       xhr.upload.onprogress = e => { if (e.lengthComputable && onPct) onPct(Math.round(e.loaded / e.total * 50)); };
       xhr.onprogress = e => { if (e.lengthComputable && onPct) onPct(50 + Math.round(e.loaded / e.total * 50)); };
       xhr.onload = () => {
@@ -3821,7 +4634,9 @@ const V2 = (() => {
           });
           if (seg) {
             const txt = (seg.text || seg.word || '').trim();
-            if (txt) _drawSubCanvas(ctx, txt, opts, 720, 1280);
+            const segStart = seg.start ?? seg.offset ?? 0;
+            const segEnd = seg.end ?? (segStart + (seg.duration ?? 2));
+            if (txt) _drawSubCanvas(ctx, txt, opts, 720, 1280, absT, segStart, segEnd);
           }
           // Hook
           if (opts.hookEnabled && opts.hookText && t < 3)
@@ -3934,7 +4749,7 @@ const V2 = (() => {
     });
   }
 
-  function _drawSubCanvas(ctx, text, opts, w, h) {
+  function _drawSubCanvas(ctx, text, opts, w, h, absT = 0, segStart = 0, segEnd = 2) {
     const fontSize = opts.fontSize || 70;
     const subYpct = opts.subY ?? 82;
     const colorText = opts.colorText || '#ffffff';
@@ -3944,44 +4759,103 @@ const V2 = (() => {
     { const wArr = text.split(' ').filter(Boolean); if (wArr.length > 5) text = wArr.slice(0, 5).join(' '); }
     ctx.save();
     ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     const maxW = w * 0.92; // 92% comme le container preview
-    // Wrap
-    const words = text.split(' ');
+    // Wrap — on garde les mots séparés (pas juste la ligne) pour pouvoir animer mot par mot/lettre par lettre
+    const allWords = text.split(' ').filter(Boolean);
     const lines = [];
-    let cur = '';
-    for (const wd of words) {
-      const test = cur ? `${cur} ${wd}` : wd;
-      if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = wd; }
-      else cur = test;
+    let curLine = [], curStr = '';
+    for (const wd of allWords) {
+      const test = curStr ? `${curStr} ${wd}` : wd;
+      if (ctx.measureText(test).width > maxW && curStr) { lines.push(curLine); curLine = [wd]; curStr = wd; }
+      else { curLine.push(wd); curStr = test; }
     }
-    if (cur) lines.push(cur);
+    if (curLine.length) lines.push(curLine);
     const lh = fontSize * 1.25;
     // Top-aligned : top du texte à subYpct% — identique preview (style.top = subY%)
     let y = h * subYpct / 100 + fontSize;
-    for (const line of lines) {
-      const tw = ctx.measureText(line).width;
-      if (['minimal','spotlight','slide'].includes(style)) {
+
+    const segDur = Math.max(0.01, segEnd - segStart);
+    const segProgress = Math.max(0, absT - segStart);
+    const totalWords = allWords.length;
+    const spaceW = ctx.measureText(' ').width;
+    let wi = 0; // index de mot global, à travers toutes les lignes
+
+    for (const lineWords of lines) {
+      const wordWidths = lineWords.map(wd => ctx.measureText(wd).width);
+      const lineW = wordWidths.reduce((a, b) => a + b, 0) + spaceW * (lineWords.length - 1);
+      let x = w / 2 - lineW / 2;
+
+      if (['minimal', 'spotlight', 'slide'].includes(style)) {
         ctx.fillStyle = style === 'spotlight' ? 'rgba(0,0,0,0.88)' : 'rgba(0,0,0,0.55)';
         const pad = 14;
-        ctx.fillRect(w/2 - tw/2 - pad, y - fontSize - 4, tw + pad*2, fontSize + 16);
+        ctx.fillRect(w / 2 - lineW / 2 - pad, y - fontSize - 4, lineW + pad * 2, fontSize + 16);
       } else if (style === 'karaoke') {
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         const pad = 8;
-        ctx.fillRect(w/2 - tw/2 - pad, y - fontSize - 4, tw + pad*2, fontSize + 16);
+        ctx.fillRect(w / 2 - lineW / 2 - pad, y - fontSize - 4, lineW + pad * 2, fontSize + 16);
       }
-      if (!['minimal','spotlight','slide'].includes(style)) {
-        ctx.strokeStyle = colorBg;
-        ctx.lineWidth = style === 'neon' ? 9 : 5;
-        ctx.lineJoin = 'round';
-        ctx.strokeText(line, w/2, y);
+
+      for (let li = 0; li < lineWords.length; li++) {
+        const wd = lineWords[li];
+        const wordW = wordWidths[li];
+        const myWi = wi++;
+        let drawX = x, drawY = y, alpha = 1, scale = 1;
+
+        if (style === 'shake') {
+          drawX += Math.sin(absT * 20 + myWi) * 4;
+        } else if (style === 'slide') {
+          const wp = Math.min(1, Math.max(0, (segProgress - myWi * 0.06) / 0.25));
+          if (wp <= 0) { x += wordW + spaceW; continue; }
+          alpha = wp;
+          drawY += (1 - wp) * 22;
+        } else if (style === 'wordpop') {
+          const wp = Math.min(1, Math.max(0, (segProgress - myWi * 0.1) / 0.22));
+          if (wp <= 0) { x += wordW + spaceW; continue; }
+          alpha = wp;
+          scale = 0.5 + wp * 0.5;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        if (scale !== 1) {
+          const cx = drawX + wordW / 2, cy = drawY - fontSize * 0.35;
+          ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
+        }
+
+        if (style === 'wave') {
+          // Vague lettre par lettre — respecte la couleur choisie (ne l'ignore plus)
+          let lx = drawX;
+          for (const ch of wd) {
+            const chW = ctx.measureText(ch).width;
+            const bounce = Math.sin(absT * 6 + lx * 0.05) * 8;
+            ctx.strokeStyle = colorBg; ctx.lineWidth = 5; ctx.lineJoin = 'round';
+            ctx.strokeText(ch, lx, drawY + bounce);
+            ctx.fillStyle = colorText;
+            ctx.fillText(ch, lx, drawY + bounce);
+            lx += chW;
+          }
+        } else if (style === 'karaoke') {
+          // Highlight mot par mot — même répartition (temps segment / nb mots) que l'aperçu
+          const activeIdx = Math.min(totalWords - 1, Math.floor((segProgress / segDur) * totalWords));
+          ctx.strokeStyle = colorBg; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+          ctx.strokeText(wd, drawX, drawY);
+          ctx.fillStyle = myWi === activeIdx ? '#FFE000' : myWi < activeIdx ? '#ffffff' : 'rgba(255,255,255,0.35)';
+          ctx.fillText(wd, drawX, drawY);
+        } else {
+          if (!['minimal', 'spotlight', 'slide'].includes(style)) {
+            ctx.strokeStyle = colorBg;
+            ctx.lineWidth = style === 'neon' ? 9 : 5;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(wd, drawX, drawY);
+          }
+          ctx.fillStyle = style === 'neon' ? '#00FF9C' : colorText;
+          ctx.fillText(wd, drawX, drawY);
+        }
+        ctx.restore();
+        x += wordW + spaceW;
       }
-      ctx.fillStyle = style === 'karaoke' ? '#FFE000'
-                    : style === 'neon' ? '#00FF9C'
-                    : style === 'wave' ? '#6BFF6B'
-                    : colorText;
-      ctx.fillText(line, w/2, y);
       y += lh;
     }
     ctx.restore();
@@ -4189,7 +5063,10 @@ const V2 = (() => {
   }
 
   function restart() {
-    _file = null; _clipSegmentIds = {}; _ytUrl = ''; _segments = []; _clips = [];
+    // Libère les blobs de segments YouTube en cache (mémoire)
+    try { Object.values(_ytSegCache).forEach(u => URL.revokeObjectURL(u)); } catch {}
+    _ytSegCache = {}; _ytSegInflight = {};
+    _file = null; _clipSegmentIds = {}; _fullFileVideoId = null; _thumbs = {}; _ytUrl = ''; _segments = []; _clips = [];
     _selectedIds.clear(); _watermarkFile = null; _clipSettings = {};
     const fi = document.getElementById('file-input'); if (fi) fi.value = '';
     const fc = document.getElementById('file-input-change'); if (fc) fc.value = '';
@@ -4231,7 +5108,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, seekFromBar, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}) };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
