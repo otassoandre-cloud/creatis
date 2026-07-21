@@ -1419,7 +1419,7 @@ def _detect_letterbox(in_path: str, src_w: int, src_h: int):
         return None
 
 
-def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
+def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", reframe_mode: str = "center", overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0, manual_x_frac: Optional[float] = None) -> None:
     tw, th = (float(x) for x in aspect_ratio.split(":"))
     target_ratio = tw / th
 
@@ -1455,8 +1455,13 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
 
         x_crop = x_default  # par défaut : crop centré
 
-        # Face tracking uniquement si reframe_mode == "face"
-        if reframe_mode == "face":
+        # Cadrage MANUEL (glisser) — prioritaire, saute la détection de visage.
+        if manual_x_frac is not None:
+            _cx = int(manual_x_frac * src_w)
+            x_crop = max(0, min(src_w - crop_w, _cx - crop_w // 2))
+            logger.info(f"[reframe] cadrage manuel x_frac={manual_x_frac:.2f} → x={x_crop}")
+        # Face tracking uniquement si reframe_mode == "face" et pas de position manuelle
+        elif reframe_mode == "face":
             try:
                 import cv2
                 cap = cv2.VideoCapture(in_path)
@@ -1567,10 +1572,11 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
 
 # ── 4b. SPLIT SCREEN DYNAMIQUE ADAPTATIF (podcast/interview) ─────────────────
 
-def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: int, overlay_vf: str = "") -> None:
-    """Split 9:16 top/bottom POSITIONNEL (sans détection de visages) : moitié gauche de l'image
-    en haut, moitié droite en bas — pour 2 personnes côte à côte (interview/table) dont les
-    visages ne sont pas détectables (têtes baissées, de profil)."""
+def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: int, overlay_vf: str = "",
+                              left_frac: float = 0.30, right_frac: float = 0.70) -> None:
+    """Split 9:16 top/bottom POSITIONNEL : personne du haut cadrée à left_frac de la largeur,
+    personne du bas à right_frac. Sans détection de visages (positions fixes ou manuelles via
+    glisser). Pour 2 personnes côte à côte dont les visages ne sont pas détectables."""
     ratio = 720 / 640  # aspect d'une moitié
     crop_w = min(src_w, int(src_h * ratio))
     crop_h = int(crop_w / ratio)
@@ -1578,10 +1584,13 @@ def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: in
         crop_h = src_h; crop_w = int(crop_h * ratio)
     crop_w = max(2, crop_w - crop_w % 2)
     crop_h = max(2, crop_h - crop_h % 2)
-    # Personne de gauche centrée ~30% de la largeur ; personne de droite ~70%
-    lx = max(0, min(src_w - crop_w, int(src_w * 0.30) - crop_w // 2))
-    rx = max(0, min(src_w - crop_w, int(src_w * 0.70) - crop_w // 2))
-    cy = max(0, (src_h - crop_h) // 2)
+    # Positions horizontales des 2 personnes (fractions de largeur, custom ou défaut 30%/70%)
+    lx = max(0, min(src_w - crop_w, int(src_w * left_frac) - crop_w // 2))
+    rx = max(0, min(src_w - crop_w, int(src_w * right_frac) - crop_w // 2))
+    # Biais VERTICAL vers le haut (~28% du haut) : en interview assise, les visages sont dans la
+    # partie haute — un centrage vertical strict croppait la table et coupait les têtes.
+    top_y = max(0, min(src_h - crop_h, int(src_h * 0.28) - crop_h // 2))
+    cy = top_y
     vf_top = f"crop={crop_w}:{crop_h}:{lx}:{cy},scale=720:640"
     vf_bot = f"crop={crop_w}:{crop_h}:{rx}:{cy},scale=720:640"
     stack = f"[0:v]split=2[a][b];[a]{vf_top}[t];[b]{vf_bot}[bt];[t][bt]vstack=inputs=2[st]"
@@ -1623,47 +1632,26 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
     ]
-    upper_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_upperbody.xml")
 
     def detect_faces_scaled(frame):
-        """Retourne liste de (cx, cy, w, h) = position estimée de la TÊTE de chaque personne,
-        en pixels originaux. Combine détection de visage (position précise) + haut du corps
-        (rattrape les personnes dont le visage n'est pas frontal : têtes baissées, de profil)."""
+        """Détection de VISAGES uniquement (position de tête précise). La détection haut-du-corps
+        a été retirée : elle donnait des positions fausses (crop sur la table, même personne 2×).
+        Mieux vaut un split précis mais seulement quand les visages sont détectables."""
         h, w = frame.shape[:2]
         scale = min(1.0, 640.0 / w)
         small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1 else frame
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         cv2.equalizeHist(gray, gray)
         inv = 1.0 / scale
-        people = []  # (cx, cy, w, h) pixels originaux, cy = tête
-
-        # 1) Visages (position de tête la plus précise)
         faces = []
         for cas in face_cascades:
-            det = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
+            det = cas.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
             if len(det) > len(faces):
                 faces = det
                 if len(faces) >= 2:
                     break
-        for f in faces:
-            people.append((int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
-                           int(f[2] * inv), int(f[3] * inv)))
-
-        # 2) Haut du corps → rattrape les personnes sans visage frontal. Tête estimée en haut de la box.
-        try:
-            bodies = upper_cascade.detectMultiScale(gray, 1.1, 3, minSize=(40, 40))
-        except Exception:
-            bodies = []
-        for b in bodies:
-            bcx = int((b[0] + b[2] // 2) * inv)
-            head_cy = int((b[1] + b[3] * 0.18) * inv)
-            bw = int(b[2] * inv)
-            # Éviter le double comptage si un visage déjà détecté est proche horizontalement
-            if any(abs(p[0] - bcx) < max(bw, p[2]) * 0.6 for p in people):
-                continue
-            people.append((bcx, head_cy, max(40, bw // 2), max(40, int(b[3] * 0.35 * inv))))
-
-        return people
+        return [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
+                 int(f[2] * inv), int(f[3] * inv)) for f in faces]
 
     # ── 1. Analyser chaque ~0.5s ──
     sample_step = max(1, int(fps * 0.5))
@@ -3545,6 +3533,9 @@ async def process_clip_endpoint(
     reframe_mode: str = Form("center"),
     clip_start: float = Form(-1.0),
     clip_end: float = Form(-1.0),
+    crop_x_frac: float = Form(-1.0),
+    split_top_x: float = Form(-1.0),
+    split_bot_x: float = Form(-1.0),
     plan: str = Form("gratuit"),
     _=Depends(auth)
 ):
@@ -3706,6 +3697,17 @@ async def process_clip_endpoint(
                     ct0 = t0 + dur * wi / total
                     wi += len(ch)
                     yield (ct0, t0 + dur * wi / total, " ".join(ch))
+            # DÉ-CHEVAUCHEMENT : les segments (surtout auto-captions YouTube quand 2 personnes
+            # parlent en même temps) se superposent en temps → sous-titres illisibles. On trie et
+            # on tronque la fin de chaque segment au début du suivant : un seul sous-titre à la fois.
+            _segs_clean = sorted([dict(s) for s in segs if str(s.get("text", "")).strip()],
+                                 key=lambda s: float(s.get("t0", 0)))
+            for _i in range(len(_segs_clean) - 1):
+                _nt0 = float(_segs_clean[_i + 1].get("t0", 0))
+                if float(_segs_clean[_i].get("t1", 0)) > _nt0 > float(_segs_clean[_i].get("t0", 0)):
+                    _segs_clean[_i]["t1"] = _nt0
+            segs = _segs_clean
+
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
             _karo_idx = 0
@@ -3836,12 +3838,22 @@ async def process_clip_endpoint(
         # Passe unique : reframe + sous-titres en une seule commande FFmpeg
         async with _get_ffmpeg_sem():
             if reframe_mode == "split":
-                await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
-                )
+                # Positions manuelles des 2 personnes (glisser) → split positionnel FIXE à ces
+                # positions (contrôle total). Sinon → split adaptatif auto (détection visages).
+                if 0.0 <= split_top_x <= 1.0 and 0.0 <= split_bot_x <= 1.0:
+                    _sw, _sh = _get_video_dimensions(str(in_path))
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _reframe_positional_split(str(in_path), str(out_path), _sw, _sh, overlay_vf=overlay_vf, left_frac=split_top_x, right_frac=split_bot_x)
+                    )
+                else:
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
+                    )
             else:
+                # crop_x_frac >= 0 → cadrage MANUEL (glisser) : prioritaire sur l'auto-détection
+                _manual_x = crop_x_frac if 0.0 <= crop_x_frac <= 1.0 else None
                 await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
+                    None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode, overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final, manual_x_frac=_manual_x)
                 )
         if not out_path.exists() or out_path.stat().st_size == 0:
             raise HTTPException(500, "Reframe/burn échoué")

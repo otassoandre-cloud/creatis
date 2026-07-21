@@ -328,35 +328,20 @@ function _parseCaptionTracks(html) {
 
 // Retourne les segments avec timestamps (pour l'identification de clips)
 async function getYouTubeTranscriptSegments(videoId) {
-  // Méthode 1 : youtube-transcript npm — ANDROID sans gl/hl + proxy résidentiel
-  try {
-    const { YoutubeTranscript } = require('youtube-transcript');
-    const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
-    if (raw?.length) {
-      const segments = raw.map(s => ({
-        start: s.offset / 1000,
-        end: (s.offset + s.duration) / 1000,
-        text: (s.text || '').replace(/\n/g, ' ').trim(),
-      })).filter(s => s.text);
-      if (segments.length) {
-        console.log(`[captions/npm] OK ${segments.length} segments`);
-        return { segments, title: '', duration: segments[segments.length - 1].end };
-      }
-    }
-  } catch (e) {
-    console.warn('[captions/npm] failed:', e.message);
-  }
-
-  // Méthode 2 : fetch page via proxy + extraction caption tracks
+  // Méthode 1 (PRIORITAIRE) : fetch page + choix explicite de la piste ORIGINALE (ASR).
+  // On la met en premier car c'est la seule qui contrôle la LANGUE (évite les sous-titres
+  // traduits en anglais sur une vidéo française). Le npm générique passe en dernier recours.
   try {
     const html = await _fetchYouTubePage(videoId);
     const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
     const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
     const tracks = _parseCaptionTracks(html);
     if (tracks?.length) {
-      const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
-        || tracks.find(t => t.languageCode === 'fr')
-        || tracks.find(t => t.kind === 'asr')
+      // La piste `kind === 'asr'` est l'auto-génération = LANGUE ORIGINALE de la vidéo (quelle
+      // qu'elle soit). On la préfère à toute piste traduite (ex: une vidéo FR ne doit PAS sortir
+      // des sous-titres EN traduits). Fallback : piste sans code de traduction, sinon la 1ère.
+      const track = tracks.find(t => t.kind === 'asr')
+        || tracks.find(t => !/\btlang=/.test(t.baseUrl || ''))
         || tracks[0];
       if (track?.baseUrl) {
         const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
@@ -399,6 +384,26 @@ async function getYouTubeTranscriptSegments(videoId) {
     } catch (e) {
       console.warn('[captions/railway] failed:', e.message);
     }
+  }
+
+  // DERNIER RECOURS : youtube-transcript npm (générique, ne contrôle pas la langue → peut
+  // renvoyer une piste traduite). Utilisé seulement si toutes les méthodes ci-dessus ont échoué.
+  try {
+    const { YoutubeTranscript } = require('youtube-transcript');
+    const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
+    if (raw?.length) {
+      const segments = raw.map(s => ({
+        start: s.offset / 1000,
+        end: (s.offset + s.duration) / 1000,
+        text: (s.text || '').replace(/\n/g, ' ').trim(),
+      })).filter(s => s.text);
+      if (segments.length) {
+        console.log(`[captions/npm] OK ${segments.length} segments (fallback générique)`);
+        return { segments, title: '', duration: segments[segments.length - 1].end };
+      }
+    }
+  } catch (e) {
+    console.warn('[captions/npm] failed:', e.message);
   }
 
   throw new Error('Pas de sous-titres disponibles pour cette vidéo');

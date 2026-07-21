@@ -637,8 +637,11 @@
 
         <div class="upload-or"><span>ou colle un lien YouTube</span></div>
         <div class="url-input-row">
-          <input type="url" id="yt-url-input" class="url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off"
+          <input type="text" id="yt-url-input" class="url-input" placeholder="https://youtube.com/watch?v=..."
+            inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            name="yt-link-no-autofill" data-lpignore="true" data-1p-ignore data-form-type="other"
             oninput="V2.onUrlInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('btn-analyze').click();}">
+          <div id="yt-url-hint" style="display:none;font-size:12px;color:#f97316;margin-top:6px"></div>
         </div>
 
         <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
@@ -830,7 +833,7 @@
             <button class="ms-pill ms-extra" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Wow</span></div><span>Color Wave</span></button>
           </div>
           </div>
-          <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres · <strong style="color:var(--texte-doux)">Clique</strong> pour modifier</div>
+          <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse l'image</strong> pour cadrer sur la personne · <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres pour les déplacer</div>
           <div class="modal-opt-row">
             <div class="modal-opt-group"><div class="modal-opt-label">Taille</div>
               <div class="sz-btns" id="sz-btns">
@@ -1582,6 +1585,7 @@ const V2 = (() => {
     const btn = document.getElementById('btn-analyze');
     const zone = document.getElementById('drop-zone');
     const nameEl = document.getElementById('v1-upload-name');
+    const hint = document.getElementById('yt-url-hint');
     // URL YouTube valide ? → active l'analyse, neutralise l'éventuel fichier sélectionné
     const isYt = /(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(val);
     if (isYt) {
@@ -1592,9 +1596,16 @@ const V2 = (() => {
       if (nameEl) { nameEl.textContent = 'Cliquer ou déposer une vidéo ici'; nameEl.style.color = ''; }
       const prevWrap = document.getElementById('video-preview-wrap');
       if (prevWrap) prevWrap.style.display = 'none';
+      if (hint) hint.style.display = 'none';
       if (btn) btn.disabled = false;
     } else {
       _ytUrl = '';
+      // Message clair si le champ contient qqch d'invalide (ex: email rempli par l'autofill du
+      // navigateur) — sinon le bouton reste désactivé sans que l'utilisateur comprenne pourquoi.
+      if (hint) {
+        if (val.length > 0) { hint.textContent = '⚠️ Ce n\'est pas un lien YouTube valide. Colle une URL comme https://youtube.com/watch?v=…'; hint.style.display = 'block'; }
+        else hint.style.display = 'none';
+      }
       // ne réactive/désactive le bouton que si aucun fichier n'est déjà chargé
       if (btn && !_file) btn.disabled = true;
     }
@@ -3218,6 +3229,7 @@ const V2 = (() => {
   }
 
   function togglePlay() {
+    if (_cropJustDragged) return; // on vient de cadrer en glissant → ne pas (dé)clencher la lecture
     const video = document.getElementById('modal-video');
     const btn = document.getElementById('modal-play-btn');
     const overlay = document.getElementById('modal-play-overlay');
@@ -3329,7 +3341,60 @@ const V2 = (() => {
     if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
     _clipSettings[_modalIdx].reframeMode = on ? 'split' : 'center';
     _clipSettings[_modalIdx]._reframeUserSet = true;
+    _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0; // repart en split
     _updateCropPreview();
+  }
+
+  // Glisser l'image pour CADRER manuellement (position horizontale du crop 9:16). Prioritaire sur
+  // l'auto-détection — LA solution fiable quand les visages ne sont pas détectés (têtes baissées).
+  function _setupCropDrag() {
+    const wrap = document.getElementById('modal-player-wrap');
+    if (!wrap || wrap._cropDragWired) return;
+    wrap._cropDragWired = true;
+    let dragging = false, moved = false, startX = 0, startFrac = 0.5, dragKey = 'cropXFrac';
+    wrap.addEventListener('pointerdown', (e) => {
+      if (_modalIdx === null) return;
+      // ne pas capturer les poignées de sous-titres/hook
+      if (e.target.closest && e.target.closest('#modal-sub-overlay, #modal-hook-overlay, #modal-sub-handle, #modal-hook-handle')) return;
+      const opts = _clipSettings[_modalIdx] || {};
+      // En SPLIT : la moitié cliquée détermine quelle personne on cadre (haut=gauche, bas=droite).
+      if (opts.reframeMode === 'split') {
+        const rect = wrap.getBoundingClientRect();
+        const isTop = (e.clientY - rect.top) < rect.height / 2;
+        dragKey = isTop ? 'splitTopXFrac' : 'splitBotXFrac';
+        startFrac = (opts[dragKey] != null) ? opts[dragKey] : (isTop ? 0.30 : 0.70);
+      } else {
+        dragKey = 'cropXFrac';
+        startFrac = (opts.cropXFrac != null) ? opts.cropXFrac : 0.5;
+      }
+      dragging = true; moved = false;
+      startX = e.clientX;
+      try { wrap.setPointerCapture(e.pointerId); } catch {}
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const rect = wrap.getBoundingClientRect();
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      const video = document.getElementById('modal-video');
+      const vw = video?.videoWidth || 1280, vh = video?.videoHeight || 720;
+      const cropW = vh * 9 / 16;
+      // Pan : glisser à droite → voir plus à gauche → frac diminue
+      const fracDelta = -(dx / rect.width) * (cropW / vw);
+      const newFrac = Math.max(0, Math.min(1, startFrac + fracDelta));
+      if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+      _clipSettings[_modalIdx][dragKey] = newFrac;
+      _clipSettings[_modalIdx]._reframeUserSet = true;
+      _updateCropPreview();
+    });
+    const end = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      try { wrap.releasePointerCapture(e.pointerId); } catch {}
+      if (moved) { _cropJustDragged = true; setTimeout(() => { _cropJustDragged = false; }, 60); }
+    };
+    wrap.addEventListener('pointerup', end);
+    wrap.addEventListener('pointercancel', end);
   }
 
   function selectStyleCat(cat, btn) {
@@ -3448,6 +3513,12 @@ const V2 = (() => {
   // Live face detection state
   let _livePreds = null;
   let _liveDetectTs = 0;
+  // Aperçu split adaptatif : hystérésis pour éviter le clignotement (la détection frontale rate
+  // par intermittence). On ne bascule en plein écran qu'après plusieurs détections "1 visage".
+  let _splitShowSingle = false;
+  let _split1Streak = 0;
+  let _split2Streak = 0;
+  let _cropJustDragged = false; // vient de glisser pour cadrer → ne pas déclencher play au relâchement
 
   // Auto-speaker motion detection state
   let _motionCanvas = null;
@@ -3463,11 +3534,15 @@ const V2 = (() => {
     const video = document.getElementById('modal-video');
     if (!canvas) return;
     const mode = (_modalIdx !== null && !_exportPreviewUrl) ? (_clipSettings[_modalIdx]?.reframeMode || 'center') : 'center';
-    if (mode === 'center' || !video || video.style.display === 'none') {
+    // Position de crop manuelle (glisser) — si définie, on affiche le canvas et on cadre dessus
+    // même en mode 'center'.
+    const manualX = (_modalIdx !== null && !_exportPreviewUrl) ? _clipSettings[_modalIdx]?.cropXFrac : null;
+    if ((mode === 'center' && manualX == null) || !video || video.style.display === 'none') {
       canvas.style.display = 'none';
       return;
     }
     _loadBlazeface().catch(() => {});
+    _setupCropDrag();
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
 
@@ -3503,9 +3578,12 @@ const V2 = (() => {
       const liveFaces = _livePreds || [];
       const nLive = liveFaces.length;
 
-      if (mode === 'face') {
+      if (mode !== 'split') {
+        // Crop simple : position MANUELLE (glisser) prioritaire, sinon auto (visage détecté).
         let faceCx = null;
-        if (nLive > 0) {
+        if (manualX != null) {
+          faceCx = manualX * vw;
+        } else if (nLive > 0) {
           const best = liveFaces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
           faceCx = blazeCx(best);
         } else if (cache?.cx != null) {
@@ -3514,32 +3592,44 @@ const V2 = (() => {
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
 
       } else if (mode === 'split') {
-        // Split top/bottom : les 2 visages visibles, gauche en haut / droite en bas, chacun
-        // centré dans sa moitié (identique au rendu export Railway).
-        let leftCx, rightCx, leftCy = vh / 2, rightCy = vh / 2, faceW = vh * 0.30;
-        if (nLive >= 2) {
-          const sorted = [...liveFaces].sort((a, b) => a.topLeft[0] - b.topLeft[0]);
-          const fL = sorted[0], fR = sorted[sorted.length - 1];
-          leftCx = blazeCx(fL); rightCx = blazeCx(fR);
-          leftCy  = (fL.topLeft[1] + fL.bottomRight[1]) / 2;
-          rightCy = (fR.topLeft[1] + fR.bottomRight[1]) / 2;
-          faceW = Math.max(fL.bottomRight[0] - fL.topLeft[0], fR.bottomRight[0] - fR.topLeft[0]);
+        // Aperçu ADAPTATIF (comme l'export) : 2 visages → split haut/bas ; 1 visage → plein écran
+        // sur lui. Hystérésis anti-clignotement : il faut plusieurs frames pour basculer.
+        if (nLive >= 2) { _split2Streak++; _split1Streak = 0; if (_split2Streak > 2) _splitShowSingle = false; }
+        else if (nLive === 1) { _split1Streak++; _split2Streak = 0; if (_split1Streak > 8) _splitShowSingle = true; }
+        // nLive === 0 : on garde l'état courant (pas de bascule)
+
+        if (_splitShowSingle && nLive >= 1) {
+          // Plein écran cadré sur la personne visible (comme l'export en solo)
+          const best = liveFaces.reduce((a, b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
+          ctx.drawImage(video, getCropX(vw, cropW, blazeCx(best), 0.5), 0, cropW, vh, dx, dy, dw, dh);
         } else {
-          leftCx  = cache?.splitLeftCx  ?? (vw * 0.30);
-          rightCx = cache?.splitRightCx ?? (vw * 0.70);
+          // Split top/bottom : gauche en haut, droite en bas, chacun centré dans sa moitié
+          let leftCx, rightCx, leftCy = vh / 2, rightCy = vh / 2, faceW = vh * 0.30;
+          if (nLive >= 2) {
+            const sorted = [...liveFaces].sort((a, b) => a.topLeft[0] - b.topLeft[0]);
+            const fL = sorted[0], fR = sorted[sorted.length - 1];
+            leftCx = blazeCx(fL); rightCx = blazeCx(fR);
+            leftCy  = (fL.topLeft[1] + fL.bottomRight[1]) / 2;
+            rightCy = (fR.topLeft[1] + fR.bottomRight[1]) / 2;
+            faceW = Math.max(fL.bottomRight[0] - fL.topLeft[0], fR.bottomRight[0] - fR.topLeft[0]);
+          } else {
+            leftCx  = cache?.splitLeftCx  ?? (vw * 0.30);
+            rightCx = cache?.splitRightCx ?? (vw * 0.70);
+          }
+          // Overrides MANUELS (glisser chaque moitié) — prioritaires sur l'auto
+          const _optS = _clipSettings[_modalIdx] || {};
+          if (_optS.splitTopXFrac != null) leftCx  = _optS.splitTopXFrac * vw;
+          if (_optS.splitBotXFrac != null) rightCx = _optS.splitBotXFrac * vw;
+          const ratioH = 720 / 640;
+          let cropWh = Math.min(vw, Math.max(faceW * 2.6, vh * ratioH));
+          let cropHh = cropWh / ratioH;
+          if (cropHh > vh) { cropHh = vh; cropWh = cropHh * ratioH; }
+          const halfH = dh / 2;
+          const clampX = c => Math.max(0, Math.min(vw - cropWh, c - cropWh / 2));
+          const clampY = c => Math.max(0, Math.min(vh - cropHh, c - cropHh / 2));
+          ctx.drawImage(video, clampX(leftCx),  clampY(leftCy),  cropWh, cropHh, dx, dy,         dw, halfH);
+          ctx.drawImage(video, clampX(rightCx), clampY(rightCy), cropWh, cropHh, dx, dy + halfH, dw, halfH);
         }
-        // Chaque moitié = aspect 9:8 (720x640). Crop centré sur chaque visage.
-        const ratioH = 720 / 640;
-        let cropWh = Math.min(vw, Math.max(faceW * 2.6, vh * ratioH));
-        let cropHh = cropWh / ratioH;
-        if (cropHh > vh) { cropHh = vh; cropWh = cropHh * ratioH; }
-        const halfH = dh / 2;
-        const clampX = c => Math.max(0, Math.min(vw - cropWh, c - cropWh / 2));
-        const clampY = c => Math.max(0, Math.min(vh - cropHh, c - cropHh / 2));
-        // Haut = visage gauche
-        ctx.drawImage(video, clampX(leftCx),  clampY(leftCy),  cropWh, cropHh, dx, dy,          dw, halfH);
-        // Bas = visage droit
-        ctx.drawImage(video, clampX(rightCx), clampY(rightCy), cropWh, cropHh, dx, dy + halfH, dw, halfH);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
@@ -4377,6 +4467,12 @@ const V2 = (() => {
     form.append('hook_y',       String(opts.hookY ?? 10));
     form.append('hook_style',   _hookStyle || 'pill');
     form.append('reframe_mode', opts.reframeMode || 'center');
+    // Position de crop manuelle (glisser) — si définie, l'export cadre exactement là (prioritaire
+    // sur l'auto-détection). -1 = pas de position manuelle.
+    form.append('crop_x_frac', String(opts.cropXFrac != null ? opts.cropXFrac : -1));
+    // Split : positions manuelles des 2 personnes (glisser chaque moitié). -1 = auto.
+    form.append('split_top_x', String(opts.splitTopXFrac != null ? opts.splitTopXFrac : -1));
+    form.append('split_bot_x', String(opts.splitBotXFrac != null ? opts.splitBotXFrac : -1));
     form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
