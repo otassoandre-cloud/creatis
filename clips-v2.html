@@ -800,6 +800,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Hook
           </button>
+          <button class="mob-icon-btn" id="mob-btn-cadrage" onclick="V2.mobPanel('cadrage')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+            Cadrage
+          </button>
           <button class="mob-icon-btn" id="mob-btn-edit" onclick="V2.mobPanel('edit')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Texte
@@ -815,6 +819,7 @@
         <div class="desk-sec-tabs" id="desk-sec-tabs">
           <button class="desk-sec-tab active" onclick="V2.deskTab('subs')">Sous-titres</button>
           <button class="desk-sec-tab" onclick="V2.deskTab('hook')">Hook</button>
+          <button class="desk-sec-tab" onclick="V2.deskTab('cadrage')">Cadrage</button>
         </div>
 
         <!-- Section : Sous-titres -->
@@ -851,10 +856,21 @@
               <input type="color" id="modal-color-bg" value="#000000" class="opt-color" onchange="V2.updateClipOpt()">
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+        </div>
+
+        <!-- Section : Cadrage (contrôle manuel du recadrage / split) -->
+        <div class="mob-section" id="mob-sec-cadrage">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
             <label class="toggle"><input type="checkbox" id="modal-split-on" onchange="V2.toggleSplit(this.checked)"><span class="toggle-slider"></span></label>
             <span style="font-size:13px;color:var(--texte-doux)">Format 2 personnes — split haut/bas</span>
           </div>
+          <div id="cadrage-hint-single" style="font-size:12px;color:var(--texte-muted);line-height:1.5;margin-bottom:12px">
+            💡 <strong style="color:var(--texte-doux)">Glisse l'image</strong> (gauche/droite) pour placer le cadre sur la personne. Ta position est <strong style="color:var(--vert)">exactement celle de l'export</strong>.
+          </div>
+          <div id="cadrage-hint-split" style="display:none;font-size:12px;color:var(--texte-muted);line-height:1.5;margin-bottom:12px">
+            💡 <strong style="color:var(--texte-doux)">Glisse la moitié du haut</strong> pour cadrer la 1ʳᵉ personne, <strong style="color:var(--texte-doux)">la moitié du bas</strong> pour la 2ᵉ. Positions <strong style="color:var(--vert)">identiques à l'export</strong>.
+          </div>
+          <button type="button" onclick="V2.resetCadrage()" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:12px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit">↺ Réinitialiser le cadrage (auto)</button>
         </div>
 
         <!-- Section : Hook -->
@@ -3342,6 +3358,7 @@ const V2 = (() => {
     _clipSettings[_modalIdx].reframeMode = on ? 'split' : 'center';
     _clipSettings[_modalIdx]._reframeUserSet = true;
     _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0; // repart en split
+    _syncCadrageHints();
     _updateCropPreview();
   }
 
@@ -3407,10 +3424,30 @@ const V2 = (() => {
     document.querySelectorAll('.desk-sec-tab').forEach(t => t.classList.remove('active'));
     const btn = document.querySelector(`.desk-sec-tab[onclick*="'${panel}'"]`);
     if (btn) btn.classList.add('active');
-    ['subs','hook','edit'].forEach(p => {
+    ['subs','hook','cadrage','edit'].forEach(p => {
       const el = document.getElementById('mob-sec-' + p);
       if (el) el.classList.toggle('mob-open', p === panel || (panel === 'subs' && p === 'edit'));
     });
+    if (panel === 'cadrage') _syncCadrageHints();
+  }
+
+  // Affiche le bon indice (1 personne vs split) dans l'onglet Cadrage
+  function _syncCadrageHints() {
+    const isSplit = (_modalIdx !== null && _clipSettings[_modalIdx]?.reframeMode === 'split');
+    const single = document.getElementById('cadrage-hint-single');
+    const split  = document.getElementById('cadrage-hint-split');
+    if (single) single.style.display = isSplit ? 'none' : 'block';
+    if (split)  split.style.display  = isSplit ? 'block' : 'none';
+  }
+
+  // Réinitialise le cadrage manuel → retour à l'auto-détection
+  function resetCadrage() {
+    if (_modalIdx === null) return;
+    const s = _clipSettings[_modalIdx];
+    if (s) { delete s.cropXFrac; delete s.splitTopXFrac; delete s.splitBotXFrac; }
+    _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0;
+    _updateCropPreview();
+    toast('↺ Cadrage remis en automatique', 'succes', 2500);
   }
 
   // ── BlazeFace (TF.js) — détection visages cross-browser ──
@@ -5198,13 +5235,14 @@ const V2 = (() => {
   }
 
   function mobPanel(id) {
-    const sections = ['subs', 'hook', 'face', 'edit'];
+    const sections = ['subs', 'hook', 'cadrage', 'face', 'edit'];
     sections.forEach(s => {
       const sec = document.getElementById('mob-sec-' + s);
       const btn = document.getElementById('mob-btn-' + s);
       if (sec) sec.classList.toggle('mob-open', s === id);
       if (btn) btn.classList.toggle('mob-active', s === id);
     });
+    if (id === 'cadrage') _syncCadrageHints();
   }
 
   async function logClipExport(nb = 1) {
@@ -5226,7 +5264,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, resetCadrage, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
