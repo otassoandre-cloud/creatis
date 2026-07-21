@@ -923,6 +923,20 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     if path:
         return path, title
 
+    # 1b) RETRY sur bot-check TRANSITOIRE : le blocage de l'IP datacenter Railway est souvent
+    # temporaire (la même vidéo passe quelques secondes/minutes plus tard). On attend puis on
+    # retente — gros gain de fiabilité sans rien payer.
+    if last_err and "not a bot" in str(last_err).lower():
+        import time as _t
+        for _wait in (7, 12):
+            logger.info(f"[audio] bot-check → attente {_wait}s puis retry (blocage souvent transitoire)")
+            _t.sleep(_wait)
+            path, title, _e2 = _run_attempts(cookies_file)
+            if path:
+                logger.info(f"[audio] ✓ débloqué au retry (après {_wait}s)")
+                return path, title
+            last_err = _e2 or last_err
+
     # 2) RAFRAÎCHISSEMENT COOKIE AUTOMATIQUE : sur bot-check, on récupère des cookies FRAIS via
     # Playwright (navigateur headless depuis l'IP Railway) puis on re-tente. Résout les cas où le
     # cookie statique s'est "usé" / fait flagger, sans manip manuelle.
@@ -1601,6 +1615,86 @@ def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: in
            "-c:a", "aac", "-b:a", "128k", out_path]
     subprocess.run(cmd, check=True, timeout=180)
     logger.info("[split] ✓ split positionnel gauche/droite")
+
+
+def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
+                            top_frac: float, bot_frac: float, keyframes: list, overlay_vf: str = "") -> None:
+    """Rend le clip par SECTIONS selon les repères manuels (timeline) : split / solo haut / solo bas.
+    Chaque intervalle entre 2 repères est rendu dans son mode. Les sous-titres sont appliqués sur
+    l'ensemble concaténé (timing correct). C'est le contrôle total 'moment par moment' de l'utilisateur."""
+    import tempfile as _tf, shutil as _sh
+    # Durée du clip
+    _p = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", in_path],
+                        capture_output=True, text=True)
+    try: dur = float(_p.stdout.strip())
+    except Exception: dur = 0.0
+    if dur <= 0:
+        _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf, top_frac, bot_frac); return
+
+    # Construire les intervalles (t0, t1, mode) — défaut 'split' avant le 1er repère
+    kfs = sorted([k for k in keyframes if isinstance(k, dict) and "t" in k], key=lambda k: float(k["t"]))
+    ranges = []; prev_t = 0.0; prev_mode = "split"
+    for k in kfs:
+        kt = max(0.0, min(dur, float(k["t"])))
+        if kt > prev_t + 0.05:
+            ranges.append((prev_t, kt, prev_mode))
+        prev_mode = k.get("mode", "split"); prev_t = kt
+    ranges.append((prev_t, dur, prev_mode))
+
+    # Filtres
+    ratioH = 720 / 640
+    cw = min(src_w, int(src_h * ratioH)); ch = int(cw / ratioH)
+    if ch > src_h: ch = src_h; cw = int(ch * ratioH)
+    cw = max(2, cw - cw % 2); ch = max(2, ch - ch % 2)
+    top_y = max(0, min(src_h - ch, int(src_h * 0.28) - ch // 2))
+    lx = max(0, min(src_w - cw, int(src_w * top_frac) - cw // 2))
+    rx = max(0, min(src_w - cw, int(src_w * bot_frac) - cw // 2))
+    def split_fc():
+        vf_t = f"crop={cw}:{ch}:{lx}:{top_y},scale=720:640"
+        vf_b = f"crop={cw}:{ch}:{rx}:{top_y},scale=720:640"
+        return f"[0:v]split=2[a][b];[a]{vf_t}[t];[b]{vf_b}[bt];[t][bt]vstack=inputs=2[out]"
+    def solo_fc(frac):
+        sw = int(src_h * 9 / 16); sw = max(2, sw - sw % 2)
+        x = max(0, min(src_w - sw, int(src_w * frac) - sw // 2))
+        return f"[0:v]crop={sw}:{src_h}:{x}:0,scale=720:1280[out]"
+
+    tmpdir = _tf.mkdtemp(); segs = []; list_file = os.path.join(tmpdir, "concat.txt")
+    try:
+        for i, (t0, t1, mode) in enumerate(ranges):
+            if t1 - t0 < 0.05: continue
+            seg = os.path.join(tmpdir, f"seg_{i:03d}.mp4")
+            fc = split_fc() if mode == "split" else solo_fc(bot_frac if mode == "bot" else top_frac)
+            r = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}", "-i", in_path,
+                 "-filter_complex", fc, "-map", "[out]", "-map", "0:a:0?",
+                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+                 "-c:a", "aac", "-b:a", "128k", seg], capture_output=True, timeout=180)
+            if r.returncode == 0 and os.path.exists(seg) and os.path.getsize(seg) > 0:
+                segs.append(seg)
+                logger.info(f"[split-timeline] section {i} {mode} {t0:.1f}-{t1:.1f}s ✓")
+        if not segs:
+            raise RuntimeError("aucune section générée")
+        merged = os.path.join(tmpdir, "merged.mp4")
+        if len(segs) == 1:
+            _sh.copy(segs[0], merged)
+        else:
+            with open(list_file, "w") as f:
+                for s in segs: f.write(f"file '{s}'\n")
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                            "-i", list_file, "-c", "copy", merged], check=True, timeout=300)
+        # Sous-titres appliqués sur l'ensemble (timing 0-based correct)
+        if overlay_vf:
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", merged, "-vf", overlay_vf,
+                            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+                            "-c:a", "copy", out_path], check=True, timeout=300)
+        else:
+            _sh.copy(merged, out_path)
+        logger.info(f"[split-timeline] ✓ {len(segs)} sections")
+    except Exception as e:
+        logger.warning(f"[split-timeline] échec ({e}) → split positionnel simple")
+        _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf, top_frac, bot_frac)
+    finally:
+        _sh.rmtree(tmpdir, ignore_errors=True)
 
 
 def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
@@ -3536,6 +3630,7 @@ async def process_clip_endpoint(
     crop_x_frac: float = Form(-1.0),
     split_top_x: float = Form(-1.0),
     split_bot_x: float = Form(-1.0),
+    split_keyframes: str = Form("[]"),
     plan: str = Form("gratuit"),
     _=Depends(auth)
 ):
@@ -3838,14 +3933,28 @@ async def process_clip_endpoint(
         # Passe unique : reframe + sous-titres en une seule commande FFmpeg
         async with _get_ffmpeg_sem():
             if reframe_mode == "split":
-                # Positions manuelles des 2 personnes (glisser) → split positionnel FIXE à ces
-                # positions (contrôle total). Sinon → split adaptatif auto (détection visages).
-                if 0.0 <= split_top_x <= 1.0 and 0.0 <= split_bot_x <= 1.0:
+                # Positions manuelles (glisser) — défaut 30%/70% si non fournies
+                _tf_ = split_top_x if 0.0 <= split_top_x <= 1.0 else 0.30
+                _bf_ = split_bot_x if 0.0 <= split_bot_x <= 1.0 else 0.70
+                _has_manual_pos = (0.0 <= split_top_x <= 1.0) or (0.0 <= split_bot_x <= 1.0)
+                try:
+                    _kf = _json.loads(split_keyframes) if split_keyframes else []
+                except Exception:
+                    _kf = []
+                if _kf:
+                    # Repères timeline → rendu par sections (split/solo selon le moment). Contrôle total.
                     _sw, _sh = _get_video_dimensions(str(in_path))
                     await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: _reframe_positional_split(str(in_path), str(out_path), _sw, _sh, overlay_vf=overlay_vf, left_frac=split_top_x, right_frac=split_bot_x)
+                        None, lambda: _reframe_split_timeline(str(in_path), str(out_path), _sw, _sh, _tf_, _bf_, _kf, overlay_vf=overlay_vf)
+                    )
+                elif _has_manual_pos:
+                    # Positions manuelles fixes (sans repères) → split positionnel fixe.
+                    _sw, _sh = _get_video_dimensions(str(in_path))
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _reframe_positional_split(str(in_path), str(out_path), _sw, _sh, overlay_vf=overlay_vf, left_frac=_tf_, right_frac=_bf_)
                     )
                 else:
+                    # Aucun réglage manuel → split adaptatif auto (détection visages).
                     await asyncio.get_event_loop().run_in_executor(
                         None, lambda: _reframe_split_dynamic(str(in_path), str(out_path), overlay_vf=overlay_vf, pill_png_path=pill_png_path_str, pill_y_px=pill_y_px_final)
                     )

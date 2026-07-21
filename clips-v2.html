@@ -870,7 +870,20 @@
           <div id="cadrage-hint-split" style="display:none;font-size:12px;color:var(--texte-muted);line-height:1.5;margin-bottom:12px">
             💡 <strong style="color:var(--texte-doux)">Glisse la moitié du haut</strong> pour cadrer la 1ʳᵉ personne, <strong style="color:var(--texte-doux)">la moitié du bas</strong> pour la 2ᵉ. Positions <strong style="color:var(--vert)">identiques à l'export</strong>.
           </div>
-          <button type="button" onclick="V2.resetCadrage()" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:12px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit">↺ Réinitialiser le cadrage (auto)</button>
+
+          <!-- Timeline sections : choisir split / solo selon le moment (visible en mode split) -->
+          <div id="cadrage-timeline" style="display:none;margin:14px 0;padding-top:12px;border-top:1px solid var(--bordure)">
+            <div style="font-size:12px;color:var(--texte-doux);font-weight:600;margin-bottom:8px">🎬 Moments du clip — pose un repère à l'instant affiché :</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+              <button type="button" onclick="V2.addSplitKeyframe('split')" style="background:var(--vert-dim);border:1px solid rgba(16,185,129,0.3);color:var(--vert);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">⬛ Split (2 pers)</button>
+              <button type="button" onclick="V2.addSplitKeyframe('top')" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">▲ Solo haut</button>
+              <button type="button" onclick="V2.addSplitKeyframe('bot')" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">▼ Solo bas</button>
+            </div>
+            <div id="cadrage-keyframes-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px"></div>
+            <div style="font-size:11px;color:var(--texte-muted);line-height:1.4">Sans repère : tout le clip est en split. Chaque repère change le mode à partir de son instant.</div>
+          </div>
+
+          <button type="button" onclick="V2.resetCadrage()" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:12px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit;margin-top:12px">↺ Réinitialiser le cadrage (auto)</button>
         </div>
 
         <!-- Section : Hook -->
@@ -3436,18 +3449,71 @@ const V2 = (() => {
     const isSplit = (_modalIdx !== null && _clipSettings[_modalIdx]?.reframeMode === 'split');
     const single = document.getElementById('cadrage-hint-single');
     const split  = document.getElementById('cadrage-hint-split');
+    const tl     = document.getElementById('cadrage-timeline');
     if (single) single.style.display = isSplit ? 'none' : 'block';
     if (split)  split.style.display  = isSplit ? 'block' : 'none';
+    if (tl)     tl.style.display      = isSplit ? 'block' : 'none';
+    _renderKeyframesList();
   }
 
   // Réinitialise le cadrage manuel → retour à l'auto-détection
   function resetCadrage() {
     if (_modalIdx === null) return;
     const s = _clipSettings[_modalIdx];
-    if (s) { delete s.cropXFrac; delete s.splitTopXFrac; delete s.splitBotXFrac; }
+    if (s) { delete s.cropXFrac; delete s.splitTopXFrac; delete s.splitBotXFrac; delete s.splitKeyframes; }
     _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0;
+    _renderKeyframesList();
     _updateCropPreview();
     toast('↺ Cadrage remis en automatique', 'succes', 2500);
+  }
+
+  // ── Timeline sections : repères split/solo selon le moment du clip ──
+  function _fmtT(s) { return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+
+  // Instant de lecture RELATIF au début du clip (0 = début). Gère segment YouTube (0-based) et
+  // fichier local (vidéo complète seekée à clipStart).
+  function _playheadRel() {
+    const video = document.getElementById('modal-video');
+    if (!video || _modalIdx === null) return 0;
+    const clip = _clips[_modalIdx];
+    const clipStart = clip?.start_time ?? clip?.start ?? 0;
+    return (clip?._rawOffset != null) ? video.currentTime : Math.max(0, video.currentTime - clipStart);
+  }
+
+  function addSplitKeyframe(mode) {
+    if (_modalIdx === null) return;
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+    const t = Math.round(_playheadRel() * 10) / 10;
+    const kfs = _clipSettings[_modalIdx].splitKeyframes || [];
+    const ex = kfs.findIndex(k => Math.abs(k.t - t) < 0.3);
+    if (ex >= 0) kfs[ex].mode = mode; else kfs.push({ t, mode });
+    kfs.sort((a, b) => a.t - b.t);
+    _clipSettings[_modalIdx].splitKeyframes = kfs;
+    _renderKeyframesList();
+    toast(`Repère « ${mode === 'split' ? 'Split' : mode === 'top' ? 'Solo haut' : 'Solo bas'} » à ${_fmtT(t)}`, 'succes', 1800);
+  }
+
+  function removeSplitKeyframe(i) {
+    if (_modalIdx === null || !_clipSettings[_modalIdx]?.splitKeyframes) return;
+    _clipSettings[_modalIdx].splitKeyframes.splice(i, 1);
+    _renderKeyframesList();
+    _updateCropPreview();
+  }
+
+  function _renderKeyframesList() {
+    const el = document.getElementById('cadrage-keyframes-list');
+    if (!el) return;
+    const kfs = (_modalIdx !== null && _clipSettings[_modalIdx]?.splitKeyframes) || [];
+    const label = m => m === 'split' ? '⬛ Split (2 pers)' : m === 'top' ? '▲ Solo haut' : '▼ Solo bas';
+    el.innerHTML = kfs.map((k, i) => `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-input);border:1px solid var(--bordure);border-radius:7px;padding:5px 9px;font-size:11px"><span style="color:var(--texte-doux)"><b style="color:var(--vert)">${_fmtT(k.t)}</b> → ${label(k.mode)}</span><button onclick="V2.removeSplitKeyframe(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;font-weight:700;line-height:1;padding:0 2px">×</button></div>`).join('');
+  }
+
+  // Mode actif à l'instant relatif t d'après les repères (défaut 'split')
+  function _splitModeAt(relT) {
+    const kfs = (_modalIdx !== null && _clipSettings[_modalIdx]?.splitKeyframes) || [];
+    let mode = 'split';
+    for (const k of kfs) { if (k.t <= relT + 0.05) mode = k.mode; else break; }
+    return mode;
   }
 
   // ── BlazeFace (TF.js) — détection visages cross-browser ──
@@ -3629,14 +3695,26 @@ const V2 = (() => {
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
 
       } else if (mode === 'split') {
-        // Aperçu ADAPTATIF (comme l'export) : 2 visages → split haut/bas ; 1 visage → plein écran
-        // sur lui. Hystérésis anti-clignotement : il faut plusieurs frames pour basculer.
-        if (nLive >= 2) { _split2Streak++; _split1Streak = 0; if (_split2Streak > 2) _splitShowSingle = false; }
-        else if (nLive === 1) { _split1Streak++; _split2Streak = 0; if (_split1Streak > 8) _splitShowSingle = true; }
-        // nLive === 0 : on garde l'état courant (pas de bascule)
+        // Repères manuels (timeline) prioritaires ; sinon aperçu adaptatif auto.
+        const _kfs = _clipSettings[_modalIdx]?.splitKeyframes || [];
+        let _forced = null; // 'split' | 'top' | 'bot' si des repères existent
+        if (_kfs.length) {
+          _forced = _splitModeAt(_playheadRel());
+        } else {
+          // Aperçu ADAPTATIF auto : 2 visages → split ; 1 visage → plein écran. Hystérésis.
+          if (nLive >= 2) { _split2Streak++; _split1Streak = 0; if (_split2Streak > 2) _splitShowSingle = false; }
+          else if (nLive === 1) { _split1Streak++; _split2Streak = 0; if (_split1Streak > 8) _splitShowSingle = true; }
+        }
 
-        if (_splitShowSingle && nLive >= 1) {
-          // Plein écran cadré sur la personne visible (comme l'export en solo)
+        // SOLO d'après un repère (haut/bas) → plein écran sur cette personne
+        if (_forced === 'top' || _forced === 'bot') {
+          const _o = _clipSettings[_modalIdx] || {};
+          let soloCx;
+          if (_forced === 'top') soloCx = (_o.splitTopXFrac != null ? _o.splitTopXFrac : (cache?.splitLeftCx != null ? cache.splitLeftCx / vw : 0.30)) * vw;
+          else                   soloCx = (_o.splitBotXFrac != null ? _o.splitBotXFrac : (cache?.splitRightCx != null ? cache.splitRightCx / vw : 0.70)) * vw;
+          ctx.drawImage(video, getCropX(vw, cropW, soloCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
+        } else if (!_forced && _splitShowSingle && nLive >= 1) {
+          // Solo AUTO (pas de repère) : plein écran sur la personne visible
           const best = liveFaces.reduce((a, b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
           ctx.drawImage(video, getCropX(vw, cropW, blazeCx(best), 0.5), 0, cropW, vh, dx, dy, dw, dh);
         } else {
@@ -4510,6 +4588,8 @@ const V2 = (() => {
     // Split : positions manuelles des 2 personnes (glisser chaque moitié). -1 = auto.
     form.append('split_top_x', String(opts.splitTopXFrac != null ? opts.splitTopXFrac : -1));
     form.append('split_bot_x', String(opts.splitBotXFrac != null ? opts.splitBotXFrac : -1));
+    // Repères timeline : [{t, mode}] — mode split/top/bot selon le moment du clip. [] = pas de repères.
+    form.append('split_keyframes', JSON.stringify(opts.splitKeyframes || []));
     form.append('plan', _userPlan);
     if (clipStartParam >= 0) { form.append('clip_start', String(clipStartParam)); form.append('clip_end', String(clipEndParam)); }
 
@@ -5264,7 +5344,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, resetCadrage, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, resetCadrage, addSplitKeyframe, removeSplitKeyframe, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
