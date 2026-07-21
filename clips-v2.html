@@ -848,6 +848,10 @@
               <input type="color" id="modal-color-bg" value="#000000" class="opt-color" onchange="V2.updateClipOpt()">
             </div>
           </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+            <label class="toggle"><input type="checkbox" id="modal-split-on" onchange="V2.toggleSplit(this.checked)"><span class="toggle-slider"></span></label>
+            <span style="font-size:13px;color:var(--texte-doux)">Format 2 personnes — split haut/bas</span>
+          </div>
         </div>
 
         <!-- Section : Hook -->
@@ -2378,6 +2382,7 @@ const V2 = (() => {
     document.querySelectorAll('.sz-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sz) === (opts.fontSize || 55)));
     const ctEl = document.getElementById('modal-color-text'); if (ctEl) ctEl.value = opts.colorText;
     const cbEl = document.getElementById('modal-color-bg'); if (cbEl) cbEl.value = opts.colorBg;
+    const splitOn = document.getElementById('modal-split-on'); if (splitOn) splitOn.checked = (opts.reframeMode === 'split');
     const hookOn = document.getElementById('modal-hook-on'); if (hookOn) hookOn.checked = opts.hookEnabled;
     const hookBgEl = document.getElementById('modal-hook-bg'); if (hookBgEl) hookBgEl.value = opts.hookBg || '#000000';
     const hookFgEl = document.getElementById('modal-hook-fg'); if (hookFgEl) hookFgEl.value = opts.hookColor || '#ffffff';
@@ -2647,9 +2652,12 @@ const V2 = (() => {
 
   // Télécharge (ou récupère du cache) le segment vidéo d'un clip YouTube → blob URL réutilisable.
   // Mis en cache par index de clip : un clip n'est jamais retéléchargé pendant la session.
-  function _getYtSegment(clip, i, onProgress) {
+  function _getYtSegment(clip, i, onProgress, allowApi = true) {
     if (_ytSegCache[i]) return Promise.resolve(_ytSegCache[i]);
-    if (_ytSegInflight[i]) return _ytSegInflight[i];
+    // Ne réutilise un téléchargement en cours que s'il autorise AU MOINS autant que ce qu'on veut :
+    // un préchargement gratuit-only (allowApi=false) en cours ne doit PAS servir un appel interactif
+    // qui, lui, veut le secours API si le gratuit échoue.
+    if (_ytSegInflight[i] && (_ytSegInflight[i].allowApi || !allowApi)) return _ytSegInflight[i].promise;
     const p = (async () => {
       const clipStart = clip.start_time ?? clip.start;
       const clipEnd   = clip.end_time   ?? clip.end;
@@ -2659,7 +2667,7 @@ const V2 = (() => {
       const authHeaders = tok ? { 'Authorization': `Bearer ${tok}` } : {};
       const startRes = await fetch('/api/repurpose', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd }),
+        body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd, allow_api_fallback: allowApi }),
       }).then(r => r.json());
       if (!startRes.ok || !startRes.job_id) throw new Error(startRes.error || 'Lancement impossible');
       const job_id = startRes.job_id;
@@ -2674,6 +2682,8 @@ const V2 = (() => {
           const blobUrl = URL.createObjectURL(blob);
           _ytSegCache[i] = blobUrl;
           _markClipReady(i);
+          // Détection de visages sur le segment (desktop seulement — lourd) → auto-split si 2 visages
+          if (!_isIOS() && !/Android/i.test(navigator.userAgent)) { _analyzeClipFaces(i).catch(() => {}); }
           return blobUrl;
         }
         if (st.status === 'error') throw new Error(st.error || 'Téléchargement échoué');
@@ -2681,8 +2691,8 @@ const V2 = (() => {
       }
       throw new Error('Délai dépassé');
     })();
-    _ytSegInflight[i] = p;
-    p.catch(() => {}).finally(() => { delete _ytSegInflight[i]; });
+    _ytSegInflight[i] = { promise: p, allowApi };
+    p.catch(() => {}).finally(() => { if (_ytSegInflight[i] && _ytSegInflight[i].promise === p) delete _ytSegInflight[i]; });
     return p;
   }
 
@@ -2696,7 +2706,10 @@ const V2 = (() => {
       while (next < _clips.length) {
         const i = next++;
         if (_ytSegCache[i]) continue;
-        try { await _getYtSegment(_clips[i], i); } catch (e) { /* silencieux — réessayé à l'ouverture */ }
+        // allowApi=false : le préchargement en arrière-plan n'engage JAMAIS l'API payante
+        // (sinon crédits brûlés en silence si le gratuit est bot-bloqué). L'API n'est utilisée
+        // que quand l'utilisateur ouvre/exporte réellement un clip.
+        try { await _getYtSegment(_clips[i], i, null, false); } catch (e) { /* silencieux — réessayé à l'ouverture */ }
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, _clips.length) }, worker));
@@ -3257,7 +3270,11 @@ const V2 = (() => {
       if (!video || !clip) return;
       const clipStart = clip.start_time ?? clip.start;
       const clipEnd = clip.end_time ?? clip.end;
-      video.currentTime = clipStart + pct * (clipEnd - clipStart);
+      const clipDur = Math.max(clipEnd - clipStart, 0.1);
+      // Segment YouTube (_rawOffset défini → vidéo découpée qui commence à 0) : seek dans [0, durée].
+      // Fichier local (vidéo complète) : seek dans [clipStart, clipEnd].
+      const rawOffset = clip._rawOffset ?? null;
+      video.currentTime = rawOffset != null ? pct * clipDur : clipStart + pct * clipDur;
     }
 
     wrap.addEventListener('pointerdown', (e) => {
@@ -3305,6 +3322,16 @@ const V2 = (() => {
     if (grid) grid.classList.toggle('expanded');
   }
 
+  // Toggle manuel "2 personnes" → force le split haut/bas (fiable même si la détection auto de
+  // visages échoue, ex. têtes baissées). Marque le choix pour que l'auto ne l'écrase pas.
+  function toggleSplit(on) {
+    if (_modalIdx === null) return;
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+    _clipSettings[_modalIdx].reframeMode = on ? 'split' : 'center';
+    _clipSettings[_modalIdx]._reframeUserSet = true;
+    _updateCropPreview();
+  }
+
   function selectStyleCat(cat, btn) {
     document.querySelectorAll('.style-cat').forEach(b => b.classList.toggle('active', b === btn));
     const grid = document.getElementById('modal-style-btns');
@@ -3350,14 +3377,17 @@ const V2 = (() => {
   async function _analyzeClipFaces(clipIdx) {
     if (_faceCache.hasOwnProperty(clipIdx) && _faceCache[clipIdx] !== 'loading') return;
     _faceCache[clipIdx] = 'loading';
-    if (!_file) { _faceCache[clipIdx] = null; return; }
-    const model = await _loadBlazeface();
-    if (!model) { _faceCache[clipIdx] = null; return; }
     const clip = _clips[clipIdx];
     const clipStart = clip?.start_time ?? clip?.start ?? 0;
     const clipEnd = clip?.end_time ?? clip?.end ?? 60;
     const dur = clipEnd - clipStart;
-    const url = URL.createObjectURL(_file);
+    // Source : fichier local (temps absolus) OU segment YouTube en cache (vidéo 0-based)
+    let url, isYtSeg = false;
+    if (_file) { url = URL.createObjectURL(_file); }
+    else if (_ytSegCache[clipIdx]) { url = _ytSegCache[clipIdx]; isYtSeg = true; }
+    else { _faceCache[clipIdx] = null; return; }
+    const model = await _loadBlazeface();
+    if (!model) { _faceCache[clipIdx] = null; return; }
     const hv = document.createElement('video');
     Object.assign(hv.style, { position:'fixed', opacity:'0.01', width:'640px', height:'360px', left:'-9999px', top:'0', pointerEvents:'none' });
     hv.muted = true; hv.src = url;
@@ -3367,7 +3397,8 @@ const V2 = (() => {
       const median = arr => { if (!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(s.length/2)]; };
       const cxArr = [], leftArr = [], rightArr = [];
       for (let i = 0; i < 5; i++) {
-        const t = clipStart + dur * (i + 0.5) / 5;
+        // Segment YouTube = vidéo découpée 0-based ; fichier local = temps absolu du clip
+        const t = isYtSeg ? dur * (i + 0.5) / 5 : clipStart + dur * (i + 0.5) / 5;
         hv.currentTime = t;
         await new Promise(r => { hv.addEventListener('seeked', r, { once: true }); setTimeout(r, 2000); });
         try {
@@ -3392,7 +3423,14 @@ const V2 = (() => {
     } catch(e) {
       _faceCache[clipIdx] = null;
     } finally {
-      hv.src = ''; hv.remove(); URL.revokeObjectURL(url);
+      // Ne révoquer que l'URL qu'ON a créée (fichier local) — PAS le blob YouTube en cache réutilisé.
+      hv.src = ''; hv.remove(); if (!isYtSeg) URL.revokeObjectURL(url);
+    }
+    // 2 visages détectés simultanément → activer AUTOMATIQUEMENT le split top/bottom (sauf si
+    // l'utilisateur a déjà choisi un mode manuellement pour ce clip).
+    if (_faceCache[clipIdx] && _faceCache[clipIdx].splitLeftCx != null) {
+      if (!_clipSettings[clipIdx]) _clipSettings[clipIdx] = getClipOpts(clipIdx);
+      if (!_clipSettings[clipIdx]._reframeUserSet) _clipSettings[clipIdx].reframeMode = 'split';
     }
     if (_modalIdx === clipIdx) {
       _updateCropPreview();
@@ -3476,55 +3514,32 @@ const V2 = (() => {
         ctx.drawImage(video, getCropX(vw, cropW, faceCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
 
       } else if (mode === 'split') {
-        // Auto-speaker : détection mouvement → crop sur le locuteur actif
-        const SWITCH_DELAY = 1500; // ms minimum avant de changer de locuteur
-        const MW = 160, MH = 90;
-
-        // Canvas offscreen pour motion detection
-        if (!_motionCanvas) {
-          _motionCanvas = document.createElement('canvas');
-          _motionCanvas.width = MW; _motionCanvas.height = MH;
-          _motionCtx = _motionCanvas.getContext('2d', { willReadFrequently: true });
-        }
-
-        // Positions des 2 locuteurs (cache → précis, sinon fallback 35%/65%)
-        const spLeftCx  = cache?.splitLeftCx  ?? (vw * 0.35);
-        const spRightCx = cache?.splitRightCx ?? (vw * 0.65);
-
-        // Analyser le mouvement toutes les 100ms (seulement si la vidéo joue)
-        if (!video.paused && now - _motionTs > 100) {
-          _motionTs = now;
-          try {
-            _motionCtx.drawImage(video, 0, 0, MW, MH);
-            const cur = _motionCtx.getImageData(0, 0, MW, MH).data;
-            if (_motionPrevData && cur.length === _motionPrevData.length) {
-              let mL = 0, mR = 0;
-              for (let p = 0; p < cur.length; p += 4) {
-                const x = Math.floor((p / 4) % MW);
-                const d = Math.abs(cur[p]   - _motionPrevData[p])
-                        + Math.abs(cur[p+1] - _motionPrevData[p+1])
-                        + Math.abs(cur[p+2] - _motionPrevData[p+2]);
-                if (x < MW / 2) mL += d; else mR += d;
-              }
-              const newSp = mL >= mR ? 'left' : 'right';
-              if (newSp !== _activeSpeaker && now - _speakerSwitchTs > SWITCH_DELAY) {
-                _activeSpeaker = newSp;
-                _speakerSwitchTs = now;
-              }
-            }
-            _motionPrevData = new Uint8ClampedArray(cur);
-          } catch(e) {}
-        }
-
-        // Centrage : BlazeFace live si disponible (1 visage) → sinon position du locuteur actif
-        let activeCx;
-        if (nLive > 0) {
-          const best = liveFaces.reduce((a,b) => (b.bottomRight[0]-b.topLeft[0]) > (a.bottomRight[0]-a.topLeft[0]) ? b : a);
-          activeCx = blazeCx(best);
+        // Split top/bottom : les 2 visages visibles, gauche en haut / droite en bas, chacun
+        // centré dans sa moitié (identique au rendu export Railway).
+        let leftCx, rightCx, leftCy = vh / 2, rightCy = vh / 2, faceW = vh * 0.30;
+        if (nLive >= 2) {
+          const sorted = [...liveFaces].sort((a, b) => a.topLeft[0] - b.topLeft[0]);
+          const fL = sorted[0], fR = sorted[sorted.length - 1];
+          leftCx = blazeCx(fL); rightCx = blazeCx(fR);
+          leftCy  = (fL.topLeft[1] + fL.bottomRight[1]) / 2;
+          rightCy = (fR.topLeft[1] + fR.bottomRight[1]) / 2;
+          faceW = Math.max(fL.bottomRight[0] - fL.topLeft[0], fR.bottomRight[0] - fR.topLeft[0]);
         } else {
-          activeCx = _activeSpeaker === 'right' ? spRightCx : spLeftCx;
+          leftCx  = cache?.splitLeftCx  ?? (vw * 0.30);
+          rightCx = cache?.splitRightCx ?? (vw * 0.70);
         }
-        ctx.drawImage(video, getCropX(vw, cropW, activeCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
+        // Chaque moitié = aspect 9:8 (720x640). Crop centré sur chaque visage.
+        const ratioH = 720 / 640;
+        let cropWh = Math.min(vw, Math.max(faceW * 2.6, vh * ratioH));
+        let cropHh = cropWh / ratioH;
+        if (cropHh > vh) { cropHh = vh; cropWh = cropHh * ratioH; }
+        const halfH = dh / 2;
+        const clampX = c => Math.max(0, Math.min(vw - cropWh, c - cropWh / 2));
+        const clampY = c => Math.max(0, Math.min(vh - cropHh, c - cropHh / 2));
+        // Haut = visage gauche
+        ctx.drawImage(video, clampX(leftCx),  clampY(leftCy),  cropWh, cropHh, dx, dy,          dw, halfH);
+        // Bas = visage droit
+        ctx.drawImage(video, clampX(rightCx), clampY(rightCy), cropWh, cropHh, dx, dy + halfH, dw, halfH);
       }
 
       _cropRaf = requestAnimationFrame(drawFrame);
@@ -3566,6 +3581,7 @@ const V2 = (() => {
       // c'était pourquoi un export pouvait finir cadré différemment de l'aperçu (qui, lui,
       // retombe sur 'center' par défaut) dès que l'utilisateur touchait n'importe quel réglage.
       reframeMode: prev.reframeMode || 'center',
+      _reframeUserSet: prev._reframeUserSet || false,
       segEdits: prev.segEdits || {},
     };
     _updateCropPreview();
@@ -4326,7 +4342,13 @@ const V2 = (() => {
         }
       }
     } else {
-      segmentBlob = await fetchClipFromRailway(clip, onPct, onMsg);
+      // YouTube : réutilise le segment BRUT déjà téléchargé (16:9 complet, PAS reframé) pour que
+      // process-clip fasse le reframe/split lui-même. Évite le re-téléchargement ET le double
+      // reframe (l'ancien fetchClipFromRailway pré-croppait en 9:16 center → perdait le 2e visage).
+      const _ci = _clips.indexOf(clip);
+      if (onMsg) onMsg('Préparation du clip…');
+      const blobUrl = _ytSegCache[_ci] || await _getYtSegment(clip, _ci, (pr) => { if (onMsg) onMsg(pr); });
+      segmentBlob = await fetch(blobUrl).then(r => r.blob());
     }
     if (onPct) onPct(20);
     if (onMsg) onMsg('Reframe 9:16 + sous-titres…');
@@ -5108,7 +5130,7 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
+  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {

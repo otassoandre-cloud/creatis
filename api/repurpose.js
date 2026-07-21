@@ -1015,14 +1015,16 @@ module.exports = async (req, res) => {
 
   if (mode === 'raw_segment') {
     // Lance le téléchargement du segment brut sur Railway
-    const { video_id, start, end } = body;
+    // allow_api_fallback: false => JAMAIS l'API payante (utilisé par le préchargement en arrière-plan
+    // pour ne pas brûler de crédits en silence si le chemin gratuit est momentanément bot-bloqué).
+    const { video_id, start, end, allow_api_fallback } = body;
     if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
     try {
       const r = await fetch(`${REPURPOSE_SERVICE_URL}/raw-segment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        body: JSON.stringify({ video_id, start, end }),
+        body: JSON.stringify({ video_id, start, end, allow_api_fallback: allow_api_fallback !== false }),
         signal: AbortSignal.timeout(10000),
       });
       const data = await r.json();

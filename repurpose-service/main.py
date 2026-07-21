@@ -664,9 +664,12 @@ async def _download_audio_rapidapi(video_id: str, out_dir: Path) -> Optional[str
     return None
 
 
-def _get_yt_cookies_playwright_sync(video_id: str, out_dir: Path) -> Optional[str]:
-    """Wrapper sync — lance Playwright dans un nouveau event loop (safe depuis run_in_executor)."""
+def _get_yt_cookies_playwright_sync(video_id: str, out_dir: Path, force: bool = False) -> Optional[str]:
+    """Wrapper sync — lance Playwright dans un nouveau event loop (safe depuis run_in_executor).
+    force=True vide le cache 1h pour forcer des cookies vraiment frais (ex: après un bot-check)."""
     try:
+        if force:
+            _playwright_cookies_cache.pop("global", None)
         return asyncio.run(_get_yt_cookies_playwright(video_id, out_dir))
     except Exception as e:
         logger.warning(f"[playwright sync] {e}")
@@ -856,13 +859,12 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                 logger.warning(f"[innertube-audio] ffmpeg err: {e}")
                 out_path.unlink(missing_ok=True)
 
-    # Playwright : obtenir des cookies YouTube frais depuis l'IP Railway
-    if m:
-        pw_cookies = _get_yt_cookies_playwright_sync(m.group(1), out_dir)
-        if pw_cookies and not cookies_file:
-            # Playwright uniquement si pas de YOUTUBE_COOKIES (authentifiés > anonymes)
-            cookies_file = pw_cookies
-            logger.info("[download] cookies Playwright obtenus — utilisés (pas de YOUTUBE_COOKIES)")
+    # Si pas de YOUTUBE_COOKIES statique du tout → cookies frais Playwright d'emblée
+    if m and not cookies_file:
+        pw = _get_yt_cookies_playwright_sync(m.group(1), out_dir)
+        if pw:
+            cookies_file = pw
+            logger.info("[download] cookies Playwright (pas de YOUTUBE_COOKIES)")
 
     # Stratégies séparées — ordre de priorité
     attempts = [
@@ -880,46 +882,60 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     ]
 
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best"]
-    last_err = None
 
-    for attempt in attempts:
-        for fmt in audio_formats:
-            try:
-                opts = {
-                    "quiet": True, "no_warnings": True,
-                    "outtmpl": str(out_dir / "audio.%(ext)s"),
-                    "check_formats": False,
-                    "no_playlist": True,
-                    "extractor_args": attempt["extractor_args"],
-                    "socket_timeout": 120,
-                    "retries": 3,
-                }
-                if fmt:
-                    opts["format"] = fmt
-                if cookies_file:
-                    opts["cookiefile"] = cookies_file
-                if attempt["proxy"]:
-                    opts["proxy"] = attempt["proxy"]
-                logger.info(f"yt-dlp audio: {attempt['label']} fmt={fmt}")
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(youtube_url, download=True)
-                    title = (info or {}).get("title", "")
-                for p in out_dir.glob("audio.*"):
-                    if p.stat().st_size > 1000:
-                        logger.info(f"Audio OK [{attempt['label']}]: {p.name} ({p.stat().st_size // 1024} KB)")
-                        return str(p), title
-            except Exception as e:
-                err_str = str(e)
-                logger.warning(f"yt-dlp [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
-                last_err = e
-                for p in out_dir.glob("audio.*"):
-                    p.unlink(missing_ok=True)
-                # Si le proxy résidentiel est cassé, inutile de continuer les formats
-                if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
-                    break
+    def _run_attempts(ck):
+        """Tente toutes les stratégies yt-dlp avec le fichier cookies `ck`. Retourne
+        (path, title, None) au succès, sinon (None, None, dernière_erreur)."""
+        last = None
+        for attempt in attempts:
+            for fmt in audio_formats:
+                try:
+                    opts = {
+                        "quiet": True, "no_warnings": True,
+                        "outtmpl": str(out_dir / "audio.%(ext)s"),
+                        "check_formats": False, "no_playlist": True,
+                        "extractor_args": attempt["extractor_args"],
+                        "socket_timeout": 120, "retries": 3,
+                    }
+                    if fmt: opts["format"] = fmt
+                    if ck: opts["cookiefile"] = ck
+                    if attempt["proxy"]: opts["proxy"] = attempt["proxy"]
+                    logger.info(f"yt-dlp audio: {attempt['label']} fmt={fmt}")
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(youtube_url, download=True)
+                        title = (info or {}).get("title", "")
+                    for p in out_dir.glob("audio.*"):
+                        if p.stat().st_size > 1000:
+                            logger.info(f"Audio OK [{attempt['label']}]: {p.name} ({p.stat().st_size // 1024} KB)")
+                            return str(p), title, None
+                except Exception as e:
+                    err_str = str(e)
+                    logger.warning(f"yt-dlp [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
+                    last = e
+                    for p in out_dir.glob("audio.*"):
+                        p.unlink(missing_ok=True)
+                    if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
+                        break
+        return None, None, last
 
-    # DERNIER RECOURS : API tierce (mp3, léger ~3 Mo donc quasi 0 crédit) — seulement si tous
-    # les chemins gratuits ci-dessus ont été bot-bloqués. Rare.
+    # 1) Essai avec le cookie statique (YOUTUBE_COOKIES)
+    path, title, last_err = _run_attempts(cookies_file)
+    if path:
+        return path, title
+
+    # 2) RAFRAÎCHISSEMENT COOKIE AUTOMATIQUE : sur bot-check, on récupère des cookies FRAIS via
+    # Playwright (navigateur headless depuis l'IP Railway) puis on re-tente. Résout les cas où le
+    # cookie statique s'est "usé" / fait flagger, sans manip manuelle.
+    if video_id and last_err and "not a bot" in str(last_err).lower():
+        logger.info("[audio] bot-check → rafraîchissement cookies auto (Playwright)")
+        fresh = _get_yt_cookies_playwright_sync(video_id, out_dir, force=True)
+        if fresh and fresh != cookies_file:
+            path, title, last_err = _run_attempts(fresh)
+            if path:
+                logger.info("[audio] ✓ débloqué avec cookies frais (Playwright)")
+                return path, title
+
+    # 3) DERNIER RECOURS : API tierce mp3 (rare, ~0 crédit) — seulement si tout le gratuit a échoué.
     if YT_DOWNLOAD_API_KEY:
         api_out = out_dir / "audio_api.mp3"
         title = _ytapi_fetch(youtube_url, "mp3", api_out)
@@ -1551,6 +1567,33 @@ def crop_clip(source: str, start: float, end: float, out: str) -> None:
 
 # ── 4b. SPLIT SCREEN DYNAMIQUE ADAPTATIF (podcast/interview) ─────────────────
 
+def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: int, overlay_vf: str = "") -> None:
+    """Split 9:16 top/bottom POSITIONNEL (sans détection de visages) : moitié gauche de l'image
+    en haut, moitié droite en bas — pour 2 personnes côte à côte (interview/table) dont les
+    visages ne sont pas détectables (têtes baissées, de profil)."""
+    ratio = 720 / 640  # aspect d'une moitié
+    crop_w = min(src_w, int(src_h * ratio))
+    crop_h = int(crop_w / ratio)
+    if crop_h > src_h:
+        crop_h = src_h; crop_w = int(crop_h * ratio)
+    crop_w = max(2, crop_w - crop_w % 2)
+    crop_h = max(2, crop_h - crop_h % 2)
+    # Personne de gauche centrée ~30% de la largeur ; personne de droite ~70%
+    lx = max(0, min(src_w - crop_w, int(src_w * 0.30) - crop_w // 2))
+    rx = max(0, min(src_w - crop_w, int(src_w * 0.70) - crop_w // 2))
+    cy = max(0, (src_h - crop_h) // 2)
+    vf_top = f"crop={crop_w}:{crop_h}:{lx}:{cy},scale=720:640"
+    vf_bot = f"crop={crop_w}:{crop_h}:{rx}:{cy},scale=720:640"
+    stack = f"[0:v]split=2[a][b];[a]{vf_top}[t];[b]{vf_bot}[bt];[t][bt]vstack=inputs=2[st]"
+    fc = f"{stack};[st]{overlay_vf}[out]" if overlay_vf else f"{stack};[st]null[out]"
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", in_path,
+           "-filter_complex", fc, "-map", "[out]", "-map", "0:a:0?",
+           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-b:a", "128k", out_path]
+    subprocess.run(cmd, check=True, timeout=180)
+    logger.info("[split] ✓ split positionnel gauche/droite")
+
+
 def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
     """
     Split screen 9:16 adaptatif :
@@ -1576,28 +1619,51 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
         return
 
-    cascades = [
+    face_cascades = [
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
     ]
+    upper_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_upperbody.xml")
 
     def detect_faces_scaled(frame):
-        """Retourne liste de (cx, cy, w, h) en pixels originaux."""
+        """Retourne liste de (cx, cy, w, h) = position estimée de la TÊTE de chaque personne,
+        en pixels originaux. Combine détection de visage (position précise) + haut du corps
+        (rattrape les personnes dont le visage n'est pas frontal : têtes baissées, de profil)."""
         h, w = frame.shape[:2]
         scale = min(1.0, 640.0 / w)
         small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale < 1 else frame
         gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         cv2.equalizeHist(gray, gray)
-        best = []
-        for cas in cascades:
-            detected = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
-            if len(detected) > len(best):
-                best = detected
-                if len(best) >= 2:
-                    break
         inv = 1.0 / scale
-        return [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
-                 int(f[2] * inv), int(f[3] * inv)) for f in best]
+        people = []  # (cx, cy, w, h) pixels originaux, cy = tête
+
+        # 1) Visages (position de tête la plus précise)
+        faces = []
+        for cas in face_cascades:
+            det = cas.detectMultiScale(gray, 1.1, 3, minSize=(20, 20))
+            if len(det) > len(faces):
+                faces = det
+                if len(faces) >= 2:
+                    break
+        for f in faces:
+            people.append((int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
+                           int(f[2] * inv), int(f[3] * inv)))
+
+        # 2) Haut du corps → rattrape les personnes sans visage frontal. Tête estimée en haut de la box.
+        try:
+            bodies = upper_cascade.detectMultiScale(gray, 1.1, 3, minSize=(40, 40))
+        except Exception:
+            bodies = []
+        for b in bodies:
+            bcx = int((b[0] + b[2] // 2) * inv)
+            head_cy = int((b[1] + b[3] * 0.18) * inv)
+            bw = int(b[2] * inv)
+            # Éviter le double comptage si un visage déjà détecté est proche horizontalement
+            if any(abs(p[0] - bcx) < max(bw, p[2]) * 0.6 for p in people):
+                continue
+            people.append((bcx, head_cy, max(40, bw // 2), max(40, int(b[3] * 0.35 * inv))))
+
+        return people
 
     # ── 1. Analyser chaque ~0.5s ──
     sample_step = max(1, int(fps * 0.5))
@@ -1621,8 +1687,11 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
     two_face_samples = [(fi, faces) for fi, faces in frame_data if len(faces) >= 2]
 
     if len(two_face_samples) < 2:
-        logger.info("[split] < 2 frames avec 2 visages → fallback face tracking")
-        _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf, pill_png_path=pill_png_path, pill_y_px=pill_y_px)
+        # Visages non détectés de façon fiable (souvent : têtes baissées / de profil, ex. interview
+        # à table). Le split a quand même été DEMANDÉ (auto 2 visages côté client, ou toggle manuel)
+        # → on fait un split POSITIONNEL gauche/droite qui ne dépend pas de la détection de visages.
+        logger.info("[split] < 2 frames avec 2 visages → split positionnel gauche/droite")
+        _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf)
         return
 
     def avg_faces(samples_list):
@@ -1716,6 +1785,20 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         y = max(0, min(src_h - crop_h, cy - crop_h // 2))
         return f"crop={crop_w}:{crop_h}:{x}:{y},scale={out_w}:{out_h}"
 
+    def make_half_vf(cx, cy, fw, fh, out_w=720, out_h=640):
+        """Crop centré sur le visage à l'aspect d'une moitié (9:8) puis scale à 720x640 —
+        pour le split top/bottom, chaque visage centré dans sa moitié."""
+        ratio = out_w / out_h  # 720/640 = 1.125
+        crop_w = min(src_w, max(int(fw * 2.6), int(src_h * ratio)))
+        crop_h = int(crop_w / ratio)
+        if crop_h > src_h:
+            crop_h = src_h; crop_w = int(crop_h * ratio)
+        crop_w = max(2, crop_w - crop_w % 2)
+        crop_h = max(2, crop_h - crop_h % 2)
+        x = max(0, min(src_w - crop_w, cx - crop_w // 2))
+        y = max(0, min(src_h - crop_h, cy - crop_h // 2))
+        return f"crop={crop_w}:{crop_h}:{x}:{y},scale={out_w}:{out_h}"
+
     def center_vf(out_w=720, out_h=1280):
         crop_w = int(src_h * out_w / out_h)
         crop_w = max(2, crop_w - crop_w % 2)
@@ -1744,11 +1827,14 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
                     "-c:a", "aac", "-b:a", "128k", seg_out]
 
             if n_faces >= 2:
-                # Auto-speaker : crop 9:16 sur le locuteur actif (pas de split)
-                vf_active = vf_A_full if speaker == 0 else vf_B_full
-                vf_final = f"{vf_active},{overlay_vf}" if overlay_vf else vf_active
-                fc = f"[0:v]{vf_final}[out]"
-                mode_str = f"speaker-{'A' if speaker == 0 else 'B'}"
+                # Split top/bottom : les 2 visages visibles simultanément, chacun centré dans
+                # sa moitié (visage gauche en haut, visage droit en bas). Pas d'auto-speaker.
+                vf_top = make_half_vf(face_A[0], face_A[1], face_A[2], face_A[3])
+                vf_bot = make_half_vf(face_B[0], face_B[1], face_B[2], face_B[3])
+                stack = (f"[0:v]split=2[va][vb];[va]{vf_top}[top];[vb]{vf_bot}[bot];"
+                         f"[top][bot]vstack=inputs=2[st]")
+                fc = f"{stack};[st]{overlay_vf}[out]" if overlay_vf else f"{stack};[st]null[out]"
+                mode_str = "split-2"
             elif n_faces == 1:
                 # Trouver la face la plus proche de ce segment
                 seg_mid = (t0 + t1) / 2
@@ -2904,8 +2990,9 @@ class RawSegmentRequest(BaseModel):
     video_id: str
     start: float
     end: float
+    allow_api_fallback: bool = True
 
-async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str, out_dir: Path):
+async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str, out_dir: Path, allow_api_fallback: bool = True):
     RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Connexion YouTube…"}
     try:
         duration = end - start
@@ -3049,8 +3136,11 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
 
             # DERNIER RECOURS : API tierce (rare — seulement si yt-dlp bot-bloqué). Télécharge la
             # vidéo complète (cache par video_id), puis découpe. Consomme du crédit API, d'où le
-            # fait de ne l'utiliser qu'ici, jamais en premier.
+            # fait de ne l'utiliser qu'ici, jamais en premier. Et JAMAIS si allow_api_fallback=False
+            # (préchargement en arrière-plan : on n'engage pas de crédit sans action utilisateur).
             if not segment_ready:
+                if not allow_api_fallback:
+                    raise RuntimeError("yt-dlp échoué (secours API désactivé pour le préchargement)")
                 if not YT_DOWNLOAD_API_KEY:
                     raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
                 RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
@@ -3084,7 +3174,7 @@ async def raw_segment_endpoint(req: RawSegmentRequest, tasks: BackgroundTasks, _
     out_dir = WORK_DIR / f"rs_{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
     RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Démarrage…"}
-    tasks.add_task(_run_raw_segment, req.video_id, req.start, req.end, job_id, out_dir)
+    tasks.add_task(_run_raw_segment, req.video_id, req.start, req.end, job_id, out_dir, req.allow_api_fallback)
     return {"ok": True, "job_id": job_id}
 
 
