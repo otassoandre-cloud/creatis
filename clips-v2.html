@@ -1009,8 +1009,8 @@
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')"><div class="mp"><span class="mt">—</span></div><span>Aucun</span></button>
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Wow</span></div><span>Bold</span></button>
-            <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
-            <button class="ms-pill" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt" style="font-weight:900">W<span style="color:#3BFF2F">ow</span></span></div><span>Punch</span></button>
+            <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
+            <button class="ms-pill active" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt" style="font-weight:900">W<span style="color:#3BFF2F">ow</span></span></div><span>Punch</span></button>
             <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
             <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Wow</span></div><span>Typewriter</span></button>
             <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Word Pop</span></button>
@@ -1190,7 +1190,7 @@ const V2 = (() => {
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
   let _selectedIds = new Set();
-  let _currentStyle = 'karaoke';
+  let _currentStyle = 'submagic';   // Punch : style principal applique des la fin d'une generation
   let _watermarkFile = null;  // Logo File object
   let _ffmpeg = null;
   let _ffmpegLoading = null;
@@ -3421,7 +3421,7 @@ const V2 = (() => {
     // Load per-clip settings into controls
     const opts = getClipOpts(i);
     const fsEl = document.getElementById('modal-fontsize'); if (fsEl) fsEl.value = String(opts.fontSize);
-    document.querySelectorAll('.sz-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sz) === (opts.fontSize || 55)));
+    document.querySelectorAll('.sz-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.sz) === (_taille(opts))));
     const ctEl = document.getElementById('modal-color-text'); if (ctEl) ctEl.value = opts.colorText;
     const cbEl = document.getElementById('modal-color-bg'); if (cbEl) cbEl.value = opts.colorBg;
     const splitOn = document.getElementById('modal-split-on'); if (splitOn) splitOn.checked = (opts.reframeMode === 'split');
@@ -3940,7 +3940,7 @@ const V2 = (() => {
                le premier mot a déjà été prononcé, puis la ligne active à l'intérieur — les deux
                décisions reposent sur les timings réels, jamais sur une durée moyenne. */
             const pages = _smPages(mots.map(w => String(w.word || '').toUpperCase()),
-                                   opts.fontSize || 55);
+                                   _taille(opts));
             for (let p = 0; p < pages.length; p++) {
               if (t >= (mots[pages[p].debut]?.start ?? Infinity)) page = p;
             }
@@ -3979,7 +3979,7 @@ const V2 = (() => {
         if (sig !== _lastHookSig) {
           _lastHookSig = sig;
           const sc = _previewScale();
-          const hookFs = Math.round((opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)) * sc);
+          const hookFs = Math.round((opts.hookFontSize || Math.round((_taille(opts)) * 0.9)) * sc);
           const hookPad = Math.round(18 * sc);
           hookEl.style.fontSize = hookFs + 'px';
           hookEl.style.fontWeight = '900';
@@ -4123,7 +4123,21 @@ const V2 = (() => {
 
   function _renderSubText(el, text, opts) {
     const sc = _previewScale();
-    const fs = Math.round((opts.fontSize || 70) * sc);
+    // 55 partout : c'est la valeur du bouton S et celle qu'initialise _clipSettings.
+    // Un repli a 70 ici pendant que l'export en recevait 55 produisait 1,75x d'ecart
+    // (96/55), mesure sur un export reel le 06/08.
+    /* Correction navigateur -> libass. À taille nominale IDENTIQUE, le navigateur dessine des
+       majuscules à 0.70 du corps, libass à 0.63 : l'aperçu paraît ~11 % plus grand que le
+       fichier exporté. Mesuré sur cinq tailles (50 à 200) pour Poppins comme pour Montserrat,
+       c'est une caractéristique de libass, pas de la police.
+       L'ASS est la référence — c'est l'aperçu qui s'y aligne, jamais l'inverse. */
+    /* L'APERCU EST LA REFERENCE : c'est le rendu voulu, c'est l'export qui doit s'y
+       aligner. La correction 0.899 qui retrecissait l'apercu vers l'export a donc ete
+       retiree, et son inverse (x1.112) applique cote serveur. */
+    /* Le 0.899 fait partie du calibrage : la taille 116 a ete validee a l'ecran AVEC lui.
+       Le retirer a fait grossir l'apercu de 11 % d'un coup. Il reste donc, et l'export
+       s'aligne sur la meme valeur nominale (voir main.py, style submagic). */
+    const fs = Math.round(_taille(opts) * sc);
     const ct = opts.colorText || '#ffffff';
     const cb = opts.colorBg || '#000000';
     const style = opts.style || 'bold';
@@ -4166,10 +4180,13 @@ const V2 = (() => {
            Un budget de caractères ne se déclenchait quasiment jamais (4 mots ≈ 25 caractères
            pour un budget de 43) : tout le bloc restait d'une seule couleur, et le blanc
            n'apparaissait jamais. */
-        const pages = _smPages(mots, opts.fontSize || 55);
+        const pages = _smPages(mots, _taille(opts));
         const page = pages[Math.min(opts._smPage || 0, pages.length - 1)] || { l1: mots, l2: [] };
         const l1 = page.l1, l2 = page.l2;
-        const cycle = ['#3BFF2F', '#DD021A', '#FBFF1E'];
+        /* Couleur unique #FFE600 (jaune vif sature) au lieu du cycle vert/rouge/jaune :
+           c'est la specification fournie pour la version cible. Le cycle reste possible —
+           il suffit de remettre plusieurs entrees dans ce tableau. */
+        const cycle = ['#3BFF2F', '#DD021A', '#FFE600'];   // vert -> rouge -> jaune (spec)
         const hl = cycle[(opts._smIndex || 0) % cycle.length];
         const actif = opts._smLigne === 2 ? 2 : 1;
 
@@ -4183,7 +4200,10 @@ const V2 = (() => {
            une autre police, donc un autre rapport. */
         el.style.fontSize = Math.round(fs * 0.899) + 'px';
         el.style.lineHeight = '1.1';
-        el.style.textShadow = _ol('#000', Math.max(3, (opts.fontSize || 55) * 0.10));
+        // Contour epaissi (0.10 -> 0.18) : mesure a ~1 px contre ~2 px sur la reference.
+        // Meme facteur cote serveur, sinon apercu et export divergent a nouveau.
+        // Contour seul, sans ombre portee : l'ombre alourdissait le texte.
+        el.style.textShadow = _ol('#000', Math.max(3, (_taille(opts)) * 0.10));
         el.style.background = 'transparent';
         el.style.padding = '0';
         [[l1, 1], [l2, 2]].forEach(([arr, idx]) => {
@@ -4349,6 +4369,19 @@ const V2 = (() => {
     el.style.cursor = 'grab';
     el.style.pointerEvents = 'all';
     el.title = 'Glisser pour déplacer';
+  }
+
+  /* Conversion des anciennes tailles. Les clips creees avant le 06/08 portent 55/70/82/96
+     dans leurs reglages ; changer les valeurs par defaut ne les touchait pas, et l'export
+     continuait donc a recevoir l'ancienne taille — d'ou un facteur 1,75 inchange.
+     Toute lecture de la taille passe desormais par ici. */
+  // Table de conversion NEUTRALISEE : elle remontait 55 -> 116 et regonflait les clips
+  // existants. Les tailles d'origine sont restaurees, plus rien a convertir.
+  const _TAILLES_MIGR = {};
+  function _taille(opts) {
+    const v = opts && opts.fontSize;
+    if (!v) return 55;
+    return _TAILLES_MIGR[v] || v;
   }
 
   function _applySubPosition(el, xPct, yPct) {
@@ -6353,8 +6386,8 @@ const V2 = (() => {
     }
     form.append('segments', JSON.stringify(patchedSegments));
     form.append('style', opts.style || 'bold');
-    form.append('font_size', String(opts.fontSize || 55));
-    form.append('hook_font_size', String(opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9)));
+    form.append('font_size', String(_taille(opts)));
+    form.append('hook_font_size', String(opts.hookFontSize || Math.round((_taille(opts)) * 0.9)));
     form.append('color_text', opts.colorText || '#ffffff');
     form.append('color_bg',   opts.colorBg   || '#000000');
     form.append('sub_y',      String(opts.subY ?? 82));
@@ -6620,7 +6653,7 @@ const V2 = (() => {
     form.append('file', videoBlob, 'input.mp4');
     form.append('segments', JSON.stringify(relSegs));
     form.append('style', opts.style || 'bold');
-    form.append('font_size', String(opts.fontSize || 70));
+    form.append('font_size', String(_taille(opts)));   // aligne sur l'apercu
     form.append('color_text', opts.colorText || '#ffffff');
     form.append('color_bg', opts.colorBg || '#000000');
     form.append('sub_y', String(opts.subY ?? 82));
@@ -6814,7 +6847,7 @@ const V2 = (() => {
   }
 
   function _drawSubCanvas(ctx, text, opts, w, h, absT = 0, segStart = 0, segEnd = 2) {
-    const fontSize = opts.fontSize || 70;
+    const fontSize = _taille(opts);   // aligne sur l'apercu et l'autre chemin d'export
     const subYpct = opts.subY ?? 82;
     const colorText = opts.colorText || '#ffffff';
     const colorBg = opts.colorBg || '#000000';
@@ -6926,7 +6959,7 @@ const V2 = (() => {
   }
 
   function _drawHookCanvas(ctx, text, opts, w, h) {
-    const fontSize = opts.hookFontSize || Math.round((opts.fontSize || 55) * 0.9);
+    const fontSize = opts.hookFontSize || Math.round((_taille(opts)) * 0.9);
     const hookColor = opts.hookColor || '#ffffff';
     const hookBg = opts.hookBg || '#000000';
     const hookY = opts.hookY ?? 10;

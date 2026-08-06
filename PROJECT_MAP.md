@@ -139,6 +139,10 @@ d'usage, **sans rapport** avec l'historique. Voir Gotchas.
 
 ## Téléchargement YouTube — la partie fragile
 
+> **En cas de panne : lire `DIAGNOSTIC_YOUTUBE.md` en premier.** Trois causes distinctes
+> produisent le même symptôme et appellent des corrections opposées ; la signature dans les
+> logs est la seule chose qui les sépare. La panne totale du 06/08 s'est réglée sans dépense.
+
 Trois chemins, dans cet ordre :
 
 1. **Cache R2** — instantané, gratuit, aucune requête YouTube

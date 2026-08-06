@@ -61,15 +61,23 @@ async function handleLatestVideo(req, res) {
     if (!channelId && _cacheChaines.has(cle)) channelId = _cacheChaines.get(cle);
 
     if (!channelId) {
-      const handle = _extraireHandle(nom);
-      if (handle) {
-        // 1 unité au lieu de 100 quand l'utilisateur a donné un @handle ou une URL
+      // Un nom prononcé (« Yomi Denzel ») n'est pas un handle, mais le handle d'un créateur
+      // EST presque toujours son nom sans espaces (@yomidenzel). On tente ces variantes à
+      // 1 unité pièce avant de payer les 100 unités de search.list : sans ça une commande
+      // vocale coûtait 50× le prix d'un lien collé à la main, pour un résultat identique.
+      for (const handle of _candidatsHandle(nom)) {
         const params = new URLSearchParams({ part: 'snippet', forHandle: handle, key: apiKey });
         const r = await fetch(`${YT_API}/channels?${params}`);
         const data = await r.json(); quota += 1;
         _checkApiError(data);
         const item = data.items?.[0];
-        if (item) { channelId = item.id; channelTitle = item.snippet?.title || ''; }
+        if (!item) continue;
+        // Un handle deviné peut tomber sur un homonyme. On n'accepte que si le titre renvoyé
+        // correspond au nom demandé — sinon mieux vaut payer la vraie recherche que lancer
+        // l'analyse sur la vidéo du mauvais créateur.
+        if (!_titreCorrespond(item.snippet?.title, nom)) continue;
+        channelId = item.id; channelTitle = item.snippet?.title || '';
+        break;
       }
     }
 
@@ -171,6 +179,35 @@ function _extraireHandle(entree) {
   if (m) return '@' + m[1];
   if (s.startsWith('@') && !/\s/.test(s)) return s;
   return null;
+}
+
+/* Minuscules, accents retirés, ponctuation retirée — pour comparer un nom dicté
+   (« Yomi Denzel », « yomi denzel ») à un titre de chaîne (« Yomi Denzel »). */
+function _normNom(s) {
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/* Handles à essayer pour un nom dicté, du plus probable au moins probable.
+   Un @handle ou une URL explicite court-circuite les devinettes. */
+function _candidatsHandle(nom) {
+  const explicite = _extraireHandle(nom);
+  if (explicite) return [explicite];
+  const base = _normNom(nom);
+  // Les handles YouTube font 3 à 30 caractères — hors bornes, inutile de dépenser une unité.
+  if (base.length < 3 || base.length > 30) return [];
+  const mots = (nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const cands = ['@' + base];
+  if (mots.length > 1 && mots.join('.').length <= 30) cands.push('@' + mots.join('.'));
+  return cands;
+}
+
+/* Le titre renvoyé par YouTube correspond-il vraiment au nom demandé ? */
+function _titreCorrespond(titre, nom) {
+  const a = _normNom(titre), b = _normNom(nom);
+  if (!a || !b) return false;
+  return a === b || a.includes(b) || b.includes(a);
 }
 
 function _dureeIsoEnSecondes(duree) {

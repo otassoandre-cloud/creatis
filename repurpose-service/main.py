@@ -141,7 +141,15 @@ def _fetch_po_token_sync() -> tuple:
 
 def _yt_extractor_args() -> dict:
     """Construit les extractor_args yt-dlp. Utilise bgutil public URL (fiable depuis Railway)."""
-    args = {"youtube": {"player_client": ["android_creator", "android_testsuite", "mweb", "web", "android_vr", "android", "ios"]}}
+    # ALIGNEMENT CLIENT <-> JETON PO. bgutil ne produit un jeton valide que pour les clients
+    # `web` et `mweb` : il intercepte leur requête et lie le jeton au `visitor_data` de CETTE
+    # session. Dès que yt-dlp bascule sur un client Android ou iOS, le jeton ne correspond plus
+    # et l'authentification tombe — d'où des listes de formats vides et le message
+    # « Requested format is not available », alors même que le sélecteur finit par `/best`.
+    # Retirés au passage : `android_creator` et `android_testsuite`, qui n'existent plus dans
+    # yt-dlp, et `android_vr` / `android` / `ios`, dont les formats sont désormais dépouillés
+    # de leur URL sauf jeton GVS dédié que nous ne savons pas produire.
+    args = {"youtube": {"player_client": ["mweb", "web"]}}
 
     # Toujours configurer le plugin avec l'URL publique (connue joignable depuis Railway)
     # Le plugin bgutil-ytdlp-pot-provider intercepte le fetch du web client et génère un PoToken
@@ -913,12 +921,19 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
         # 2. Webshare IP + android/ios (pas de PoToken nécessaire, IP résidentielle)
         *(
             [{"proxy": RESIDENTIAL_PROXY_URL,
-              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
-              "label": "webshare+android"}]
+              # Meme alignement client/jeton que la strategie 1 : bgutil ne produit un jeton
+              # valide que pour web/mweb. Avec android/ios le jeton ne correspond plus au
+              # visitor_data, la liste de formats revient vide et yt-dlp annonce
+              # "Requested format is not available" — message trompeur, c'est l'auth qui tombe.
+              "extractor_args": _yt_extractor_args(),
+              "label": "webshare+web"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
         # 3. Railway IP clients alternatifs (android_creator, mweb — moins bloqués)
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android_creator", "android_testsuite", "mweb", "android_vr", "android", "ios"]}}, "label": "railway+alt-clients"},
+        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["mweb", "web"]}},
+         # android_creator et android_testsuite n'existent plus dans yt-dlp ; android_vr,
+         # android et ios ont leurs formats prives d'URL sauf jeton GVS dedie.
+         "label": "railway+web"},
     ]
 
     audio_formats = ["bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio", "bestaudio/best", "best"]
@@ -1019,7 +1034,7 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     # téléchargements de SEGMENT 60 s (_run_raw_segment / download_video_section, ~30 Mo).
     attempts = [
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+android"},
     ]
 
     formats = [
@@ -1072,11 +1087,11 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil+section"},
         *(
             [{"proxy": RESIDENTIAL_PROXY_URL,
-              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
+              "extractor_args": _yt_extractor_args(),
               "label": "webshare+android+section"}]
             if RESIDENTIAL_PROXY_URL else []
         ),
-        {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android+section"},
+        {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+android+section"},
     ]
 
     last_err = None
@@ -3904,7 +3919,7 @@ async def process_clip_endpoint(
     video_id: str = Form(""),
     segments: str = Form(""),
     style: str = Form("bold"),
-    font_size: int = Form(55),
+    font_size: int = Form(55),   # aligne sur le defaut client (bouton S), facteur x1.8 du 06/08
     color_text: str = Form("#ffffff"),
     color_bg: str = Form("#000000"),
     sub_y: float = Form(82.0),
@@ -4041,7 +4056,10 @@ async def process_clip_endpoint(
             # mesure d'origine (0.0072 de la hauteur) : celle-ci vaut pour Montserrat, dont
             # les fûts sont plus fins. Sur une graisse plus lourde, le noir se rejoint entre
             # les lettres et forme un aplat au lieu d'un liseré.
-            "submagic":  f"Style: Default,{FSM},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{max(3, int(font_size * 0.10))},0,8,44,44,{margin_v},1",
+            # libass dessine les majuscules a 0.63 du corps, le navigateur a 0.70. Pour que
+            # l'export atteigne la taille de l'apercu (la reference), on agrandit le corps
+            # de 0.70/0.63 = 1.112. Mesure sur cinq tailles, Poppins comme Montserrat.
+            "submagic":  f"Style: Default,{FSM},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{max(2, int(font_size * 0.06))},0,8,44,44,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
@@ -4110,7 +4128,8 @@ async def process_clip_endpoint(
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
             _karo_idx = 0
             # Cycle du style "submagic" : vert -> rouge -> jaune, une couleur par segment.
-            _SM_CYCLE = ["&H002FFF3B&", "&H001A02DD&", "&H001EFFFB&"]
+            _SM_CYCLE = ["&H002FFF3B&", "&H001A02DD&", "&H0000E6FF&"]   # vert, rouge, jaune #FFE600
+            # (remettre plusieurs entrees ici pour retrouver un cycle)
             _sm_idx = 0
             # Zone utile en largeur sur le canvas d'export (720 px moins les 2 marges de 44).
             _SM_ZONE_PX = 720 - 88
