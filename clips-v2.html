@@ -2320,6 +2320,10 @@ const V2 = (() => {
      rien. Le parent étant de même origine, on parle depuis lui : l'activation utilisateur se
      propage aux frames ancêtres, donc le geste fait dans l'iframe vaut aussi pour le parent.
      L'énoncé DOIT être construit avec le constructeur de la même fenêtre que le moteur. */
+  function _iframe() {
+    try { return window.parent && window.parent !== window; } catch { return true; }
+  }
+
   function _synthWin() {
     try {
       const p = window.parent;
@@ -2343,16 +2347,25 @@ const V2 = (() => {
      le moteur pour tout le reste de la session. */
   let _ttsAmorce = false;
   function amorcerTTS() {
-    const W = _synthWin();
-    if (_ttsAmorce || !W.speechSynthesis) return;
+    if (_ttsAmorce) return;
     _ttsAmorce = true;
-    try {
-      // Texte réel, pas un espace : iOS ignore purement et simplement un énoncé vide, et
-      // l'amorce ne débloquerait alors rien. Volume nul → inaudible mais bien prononcé.
-      const u = new W.SpeechSynthesisUtterance('ok');
-      u.volume = 0; u.lang = 'fr-FR';
-      W.speechSynthesis.speak(u);
-    } catch {}
+    // On amorce les DEUX fenêtres : le déblocage iOS n'est valable que dans la pile d'appels
+    // du geste, et on ne saura qu'ensuite laquelle des deux parle réellement. L'amorce étant
+    // inaudible, la jouer deux fois ne coûte rien — alors qu'amorcer la mauvaise coûte tout.
+    const cibles = [window];
+    const p = _synthWin();
+    if (p !== window) cibles.unshift(p);
+    for (const F of cibles) {
+      try {
+        if (!F.speechSynthesis) continue;
+        // Texte réel, pas un espace : iOS ignore purement et simplement un énoncé vide, et
+        // l'amorce ne débloquerait alors rien. Volume nul → inaudible mais bien prononcé.
+        const u = new F.SpeechSynthesisUtterance('ok');
+        u.volume = 0; u.lang = 'fr-FR';
+        F.speechSynthesis.resume();
+        F.speechSynthesis.speak(u);
+      } catch {}
+    }
   }
 
   /* Une page muette ne dit pas POURQUOI elle est muette : speechSynthesis échoue sans erreur.
@@ -2366,10 +2379,17 @@ const V2 = (() => {
     });
     setTimeout(() => {
       if (demarre) return;
-      const n = ((W.speechSynthesis && W.speechSynthesis.getVoices()) || []).length;
-      voixStatut(n
-        ? 'Aucun son ne sort — vérifie le petit interrupteur silencieux sur la tranche du téléphone, puis le volume'
-        : 'Aucune voix installée sur cet appareil — Réglages › Accessibilité › Contenu énoncé › Voix', true);
+      const S = W.speechSynthesis;
+      const n = ((S && S.getVoices()) || []).length;
+      if (!n) {
+        voixStatut('Aucune voix installée — Réglages › Accessibilité › Contenu énoncé › Voix', true);
+        return;
+      }
+      // État réel du moteur : c'est lui qui distingue « bloqué par le navigateur » de
+      // « joué mais inaudible ». Sans ça on tourne en rond sur des hypothèses.
+      const etat = 'pause=' + (S && S.paused) + ' attente=' + (S && S.pending)
+                 + ' parle=' + (S && S.speaking) + ' voix=' + n + (_iframe() ? ' iframe' : '');
+      voixStatut('Aucun son — vérifie l\'interrupteur silencieux du téléphone · ' + etat, true);
     }, 1600);
   }
 
@@ -2399,13 +2419,20 @@ const V2 = (() => {
       const dire = (fenetre) => {
         const F = fenetre || W;
         const u = new F.SpeechSynthesisUtterance(texte);
-        const v = ttsVoixFr(); if (v && F === W) u.voice = v;
+        // Sur iOS on NE fixe PAS u.voice : assigner un objet SpeechSynthesisVoice y fait
+        // échouer l'énoncé en silence — il n'est jamais prononcé et aucun événement ne part.
+        // La langue suffit à faire choisir une voix française au système.
+        const v = ttsVoixFr(); if (v && F === W && !_isIOS()) u.voice = v;
         u.lang = 'fr-FR'; u.rate = 1.05;
         u.onend = fini;
         u.onerror = fini;
         let demarre = false;
         u.addEventListener('start', () => { demarre = true; });
+        // Safari laisse régulièrement le moteur en pause après un cancel() : speak() est alors
+        // accepté sans rien jouer. resume() de part et d'autre est le contournement connu.
+        try { F.speechSynthesis.resume(); } catch {}
         F.speechSynthesis.speak(u);
+        try { F.speechSynthesis.resume(); } catch {}
         if (F !== window) {
           // Parler depuis le parent est le chemin qui marche sur iOS, mais rien ne le garantit
           // sur tous les navigateurs. S'il ne sort rien, on retente dans cette fenêtre-ci
