@@ -2284,7 +2284,14 @@ const V2 = (() => {
         voixStatut('Dictée interrompue (' + e.error + ') — réessaie', true);
       }
     };
-    _reco.onend = () => { voixEtat(false); if (phrase.trim()) voixTraiter(phrase); };
+    _reco.onend = () => {
+      voixEtat(false);
+      if (phrase.trim()) { voixTraiter(phrase); return; }
+      // Rien capté et aucune erreur levée : sans ce message la page redevenait simplement
+      // inerte, ce qui se vit comme « elle ne comprend rien ». Cas fréquent quand on parle
+      // pendant le « Oui ? » — la dictée n'était pas encore ouverte.
+      voixStatut('Je n\'ai rien entendu — appuie sur le micro et parle APRÈS « Oui ? »', true);
+    };
 
     try { _reco.start(); }
     catch { voixStatut('Dictée déjà en cours', true); return; }

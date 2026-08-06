@@ -81,96 +81,126 @@ async function handleLatestVideo(req, res) {
       }
     }
 
-    if (!channelId) {
+    // Une chaîne devinée par son handle peut être un homonyme SANS vidéos : « underscore »
+    // tombe sur une chaîne vide alors que la vraie s'appelle « Underscore_ ». Le titre
+    // correspond, la chaîne existe, et pourtant il n'y a rien à analyser. On retient donc que
+    // cette piste est une supposition, pour pouvoir payer la vraie recherche si elle échoue.
+    const devine = !!channelId && !channelIdConnu && !_cacheChaines.has(cle);
+
+    const chercherParNom = async () => {
       const params = new URLSearchParams({ part: 'snippet', type: 'channel', maxResults: 5, q: nom, key: apiKey });
       const r = await fetch(`${YT_API}/search?${params}`);
       const data = await r.json(); quota += 100;
       _checkApiError(data);
       const item = (data.items || [])[0];
-      channelId = item?.id?.channelId || item?.snippet?.channelId || '';
-      channelTitle = item?.snippet?.title || '';
+      return {
+        id: item?.id?.channelId || item?.snippet?.channelId || '',
+        titre: item?.snippet?.title || ''
+      };
+    };
+
+    if (!channelId) {
+      const t = await chercherParNom();
+      channelId = t.id; channelTitle = t.titre;
     }
 
     if (!channelId) {
       return res.status(404).json({ error: `Aucune chaîne trouvée pour « ${nom} »`, quota_used: quota });
     }
-    if (cle) _cacheChaines.set(cle, channelId);
 
-    // ── 2. UC… → UU… : la playlist "uploads", déduite sans appel API ──
-    const playlistId = 'UU' + channelId.slice(2);
+    // ── 2. Chercher la vidéo. Si la chaîne venait d'un handle deviné et ne donne rien, on
+    // recommence avec la vraie recherche : l'homonyme vide ne doit pas faire échouer la
+    // commande alors que la bonne chaîne existe.
+    let scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin);
+    quota += scan.quota;
 
-    // ── 3/4/5/6. Remonter la playlist page par page jusqu'à trouver du contenu long.
-    // Une seule page de 15 ne suffit PAS : Yomi Denzel poste 4 Shorts par jour, sa dernière
-    // vidéo de 16 min était déjà en 15ᵉ position — le lendemain elle sortait de la fenêtre et
-    // la commande répondait « aucune vidéo longue » alors qu'elle existait.
-    // Pages de 50 (même coût qu'une page de 15 : 1 unité), 4 pages max = 200 vidéos, ~8 unités.
-    const MAX_PAGES = 4;
-    let pageToken = '', inspectees = 0, trouvee = null;
-
-    for (let page = 0; page < MAX_PAGES && !trouvee; page++) {
-      const pParams = new URLSearchParams({ part: 'contentDetails', playlistId, maxResults: 50, key: apiKey });
-      if (pageToken) pParams.set('pageToken', pageToken);
-      const pRes = await fetch(`${YT_API}/playlistItems?${pParams}`);
-      const pData = await pRes.json(); quota += 1;
-      if (pData.error && pRes.status === 404) {
-        return res.status(404).json({ error: 'Cette chaîne n\'a aucune vidéo publique', quota_used: quota });
+    if (!scan.trouvee && devine) {
+      const t = await chercherParNom();
+      if (t.id && t.id !== channelId) {
+        channelId = t.id; channelTitle = t.titre;
+        scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin);
+        quota += scan.quota;
       }
-      _checkApiError(pData);
-
-      const ids = (pData.items || []).map(i => i.contentDetails?.videoId).filter(Boolean);
-      if (!ids.length) break;
-      inspectees += ids.length;
-
-      // Durées + titres de la page entière, un seul appel (1 unité)
-      const vParams = new URLSearchParams({ part: 'contentDetails,snippet', id: ids.join(','), key: apiKey });
-      const vRes = await fetch(`${YT_API}/videos?${vParams}`);
-      const vData = await vRes.json(); quota += 1;
-      _checkApiError(vData);
-
-      // Filtre : assez longue, ni live ni première
-      const retenues = (vData.items || [])
-        .filter(v => (v.snippet?.liveBroadcastContent || 'none') === 'none')
-        .map(v => ({
-          channel_id: channelId,
-          channel_title: v.snippet?.channelTitle || channelTitle,
-          video_id: v.id,
-          url: `https://www.youtube.com/watch?v=${v.id}`,
-          title: v.snippet?.title || '',
-          thumbnail: v.snippet?.thumbnails?.medium?.url || '',
-          duration_seconds: _dureeIsoEnSecondes(v.contentDetails?.duration),
-          published_at: v.snippet?.publishedAt || ''
-        }))
-        .filter(v => v.duration_seconds >= dureeMin);
-
-      // La playlist descend déjà du plus récent au plus ancien : la 1ʳᵉ page qui contient une
-      // vidéo longue contient LA bonne. On retrie quand même, videos.list ne garantit pas l'ordre.
-      if (retenues.length) {
-        retenues.sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
-        trouvee = retenues[0];
-      }
-
-      pageToken = pData.nextPageToken || '';
-      if (!pageToken) break;
     }
 
-    if (!inspectees) {
+    if (cle && channelId) _cacheChaines.set(cle, channelId);
+
+    if (!scan.inspectees) {
       return res.status(404).json({ error: 'Cette chaîne n\'a aucune vidéo publique', quota_used: quota });
     }
-    if (!trouvee) {
+    if (!scan.trouvee) {
       return res.status(404).json({
-        error: `Aucune vidéo d'au moins ${Math.round(dureeMin / 60)} min parmi les ${inspectees} dernières de ${channelTitle || nom} — cette chaîne ne publie que des formats courts`,
+        error: `Aucune vidéo d'au moins ${Math.round(dureeMin / 60)} min parmi les ${scan.inspectees} dernières de ${channelTitle || nom} — cette chaîne ne publie que des formats courts`,
         channel_id: channelId,
         quota_used: quota
       });
     }
 
-    return res.status(200).json({ ...trouvee, videos_inspectees: inspectees, quota_used: quota });
+    return res.status(200).json({ ...scan.trouvee, videos_inspectees: scan.inspectees, quota_used: quota });
 
   } catch (e) {
     const msg = e.message || 'Erreur YouTube';
     const estQuota = /quota/i.test(msg);
     return res.status(estQuota ? 429 : 500).json({ error: msg, quota_used: quota });
   }
+}
+
+/* Remonte la playlist « uploads » d'une chaîne (UC… → UU…, déduite sans appel API) jusqu'à
+   trouver une vidéo assez longue.
+
+   Une seule page de 15 ne suffit PAS : Yomi Denzel poste 4 Shorts par jour, sa dernière vidéo
+   de 16 min était déjà en 15ᵉ position — le lendemain elle sortait de la fenêtre et la commande
+   répondait « aucune vidéo longue » alors qu'elle existait. Pages de 50 (même coût qu'une page
+   de 15 : 1 unité), 4 pages max = 200 vidéos, ~8 unités. */
+async function _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin) {
+  const playlistId = 'UU' + channelId.slice(2);
+  const MAX_PAGES = 4;
+  let pageToken = '', inspectees = 0, trouvee = null, quota = 0;
+
+  for (let page = 0; page < MAX_PAGES && !trouvee; page++) {
+    const pParams = new URLSearchParams({ part: 'contentDetails', playlistId, maxResults: 50, key: apiKey });
+    if (pageToken) pParams.set('pageToken', pageToken);
+    const pRes = await fetch(`${YT_API}/playlistItems?${pParams}`);
+    const pData = await pRes.json(); quota += 1;
+    if (pData.error && pRes.status === 404) return { trouvee: null, inspectees: 0, quota };
+    _checkApiError(pData);
+
+    const ids = (pData.items || []).map(i => i.contentDetails?.videoId).filter(Boolean);
+    if (!ids.length) break;
+    inspectees += ids.length;
+
+    // Durées + titres de la page entière, un seul appel (1 unité)
+    const vParams = new URLSearchParams({ part: 'contentDetails,snippet', id: ids.join(','), key: apiKey });
+    const vRes = await fetch(`${YT_API}/videos?${vParams}`);
+    const vData = await vRes.json(); quota += 1;
+    _checkApiError(vData);
+
+    // Filtre : assez longue, ni live ni première
+    const retenues = (vData.items || [])
+      .filter(v => (v.snippet?.liveBroadcastContent || 'none') === 'none')
+      .map(v => ({
+        channel_id: channelId,
+        channel_title: v.snippet?.channelTitle || channelTitle,
+        video_id: v.id,
+        url: `https://www.youtube.com/watch?v=${v.id}`,
+        title: v.snippet?.title || '',
+        thumbnail: v.snippet?.thumbnails?.medium?.url || '',
+        duration_seconds: _dureeIsoEnSecondes(v.contentDetails?.duration),
+        published_at: v.snippet?.publishedAt || ''
+      }))
+      .filter(v => v.duration_seconds >= dureeMin);
+
+    // La playlist descend déjà du plus récent au plus ancien : la 1ʳᵉ page qui contient une
+    // vidéo longue contient LA bonne. On retrie quand même, videos.list ne garantit pas l'ordre.
+    if (retenues.length) {
+      retenues.sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
+      trouvee = retenues[0];
+    }
+
+    pageToken = pData.nextPageToken || '';
+    if (!pageToken) break;
+  }
+  return { trouvee, inspectees, quota };
 }
 
 function _extraireHandle(entree) {
