@@ -4004,5 +4004,9 @@ document.addEventListener('DOMContentLoaded', () => {
   app = new AppCreatis();
   if(typeof window._appFlush==='function') window._appFlush(app);
   else window.app = app;
+  // Installée dès le chargement, et pas seulement à la création du panneau Clips : si l'iframe
+  // est atteinte par un autre chemin, le parent n'écoutait pas et la voix restait muette sur
+  // iOS. La fonction est idempotente, l'appeler deux fois ne coûte rien.
+  installerVoixPourIframe();
 });
 
