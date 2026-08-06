@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test voix — Créatis</title>
+<style>
+  :root { --vert:#10b981; --bord:#1e2a20; }
+  * { box-sizing:border-box; -webkit-text-size-adjust:100%; }
+  body { margin:0; padding:18px; background:#0a0f0a; color:#e8f0e8;
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  h1 { font-size:19px; margin:0 0 4px; }
+  p.sous { color:#7d8f80; font-size:13.5px; margin:0 0 18px; }
+  button { width:100%; padding:18px; font-size:18px; font-weight:600; border-radius:12px;
+           border:1px solid var(--vert); background:var(--vert); color:#04120c;
+           margin-bottom:10px; cursor:pointer; }
+  button.sec { background:transparent; color:var(--vert); }
+  .bloc { border:1px solid var(--bord); border-radius:12px; padding:13px; margin-top:16px; }
+  .bloc h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+             color:#7d8f80; margin:0 0 9px; }
+  .l { display:flex; justify-content:space-between; gap:12px; padding:4px 0;
+       border-bottom:1px solid #131c15; font-size:14px; }
+  .l:last-child { border-bottom:0; }
+  .l b { font-weight:600; color:#fff; text-align:right; word-break:break-word; }
+  .ok { color:var(--vert); } .ko { color:#f97316; }
+  #jrn { font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap;
+         color:#9fb3a2; max-height:230px; overflow:auto; }
+</style>
+</head>
+<body>
+
+<h1>Test de la voix</h1>
+<p class="sous">Page isolée : aucune iframe, aucun micro, aucun code Créatis. Appuie sur le bouton
+et dis-moi ce que tu vois — et si tu entends quelque chose.</p>
+
+<button onclick="parler()">🔊 Dire « bonjour »</button>
+<button class="sec" onclick="parlerBrut()">Dire sans aucun réglage</button>
+<button class="sec" onclick="location.reload()">Recharger la page</button>
+
+<div class="bloc">
+  <h2>Ce que dit le navigateur</h2>
+  <div class="l"><span>Voix disponibles</span><b id="v-nb">…</b></div>
+  <div class="l"><span>Voix françaises</span><b id="v-fr">…</b></div>
+  <div class="l"><span>Événement « début »</span><b id="v-debut">jamais</b></div>
+  <div class="l"><span>Événement « fin »</span><b id="v-fin">jamais</b></div>
+  <div class="l"><span>Erreur</span><b id="v-err">aucune</b></div>
+  <div class="l"><span>État du moteur</span><b id="v-etat">…</b></div>
+  <div class="l"><span>Reconnu comme iOS</span><b id="v-ios">…</b></div>
+  <div class="l"><span>platform / tactile</span><b id="v-plat">…</b></div>
+  <div class="l"><span>Appareil</span><b id="v-ua">…</b></div>
+</div>
+
+<div class="bloc">
+  <h2>Journal</h2>
+  <div id="jrn">En attente d'un appui…</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let lignes = [];
+
+function jrn(t) {
+  lignes.push(new Date().toLocaleTimeString('fr-FR') + '  ' + t);
+  $('jrn').textContent = lignes.slice(-40).join('\n');
+  $('jrn').scrollTop = 1e6;
+}
+
+function etat() {
+  const S = window.speechSynthesis;
+  if (!S) return 'speechSynthesis absent';
+  return 'pause=' + S.paused + ' attente=' + S.pending + ' parle=' + S.speaking;
+}
+
+function majEtat() { $('v-etat').textContent = etat(); }
+
+function majVoix() {
+  const S = window.speechSynthesis;
+  if (!S) { $('v-nb').textContent = '— API absente'; return; }
+  const v = S.getVoices() || [];
+  $('v-nb').textContent = v.length;
+  const fr = v.filter(x => /^fr/i.test(x.lang));
+  $('v-fr').textContent = fr.length ? fr.length + ' (' + fr[0].name + ')' : '0';
+}
+
+// Le premier appui sert aussi d'amorce : iOS n'autorise la synthèse qu'après un énoncé
+// déclenché par un vrai geste. On l'enchaîne dans la même pile d'appels.
+function lancer(u, etiquette) {
+  const S = window.speechSynthesis;
+  if (!S) { jrn('speechSynthesis n\'existe pas sur ce navigateur'); return; }
+
+  $('v-debut').textContent = 'jamais'; $('v-debut').className = '';
+  $('v-fin').textContent = 'jamais';   $('v-fin').className = '';
+  $('v-err').textContent = 'aucune';   $('v-err').className = '';
+
+  u.addEventListener('start', () => {
+    $('v-debut').textContent = 'reçu'; $('v-debut').className = 'ok';
+    jrn(etiquette + ' → début');
+    majEtat();
+  });
+  u.addEventListener('end', () => {
+    $('v-fin').textContent = 'reçu'; $('v-fin').className = 'ok';
+    jrn(etiquette + ' → fin');
+    majEtat();
+  });
+  u.addEventListener('error', (e) => {
+    $('v-err').textContent = e.error || 'inconnue'; $('v-err').className = 'ko';
+    jrn(etiquette + ' → ERREUR ' + (e.error || '?'));
+    majEtat();
+  });
+
+  jrn(etiquette + ' : avant speak → ' + etat());
+  try { S.resume(); } catch (e) {}
+  S.speak(u);
+  jrn(etiquette + ' : après speak → ' + etat());
+  majEtat();
+
+  setTimeout(() => {
+    jrn(etiquette + ' : +1,5 s → ' + etat());
+    majEtat();
+    if ($('v-debut').textContent === 'jamais') {
+      jrn('Aucun début reçu : le moteur a écarté l\'énoncé.');
+    }
+  }, 1500);
+}
+
+function parler() {
+  const u = new SpeechSynthesisUtterance('bonjour, je suis Créatis');
+  u.lang = 'fr-FR';
+  lancer(u, 'avec lang=fr-FR');
+}
+
+// Sans langue, sans voix, sans rien : le cas le plus permissif possible.
+function parlerBrut() {
+  lancer(new SpeechSynthesisUtterance('bonjour'), 'brut');
+}
+
+// Même détection que l'application : sur iPad, Safari se déclare « Macintosh » depuis
+// iPadOS 13, d'où le repli sur le tactile — aucun vrai Mac ne rapporte de points de contact.
+const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || ((navigator.platform === 'MacIntel' || /Mac/.test(navigator.userAgent))
+      && navigator.maxTouchPoints > 1);
+
+majVoix();
+majEtat();
+$('v-ios').textContent = estIOS ? 'oui' : 'NON';
+$('v-ios').className = estIOS ? 'ok' : 'ko';
+$('v-plat').textContent = (navigator.platform || 'vide') + ' / ' + navigator.maxTouchPoints;
+$('v-ua').textContent = navigator.userAgent.slice(0, 68);
+if (window.speechSynthesis && speechSynthesis.addEventListener) {
+  speechSynthesis.addEventListener('voiceschanged', () => { majVoix(); jrn('voix chargées'); });
+}
+</script>
+</body>
+</html>

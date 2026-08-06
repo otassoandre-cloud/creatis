@@ -5873,7 +5873,14 @@ const V2 = (() => {
     if (cur) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
-  const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // Safari sur iPad se déclare « Macintosh » depuis iPadOS 13 (mode bureau par défaut) : sans
+  // le second test, une tablette n'est pas reconnue comme iOS et rate tous les contournements
+  // WebKit — dont le fait de ne PAS assigner u.voice, qui fait échouer la synthèse en silence.
+  // navigator.platform est déprécié et parfois vide : on retombe sur l'agent utilisateur, qui
+  // contient « Mac » dans tous les cas, et sur le tactile, qu'aucun vrai Mac ne rapporte.
+  const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || ((navigator.platform === 'MacIntel' || /Mac/.test(navigator.userAgent))
+        && navigator.maxTouchPoints > 1);
 
   // Bouton Export unique (en-tête du panneau). L'ancien gros bouton en bas faisait doublon, il a
   // été supprimé : celui-ci porte le libellé, la progression et les états post-export.
