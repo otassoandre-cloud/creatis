@@ -2307,7 +2307,9 @@ const V2 = (() => {
     if (_ttsAmorce || !window.speechSynthesis) return;
     _ttsAmorce = true;
     try {
-      const u = new SpeechSynthesisUtterance(' ');
+      // Texte réel, pas un espace : iOS ignore purement et simplement un énoncé vide, et
+      // l'amorce ne débloquerait alors rien. Volume nul → inaudible mais bien prononcé.
+      const u = new SpeechSynthesisUtterance('ok');
       u.volume = 0; u.lang = 'fr-FR';
       speechSynthesis.speak(u);
     } catch {}
@@ -2321,17 +2323,27 @@ const V2 = (() => {
       // que s'il y a réellement quelque chose en cours.
       if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       _parle = true;
-      try { _mlReco && _mlReco.abort(); } catch {}
+      let ecoutait = false;
+      try { if (_mlReco) { _mlReco.abort(); ecoutait = true; } } catch {}
       _mlReco = null;
-      const u = new SpeechSynthesisUtterance(texte);
-      const v = ttsVoixFr(); if (v) u.voice = v;
-      u.lang = 'fr-FR'; u.rate = 1.05;
-      u.onend = fini;
-      u.onerror = fini;
-      speechSynthesis.speak(u);
-      // Filet : si onend ne part jamais (bug connu de Chrome sur les phrases longues), on ne
-      // laisse pas le micro éteint indéfiniment.
-      setTimeout(() => { if (_parle) fini(); }, Math.min(2000 + texte.length * 90, 15000));
+      try { if (_reco && _ecoute) { _reco.abort(); ecoutait = true; } } catch {}
+      const dire = () => {
+        const u = new SpeechSynthesisUtterance(texte);
+        const v = ttsVoixFr(); if (v) u.voice = v;
+        u.lang = 'fr-FR'; u.rate = 1.05;
+        u.onend = fini;
+        u.onerror = fini;
+        speechSynthesis.speak(u);
+        // Filet : si onend ne part jamais (bug connu de Chrome sur les phrases longues), on ne
+        // laisse pas le micro éteint indéfiniment.
+        setTimeout(() => { if (_parle) fini(); }, Math.min(2000 + texte.length * 90, 15000));
+      };
+      // iOS bascule la session audio en mode ENREGISTREMENT dès qu'une reconnaissance tourne :
+      // la synthèse y devient inaudible, sans la moindre erreur pour le signaler. abort() ne
+      // rend pas la session instantanément, il faut la laisser retomber avant de parler.
+      // Uniquement si une écoute tournait : sinon le setTimeout sortirait de la pile d'appels
+      // du geste utilisateur, et iOS refuse justement d'y débloquer la synthèse.
+      if (_isIOS() && ecoutait) setTimeout(dire, 350); else dire();
     } catch { fini(); }
   }
 
@@ -2340,7 +2352,10 @@ const V2 = (() => {
     try { localStorage.setItem(TTS_PREF, _tts ? '1' : '0'); } catch {}
     const c = document.getElementById('voix-tts-case'); if (c) c.checked = _tts;
     if (!_tts && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch {} }
-    else if (_tts) voixParler('Je te réponds à voix haute.');
+    else if (_tts) {
+      amorcerTTS();   // cocher est un geste : c'est LE moment où iOS accepte de débloquer
+      voixParler('Je te réponds à voix haute.');
+    }
   }
 
   // Coupe l'écoute pour toute la durée de l'analyse. setState('upload') la réarme.
