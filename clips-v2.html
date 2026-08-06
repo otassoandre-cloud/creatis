@@ -1211,7 +1211,9 @@ const V2 = (() => {
       const ctts = document.getElementById('voix-tts-case'); if (ctts) ctts.checked = _tts;
       if (window.speechSynthesis) {
         ttsVoixFr();
-        speechSynthesis.addEventListener?.('voiceschanged', () => { _voixTTS = null; ttsVoixFr(); });
+        // Les voix arrivent de façon asynchrone — et il faut écouter la MÊME fenêtre que celle
+        // qui parlera, sinon l'événement n'arrive jamais quand on parle depuis le parent.
+        _synthWin().speechSynthesis.addEventListener?.('voiceschanged', () => { _voixTTS = null; ttsVoixFr(); });
       }
       // Mains libres réarmé au chargement seulement si le micro est DÉJÀ autorisé : sinon on
       // ouvrirait une demande de permission à chaque visite, sans que l'utilisateur ait rien demandé.
@@ -2313,9 +2315,23 @@ const V2 = (() => {
      Le micro entendrait la page se parler à elle-même : on le coupe pendant la phrase et
      on le relance après. C'est aussi pour ça que mlDemarrer() refuse de démarrer tant que
      _parle est vrai. */
+  /* Cette page tourne dans une iframe (app.html l'injecte). Or iOS ne produit souvent AUCUN
+     son quand speechSynthesis est appelé depuis une iframe — sans erreur, sans événement,
+     rien. Le parent étant de même origine, on parle depuis lui : l'activation utilisateur se
+     propage aux frames ancêtres, donc le geste fait dans l'iframe vaut aussi pour le parent.
+     L'énoncé DOIT être construit avec le constructeur de la même fenêtre que le moteur. */
+  function _synthWin() {
+    try {
+      const p = window.parent;
+      if (p && p !== window && p.speechSynthesis && p.SpeechSynthesisUtterance) return p;
+    } catch {}   // parent d'une autre origine : inaccessible, on reste local
+    return window;
+  }
+
   function ttsVoixFr() {
-    if (_voixTTS || !window.speechSynthesis) return _voixTTS;
-    const dispo = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
+    const W = _synthWin();
+    if (_voixTTS || !W.speechSynthesis) return _voixTTS;
+    const dispo = W.speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
     _voixTTS = dispo.find(v => v.localService) || dispo[0] || null;   // locale = pas de latence
     return _voixTTS;
   }
@@ -2327,36 +2343,79 @@ const V2 = (() => {
      le moteur pour tout le reste de la session. */
   let _ttsAmorce = false;
   function amorcerTTS() {
-    if (_ttsAmorce || !window.speechSynthesis) return;
+    const W = _synthWin();
+    if (_ttsAmorce || !W.speechSynthesis) return;
     _ttsAmorce = true;
     try {
       // Texte réel, pas un espace : iOS ignore purement et simplement un énoncé vide, et
       // l'amorce ne débloquerait alors rien. Volume nul → inaudible mais bien prononcé.
-      const u = new SpeechSynthesisUtterance('ok');
+      const u = new W.SpeechSynthesisUtterance('ok');
       u.volume = 0; u.lang = 'fr-FR';
-      speechSynthesis.speak(u);
+      W.speechSynthesis.speak(u);
     } catch {}
   }
 
+  /* Une page muette ne dit pas POURQUOI elle est muette : speechSynthesis échoue sans erreur.
+     On surveille donc l'énoncé et, s'il ne démarre jamais, on affiche la cause la plus
+     probable. Silencieux quand tout va bien, explicite quand ça casse. */
+  function _ttsTrace(u, W) {
+    let demarre = false;
+    u.addEventListener('start', () => { demarre = true; });
+    u.addEventListener('error', (e) => {
+      voixStatut('Voix bloquée (' + (e.error || 'erreur') + ') — vérifie l\'interrupteur silencieux du téléphone', true);
+    });
+    setTimeout(() => {
+      if (demarre) return;
+      const n = ((W.speechSynthesis && W.speechSynthesis.getVoices()) || []).length;
+      voixStatut(n
+        ? 'Aucun son ne sort — vérifie le petit interrupteur silencieux sur la tranche du téléphone, puis le volume'
+        : 'Aucune voix installée sur cet appareil — Réglages › Accessibilité › Contenu énoncé › Voix', true);
+    }, 1600);
+  }
+
   function voixParler(texte, apres) {
-    const fini = () => { _parle = false; if (_ml && !document.hidden) mlDemarrer(); if (apres) apres(); };
-    if (!_tts || !window.speechSynthesis || !texte) { if (apres) apres(); return; }
+    const W = _synthWin();
+    // Idempotent : entre le repli sur l'autre fenêtre, onend, onerror et le filet anti-blocage,
+    // plusieurs chemins mènent ici. apres() ouvre la dictée — l'appeler deux fois lèverait un
+    // InvalidStateError et casserait le micro.
+    let _fait = false;
+    const fini = () => {
+      if (_fait) return;
+      _fait = true;
+      _parle = false;
+      if (_ml && !document.hidden) mlDemarrer();
+      if (apres) apres();
+    };
+    if (!_tts || !W.speechSynthesis || !texte) { if (apres) apres(); return; }
     try {
       // cancel() immédiatement suivi de speak() fait tomber l'énoncé sur Safari : on ne coupe
       // que s'il y a réellement quelque chose en cours.
-      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      if (W.speechSynthesis.speaking || W.speechSynthesis.pending) W.speechSynthesis.cancel();
       _parle = true;
       let ecoutait = false;
       try { if (_mlReco) { _mlReco.abort(); ecoutait = true; } } catch {}
       _mlReco = null;
       try { if (_reco && _ecoute) { _reco.abort(); ecoutait = true; } } catch {}
-      const dire = () => {
-        const u = new SpeechSynthesisUtterance(texte);
-        const v = ttsVoixFr(); if (v) u.voice = v;
+      const dire = (fenetre) => {
+        const F = fenetre || W;
+        const u = new F.SpeechSynthesisUtterance(texte);
+        const v = ttsVoixFr(); if (v && F === W) u.voice = v;
         u.lang = 'fr-FR'; u.rate = 1.05;
         u.onend = fini;
         u.onerror = fini;
-        speechSynthesis.speak(u);
+        let demarre = false;
+        u.addEventListener('start', () => { demarre = true; });
+        F.speechSynthesis.speak(u);
+        if (F !== window) {
+          // Parler depuis le parent est le chemin qui marche sur iOS, mais rien ne le garantit
+          // sur tous les navigateurs. S'il ne sort rien, on retente dans cette fenêtre-ci
+          // plutôt que de laisser la page muette.
+          setTimeout(() => {
+            if (!demarre && _parle) { try { F.speechSynthesis.cancel(); } catch {} dire(window); }
+          }, 700);
+        } else {
+          _ttsTrace(u, F);
+        }
         // Filet : si onend ne part jamais (bug connu de Chrome sur les phrases longues), on ne
         // laisse pas le micro éteint indéfiniment.
         setTimeout(() => { if (_parle) fini(); }, Math.min(2000 + texte.length * 90, 15000));
@@ -2374,7 +2433,7 @@ const V2 = (() => {
     _tts = !!actif;
     try { localStorage.setItem(TTS_PREF, _tts ? '1' : '0'); } catch {}
     const c = document.getElementById('voix-tts-case'); if (c) c.checked = _tts;
-    if (!_tts && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch {} }
+    if (!_tts && window.speechSynthesis) { try { _synthWin().speechSynthesis.cancel(); } catch {} }
     else if (_tts) {
       amorcerTTS();   // cocher est un geste : c'est LE moment où iOS accepte de débloquer
       voixParler('Je te réponds à voix haute.');
