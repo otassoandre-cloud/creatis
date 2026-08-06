@@ -2245,14 +2245,27 @@ const V2 = (() => {
     if (_ml) { _attenteCmd = Date.now(); voixStatut('🎙 Je t\'écoute — dis le nom du créateur'); return; }
     if (_ecoute) { try { _reco.stop(); } catch {} return; }
 
+    // Le micro répond AVANT d'écouter : « Oui ? », puis la dictée s'ouvre. Les deux ne peuvent
+    // pas se chevaucher sur iOS — la session audio y est soit en lecture, soit en enregistrement.
+    // Si ce démarrage différé échoue (iOS peut exiger que start() parte de la pile du geste),
+    // on retombe définitivement sur la dictée directe : le bouton reste utilisable quoi qu'il
+    // arrive, on ne troque pas un micro qui marche contre une politesse.
+    if (_dicteeDirecte || !_tts) { voixOuvrirDictee(SR, false); return; }
+    voixStatut('🎙 Oui ?');
+    voixParler('Oui ?', () => voixOuvrirDictee(SR, true));
+  }
+
+  let _dicteeDirecte = false;   // vrai dès que l'annonce a empêché la dictée de démarrer
+
+  function voixOuvrirDictee(SR, differe) {
     _reco = new SR();
     _reco.lang = 'fr-FR';
     _reco.continuous = false;
     _reco.interimResults = true;
     _reco.maxAlternatives = 1;
 
-    let phrase = '';
-    _reco.onstart = () => { voixEtat(true); voixStatut('🎙 Je t\'écoute — « la dernière vidéo de… »'); };
+    let phrase = '', demarre = false;
+    _reco.onstart = () => { demarre = true; voixEtat(true); voixStatut('🎙 Je t\'écoute — « la dernière vidéo de… »'); };
     _reco.onresult = (e) => {
       phrase = Array.from(e.results).map(r => r[0].transcript).join(' ');
       if (!e.results[e.results.length - 1].isFinal) voixStatut('🎙 ' + phrase);
@@ -2272,7 +2285,17 @@ const V2 = (() => {
     _reco.onend = () => { voixEtat(false); if (phrase.trim()) voixTraiter(phrase); };
 
     try { _reco.start(); }
-    catch { voixStatut('Dictée déjà en cours', true); }
+    catch { voixStatut('Dictée déjà en cours', true); return; }
+
+    // Filet : si la dictée n'a pas démarré après l'annonce, c'est que le navigateur exigeait
+    // un appui immédiat. On le retient pour toutes les fois suivantes plutôt que de laisser
+    // l'utilisateur parler dans le vide.
+    if (differe) setTimeout(() => {
+      if (!demarre) {
+        _dicteeDirecte = true;
+        voixStatut('Reclique sur le micro et parle tout de suite — ton navigateur veut l\'appui juste avant la dictée', true);
+      }
+    }, 1800);
   }
 
   /* ─── MAINS LIBRES : mot de réveil « Créatis » ──────────────────────
@@ -2283,7 +2306,7 @@ const V2 = (() => {
   const ML_PREF = 'creatis_voix_mains_libres';
   const TTS_PREF = 'creatis_voix_reponses';
   const DELAI_ANNULATION = 4;   // secondes pour annuler avant que l'analyse parte
-  let _ml = false, _mlReco = null, _attenteCmd = 0, _mlTimer = null, _dernierDeclench = 0;
+  let _ml = false, _mlReco = null, _attenteCmd = 0, _mlTimer = null, _dernierDeclench = 0, _mlEchecs = 0;
   let _tts = true, _voixTTS = null, _parle = false, _viaVoix = false, _pauseEcoute = false;
 
   /* ─── RÉPONSES VOCALES (speechSynthesis, natif navigateur, gratuit) ───
@@ -2418,7 +2441,8 @@ const V2 = (() => {
     _mlReco.interimResults = true;
     _mlReco.maxAlternatives = 1;
 
-    _mlReco.onstart = () => voixStatut('🎙 En veille — dis « Créatis »');
+    let ouvert = false;
+    _mlReco.onstart = () => { ouvert = true; _mlEchecs = 0; voixStatut('🎙 En veille — dis « Créatis »'); };
     _mlReco.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) mlPhrase(e.results[i][0].transcript);
@@ -2441,6 +2465,18 @@ const V2 = (() => {
 
     try { _mlReco.start(); }
     catch { _mlReco = null; }
+
+    // L'écoute continue est relancée depuis onend, donc HORS d'un geste utilisateur. Safari sur
+    // iOS refuse souvent de rouvrir le micro dans ces conditions : la case reste cochée, la
+    // pastille verte s'éteint, et « Créatis » n'obtient plus jamais de réponse — sans le moindre
+    // message. On le dit au lieu de laisser l'utilisateur parler dans le vide.
+    setTimeout(() => {
+      if (ouvert || !_ml || _parle || _pauseEcoute) return;
+      _mlEchecs++;
+      if (_mlEchecs >= 2) {
+        voixStatut('L\'écoute continue ne tient pas sur ce navigateur — appuie sur le micro pour parler', true);
+      }
+    }, 2200);
   }
 
   function mlPhrase(brut) {
