@@ -44,7 +44,7 @@ async function handleLatestVideo(req, res) {
     });
   }
 
-  const { query, channelId: channelIdConnu, minDuration } = req.body || {};
+  const { query, channelId: channelIdConnu, minDuration, titre } = req.body || {};
   const nom = (query || '').trim();
   const dureeMin = Number.isFinite(+minDuration) ? Math.max(0, +minDuration) : 300;
   if (!nom && !channelIdConnu) return res.status(400).json({ error: 'query ou channelId requis' });
@@ -111,14 +111,14 @@ async function handleLatestVideo(req, res) {
     // ── 2. Chercher la vidéo. Si la chaîne venait d'un handle deviné et ne donne rien, on
     // recommence avec la vraie recherche : l'homonyme vide ne doit pas faire échouer la
     // commande alors que la bonne chaîne existe.
-    let scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin);
+    let scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin, titre);
     quota += scan.quota;
 
     if (!scan.trouvee && devine) {
       const t = await chercherParNom();
       if (t.id && t.id !== channelId) {
         channelId = t.id; channelTitle = t.titre;
-        scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin);
+        scan = await _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin, titre);
         quota += scan.quota;
       }
     }
@@ -152,7 +152,8 @@ async function handleLatestVideo(req, res) {
    de 16 min était déjà en 15ᵉ position — le lendemain elle sortait de la fenêtre et la commande
    répondait « aucune vidéo longue » alors qu'elle existait. Pages de 50 (même coût qu'une page
    de 15 : 1 unité), 4 pages max = 200 vidéos, ~8 unités. */
-async function _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin) {
+async function _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin, titreVoulu) {
+  const cible = _normNom(titreVoulu || '');
   const playlistId = 'UU' + channelId.slice(2);
   const MAX_PAGES = 4;
   let pageToken = '', inspectees = 0, trouvee = null, quota = 0;
@@ -190,9 +191,19 @@ async function _derniereVideoLongue(channelId, channelTitle, apiKey, dureeMin) {
       }))
       .filter(v => v.duration_seconds >= dureeMin);
 
-    // La playlist descend déjà du plus récent au plus ancien : la 1ʳᵉ page qui contient une
-    // vidéo longue contient LA bonne. On retrie quand même, videos.list ne garantit pas l'ordre.
-    if (retenues.length) {
+    if (cible) {
+      // Vidéo demandée par son titre : on la cherche dans la page, du plus précis au plus
+      // souple. Les titres YouTube sont bourrés d'emojis et de majuscules, et la dictée ne
+      // rend ni la ponctuation ni la casse — la comparaison se fait donc sur le titre
+      // normalisé, et un simple mot suffit à désigner la bonne vidéo.
+      const exact = retenues.find(v => _normNom(v.title) === cible);
+      const inclus = retenues.find(v => _normNom(v.title).includes(cible));
+      const choisie = exact || inclus;
+      if (choisie) { trouvee = choisie; break; }
+      // pas dans cette page : on continue de remonter la playlist
+    } else if (retenues.length) {
+      // La playlist descend déjà du plus récent au plus ancien : la 1ʳᵉ page qui contient une
+      // vidéo longue contient LA bonne. On retrie quand même, videos.list ne garantit pas l'ordre.
       retenues.sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
       trouvee = retenues[0];
     }

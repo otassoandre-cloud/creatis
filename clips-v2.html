@@ -2701,15 +2701,44 @@ const V2 = (() => {
      (sansAccents() passe par NFD, qui change la longueur de la chaîne.) */
   const RE_REVEIL_DECOUPE = /\b(?:hey|h[eé]|ok|okay|salut|bonjour|coucou)?\s*[ck]r[eé]a\s?ti(?:ss|s|ce|z|ve|f)?e?s?\b/i;
 
-  async function voixTraiter(phrase, mainsLibres) {
-    // « Hey Créatis » prononcé APRÈS le bip n'est pas un nom de chaîne. Sans ce nettoyage on
-    // partait chercher une chaîne nommée « hey creatis » au lieu de redemander le créateur.
-    let net = phrase || '';
-    const mr = net.match(RE_REVEIL_DECOUPE);
-    if (mr) net = net.slice(mr.index + mr[0].length);
-    net = net.replace(/^[\s,.:!?]*(?:hey|h[eé]|ok|okay|salut|bonjour|coucou|dis|dis-moi)\b/i, '');
+  /* Comprend une demande dite naturellement, comme on la formulerait à quelqu'un :
+       « trouve-moi la dernière vidéo de Yomi Denzel »
+       « crée-moi 10 clips de la vidéo de Squeezie »
+       « fais des shorts de la vidéo Brainmaxxing de Yomi Denzel »
+     Renvoie { nom, titre } — le titre n'est rempli que si une vidéo précise est nommée.
 
-    const nom = voixExtraireNom(net);
+     Le nombre de clips est reconnu UNIQUEMENT pour être retiré de la phrase : il ne change
+     rien au fonctionnement du site, mais laissé là il finirait dans le nom de la chaîne. */
+  function voixAnalyserDemande(phrase) {
+    // Le mot de réveil dit APRÈS le bip est une adresse, pas un nom de créateur.
+    let t = phrase || '';
+    const mr = t.match(RE_REVEIL_DECOUPE);
+    if (mr) t = t.slice(mr.index + mr[0].length);
+
+    t = t.toLowerCase().replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/^(?:hey|h[eé]|ok|okay|salut|bonjour|coucou|dis moi|dis)\b\s*/g, '');
+    t = t.replace(/\b(?:s'?il te pla[iî]t|steuplait|stp|merci)\b/g, ' ');
+    t = t.replace(/\b(?:\d{1,3}|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|quinze|vingt|quelques|plusieurs)\s+(?:clips?|shorts?|extraits?|morceaux?|passages?)\b/g, ' ');
+    t = t.replace(/^(?:va me chercher|va chercher|cherche moi|cherche|trouve moi|trouve|donne moi|donne|fais moi|fais|cr[ée]e moi|cr[ée]e|g[ée]n[èe]re moi|g[ée]n[èe]re|montre moi|montre|prends|prend|analyse|d[ée]coupe)\s+/g, '');
+    t = t.replace(/\s+/g, ' ').trim();
+
+    // « la dernière / la nouvelle vidéo de X » → pas de titre, on veut la plus récente.
+    const veutDerniere = /\b(?:derni[èe]re?|dernier|nouvelle?|nouveau|r[ée]cente?)\b/.test(t);
+
+    // « la vidéo <titre> de <chaîne> » — le titre est ce qui s'intercale entre les deux.
+    // Le dernier « de » sépare : un titre peut lui-même contenir des « de ».
+    if (!veutDerniere) {
+      const m = t.match(/\bvid[ée]o\s+(?:intitul[ée]e?\s+|appel[ée]e?\s+|qui\s+s'appelle\s+)?(.+)\s+\bde\s+(.+)$/);
+      if (m && m[1].trim().length >= 2 && m[2].trim().length >= 2) {
+        return { nom: voixExtraireNom(m[2]), titre: m[1].trim() };
+      }
+    }
+    return { nom: voixExtraireNom(t), titre: '' };
+  }
+
+  async function voixTraiter(phrase, mainsLibres) {
+    const demande = voixAnalyserDemande(phrase);
+    const nom = demande.nom;
     if (!nom || nom.length < 2) {
       // On relance l'écoute au lieu de rendre la main : l'utilisateur vient de s'adresser à
       // nous, lui faire retoucher le micro pour rien casserait le dialogue.
@@ -2722,13 +2751,16 @@ const V2 = (() => {
       return;
     }
 
-    voixStatut('🔎 Je cherche la dernière vidéo de ' + nom + '…');
-    voixParler('Je cherche la dernière vidéo de ' + nom + '.');
+    const quoi = demande.titre ? 'la vidéo ' + demande.titre + ' de ' + nom
+                               : 'la dernière vidéo de ' + nom;
+    voixStatut('🔎 Je cherche ' + quoi + '…');
+    voixParler('Je cherche ' + quoi + '.');
     let cache = {};
     try { cache = JSON.parse(localStorage.getItem(VOIX_CACHE) || '{}'); } catch {}
     const cle = nom.toLowerCase();
 
     const corps = { type: 'latest-video', query: nom, minDuration: 300 };
+    if (demande.titre) corps.titre = demande.titre;
     if (cache[cle]) corps.channelId = cache[cle];
 
     let data;
