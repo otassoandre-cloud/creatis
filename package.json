@@ -8,12 +8,15 @@
     "setup": "node setup/setup-complet.js",
     "setup:stripe": "node setup/create-stripe-products.js",
     "setup:supabase": "node setup/init-supabase.js",
-    "dev": "node serveur.js"
+    "dev": "node serveur.js",
+    "geometry": "cd repurpose-service && python -m caption_geometry --emit-js",
+    "deploy": "bash scripts/deploy.sh"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.56.0",
     "ffmpeg-static": "^5.3.0",
     "fluent-ffmpeg": "^2.1.3",
     "https-proxy-agent": "^9.0.0",

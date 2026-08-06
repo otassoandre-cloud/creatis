@@ -14,7 +14,8 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -32,9 +33,9 @@
   "@type": "FAQPage",
   "mainEntity": [
     {"@type": "Question", "name": "Klap est-il un outil français ?", "acceptedAnswer": {"@type": "Answer", "text": "Klap a été fondé en France, ce qui est un avantage. Cependant, son interface reste principalement en anglais et sa transcription française, bien que correcte, n'est pas aussi optimisée que celle de Créatis qui utilise un pipeline Whisper dédié au français."}},
-    {"@type": "Question", "name": "Quel est le prix de Klap par rapport à Créatis ?", "acceptedAnswer": {"@type": "Answer", "text": "Klap propose des plans à partir de 29€/mois pour un nombre limité de vidéos. Créatis démarre à 9,95€ le premier mois puis 19,90€/mois avec clips illimités — plus accessible pour les créateurs qui publient régulièrement."}},
+    {"@type": "Question", "name": "Quel est le prix de Klap par rapport à Créatis ?", "acceptedAnswer": {"@type": "Answer", "text": "Klap propose des plans à partir de 29€/mois pour un nombre limité de vidéos. Créatis démarre à 9,95€/mois (20 clips) et passe à 14€/mois pour 150 clips — plus accessible pour les créateurs qui publient régulièrement."}},
     {"@type": "Question", "name": "Klap ou Créatis : lequel a le meilleur face tracking ?", "acceptedAnswer": {"@type": "Answer", "text": "Klap propose un recadrage IA basique. Créatis intègre un face tracking multi-locuteur qui détecte automatiquement quel intervenant parle et recentre le cadre sur lui — idéal pour les podcasts et interviews."}},
-    {"@type": "Question", "name": "Puis-je essayer Créatis gratuitement ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Créatis offre 1 essai gratuit complet sans carte bancaire et sans filigrane. Tu peux tester sur ta propre vidéo et voir la qualité des clips, sous-titres et recadrage avant de t'engager."}}
+    {"@type": "Question", "name": "Puis-je essayer Créatis gratuitement ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Créatis analyse ta vidéo gratuitement et te montre tes clips en aperçu — recadrage 9:16, sous-titres, tout est visible avant de payer. Le téléchargement demande un plan à partir de 9,95€/mois."}}
   ]
 }
 </script>
@@ -81,6 +82,19 @@ article strong { color: var(--paper); }
 .compare-table .winner { color: var(--green); font-weight: 600; }
 </style>
   <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
 </head>
 <body>
 <nav class="blog-nav">
@@ -171,7 +185,7 @@ article strong { color: var(--paper); }
     <tr>
       <td>Prix</td>
       <td>A partir de 29€/mois (limité)</td>
-      <td class="winner">9,95€ puis 19,90€/mois (illimité)</td>
+      <td class="winner">9,95€ ou 14€/mois (150 clips)</td>
     </tr>
   </table>
 
@@ -190,11 +204,11 @@ article strong { color: var(--paper); }
   <p>Pour les podcasts et interviews, le recadrage doit suivre la bonne personne. Créatis détecte automatiquement les visages et <strong>recentre le cadre sur le locuteur actif</strong>. Avec Klap, le recadrage est plus statique et nécessite parfois des ajustements.</p>
 
   <h3>Clips illimités, prix accessible</h3>
-  <p>Klap facture par crédits : chaque vidéo consomme des crédits selon sa durée. A 29€/mois, tu es vite limité si tu publies régulièrement. Créatis propose des <strong>clips illimités à 19,90€/mois</strong> (9,95€ le premier mois) — pas de mauvaise surprise.</p>
+  <p>Klap facture par crédits : chaque vidéo consomme des crédits selon sa durée. A 29€/mois, tu es vite limité si tu publies régulièrement. Créatis propose <strong>150 clips par mois à 14€</strong> (ou 20 clips à 9,95€) — pas de mauvaise surprise.</p>
 
   <div class="cta-box">
     <h3>Teste Créatis gratuitement</h3>
-    <p>1 essai gratuit sans carte bancaire. Résultat en 60 secondes.</p>
+    <p>Analyse gratuite sans carte bancaire. Vois tes clips avant de payer.</p>
     <a href="/clips-v2.html" class="btn">Essayer Créatis maintenant</a>
   </div>
 
@@ -216,7 +230,7 @@ article strong { color: var(--paper); }
     </details>
     <details>
       <summary>Quel est le prix de Klap par rapport à Créatis ?</summary>
-      <p>Klap propose des plans à partir de 29€/mois pour un nombre limité de vidéos. Créatis démarre à 9,95€ le premier mois puis 19,90€/mois avec clips illimités — plus accessible pour les créateurs qui publient régulièrement.</p>
+      <p>Klap propose des plans à partir de 29€/mois pour un nombre limité de vidéos. Créatis démarre à 9,95€/mois (20 clips) et passe à 14€/mois pour 150 clips — plus accessible pour les créateurs qui publient régulièrement.</p>
     </details>
     <details>
       <summary>Klap ou Créatis : lequel a le meilleur face tracking ?</summary>
@@ -224,13 +238,13 @@ article strong { color: var(--paper); }
     </details>
     <details>
       <summary>Puis-je essayer Créatis gratuitement ?</summary>
-      <p>Oui. Créatis offre 1 essai gratuit complet sans carte bancaire et sans filigrane. Tu peux tester sur ta propre vidéo et voir la qualité des clips, sous-titres et recadrage avant de t'engager.</p>
+      <p>Oui. Créatis analyse ta vidéo gratuitement et te montre tes clips en aperçu — recadrage 9:16, sous-titres, tout est visible avant de payer. Le téléchargement demande un plan à partir de 9,95€/mois.</p>
     </details>
   </div>
 
   <div class="cta-box" style="margin-top:48px">
     <h3>Prêt à essayer l'alternative ?</h3>
-    <p>1 essai gratuit · Sans carte bancaire · Résultat en 60 secondes</p>
+    <p>Analyse gratuite · Sans carte bancaire · Vois tes clips avant de payer</p>
     <a href="/clips-v2.html" class="btn">Découper ma vidéo maintenant</a>
   </div>
 </article>

@@ -26,14 +26,12 @@ module.exports = async (req, res) => {
   // Email fiable : userEmail explicite, sinon userId si c'est un email
   const customerEmail = userEmail || (userId && userId.includes('@') ? userId : null);
 
-  // -50% sur le 1er mois — Pro mensuel uniquement (pas l'annuel)
-  let launchCouponId = null;
-  if ((plan === 'pro' || !plan) && !annuel) {
-    try {
-      const coupon = await stripe.coupons.create({ percent_off: 50, duration: 'once', name: 'Offre lancement -50% 1er mois' });
-      launchCouponId = coupon.id;
-    } catch (e) { /* silencieux si création échoue */ }
-  }
+  // Le -50% automatique sur le 1er mois du Pro a été RETIRÉ avec la grille 9,95 / 14 / 149.
+  // Il ramenait le Pro à 7 € le premier mois, donc SOUS le Starter à 9,95 € : l'échelle de prix
+  // s'inversait et le Starter n'avait plus aucune raison d'exister. L'offre d'appel, c'est
+  // désormais le Starter lui-même. Conséquence : le champ code promo natif Stripe redevient
+  // toujours disponible (Stripe interdit discounts + allow_promotion_codes sur la même session).
+  const launchCouponId = null;
 
   const embedded = req.body.embedded === true;
 

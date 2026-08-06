@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Découper une vidéo longue (1h+) en clips : interviews, conférences, lives | Créatis</title>
+<meta name="description" content="Podcasts, interviews, conférences, streams Twitch : comment découper une vidéo de plus d'une heure en clips viraux sans y passer ta journée. Méthode et outils IA.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://creatis.app/blog/decouper-video-longue-format-interview.html">
+<meta property="og:title" content="Découper une vidéo longue (1h+) en clips viraux">
+<meta property="og:description" content="La méthode pour découper interviews, conférences et lives en clips, sans y passer ta journée.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://creatis.app/blog/decouper-video-longue-format-interview.html">
+<meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Découper une vidéo de 1h+ en clips : la méthode pour interviews, conférences et lives",
+  "author": {"@type": "Organization", "name": "Équipe Rédaction Créatis"},
+  "publisher": {"@type": "Organization", "name": "Créatis", "url": "https://creatis.app"},
+  "datePublished": "2026-07-09",
+  "dateModified": "2026-07-19",
+  "description": "Comment découper une vidéo de plus d'une heure (podcast, interview, conférence, live) en clips viraux avec l'IA.",
+  "mainEntityOfPage": "https://creatis.app/blog/decouper-video-longue-format-interview.html"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Peut-on découper une vidéo de plusieurs heures automatiquement ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Les outils IA comme Créatis traitent des fichiers jusqu'à 24 Go, ce qui couvre la quasi-totalité des podcasts, conférences et streams, même longs."}},
+    {"@type": "Question", "name": "Comment l'IA gère plusieurs intervenants dans une interview ?", "acceptedAnswer": {"@type": "Answer", "text": "Le face tracking détecte qui parle à l'instant T et recadre automatiquement sur cette personne. Quand la parole change de locuteur, le cadrage suit."}},
+    {"@type": "Question", "name": "Faut-il visionner toute la vidéo avant de la découper ?", "acceptedAnswer": {"@type": "Answer", "text": "Non, c'est justement l'intérêt de l'IA. La transcription et la détection des moments forts se font automatiquement, tu n'as pas besoin de regarder les 2 heures de contenu pour trouver les passages viraux."}},
+    {"@type": "Question", "name": "Le format podcast ou stream est-il traité différemment d'une vidéo YouTube classique ?", "acceptedAnswer": {"@type": "Answer", "text": "Le processus est le même (transcription, détection, recadrage, sous-titres), mais le volume de contenu à analyser est plus important, donc le nombre de clips exploitables est généralement plus élevé."}}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Découper une vidéo longue (1h+) avec Créatis",
+  "step": [
+    {"@type": "HowToStep", "position": 1, "name": "Upload sans limite de taille bloquante", "text": "Téléverse ta vidéo longue, Créatis accepte les fichiers jusqu'à 24 Go."},
+    {"@type": "HowToStep", "position": 2, "name": "Transcription complète avec Whisper", "text": "L'IA transcrit l'intégralité de l'audio, même sur plusieurs heures, avec horodatage précis."},
+    {"@type": "HowToStep", "position": 3, "name": "Détection des meilleurs passages, multi-locuteurs", "text": "Le LLM identifie les passages à fort potentiel et attribue un score de viralité."},
+    {"@type": "HowToStep", "position": 4, "name": "Recadrage avec suivi du bon locuteur", "text": "Le face tracking bascule automatiquement d'un intervenant à l'autre."}
+  ]
+}
+</script>
+<link rel="stylesheet" href="/css/blog.css">
+  <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
+</head>
+<body>
+<nav class="blog-nav">
+  <a href="/" class="logo"><span>C</span> Créatis</a>
+  <a href="/clips-v2.html" class="blog-cta">Essayer gratuitement</a>
+</nav>
+
+<article>
+  <h1>Découper une vidéo de 1h+ en clips : la méthode pour interviews, conférences et lives</h1>
+  <div class="meta">Publié le 9 juillet 2026 · 6 min de lecture · Mis à jour le 19 juillet 2026</div>
+
+  <p>Une vidéo de 10 minutes se découpe facilement. Mais un <strong>podcast de 2 heures, une conférence de 45 minutes ou un replay de stream de 3 heures</strong>, c'est une autre histoire : trop de contenu pour tout visionner manuellement, et souvent plusieurs intervenants à gérer.</p>
+
+  <p>Voici la méthode pour découper efficacement du contenu long format, sans y passer ta journée.</p>
+
+  <h2>Pourquoi les vidéos longues sont différentes</h2>
+
+  <p>Découper une vidéo de 10 minutes et une vidéo de 2 heures n'a rien à voir. Trois différences majeures :</p>
+
+  <ul>
+    <li><strong>Le volume de matière première</strong> — une vidéo longue contient beaucoup plus de moments potentiellement exploitables, mais aussi beaucoup plus de temps morts à filtrer</li>
+    <li><strong>Le nombre d'intervenants</strong> — interviews, débats et podcasts à plusieurs voix nécessitent un recadrage qui suit le bon locuteur en temps réel</li>
+    <li><strong>Le temps de visionnage manuel</strong> — repérer les meilleurs passages à l'œil dans 2 heures de contenu est un travail à part entière, souvent plus long que le montage lui-même</li>
+  </ul>
+
+  <h2>Les défis spécifiques au format long</h2>
+
+  <h3>Trouver l'aiguille dans la botte de foin</h3>
+  <p>Sur une vidéo courte, les moments forts sautent aux yeux. Sur 2 heures de podcast, ils sont dilués entre les digressions, les transitions et les moments de mise en contexte. Visionner l'intégralité pour les repérer prend facilement plusieurs heures.</p>
+
+  <h3>Gérer plusieurs locuteurs</h3>
+  <p>Dans une interview ou un débat, le recadrage 9:16 doit suivre la bonne personne au bon moment. Un crop statique centré rate systématiquement celui qui parle dès que la caméra couvre plusieurs personnes.</p>
+
+  <h3>La taille des fichiers</h3>
+  <p>Un stream de 3 heures en bonne qualité peut peser plusieurs dizaines de gigaoctets. Beaucoup d'outils plafonnent la taille de fichier acceptée, ce qui bloque net le traitement des formats les plus longs.</p>
+
+  <h2>La méthode en 4 étapes</h2>
+
+  <h3>1. Upload sans limite de taille bloquante</h3>
+  <p>Téléverse ta vidéo longue — Créatis accepte les fichiers jusqu'à <strong>24 Go</strong>, ce qui couvre la quasi-totalité des podcasts, conférences et VOD de stream.</p>
+
+  <h3>2. Transcription complète avec Whisper</h3>
+  <p>L'IA transcrit l'intégralité de l'audio, même sur plusieurs heures, avec horodatage précis de chaque mot. C'est cette transcription qui sert de base à la détection des moments forts, sans qu'aucun humain n'ait à visionner le contenu en entier.</p>
+
+  <h3>3. Détection des meilleurs passages, multi-locuteurs</h3>
+  <p>Le LLM analyse la transcription complète et identifie les passages avec le plus fort potentiel : réponses marquantes, désaccords, révélations, moments de tension. Chaque clip reçoit un score de viralité, ce qui te permet de prioriser sans tout regarder.</p>
+
+  <h3>4. Recadrage avec suivi du bon locuteur</h3>
+  <p>Le face tracking détecte qui parle à l'instant T et recadre automatiquement sur cette personne. Sur une interview à deux, le cadrage bascule naturellement d'un intervenant à l'autre au fil de la conversation.</p>
+
+  <div class="cta-box">
+    <h3>Découpe ton contenu long dès maintenant</h3>
+    <p>Podcast, interview, conférence ou stream : dépose ta vidéo et récupère tes meilleurs clips en quelques minutes.</p>
+    <a href="/clips-v2.html" class="btn">⚡ Découper ma vidéo longue</a>
+  </div>
+
+  <h2>Cas d'usage par format</h2>
+
+  <p>La méthode s'applique à tous les formats longs, avec quelques particularités :</p>
+
+  <ul>
+    <li><strong>Podcast audio ou vidéo</strong> — consulte notre page dédiée <a href="/clips-podcast.html">clips de podcast automatiques</a> pour le détail du workflow</li>
+    <li><strong>Streams Twitch</strong> — les VOD de plusieurs heures se découpent en clips highlights, voir notre page <a href="/clips-twitch.html">clips Twitch</a></li>
+    <li><strong>Interviews et débats</strong> — le suivi multi-locuteurs est essentiel pour ne pas rater les échanges</li>
+    <li><strong>Conférences et talks</strong> — les moments à fort potentiel sont souvent les exemples concrets et les punchlines, pas l'introduction ou le contexte</li>
+  </ul>
+
+  <p>Une fois tes clips extraits, pense à vérifier le nombre de Shorts que ta vidéo peut réellement fournir avec notre <a href="/blog/combien-shorts-extraire-video-youtube.html">calcul du ratio de recyclage</a>, et évite les <a href="/blog/erreurs-qui-tuent-tes-shorts.html">erreurs qui tuent tes Shorts</a> une fois les clips prêts à publier.</p>
+
+  <h2>Résultats réels</h2>
+
+  <p>Un créateur manga francophone a appliqué cette méthode de recyclage sur ses vidéos longues avec Créatis. Résultat : <strong>5,4 millions de vues et 1 049€ de revenus</strong> générés à partir de seulement 4 clips sélectionnés par l'IA.</p>
+
+  <p>Pour comprendre l'ensemble de l'outil, retourne à la <a href="/">page d'accueil</a> ou compare les <a href="/#tarifs">formules Créatis</a> selon ton volume de contenu.</p>
+
+  <div class="faq-section">
+    <h2>Questions fréquentes</h2>
+    <details>
+      <summary>Peut-on découper une vidéo de plusieurs heures automatiquement ?</summary>
+      <p>Oui. Les outils IA comme Créatis traitent des fichiers jusqu'à 24 Go, ce qui couvre la quasi-totalité des podcasts, conférences et streams, même longs.</p>
+    </details>
+    <details>
+      <summary>Comment l'IA gère plusieurs intervenants dans une interview ?</summary>
+      <p>Le face tracking détecte qui parle à l'instant T et recadre automatiquement sur cette personne. Quand la parole change de locuteur, le cadrage suit.</p>
+    </details>
+    <details>
+      <summary>Faut-il visionner toute la vidéo avant de la découper ?</summary>
+      <p>Non, c'est justement l'intérêt de l'IA. La transcription et la détection des moments forts se font automatiquement, tu n'as pas besoin de regarder les 2 heures de contenu pour trouver les passages viraux.</p>
+    </details>
+    <details>
+      <summary>Le format podcast ou stream est-il traité différemment d'une vidéo YouTube classique ?</summary>
+      <p>Le processus est le même (transcription, détection, recadrage, sous-titres), mais le volume de contenu à analyser est plus important, donc le nombre de clips exploitables est généralement plus élevé.</p>
+    </details>
+  </div>
+
+  <div class="cta-box" style="margin-top:48px">
+    <h3>Prêt à découper ton premier contenu long ?</h3>
+    <p>Analyse gratuite · Sans carte bancaire · Fichiers jusqu'à 24 Go</p>
+    <a href="/clips-v2.html" class="btn">⚡ Essayer Créatis gratuitement</a>
+  </div>
+</article>
+
+<footer class="blog-footer">
+  <p>© 2026 Créatis · <a href="/blog.html">Blog</a> · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@creatis.app">Contact</a></p>
+</footer>
+</body>
+</html>

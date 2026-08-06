@@ -6,7 +6,7 @@
 
   <!-- ===== SEO PRIMAIRE ===== -->
   <title>Créatis — Générateur de contenu YouTube IA en français | Titres, Scripts, Miniatures style top créateurs YouTube</title>
-  <meta name="description" content="Créatis transforme tes vidéos en 10 Shorts viraux 9:16 automatiquement. Clips viraux, scripts, miniatures et SEO YouTube en français grâce à l'IA. 1 essai gratuit.">
+  <meta name="description" content="Créatis transforme tes vidéos en 10 Shorts viraux 9:16 automatiquement. Clips viraux, scripts, miniatures et SEO YouTube en français grâce à l'IA. Analyse gratuite.">
   <meta name="keywords" content="générateur contenu YouTube IA, miniature YouTube style top créateurs YouTube, script YouTube IA français, titre YouTube cliquable, SEO YouTube France, créateur YouTube IA">
   <meta name="robots" content="index, follow">
   <meta name="author" content="Créatis SAS">
@@ -43,8 +43,7 @@
     "description": "Plateforme IA pour créateurs de contenu YouTube francophones. Génère automatiquement clips viraux, scripts, miniatures et stratégie de contenu en quelques secondes.",
     "offers": [
       { "@type": "Offer", "name": "Plan Gratuit", "price": "0", "priceCurrency": "EUR", "description": "1 génération gratuite pour découvrir, sans carte bancaire" },
-      { "@type": "Offer", "name": "Plan Pro", "price": "19", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } },
-      { "@type": "Offer", "name": "Plan Studio", "price": "49", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } }
+      { "@type": "Offer", "name": "Plan Pro", "price": "19", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" } }
     ],
     "provider": { "@type": "Organization", "name": "Créatis SAS", "url": "https://creatis.app", "contactPoint": { "@type": "ContactPoint", "email": "contact@creatis.app", "contactType": "customer support" } }
   }
@@ -93,7 +92,7 @@
   <!-- PostHog -->
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_hYTqUiZ4MoaIw01zERqmPuhIQnKhuCqvOMnLOdmNph4',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
   </script>
 
   <!-- Proxy stubs (chargés avant le body pour éviter les erreurs JS) -->
@@ -453,7 +452,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   box-shadow: 0 20px 60px -15px rgba(0,0,0,0.8), 0 0 30px -10px var(--green-glow);
   transition: transform .6s cubic-bezier(.22,1,.36,1), opacity .6s;
 }
-.float-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.float-card img, .float-card video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .float-card.fc1 { width: 145px; height: 215px; top: -15px; left: -50px; transform: rotate(-14deg); opacity: 0.6; }
 .float-card.fc2 { width: 125px; height: 185px; bottom: 20px; right: -40px; transform: rotate(10deg); opacity: 0.5; }
 .stage:hover .float-card.fc1 { transform: rotate(-8deg) translateX(-10px); opacity: 0.8; }
@@ -531,7 +530,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   .tc-field span { font-size: 0.85rem; }
   .why-grid { grid-template-columns: 1fr; gap: 30px; }
   .why-left { position: static; text-align: center; }
-  .fcard { min-height: 280px; position: relative; }
+  .fcard { min-height: 280px; }
   .money { padding: 22px 16px; }
   .final-card { padding: 36px 18px; }
   .final-grid { grid-template-columns: 1fr; text-align: center; }
@@ -794,7 +793,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
 .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
 .plan { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 30px 26px; display: flex; flex-direction: column; overflow: hidden; }
 .plan-feat { border-color: var(--green); }
-.plan-feat::before { content: "-50% le 1er mois"; position: absolute; top: 0; right: 0; background: linear-gradient(180deg, var(--green), var(--green-2)); color: #05140B; font-size: 0.68rem; font-weight: 800; padding: 6px 14px; border-bottom-left-radius: 12px; }
+.plan-feat::before { content: "Le plus choisi"; position: absolute; top: 0; right: 0; background: linear-gradient(180deg, var(--green), var(--green-2)); color: #05140B; font-size: 0.68rem; font-weight: 800; padding: 6px 14px; border-bottom-left-radius: 12px; }
 .plan-soon { opacity: 0.72; }
 .plan h3 { font-size: 1.05rem; margin-bottom: 6px; color: var(--muted); font-weight: 700; }
 .plan-price { font-size: 2.1rem; font-weight: 800; }
@@ -884,7 +883,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
 
 <!-- ===== BANDEAU OFFRE DE LANCEMENT ===== -->
 <div id="bandeau-lancement">
-  🎁 Offre de lancement — <strong>-50% le 1er mois</strong> · Limité dans le temps
+  🎁 Analyse gratuite — <strong>vois tes clips avant de payer</strong>
   <a href="#tarifs" style="color:#000;text-decoration:underline;margin-left:10px;font-weight:800">En profiter →</a>
   <button onclick="document.getElementById('bandeau-lancement').style.display='none'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#000;opacity:.6;line-height:1">✕</button>
 </div>
@@ -929,18 +928,23 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
     <div class="hero-grid">
       <!-- LEFT -->
       <div class="hero-left">
-        <div class="hero-badge"><b>CLIPS VIRAUX IA</b> <span class="hero-badge-lt">⚡</span> utilisé par +120 créateurs FR</div>
-        <h1>1 vidéo longue,<br><strong class="grad-text">10 Shorts</strong> qui explosent.</h1>
+        <div class="hero-badge"><b>CLIPS VIRAUX IA</b> <span class="hero-badge-lt">⚡</span> utilisé par +300 créateurs FR</div>
+        <h1>Transforme tes vidéos<br>en <strong class="grad-text">Shorts viraux</strong>.</h1>
         <p class="hero-lead">Dépose ta vidéo. L'IA découpe les meilleurs moments, recadre en 9:16, brûle les sous-titres. Tes Shorts sont prêts.</p>
 
-        <!-- Upload pill CTA — redirige direct vers clips-v2 -->
-        <a href="/auth.html?returnUrl=/clips-v2.html" class="upload-pill" style="cursor:pointer;text-decoration:none">
-          <span class="upload-pill-ic">
+        <!-- Vrai champ. C'était un <a> déguisé en champ de saisie : le placeholder promettait
+             « colle un lien YouTube » mais rien n'était collable, le clic partait sur l'inscription. -->
+        <form class="upload-pill" onsubmit="return heroGenerer(event)">
+          <label class="upload-pill-ic" title="Téléverser une vidéo depuis ton ordinateur" style="cursor:pointer">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </span>
-          <span class="upload-pill-txt">Téléverse ta vidéo — MP4, MOV, jusqu'à 24 Go</span>
-          <span class="upload-pill-go"><span class="upload-pill-go-txt">Générer</span> ⚡</span>
-        </a>
+            <input type="file" accept="video/*" style="display:none" onchange="heroFichier()">
+          </label>
+          <input type="text" id="hero-url" class="upload-pill-txt" placeholder="Colle un lien YouTube — ou clique sur l'icône pour téléverser"
+            inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            style="background:none;border:none;outline:none;font-family:inherit">
+          <button type="submit" class="upload-pill-go"><span class="upload-pill-go-txt">Générer</span> ⚡</button>
+        </form>
+        <div id="hero-url-hint" style="display:none;font-size:0.82rem;color:#f97316;margin:-16px 0 20px"></div>
 
         <div class="trust-row">
           <span class="trust"><svg class="trust-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Zéro montage requis</span>
@@ -956,9 +960,9 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
 
           <!-- Cartes flottantes derrière — finance + gaming -->
           <div class="float-card fc1">
-            <img src="/images/clips/finance.webp" alt="Clip viral finance">
+            <img src="/images/clips/finance.webp" alt="Clip viral finance" fetchpriority="high" decoding="async">
             <div class="fc-overlay">
-              <div class="fc-avatar"><img src="/images/clips/finance.webp" alt="Clip viral finance"></div>
+              <div class="fc-avatar"><img src="/images/clips/finance.webp" alt="Clip viral finance" fetchpriority="high" decoding="async"></div>
               <div class="fc-info">
                 <div class="fc-desc">comment j'ai investi 1000€…</div>
                 <div class="fc-tags">#finance #trading #crypto</div>
@@ -967,9 +971,9 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             </div>
           </div>
           <div class="float-card fc2">
-            <img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok">
+            <img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok" loading="lazy" decoding="async">
             <div class="fc-overlay">
-              <div class="fc-avatar"><img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok"></div>
+              <div class="fc-avatar"><img src="/images/clips/ad-gaming.webp" alt="Clip gaming TikTok" loading="lazy" decoding="async"></div>
               <div class="fc-info">
                 <div class="fc-desc">ce setup gaming est INSANE 🔥</div>
                 <div class="fc-tags">#gaming #setup #streamer</div>
@@ -992,12 +996,12 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             <div class="iphone-shine"></div>
             <div class="iphone-screen">
               <!-- CHANGE CE SRC POUR UN AUTRE CLIP -->
-              <img src="/images/clips/short-podcast-1.webp" alt="Clip viral podcast" class="iphone-img">
+              <img src="/images/clips/short-podcast-1.webp" alt="Clip viral podcast" class="iphone-img" loading="lazy" decoding="async">
               <div class="iphone-ui-score">97</div>
               <div class="iphone-ui-rail">
                 <!-- Avatar + follow -->
                 <div class="iphone-ui-avatar">
-                  <img src="/images/clips/short-podcast-1.webp" alt="Short podcast extrait" class="iphone-ui-av-img">
+                  <img src="/images/clips/short-podcast-1.webp" alt="Short podcast extrait" class="iphone-ui-av-img" loading="lazy" decoding="async">
                   <div class="iphone-ui-av-plus">+</div>
                 </div>
                 <!-- Heart -->
@@ -1032,7 +1036,45 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   </div>
 </section>
 
-<!-- ===== +120 CRÉATEURS — VALUE CARDS ===== -->
+<!-- ===== +300 CRÉATEURS — VALUE CARDS ===== -->
+<!-- Vitrine clips générés (boucles muettes) -->
+<style>
+  .clip-showcase{padding:34px 0 2px;overflow:hidden}
+  .clip-showcase-head{text-align:center;max-width:720px;margin:0 auto 22px;padding:0 20px}
+  .clip-showcase-head h2{font-size:clamp(1.7rem,4.4vw,42px);font-weight:800;line-height:1.12;margin:0 0 14px;color:var(--paper)}
+  .clip-showcase-head p{color:var(--muted);font-size:clamp(.95rem,1.4vw,17px);line-height:1.55;margin:0}
+  .clip-showcase-track{display:flex;gap:14px;overflow-x:auto;padding:6px 20px 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;justify-content:center}
+  .clip-showcase-item:first-child{-webkit-mask-image:linear-gradient(to right,transparent,#000 55%);mask-image:linear-gradient(to right,transparent,#000 55%)}
+  .clip-showcase-item:last-child{-webkit-mask-image:linear-gradient(to left,transparent,#000 55%);mask-image:linear-gradient(to left,transparent,#000 55%)}
+  .clip-showcase-track::-webkit-scrollbar{display:none}
+  .clip-showcase-item{flex:0 0 auto;width:clamp(120px,16vw,165px);aspect-ratio:9/16;border-radius:16px;object-fit:cover;background:#111;box-shadow:0 8px 24px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06)}
+  @media(max-width:760px){.clip-showcase-track{justify-content:flex-start}.clip-showcase-item{width:128px}}
+</style>
+<section class="clip-showcase" aria-label="Exemples de clips générés par Créatis">
+  <div class="clip-showcase-head">
+    <h2>Le contenu court qui <span class="grad-text">fait décoller ton audience</span></h2>
+    <p>Publie comme les créateurs les plus suivis : colle une vidéo longue, récupère des dizaines de Shorts viraux prêts à poster, en quelques clics.</p>
+  </div>
+  <div class="clip-showcase-track" id="clip-showcase-track">
+      <video class="clip-showcase-item" src="/images/loop/showcase-1.mp4" poster="/images/loop/showcase-1.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-2.mp4" poster="/images/loop/showcase-2.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-3.mp4" poster="/images/loop/showcase-3.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-4.mp4" poster="/images/loop/showcase-4.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-5.mp4" poster="/images/loop/showcase-5.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-6.mp4" poster="/images/loop/showcase-6.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-7.mp4" poster="/images/loop/showcase-7.webp" muted loop playsinline preload="none"></video>
+      <video class="clip-showcase-item" src="/images/loop/showcase-8.mp4" poster="/images/loop/showcase-8.webp" muted loop playsinline preload="none"></video>
+  </div>
+</section>
+<script>
+(function(){
+  var t=document.getElementById('clip-showcase-track');
+  if(!t)return;
+  if(!('IntersectionObserver' in window)){t.querySelectorAll('video').forEach(function(v){v.play&&v.play().catch(function(){});});return;}
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){var v=e.target;if(e.isIntersecting){v.play&&v.play().catch(function(){});}else{v.pause&&v.pause();}});},{threshold:0.25});
+  t.querySelectorAll('video').forEach(function(v){io.observe(v);});
+})();
+</script>
 <section class="sec">
   <div class="dotgrid"></div>
   <div class="wrap">
@@ -1044,19 +1086,19 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <div class="vcard">
         <span class="glow green"></span>
         <span class="vlabel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Monétise tes vues</span>
-        <div class="vart"><img src="/images/card-vues-revenus.png" alt="Dashboard vues et revenus YouTube" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="vart"><img src="/images/card-vues-revenus.webp" alt="Dashboard vues et revenus YouTube" style="width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async"></div>
         <div class="vbody"><p>Chaque Short viral te rapporte via les programmes créateurs TikTok et YouTube Shorts.</p></div>
       </div>
       <div class="vcard">
         <span class="glow orange"></span>
         <span class="vlabel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> L'IA fait le montage</span>
-        <div class="vart"><img src="/images/card-automatique.png" alt="Génération automatique de clips IA" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="vart"><img src="/images/card-automatique.webp" alt="Génération automatique de clips IA" style="width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async"></div>
         <div class="vbody"><p>Détection des moments forts, découpe, recadrage 9:16 et sous-titres. Tu publies, c'est tout.</p></div>
       </div>
       <div class="vcard">
         <span class="glow green"></span>
         <span class="vlabel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Un seul outil</span>
-        <div class="vart"><img src="/images/card-tout-en-un.png" alt="Plateforme tout-en-un Créatis" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="vart"><img src="/images/card-tout-en-un.webp" alt="Plateforme tout-en-un Créatis" style="width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async"></div>
         <div class="vbody"><p>Clips, scripts, miniatures, recyclage multi-plateforme — fini les 5 abonnements différents.</p></div>
       </div>
     </div>
@@ -1083,7 +1125,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
           <div class="lp-demo-card" id="lp-demo-card">
             <div id="la-vid" class="lp-anim-vid">
               <div id="la-bg" style="position:absolute;inset:0;transition:background .5s;"></div>
-              <img id="la-thumb" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;transition:opacity .5s;opacity:0;">
+              <img id="la-thumb" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;transition:opacity .5s;opacity:0;" loading="lazy" decoding="async">
               <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:1;border-radius:inherit;"></div>
               <svg id="la-play" viewBox="0 0 24 24" width="40" height="40" style="position:absolute;z-index:2;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));transition:opacity .4s;"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.55)"/><polygon points="10,8 18,12 10,16" fill="#fff"/></svg>
               <svg id="la-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" style="position:absolute;z-index:2;transition:opacity .4s;opacity:0;"></svg>
@@ -1106,7 +1148,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         </div>
       </div>
       <div class="fpanel" data-fp="1">
-        <div class="fpanel-visual"><img src="/images/tab-scripts.jpg" alt="Scripts & Titres YouTube"></div>
+        <div class="fpanel-visual"><img src="/images/tab-scripts.webp" alt="Scripts & Titres YouTube" loading="lazy" decoding="async"></div>
         <div class="fpanel-text">
           <h3>Scripts complets et <strong>titres optimisés</strong></h3>
           <p>Génère un script complet structuré, 5 titres YouTube cliquables et une description SEO — en 30 secondes. Personnalisé pour ta chaîne.</p>
@@ -1114,7 +1156,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         </div>
       </div>
       <div class="fpanel" data-fp="2">
-        <div class="fpanel-visual"><img src="/images/tab-miniatures.jpg" alt="Miniatures IA"></div>
+        <div class="fpanel-visual"><img src="/images/tab-miniatures.webp" alt="Miniatures IA" loading="lazy" decoding="async"></div>
         <div class="fpanel-text">
           <h3>Miniatures style <strong>top créateurs</strong></h3>
           <p>L'IA génère des visuels HD 1536×1024px avec les codes visuels qui font cliquer. Télécharge en un clic, publie direct.</p>
@@ -1122,7 +1164,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         </div>
       </div>
       <div class="fpanel" data-fp="3">
-        <div class="fpanel-visual"><img src="/images/tab-recyclage.jpg" alt="Recyclage multiplateforme"></div>
+        <div class="fpanel-visual"><img src="/images/tab-recyclage.webp" alt="Recyclage multiplateforme" loading="lazy" decoding="async"></div>
         <div class="fpanel-text">
           <h3>Recycle ton contenu <strong>partout</strong></h3>
           <p>Une vidéo YouTube → posts LinkedIn, tweets, carrousels Instagram, newsletter. L'IA adapte le format et le ton pour chaque plateforme.</p>
@@ -1188,7 +1230,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <!-- LEFT — sticky -->
       <div class="why-left reveal-left">
         <h2>Pourquoi les créateurs <strong>choisissent Créatis</strong></h2>
-        <p style="color:var(--muted);font-size:1.05rem;margin:20px 0 28px;line-height:1.55">3 raisons pour lesquelles +120 créateurs francophones nous font confiance.</p>
+        <p style="color:var(--muted);font-size:1.05rem;margin:20px 0 28px;line-height:1.55">3 raisons pour lesquelles +300 créateurs francophones nous font confiance.</p>
         <a href="mailto:contact@creatis.app" class="btn-grad">Nous contacter</a>
       </div>
       <!-- RIGHT — cartes empilées -->
@@ -1199,7 +1241,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             <div class="fcard-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#05140B" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
             <div><h3>60 secondes, pas 3 heures</h3><div class="fcard-sub">Ce qui prenait un après-midi de montage se fait le temps d'un scroll TikTok</div></div>
           </div>
-          <div class="fcard-art"><img src="/images/card-temps.jpg" alt="Gain de temps avec l'IA"></div>
+          <div class="fcard-art"><img src="/images/card-temps.webp" alt="Gain de temps avec l'IA" loading="lazy" decoding="async"></div>
           <span class="fcard-num">01</span>
         </div>
         <div class="fcard">
@@ -1208,7 +1250,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             <div class="fcard-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#05140B" stroke-width="2.5"><path d="M12 2a9 9 0 0 1 9 9c0 3.88-3.13 7.14-7 7.84V22h-4v-3.16C6.13 18.14 3 14.88 3 11a9 9 0 0 1 9-9z"/></svg></div>
             <div><h3>L'IA qui comprend ta vidéo</h3><div class="fcard-sub">Elle repère les moments forts, les punchlines et les réactions — pas de découpage aléatoire</div></div>
           </div>
-          <div class="fcard-art"><img src="/images/card-ia.jpg" alt="Intelligence artificielle pour créateurs"></div>
+          <div class="fcard-art"><img src="/images/card-ia.webp" alt="Intelligence artificielle pour créateurs" loading="lazy" decoding="async"></div>
           <span class="fcard-num">02</span>
         </div>
         <div class="fcard">
@@ -1217,7 +1259,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
             <div class="fcard-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#05140B" stroke-width="2.5"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></div>
             <div><h3>Fait pour l'algorithme</h3><div class="fcard-sub">Format 9:16, hook percutant, sous-titres karaoke — chaque clip est optimisé pour le FYP</div></div>
           </div>
-          <div class="fcard-art"><img src="/images/card-performance.png" alt="Performance et analytics clips"></div>
+          <div class="fcard-art"><img src="/images/card-performance.webp" alt="Performance et analytics clips" loading="lazy" decoding="async"></div>
           <span class="fcard-num">03</span>
         </div>
       </div>
@@ -1242,9 +1284,9 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
           </div>
         </div>
         <div class="final-phones">
-          <div class="final-phone fp1"><img src="/images/IMG_2383.PNG" alt="339€ — 1,28M vues"></div>
-          <div class="final-phone fp2"><img src="/images/IMG_2382.PNG" alt="532€ — 1,28M vues"></div>
-          <div class="final-phone fp3"><img src="/images/IMG_2380.PNG" alt="78€ — 1,69M vues"></div>
+          <div class="final-phone fp1"><img src="/images/IMG_2383.webp" alt="339€ — 1,28M vues" loading="lazy" decoding="async"></div>
+          <div class="final-phone fp2"><img src="/images/IMG_2382.webp" alt="532€ — 1,28M vues" loading="lazy" decoding="async"></div>
+          <div class="final-phone fp3"><img src="/images/IMG_2380.webp" alt="78€ — 1,69M vues" loading="lazy" decoding="async"></div>
         </div>
       </div>
     </div>
@@ -1265,7 +1307,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         <div class="testi-stars">★★★★★</div>
         <div class="testi-quote">"J'ai réduit le temps de création de mes vidéos de 3h à 20 minutes. Les scripts sont vraiment bons, ça ressemble à mon style."</div>
         <div class="testi-who">
-          <img src="https://i.pravatar.cc/80?img=12" alt="Thomas M." class="testi-av">
+          <img src="https://i.pravatar.cc/80?img=12" alt="Thomas M." class="testi-av" loading="lazy" decoding="async">
           <div><strong>Thomas M.</strong><span>Chaîne Gaming · 12K abonnés</span></div>
         </div>
       </div>
@@ -1273,7 +1315,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         <div class="testi-stars">★★★★★</div>
         <div class="testi-quote">"Les clips viraux c'est magique. Je colle ma vidéo, j'ai 10 shorts prêts en 2 minutes. Mon TikTok a explosé ce mois-ci."</div>
         <div class="testi-who">
-          <img src="https://i.pravatar.cc/80?img=47" alt="Sarah K." class="testi-av">
+          <img src="https://i.pravatar.cc/80?img=47" alt="Sarah K." class="testi-av" loading="lazy" decoding="async">
           <div><strong>Sarah K.</strong><span>Développement personnel · 8K abonnés</span></div>
         </div>
       </div>
@@ -1281,13 +1323,13 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
         <div class="testi-stars">★★★★★</div>
         <div class="testi-quote">"Les miniatures générées par l'IA sont bluffantes. Mon CTR est passé de 4% à 9% en un mois. Indispensable."</div>
         <div class="testi-who">
-          <img src="https://i.pravatar.cc/80?img=33" alt="Marc D." class="testi-av">
+          <img src="https://i.pravatar.cc/80?img=33" alt="Marc D." class="testi-av" loading="lazy" decoding="async">
           <div><strong>Marc D.</strong><span>Finance & Investissement · 22K abonnés</span></div>
         </div>
       </div>
     </div>
     <div class="stats-strip reveal">
-      <div class="stat-s"><b>+120</b><span>créateurs inscrits</span></div>
+      <div class="stat-s"><b>+300</b><span>créateurs inscrits</span></div>
       <div class="stat-s"><b>5,4M</b><span>vues sur 4 clips</span></div>
       <div class="stat-s"><b>20-60s</b><span>par génération</span></div>
     </div>
@@ -1303,57 +1345,53 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
     </div>
     <!-- Toggle -->
     <div class="tarifs-toggle-wrap">
-      <span class="toggle-label" id="toggle-label-mens">Mensuel</span>
-      <button class="toggle-switch" id="toggle-facturation" onclick="toggleFacturation()" aria-label="Toggle annuel/mensuel">
-        <span class="toggle-thumb" id="toggle-thumb"></span>
-      </button>
-      <span class="toggle-label" id="toggle-label-ann">Annuel <span style="background:var(--green);color:#05140B;font-size:0.7rem;font-weight:800;padding:3px 8px;border-radius:99px;margin-left:6px">-20%</span></span>
     </div>
     <div class="price-grid reveal">
-      <!-- Gratuit -->
+      <!-- Starter -->
       <div class="plan">
-        <h3>Gratuit</h3>
-        <div class="plan-price">0€</div>
-        <div class="plan-note">pour toujours · sans carte bancaire</div>
+        <h3>Starter</h3>
+        <div class="plan-price">9,95€ <span class="plan-price-sub">/mois</span></div>
+        <div class="plan-note">résiliable à tout moment</div>
         <ul>
-          <li>1 clip viral gratuit</li>
+          <li><strong>20 clips</strong> téléchargeables / mois</li>
+          <li><strong>5 vidéos</strong> analysées / mois</li>
           <li>Sous-titres automatiques brûlés</li>
           <li>Format 9:16 prêt TikTok / Reels</li>
-          <li>Détection IA des moments viraux</li>
-          <li class="off">Clips illimités</li>
-          <li class="off">Miniatures, scripts, idées</li>
+          <li class="off">Miniatures, scripts, idées IA</li>
+          <li class="off">Support prioritaire</li>
         </ul>
-        <a href="auth.html" class="btn-outline" style="justify-content:center">Commencer gratuitement</a>
+        <a href="auth.html?plan=starter" class="btn-outline" style="justify-content:center">Démarrer le Starter</a>
       </div>
-      <!-- Pro -->
+      <!-- Pro Mensuel -->
       <div class="plan plan-feat">
         <span class="glow green" style="width:200px;height:200px;top:-80px;right:-50px;"></span>
         <h3 style="color:var(--green)">Pro ⭐</h3>
-        <div class="plan-price"><span id="prix-pro">9,90</span>€ <span class="plan-price-sub">le 1er mois</span></div>
-        <div class="plan-note">puis <span id="prix-pro-normal">19,90€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</div>
+        <div class="plan-price">14€ <span class="plan-price-sub">/mois</span></div>
+        <div class="plan-note">résiliable à tout moment</div>
         <ul>
-          <li>Clips Viraux illimités</li>
+          <li><strong>150 clips</strong> téléchargeables / mois</li>
+          <li><strong>30 vidéos</strong> analysées / mois</li>
           <li>Script, titres, miniatures, idées IA</li>
           <li>Tous les outils créateur débloqués</li>
           <li>30 crédits image / mois</li>
-          <li>Recyclage multiplateforme</li>
           <li>Support prioritaire</li>
         </ul>
         <a href="auth.html?plan=pro" class="btn-grad" style="justify-content:center">⚡ Démarrer le Pro</a>
       </div>
-      <!-- Studio -->
-      <div class="plan plan-soon">
-        <h3>Studio</h3>
-        <div class="plan-price"><span id="prix-studio">49</span>€ <span class="plan-price-sub">/mois</span></div>
-        <div class="plan-note">pour les créateurs multi-chaînes</div>
+      <!-- Pro Annuel -->
+      <div class="plan">
+        <h3 style="color:var(--green)">Pro Annuel 🔥</h3>
+        <div class="plan-price">139€ <span class="plan-price-sub">/an</span></div>
+        <div class="plan-note">soit 11,58€/mois · 2 mois offerts</div>
         <ul>
-          <li>Tous les outils en illimité</li>
-          <li>100 crédits image / mois</li>
-          <li>3 chaînes YouTube indépendantes</li>
-          <li>Recyclage multiplateforme</li>
-          <li>Support dédié</li>
+          <li><strong>150 clips</strong> téléchargeables / mois</li>
+          <li><strong>30 vidéos</strong> analysées / mois</li>
+          <li>Script, titres, miniatures, idées IA</li>
+          <li>Tous les outils créateur débloqués</li>
+          <li>30 crédits image / mois</li>
+          <li>Support prioritaire</li>
         </ul>
-        <span class="plan-soon-tag">BIENTÔT DISPONIBLE</span>
+        <a href="auth.html?plan=pro&annuel=1" class="btn-grad" style="justify-content:center">🔥 Prendre l'annuel</a>
       </div>
     </div>
   </div>
@@ -1408,14 +1446,14 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <h3>Télécharge tes 10 clips viraux 🔓</h3>
       <p>Crée ton compte gratuit pour télécharger et générer depuis tes propres vidéos.</p>
       <button class="btn-grad" onclick="window.location.href='/auth.html?returnUrl=/clips-v2.html'" style="border-radius:999px">Télécharger mes clips — Gratuit →</button>
-      <p style="font-size:12px;color:var(--muted);margin-top:10px">1 essai gratuit · Aucune carte bancaire</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">Analyse gratuite · Aucune carte bancaire</p>
     </div>
   </div>
 </section>
 
 <!-- ===== LIGHTBOX ===== -->
 <div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out" onclick="this.style.display='none'">
-  <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 48px rgba(0,0,0,.8)">
+  <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 48px rgba(0,0,0,.8)" loading="lazy" decoding="async">
 </div>
 
 <!-- ===== FOOTER ===== -->
@@ -1435,7 +1473,7 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
       <span>© 2026 Créatis · contact@creatis.app</span>
       <span>Fait avec ❤️ pour les créateurs de contenu</span>
       <a href="https://bowora.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted);text-decoration:none">Featured on Bowora</a>
-      <a href="https://dofollow.tools" target="_blank" rel="noopener"><img src="https://dofollow.tools/badge/badge_dark.svg" alt="Featured on Dofollow.Tools" width="120" height="32" style="vertical-align:middle;opacity:0.6"></a>
+      <a href="https://dofollow.tools" target="_blank" rel="noopener"><img src="https://dofollow.tools/badge/badge_dark.svg" alt="Featured on Dofollow.Tools" width="120" height="32" style="vertical-align:middle;opacity:0.6" loading="lazy" decoding="async"></a>
     </div>
   </div>
 </footer>
@@ -1508,6 +1546,31 @@ window.switchCmp = function(side) {
 
 // Helpers
 function isYT(u){return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?.*v=|shorts\/)|youtu\.be\/)/.test(u);}
+
+// ── Champ d'accueil : lien YouTube ou téléversement ───────────────────────────
+// Le lien saisi ici doit survivre au passage par l'inscription. On le dépose en localStorage
+// (et pas sessionStorage : la connexion Google sort du site et revient), clips-v2.html le
+// récupère au chargement, préremplit le champ et lance l'analyse.
+function heroGenerer(e){
+  e.preventDefault();
+  const champ = document.getElementById('hero-url');
+  const hint  = document.getElementById('hero-url-hint');
+  const v = (champ?.value || '').trim();
+  if (v && !isYT(v)) {
+    if (hint) { hint.textContent = "Ce lien n'est pas une URL YouTube valide — exemple : https://youtu.be/xxxxxxxxxxx"; hint.style.display = 'block'; }
+    champ?.focus();
+    return false;
+  }
+  if (hint) hint.style.display = 'none';
+  if (v) { try { localStorage.setItem('creatis_pending_yt', JSON.stringify({ url: v, ts: Date.now() })); } catch(_){} }
+  window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+  return false;
+}
+// Un fichier local ne peut pas traverser l'inscription : on envoie l'utilisateur au studio,
+// où il le redépose. L'icône sert donc surtout à signaler que le téléversement existe.
+function heroFichier(){ window.location.href = '/auth.html?returnUrl=/clips-v2.html'; }
+window.heroGenerer = heroGenerer;
+window.heroFichier = heroFichier;
 async function getMeta(u){
   try{const r=await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(u)}&format=json`);
   if(!r.ok)return null;const d=await r.json();return{title:d.title};}catch{return null;}
@@ -1667,10 +1730,7 @@ function toggleFacturation(){
   const elProNormal=document.getElementById('prix-pro-normal');
   const elProNormalPeriode=document.getElementById('prix-pro-normal-periode');
   if(elPro)elPro.textContent=annuel?'7,90':'9,90';
-  if(elProNormal)elProNormal.textContent=annuel?'15,90€':'19,90€';
   if(elProNormalPeriode)elProNormalPeriode.textContent=annuel?'/mois, facturé annuellement':'/mois';
-  const elStudio=document.getElementById('prix-studio');
-  if(elStudio)elStudio.textContent=annuel?'39':'49';
 }
 window.toggleFacturation=toggleFacturation;
 

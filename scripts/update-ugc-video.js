@@ -75,7 +75,7 @@ async function createCreative(videoId, thumbHash, adName) {
       video_data: {
         video_id:  videoId,
         image_url: 'https://creatis.app/images/ads/slide1.jpg',
-        message:    "J'ai teste tous les outils de montage IA.\n\nCreatis est le seul qui decoupe vraiment bien :\n- Detection des moments viraux automatique\n- Face tracking + recadrage 9:16 parfait\n- Captions burnees proprement\n- Score de viralite sur chaque clip\n\nJ'uploade ma video et j'ai mes Shorts prets en 30 secondes.\n\n1 essai gratuit. Sans carte bancaire.",
+        message:    "J'ai teste tous les outils de montage IA.\n\nCreatis est le seul qui decoupe vraiment bien :\n- Detection des moments viraux automatique\n- Face tracking + recadrage 9:16 parfait\n- Captions burnees proprement\n- Score de viralite sur chaque clip\n\nJ'uploade ma video et j'ai mes Shorts prets en 30 secondes.\n\nAnalyse gratuite. Sans carte bancaire.",
         title:      'Une video - 10 Shorts viraux en 30s',
         call_to_action: {
           type:  'SIGN_UP',

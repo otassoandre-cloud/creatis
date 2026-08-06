@@ -200,28 +200,33 @@ const Stripe_Integration = {
       return;
     }
 
-    if (!this.stripe && !this.init()) {
-      afficherAlerte('Impossible d\'initialiser Stripe — recharge la page');
-      return;
-    }
+    /* La vérification `this.init()` (chargement de js.stripe.com sur CETTE page) a été retirée :
+       le paiement se déroule entièrement sur paiement.html, qui charge Stripe de son côté. Exiger
+       Stripe.js ici n'apportait rien et BLOQUAIT l'accès à la page de paiement dès que js.stripe.com
+       était filtré — Brave Shields, uBlock, réseau d'entreprise. L'utilisateur lisait « Impossible
+       d'initialiser Stripe » et ne pouvait pas payer du tout.
+
+       Le plan voyage aussi dans l'URL et la navigation se fait EN DERNIER, hors de tout ce qui peut
+       lever : `JSON.parse` sur un localStorage corrompu et `sessionStorage.setItem` (navigation
+       privée, quota, stockage bloqué) faisaient tomber la fonction avant la redirection. Mesuré :
+       0 arrivée sur /paiement.html en 30 jours, tous chemins confondus. */
+    const priceId = annuel ? (planConfig.stripeIdAnnuel || planConfig.stripeId) : planConfig.stripeId;
+    const url = `paiement.html?plan=${encodeURIComponent(plan)}${annuel ? '&annuel=1' : ''}`;
 
     try {
-      const priceId = annuel ? (planConfig.stripeIdAnnuel || planConfig.stripeId) : planConfig.stripeId;
-      const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
-
-      // Sauvegarder les infos pour paiement.html
+      let currentUser = {};
+      try { currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch { currentUser = {}; }
+      let userId = null;
+      try { userId = this.getUserId(); } catch { userId = currentUser.id || currentUser.email || null; }
       sessionStorage.setItem('creatis_paiement', JSON.stringify({
-        priceId, plan, annuel,
-        userId: this.getUserId(),
+        priceId, plan, annuel, userId,
         userEmail: currentUser.email || null
       }));
-      window.location.href = 'paiement.html';
-      return;
-
     } catch (erreur) {
-      console.error('Erreur Stripe:', erreur);
-      afficherAlerte('Erreur paiement : ' + erreur.message);
+      console.warn('[paiement] stockage indisponible — on passe par les paramètres d\'URL :', erreur?.message);
     }
+
+    window.location.href = url;
   },
 
   async verifierAbonnement() {

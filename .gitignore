@@ -65,6 +65,9 @@ logs/
 # Backups locaux
 _backup/
 
+# Scratch local pour la génération de vidéos de démo (frames, brut, events.json)
+.scratch-demo/
+
 # Env Vercel (contient des vraies clés API — NE JAMAIS COMMITER)
 .env.production
 .env.development
@@ -115,3 +118,9 @@ preview-short-*.png
 supabase-prospects-table.sql
 
 .env*.local
+
+# Profil navigateur (session Instagram/TikTok connectée -- jamais commiter)
+.playwright-profile-social/
+
+.playwright-profile-submagic/
+.scratch-submagic/

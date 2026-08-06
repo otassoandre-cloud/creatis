@@ -18,7 +18,7 @@ from typing import Optional, List, Dict
 
 import httpx
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, UploadFile, File, Form, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -37,6 +37,13 @@ GEMINI_API_KEY        = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
 SERVICE_SECRET        = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
+
+# Langue de transcription IMPOSÉE à Whisper. Sans ça, Whisper devine la langue sur les premières
+# secondes : un jingle, de la musique, un silence ou un mot d'anglais en intro suffisent à ce qu'il
+# détecte "en" sur une vidéo française — il transcrit alors phonétiquement en anglais et les
+# sous-titres partent en vrac. Le produit s'adresse à des créateurs francophones, donc "fr" par
+# défaut. Mettre TRANSCRIBE_LANG="" dans Railway pour revenir à la détection automatique.
+TRANSCRIBE_LANG       = os.environ.get("TRANSCRIBE_LANG", "fr").strip()
 YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
 RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
 BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
@@ -45,6 +52,12 @@ RAPIDAPI_KEY          = os.environ.get("RAPIDAPI_KEY", "")
 # résidentielles). Utilisée en priorité #0 quand la clé est présente ; fallback gratuit sinon.
 YT_DOWNLOAD_API_KEY   = os.environ.get("YT_DOWNLOAD_API_KEY", "")
 YT_DOWNLOAD_API_BASE  = os.environ.get("YT_DOWNLOAD_API_BASE", "https://youtube-download-api.org")
+# ── Cache Cloudflare R2 (S3-compatible) : un segment téléchargé une seule fois, réutilisé par
+# tous les users/sessions (egress R2 gratuit → économise le proxy et le re-téléchargement). ──
+R2_ACCOUNT_ID         = os.environ.get("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY         = os.environ.get("R2_ACCESS_KEY_ID", "")
+R2_SECRET_KEY         = os.environ.get("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET             = os.environ.get("R2_BUCKET", "")
 # Fallback public — utilisé si BGUTIL_URL interne inaccessible depuis ce service
 BGUTIL_PUBLIC_URL     = "https://bgutil-ytdlp-pot-provider-production-ff91.up.railway.app"
 
@@ -255,6 +268,33 @@ async def startup():
     if BGUTIL_URL:
         _bgutil_ok = await _check_bgutil()
         logger.info(f"[bgutil] URL={BGUTIL_URL} joignable={_bgutil_ok}")
+
+    # Version yt-dlp réellement installée. La couche pip du Dockerfile est mise en cache tant que
+    # requirements.txt ne bouge pas : la version peut donc dater de plusieurs mois alors que c'est
+    # l'outil qui doit suivre chaque changement de YouTube. Sans cette ligne, invisible.
+    try:
+        import yt_dlp as _ydl_v
+        logger.info(f"[yt-dlp] version installée = {_ydl_v.version.__version__}")
+    except Exception as e:
+        logger.warning(f"[yt-dlp] version illisible : {e}")
+
+    # Auto-test R2 : l'historique des clips repose entièrement sur ce cache. Des identifiants
+    # invalides ne se voient nulle part ailleurs — _r2_put et _r2_get sont fail-open, donc tout
+    # continuerait à « marcher » en retéléchargeant depuis YouTube à chaque fois, en silence.
+    if not _r2_enabled():
+        logger.warning("[r2] DÉSACTIVÉ — variables manquantes, aucun clip ne sera conservé")
+    else:
+        def _test_r2():
+            import io
+            c = _r2_client()
+            c.put_object(Bucket=R2_BUCKET, Key="_healthcheck.txt", Body=b"ok")
+            return c.get_object(Bucket=R2_BUCKET, Key="_healthcheck.txt")["Body"].read()
+        try:
+            r = await asyncio.get_event_loop().run_in_executor(None, _test_r2)
+            logger.info(f"[r2] ✓ opérationnel (bucket={R2_BUCKET}, aller-retour={r!r})")
+        except Exception as e:
+            logger.error(f"[r2] ÉCHEC aller-retour ({type(e).__name__}: {str(e)[:160]}) "
+                         f"— les clips ne seront PAS conservés")
 
 security = HTTPBearer(auto_error=False)
 
@@ -974,14 +1014,11 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     if cookies_file:
         logger.info("yt-dlp video: cookies actifs")
 
+    # ⚠️ PAS de proxy résidentiel ici : download_video tire la VIDÉO ENTIÈRE (500 Mo-1,5 Go).
+    # Faire passer ça par le proxy vidait 1 Go en quelques minutes. Le proxy est réservé aux
+    # téléchargements de SEGMENT 60 s (_run_raw_segment / download_video_section, ~30 Mo).
     attempts = [
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
-        *(
-            [{"proxy": RESIDENTIAL_PROXY_URL,
-              "extractor_args": {"youtube": {"player_client": ["android", "ios"]}},
-              "label": "webshare+android"}]
-            if RESIDENTIAL_PROXY_URL else []
-        ),
         {"proxy": None, "extractor_args": {"youtube": {"player_client": ["android", "ios"]}}, "label": "railway+android"},
     ]
 
@@ -1122,7 +1159,8 @@ async def _transcribe_groq(media_path: str) -> Dict:
                     "https://api.groq.com/openai/v1/audio/transcriptions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                     data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
-                          "timestamp_granularities[]": "word"},
+                          "timestamp_granularities[]": "word",
+                          **({"language": TRANSCRIBE_LANG} if TRANSCRIBE_LANG else {})},
                     files={"file": ("audio.mp3", f, "audio/mpeg")},
                 )
         r.raise_for_status()
@@ -1132,13 +1170,51 @@ async def _transcribe_groq(media_path: str) -> Dict:
         if raw_words:
             WORDS_PER_LINE = 4
             segments = []
-            for i in range(0, len(raw_words), WORDS_PER_LINE):
-                chunk = raw_words[i:i + WORDS_PER_LINE]
-                t0 = float(chunk[0].get("start", 0))
-                t1 = float(chunk[-1].get("end", t0 + 1))
-                text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
+            # Bornes monotones : Groq renvoie parfois un mot qui commence AVANT la fin du
+            # precedent (mesure : "grand." finit a 2.02 alors que "C'est" commence a 1.98).
+            # Sans correction, deux segments s'affichent simultanement et l'ecran clignote.
+            _prev_end = 0.0
+            _mots = []
+            for w in raw_words:
+                _t = (w.get("word") or w.get("text") or "").strip()
+                # Whisper émet parfois des jetons de ponctuation SEULS ("...", "…", "-").
+                # Ils n'apportent aucun texte mais portent les horodatages du silence : gardés,
+                # ils étirent la cue jusqu'à la reprise de parole et le sous-titre reste affiché
+                # pendant tout le blanc. Constaté à l'image ("BRINGE-TOI … … C'EST").
+                if not _t or not any(c.isalnum() for c in _t):
+                    continue
+                _s = max(float(w.get("start", 0)), _prev_end)
+                _e = float(w.get("end", _s + 0.12))
+                if _e <= _s:
+                    _e = _s + 0.12
+                _prev_end = _e
+                _mots.append({"word": _t, "start": _s, "end": _e})
+
+            # Découpage : par paquets de WORDS_PER_LINE, MAIS on ferme la cue dès qu'un silence
+            # dépasse le seuil. Sans ça, deux mots séparés par 15 s de silence se retrouvent
+            # dans la même cue et le texte reste à l'écran d'un bout à l'autre.
+            _SILENCE_MAX = 0.7
+            _groupes, _cur = [], []
+            for _i, _w in enumerate(_mots):
+                if _cur:
+                    _trou = _w["start"] - _cur[-1]["end"]
+                    if _trou > _SILENCE_MAX or len(_cur) >= WORDS_PER_LINE:
+                        _groupes.append(_cur); _cur = []
+                _cur.append(_w)
+            if _cur:
+                _groupes.append(_cur)
+
+            for chunk in _groupes:
+                t0 = chunk[0]["start"]
+                # Fin = fin du dernier mot, jamais au-delà : c'est ce qui fait disparaître le
+                # sous-titre dès que la personne se tait.
+                t1 = chunk[-1]["end"]
+                text = " ".join(w["word"] for w in chunk)
                 if text.strip():
-                    segments.append({"start": t0, "end": t1, "text": text})
+                    # `words` conserve les timings REELS de chaque mot. Sans eux, tout rendu
+                    # mot-a-mot ou ligne-par-ligne doit les reinventer par division egale du
+                    # segment — c'est ce qui desynchronise le karaoke aujourd'hui.
+                    segments.append({"start": t0, "end": t1, "text": text, "words": chunk})
         else:
             segments = [
                 {"start": float(s["start"]), "end": float(s["end"]), "text": s["text"].strip()}
@@ -1172,14 +1248,18 @@ def _transcribe_local(media_path: str) -> Dict:
     # timeout client, au prix d'une précision légèrement inférieure à celle de Groq (fallback
     # seulement, pas le chemin principal).
     segs_iter, info = model.transcribe(
-        media_path, beam_size=1, vad_filter=True, condition_on_previous_text=False
+        media_path, beam_size=1, vad_filter=True, condition_on_previous_text=False,
+        language=(TRANSCRIBE_LANG or None)
     )
     segments = [
         {"start": float(s.start), "end": float(s.end), "text": (s.text or "").strip()}
         for s in segs_iter
     ]
     duration = float(getattr(info, "duration", 0.0)) or (segments[-1]["end"] if segments else 0.0)
-    logger.info(f"[whisper-local] {len(segments)} segments {duration:.0f}s")
+    logger.info(f"[whisper-local] {len(segments)} segments {duration:.0f}s "
+                f"langue={getattr(info, 'language', '?')} "
+                f"conf={getattr(info, 'language_probability', 0):.2f} "
+                f"imposee={TRANSCRIBE_LANG or 'auto'}")
     return {"duration": duration, "segments": segments}
 
 
@@ -1328,7 +1408,7 @@ def _cut_subclip(source: str, start: float, end: float, out: str) -> None:
         "ffmpeg", "-y", "-loglevel", "error",
         "-i", source,
         "-ss", f"{start:.3f}", "-to", f"{end:.3f}",
-        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
         "-threads", "2",
         "-c:a", "aac", "-b:a", "128k",
         out,
@@ -1538,7 +1618,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
-    _enc_tail = ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+    _enc_tail = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                  "-pix_fmt", "yuv420p", "-threads", "2", "-movflags", "+faststart",
                  "-c:a", "aac", "-b:a", "128k", out_path]
 
@@ -1611,7 +1691,7 @@ def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: in
     fc = f"{stack};[st]{overlay_vf}[out]" if overlay_vf else f"{stack};[st]null[out]"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", in_path,
            "-filter_complex", fc, "-map", "[out]", "-map", "0:a:0?",
-           "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "128k", out_path]
     subprocess.run(cmd, check=True, timeout=180)
     logger.info("[split] ✓ split positionnel gauche/droite")
@@ -1631,25 +1711,37 @@ def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
     if dur <= 0:
         _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf, top_frac, bot_frac); return
 
-    # Construire les intervalles (t0, t1, mode) — défaut 'split' avant le 1er repère
+    # Chaque segment porte SON PROPRE cadrage (slide gauche/droite indépendant) — comme CapCut.
+    def _vf(x):
+        try: xf = float(x)
+        except Exception: return None
+        return xf if 0.0 <= xf <= 1.0 else None
+    # Construire les intervalles (t0, t1, réglages) — défaut 'split' avant le 1er repère
     kfs = sorted([k for k in keyframes if isinstance(k, dict) and "t" in k], key=lambda k: float(k["t"]))
-    ranges = []; prev_t = 0.0; prev_mode = "split"
+    ranges = []; prev_t = 0.0
+    prev = {"mode": "split", "top": top_frac, "bot": bot_frac, "solo": None}
     for k in kfs:
         kt = max(0.0, min(dur, float(k["t"])))
         if kt > prev_t + 0.05:
-            ranges.append((prev_t, kt, prev_mode))
-        prev_mode = k.get("mode", "split"); prev_t = kt
-    ranges.append((prev_t, dur, prev_mode))
+            ranges.append((prev_t, kt, prev))
+        prev = {
+            "mode": k.get("mode", "split"),
+            "top": _vf(k.get("topXFrac")) if _vf(k.get("topXFrac")) is not None else top_frac,
+            "bot": _vf(k.get("botXFrac")) if _vf(k.get("botXFrac")) is not None else bot_frac,
+            "solo": _vf(k.get("xFrac")),
+        }
+        prev_t = kt
+    ranges.append((prev_t, dur, prev))
 
-    # Filtres
+    # Géométrie
     ratioH = 720 / 640
     cw = min(src_w, int(src_h * ratioH)); ch = int(cw / ratioH)
     if ch > src_h: ch = src_h; cw = int(ch * ratioH)
     cw = max(2, cw - cw % 2); ch = max(2, ch - ch % 2)
     top_y = max(0, min(src_h - ch, int(src_h * 0.28) - ch // 2))
-    lx = max(0, min(src_w - cw, int(src_w * top_frac) - cw // 2))
-    rx = max(0, min(src_w - cw, int(src_w * bot_frac) - cw // 2))
-    def split_fc():
+    def split_fc(tf, bf):
+        lx = max(0, min(src_w - cw, int(src_w * tf) - cw // 2))
+        rx = max(0, min(src_w - cw, int(src_w * bf) - cw // 2))
         vf_t = f"crop={cw}:{ch}:{lx}:{top_y},scale=720:640"
         vf_b = f"crop={cw}:{ch}:{rx}:{top_y},scale=720:640"
         return f"[0:v]split=2[a][b];[a]{vf_t}[t];[b]{vf_b}[bt];[t][bt]vstack=inputs=2[out]"
@@ -1660,14 +1752,20 @@ def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
 
     tmpdir = _tf.mkdtemp(); segs = []; list_file = os.path.join(tmpdir, "concat.txt")
     try:
-        for i, (t0, t1, mode) in enumerate(ranges):
+        for i, (t0, t1, seg_o) in enumerate(ranges):
             if t1 - t0 < 0.05: continue
+            mode = seg_o["mode"]
             seg = os.path.join(tmpdir, f"seg_{i:03d}.mp4")
-            fc = split_fc() if mode == "split" else solo_fc(bot_frac if mode == "bot" else top_frac)
+            if mode == "split":
+                fc = split_fc(seg_o["top"], seg_o["bot"])
+            else:
+                # solo : xFrac explicite du segment sinon fraction du côté (haut/bas)
+                frac = seg_o["solo"] if seg_o["solo"] is not None else (seg_o["bot"] if mode == "bot" else seg_o["top"])
+                fc = solo_fc(frac)
             r = subprocess.run(
                 ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}", "-i", in_path,
                  "-filter_complex", fc, "-map", "[out]", "-map", "0:a:0?",
-                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                  "-c:a", "aac", "-b:a", "128k", seg], capture_output=True, timeout=180)
             if r.returncode == 0 and os.path.exists(seg) and os.path.getsize(seg) > 0:
                 segs.append(seg)
@@ -1685,7 +1783,7 @@ def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
         # Sous-titres appliqués sur l'ensemble (timing 0-based correct)
         if overlay_vf:
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", merged, "-vf", overlay_vf,
-                            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p",
+                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                             "-c:a", "copy", out_path], check=True, timeout=300)
         else:
             _sh.copy(merged, out_path)
@@ -1769,11 +1867,21 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
     two_face_samples = [(fi, faces) for fi, faces in frame_data if len(faces) >= 2]
 
     if len(two_face_samples) < 2:
-        # Visages non détectés de façon fiable (souvent : têtes baissées / de profil, ex. interview
-        # à table). Le split a quand même été DEMANDÉ (auto 2 visages côté client, ou toggle manuel)
-        # → on fait un split POSITIONNEL gauche/droite qui ne dépend pas de la détection de visages.
-        logger.info("[split] < 2 frames avec 2 visages → split positionnel gauche/droite")
-        _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf)
+        # Pas 2 visages fiables. Il faut distinguer 2 cas très différents :
+        #  - 1 SEULE personne à l'image → split = on la DUPLIQUE en haut ET en bas (bug visuel).
+        #    Il faut alors 1 SEUL écran (face tracking centré).
+        #  - 2 personnes présentes mais non détectées (têtes baissées / profil, interview à table)
+        #    → split POSITIONNEL gauche/droite (ne dépend pas de la détection).
+        one_face  = sum(1 for _, faces in frame_data if len(faces) == 1)
+        zero_face = sum(1 for _, faces in frame_data if len(faces) == 0)
+        if one_face >= zero_face and one_face >= max(2, len(frame_data) // 4):
+            # Majorité de frames avec UNE tête → clip à 1 personne → 1 seul écran (jamais de doublon)
+            logger.info(f"[split] 1 personne ({one_face} frames 1 visage) → 1 seul écran (pas de doublon)")
+            _reframe_vertical(in_path, out_path, reframe_mode="face", overlay_vf=overlay_vf,
+                              pill_png_path=pill_png_path, pill_y_px=pill_y_px)
+        else:
+            logger.info(f"[split] visages non détectés ({zero_face} frames 0 visage) → split positionnel")
+            _reframe_positional_split(in_path, out_path, src_w, src_h, overlay_vf)
         return
 
     def avg_faces(samples_list):
@@ -1904,7 +2012,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
             base = ["ffmpeg", "-y", "-loglevel", "error",
                     "-ss", f"{t0:.3f}", "-to", f"{t1:.3f}", "-i", in_path]
             tail = ["-map", "[out]", "-map", "0:a:0?",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "24",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                     "-pix_fmt", "yuv420p", "-threads", "2",
                     "-c:a", "aac", "-b:a", "128k", seg_out]
 
@@ -2694,7 +2802,8 @@ async def _transcribe_audio_core(audio_path: Path) -> Dict:
                     "https://api.groq.com/openai/v1/audio/transcriptions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                     data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
-                          "timestamp_granularities[]": "word"},
+                          "timestamp_granularities[]": "word",
+                          **({"language": TRANSCRIBE_LANG} if TRANSCRIBE_LANG else {})},
                     files={"file": ("audio.mp3", af, "audio/mpeg")},
                 )
         r.raise_for_status()
@@ -3074,11 +3183,120 @@ class RawSegmentRequest(BaseModel):
     end: float
     allow_api_fallback: bool = True
 
+
+# ── Cache R2 (S3-compatible Cloudflare) ──────────────────────────────────────
+def _r2_enabled() -> bool:
+    return bool(R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY and R2_BUCKET)
+
+_r2_client_cache = {}
+def _r2_client():
+    if "c" not in _r2_client_cache:
+        import boto3
+        from botocore.config import Config as _BotoCfg
+        _r2_client_cache["c"] = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY,
+            aws_secret_access_key=R2_SECRET_KEY,
+            region_name="auto",
+            config=_BotoCfg(retries={"max_attempts": 2, "mode": "standard"},
+                            connect_timeout=15, read_timeout=90),
+        )
+    return _r2_client_cache["c"]
+
+def _seg_r2_key(video_id: str, start: float, end: float) -> str:
+    # Clé stable par clip source (indépendante du cadrage/sous-titres appliqués ensuite).
+    return f"seg/{video_id}/{start:.1f}_{end:.1f}.mp4"
+
+def _r2_get(key: str, dest_path) -> bool:
+    """Récupère l'objet depuis R2 s'il existe. Fail-open : False si absent ou erreur."""
+    try:
+        _r2_client().download_file(R2_BUCKET, key, str(dest_path))
+        return Path(dest_path).exists() and Path(dest_path).stat().st_size > 1000
+    except Exception:
+        return False
+
+def _r2_put(key: str, src_path):
+    """Met le segment en cache dans R2 (best-effort, n'interrompt jamais le rendu)."""
+    try:
+        _r2_client().upload_file(str(src_path), R2_BUCKET, key,
+                                 ExtraArgs={"ContentType": "video/mp4"})
+        logger.info(f"[r2] ✓ mis en cache {key}")
+    except Exception as e:
+        logger.warning(f"[r2] upload échoué {key}: {str(e)[:120]}")
+
+"""Plafond horaire d'utilisation du proxy résidentiel (facturé au gigaoctet).
+
+Un segment pèse ~25 Mo. À 24 segments/heure, le pire cas est ~600 Mo/heure — largement au-dessus
+de l'usage réel (1 ou 2 segments par action utilisateur), mais suffisant pour qu'une régression
+côté client soit stoppée en une heure au lieu de vider le forfait en deux jours, comme fin juillet.
+Compteur en mémoire : il repart à zéro si le service redémarre, c'est volontairement simple —
+son rôle est d'arrêter un emballement, pas de tenir une comptabilité exacte."""
+_PROXY_MAX_PAR_HEURE = 24
+_proxy_horodatages: list = []
+
+def _proxy_quota_ok() -> bool:
+    global _proxy_horodatages
+    maintenant = _time.time()
+    _proxy_horodatages = [t for t in _proxy_horodatages if maintenant - t < 3600]
+    if len(_proxy_horodatages) >= _PROXY_MAX_PAR_HEURE:
+        logger.warning(f"[proxy] plafond atteint ({_PROXY_MAX_PAR_HEURE}/h) — segment servi sans proxy")
+        return False
+    _proxy_horodatages.append(maintenant)
+    return True
+
+
+def _r2_publier_clip(src_path, nom_fichier: str = "clip_9x16.mp4"):
+    """Dépose le clip FINI sur R2 et renvoie une URL signée temporaire, ou None si indisponible.
+
+    Pourquoi : jusqu'ici le fichier (~15 Mo) était renvoyé dans la réponse HTTP. Le téléphone
+    devait le garder entièrement en mémoire, fabriquer un objet URL local puis simuler un clic
+    sur un lien — trois opérations que les navigateurs mobiles gèrent mal. Mesuré : 14 % de
+    téléchargements aboutis sur mobile contre 59 % sur ordinateur.
+
+    Avec un lien, c'est le gestionnaire de téléchargement du système qui prend le relais : plus
+    de blob en mémoire, plus de clic synthétique, et surtout le lien reste valable si l'onglet a
+    été mis en veille pendant le rendu — aujourd'hui tout est perdu dans ce cas.
+
+    URL signée plutôt que bucket public : rien à exposer, et le lien expire de lui-même.
+    """
+    if not _r2_enabled():
+        return None
+    try:
+        cle = f"exports/{uuid.uuid4().hex[:16]}/{nom_fichier}"
+        client = _r2_client()
+        client.upload_file(str(src_path), R2_BUCKET, cle, ExtraArgs={
+            "ContentType": "video/mp4",
+            # Force le téléchargement plutôt qu'une lecture dans l'onglet
+            "ContentDisposition": f'attachment; filename="{nom_fichier}"',
+        })
+        url = client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": R2_BUCKET, "Key": cle},
+            ExpiresIn=7 * 24 * 3600,   # 7 jours : l'utilisateur peut revenir chercher son clip
+        )
+        logger.info(f"[r2] ✓ clip publié {cle}")
+        return url
+    except Exception as e:
+        logger.warning(f"[r2] publication échouée: {str(e)[:150]}")
+        return None
+
+
 async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str, out_dir: Path, allow_api_fallback: bool = True):
     RAW_SEGMENTS[job_id] = {"status": "processing", "progress": "Connexion YouTube…"}
     try:
         duration = end - start
         out_path = out_dir / "clip.mp4"
+
+        # CACHE R2 : si ce segment a déjà été téléchargé (n'importe quel user/session), on le
+        # récupère depuis R2 (egress gratuit) → 0 téléchargement YouTube, 0 proxy. Fail-open.
+        _r2_hit = False
+        _r2key = _seg_r2_key(video_id, start, end)
+        if _r2_enabled():
+            RAW_SEGMENTS[job_id]["progress"] = "Chargement (cache)…"
+            _r2_hit = await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_get(_r2key, out_path))
+            if _r2_hit:
+                logger.info(f"[raw-segment] ✓ cache R2 {_r2key}")
 
         _ANDROID_KEY = "AIzaSyA8eiZmM8IA8geBBmV1-zRx9HtCKV8qlKg"
         _IOS_KEY     = "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc"
@@ -3122,7 +3340,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             },
         ]
         stream_url = None
-        for c in it_clients:
+        for c in ([] if _r2_hit else it_clients):
             try:
                 async with httpx.AsyncClient(timeout=30, follow_redirects=True) as hc:
                     r = await hc.post(c["url"], json=c["payload"], headers=c["headers"])
@@ -3145,7 +3363,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 logger.warning(f"[raw-segment] {c['name']} err: {e}")
 
         # out_path et duration déjà définis en haut de la fonction (avant la tentative API)
-        if stream_url:
+        if not _r2_hit and stream_url:
             RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
             proc = await asyncio.create_subprocess_exec(
                 "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
@@ -3159,14 +3377,14 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 proc2 = await asyncio.create_subprocess_exec(
                     "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
                     "-i", stream_url,
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
                     "-c:a", "aac", "-movflags", "faststart", str(out_path),
                     stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                 )
                 _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
                 if proc2.returncode != 0:
                     raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
-        else:
+        elif not _r2_hit:
             # PRIORITÉ : yt-dlp télécharge UNIQUEMENT la section de 60s (efficace, 0 crédit API,
             # 720p). L'API tierce n'est qu'un secours si yt-dlp se fait bot-bloquer.
             RAW_SEGMENTS[job_id]["progress"] = "Téléchargement du segment…"
@@ -3190,31 +3408,97 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 ydl_opts["cookiefile"] = cookies_file
 
             segment_ready = False
-            try:
-                loop = asyncio.get_event_loop()
-                def _dl():
-                    import yt_dlp
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                        ydl.download([youtube_url])
-                await asyncio.wait_for(loop.run_in_executor(None, _dl), timeout=180)
-                downloaded = next(out_dir.glob("full.*"), None)
-                if downloaded:
-                    RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
-                    offset = start - max(0, start - 1)  # décalage dû au pré-roll de 1s
-                    # Ré-encodage H.264/AAC (pas -c copy) — garantit la lecture navigateur.
-                    proc = await asyncio.create_subprocess_exec(
-                        "ffmpeg", "-y", "-ss", str(offset), "-t", str(duration),
-                        "-i", str(downloaded),
-                        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p",
-                        "-c:a", "aac", "-movflags", "faststart", str(out_path),
-                        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
-                    )
-                    await asyncio.wait_for(proc.communicate(), timeout=180)
-                    downloaded.unlink(missing_ok=True)
-                    if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1000:
-                        segment_ready = True
-            except Exception as e:
-                logger.warning(f"[raw-segment] yt-dlp segment échoué ({str(e)[:120]}), secours API")
+            # Tentatives : gratuit, gratuit (retry), puis PROXY RÉSIDENTIEL en dernier recours.
+            #
+            # Historique, pour ne pas refaire les deux erreurs :
+            #  1. Le proxy était ouvert dès que le client envoyait `allow_api_fallback=true`. Le
+            #     25/07 le préchargement s'est mis à l'envoyer pour 2 clips par analyse — 0,9 → 5,1 Go
+            #     de forfait brûlés en deux jours, pour des clips que personne n'avait ouverts.
+            #  2. Le 01/08 j'ai coupé le proxy ici purement et simplement. Résultat : quand YouTube
+            #     bot-check (SABR, jeton PO manquant), le gratuit échoue, l'API de secours est à court
+            #     de crédits, et l'utilisateur ne peut RIEN ouvrir. Le remède était pire que le mal.
+            #
+            # Compromis : le proxy reste réservé à une action explicite (ouvrir/exporter), ET il est
+            # borné par un plafond horaire côté serveur. Même si le client se remettait à demander
+            # le proxy en rafale, la casse est bornée à une heure au lieu d'un forfait entier.
+            _seg_attempts = [None, None]
+            if RESIDENTIAL_PROXY_URL and allow_api_fallback:
+                _seg_attempts.append(RESIDENTIAL_PROXY_URL)
+            # Quand le gratuit échoue pour une raison non transitoire, on saute les essais gratuits
+            # restants — mais JAMAIS la tentative proxy (voir le bloc `except` plus bas).
+            _abandon_gratuit = False
+            for _att, _proxy in enumerate(_seg_attempts):
+                if _abandon_gratuit and not _proxy:
+                    continue
+                # Le jeton de forfait n'est consommé qu'ici, au moment où le proxy va réellement
+                # servir — le décompter à la construction de la liste faisait fondre le quota sur
+                # des jobs où le chemin gratuit avait suffi.
+                if _proxy and not _proxy_quota_ok():
+                    break
+                if _att > 0:
+                    RAW_SEGMENTS[job_id]["progress"] = ("Nouvelle tentative via IP dédiée…" if _proxy
+                                                        else "Nouvelle tentative (blocage temporaire)…")
+                    if _proxy:
+                        logger.info(f"[raw-segment] {job_id} → tentative via PROXY résidentiel")
+                    await asyncio.sleep(6 * _att)  # 6s, 12s
+                try:
+                    _opts = dict(ydl_opts)
+                    if _proxy:
+                        # On garde les extractor_args par défaut (client web + jetons PO bgutil).
+                        # Les forcer sur ["android","ios"] faisait tomber la définition à 360p :
+                        # ces clients n'exposent plus les formats 720p avc1, donc le sélecteur
+                        # retombait sur le progressif (~3,3 Mo/60 s au lieu de ~9 Mo). Cette
+                        # restriction servait à esquiver les bot-checks de l'IP datacenter —
+                        # sur une IP résidentielle elle ne sert plus à rien et coûte la qualité.
+                        # La liste par défaut finit de toute façon par android/ios en secours.
+                        _opts["proxy"] = _proxy
+                    loop = asyncio.get_event_loop()
+                    def _dl(_o=_opts):
+                        import yt_dlp
+                        with yt_dlp.YoutubeDL(_o) as ydl:
+                            ydl.download([youtube_url])
+                    await asyncio.wait_for(loop.run_in_executor(None, _dl), timeout=180)
+                    downloaded = next(out_dir.glob("full.*"), None)
+                    if downloaded:
+                        # Trace la définition réellement obtenue : c'est le seul moyen fiable de
+                        # voir une chute de qualité, la taille du fichier dépendant du contenu.
+                        try:
+                            _pr = await asyncio.create_subprocess_exec(
+                                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                                "-show_entries", "stream=width,height", "-of", "csv=p=0",
+                                str(downloaded),
+                                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+                            _po, _ = await asyncio.wait_for(_pr.communicate(), timeout=15)
+                            logger.info(f"[raw-segment] {job_id} source {_po.decode().strip()} "
+                                        f"via {'PROXY' if _proxy else 'gratuit'}")
+                        except Exception:
+                            pass
+                        RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
+                        offset = start - max(0, start - 1)  # décalage dû au pré-roll de 1s
+                        # Ré-encodage H.264/AAC (pas -c copy) — garantit la lecture navigateur.
+                        proc = await asyncio.create_subprocess_exec(
+                            "ffmpeg", "-y", "-ss", str(offset), "-t", str(duration),
+                            "-i", str(downloaded),
+                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                            "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+                        )
+                        await asyncio.wait_for(proc.communicate(), timeout=180)
+                        downloaded.unlink(missing_ok=True)
+                        if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1000:
+                            segment_ready = True
+                    if segment_ready:
+                        break
+                except Exception as e:
+                    _err = str(e)
+                    logger.warning(f"[raw-segment] tentative {_att + 1}/{len(_seg_attempts)} ({'proxy' if _proxy else 'gratuit'}) échouée ({_err[:120]})")
+                    if not _proxy and "not a bot" not in _err.lower() and "sign in" not in _err.lower():
+                        # Refaire un essai gratuit identique ne sert à rien, mais le proxy doit
+                        # quand même être tenté : un 403 SABR côté média se règle par l'IP, pas
+                        # par l'attente. (Avant, un `break` ici rendait le proxy inatteignable.)
+                        _abandon_gratuit = True
+                for _p in out_dir.glob("full.*"):
+                    _p.unlink(missing_ok=True)
 
             # DERNIER RECOURS : API tierce (rare — seulement si yt-dlp bot-bloqué). Télécharge la
             # vidéo complète (cache par video_id), puis découpe. Consomme du crédit API, d'où le
@@ -3233,7 +3517,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
                 proc = await asyncio.create_subprocess_exec(
                     "ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", str(cached),
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p",
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
                     "-c:a", "aac", "-movflags", "faststart", str(out_path),
                     stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                 )
@@ -3244,6 +3528,14 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         size_kb = out_path.stat().st_size // 1024
         logger.info(f"[raw-segment] {job_id} done {size_kb}KB")
         RAW_SEGMENTS[job_id] = {"status": "done", "file": "clip.mp4"}
+
+        # Mise en cache R2 APRÈS 'done' (ne retarde pas l'user) : ce segment ne sera plus jamais
+        # retéléchargé depuis YouTube, quel que soit le user ou la session.
+        if not _r2_hit and _r2_enabled():
+            try:
+                await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_put(_r2key, out_path))
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"[raw-segment] {job_id} error: {e}")
@@ -3725,12 +4017,17 @@ async def process_clip_endpoint(
         margin_v = int((1 - sub_y / 100) * 1280)
         _x_px = int(max(0, min(100, sub_x)) / 100 * 720)
         _y_px = int(max(0, min(100, sub_y)) / 100 * 1280)
-        _pos_tag = "{" + f"\\pos({_x_px},{_y_px})\\an2" + "}"
+        # \an8 (ancrage HAUT-centre) = identique à l'aperçu (CSS top:subY%) → export = ce que l'user voit
+        _pos_tag = "{" + f"\\pos({_x_px},{_y_px})\\an8" + "}"
 
         has_subs = bool(segs) or (hook_bool and hook_text)
         logger.info(f"[subs] style={style} has_subs={has_subs} segs={len(segs)} hook={hook_bool} hook_text={repr(hook_text[:30]) if hook_text else ''}")
         F  = "DejaVu Sans"
         FM = "DejaVu Sans Mono"
+        # Le style "submagic" impose sa police : c'est elle qui fait l'essentiel du rendu.
+        # Elle doit être IDENTIQUE à celle chargée par l'aperçu navigateur, sinon aperçu et
+        # export divergent sur la largeur des lignes, donc sur l'endroit où le texte se coupe.
+        FSM = "Montserrat ExtraBold"
         style_map = {
             "bold":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
             "karaoke":   f"Style: Default,{F},{font_size},{ct},{ct_dim},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,44,44,{margin_v},1",
@@ -3739,6 +4036,12 @@ async def process_clip_endpoint(
             "slide":     f"Style: Default,{F},{font_size},{ct},{ct},&H00000000,&HBF000000,-1,0,0,0,100,100,0,0,3,10,0,2,44,44,{margin_v},1",
             "shake":     f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
             "wave":      f"Style: Default,{F},{font_size},{ct},{ct},{cb},&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,44,44,{margin_v},1",
+            # Style "submagic" : capitales, contour noir franc, AUCUNE ombre, alignement 8
+            # (haut-centre) comme l'aperçu. Le contour est volontairement plus fin que la
+            # mesure d'origine (0.0072 de la hauteur) : celle-ci vaut pour Montserrat, dont
+            # les fûts sont plus fins. Sur une graisse plus lourde, le noir se rejoint entre
+            # les lettres et forme un aplat au lieu d'un liseré.
+            "submagic":  f"Style: Default,{FSM},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{max(3, int(font_size * 0.10))},0,8,44,44,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
@@ -3806,11 +4109,132 @@ async def process_clip_endpoint(
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert
             _karo_idx = 0
+            # Cycle du style "submagic" : vert -> rouge -> jaune, une couleur par segment.
+            _SM_CYCLE = ["&H002FFF3B&", "&H001A02DD&", "&H001EFFFB&"]
+            _sm_idx = 0
+            # Zone utile en largeur sur le canvas d'export (720 px moins les 2 marges de 44).
+            _SM_ZONE_PX = 720 - 88
+            _SM_TTF = "/usr/share/fonts/truetype/montserrat/Montserrat-ExtraBold.ttf"
+            _sm_fonts = {}
+
+            def _sm_largeur(txt, taille):
+                """Largeur réelle de la chaîne dans la police d'export.
+                Repli sur le coefficient moyen mesuré (0.743) si la police est illisible —
+                le rendu resterait correct, seul le découpage serait approximatif."""
+                try:
+                    f = _sm_fonts.get(taille)
+                    if f is None:
+                        from PIL import ImageFont
+                        f = ImageFont.truetype(_SM_TTF, int(taille))
+                        _sm_fonts[taille] = f
+                    b = f.getbbox(txt)
+                    return b[2] - b[0]
+                except Exception:
+                    return len(txt) * taille * 0.743
             for s in segs:
                 t0 = float(s.get("t0", 0)); t1 = float(s.get("t1", 0))
                 txt = str(s.get("text","")).strip().replace("\n"," ")
                 if not (txt and t1 > t0): continue
                 seg_color = _karo_colors[_karo_idx % 2]; _karo_idx += 1
+
+                if style == "submagic":
+                    """Deux lignes empilées, la ligne en cours d'énonciation colorée, l'autre
+                    blanche. La couleur tourne d'un segment à l'autre. La bascule entre les deux
+                    lignes se fait sur le timing RÉEL du premier mot de la seconde ligne — c'est
+                    ce qui la synchronise avec la voix, là où une division égale du segment
+                    produit un décalage audible."""
+                    _mots_seg = s.get("words") or []
+                    _liste = [str(w.get("word", "")).strip().upper()
+                              for w in _mots_seg if str(w.get("word", "")).strip()]
+                    if not _liste:
+                        _liste = [w.upper() for w in txt.split()]
+                        _mots_seg = []
+
+                    """Coupure SYSTÉMATIQUE en deux lignes, moitié-moitié (la première ligne
+                    prend le mot en plus quand le compte est impair).
+
+                    Le budget de caractères précédent (2400/taille) ne déclenchait quasiment
+                    jamais : une cue de 4 mots fait ~25 caractères pour un budget de 43. Le
+                    code concluait « une seule ligne » et colorait TOUT le bloc — alors que
+                    libass, lui, repliait le texte sur deux lignes à cause des marges. Résultat
+                    à l'écran : deux lignes de la même couleur, jamais de blanc. C'est
+                    précisément ce qui distingue notre rendu de la référence."""
+                    """Découpage sur la largeur MESURÉE, pas estimée.
+
+                    Historique des erreurs sur ce point : le budget 2400/taille annonçait 43
+                    caractères par ligne, puis un coefficient 0.62 en annonçait 18. Mesure
+                    réelle sur Montserrat ExtraBold : le coefficient moyen est 0.743 et le pire
+                    cas 1.185 (lettres M, W). Aucun coefficient unique ne peut donc convenir —
+                    « CERVEAU FONCTIONNE » fait 691 px pour 632 px utiles alors que le compte
+                    de caractères le déclarait bon. On mesure la chaîne elle-même."""
+                    # Découpe la cue en PAGES de 2 lignes. Une page dont le reste ne tient pas
+                    # engendre une page suivante, affichée après elle — jamais une 3e ligne.
+                    _pages = []
+                    _reste = list(range(len(_liste)))
+                    while _reste:
+                        _ln = []
+                        for _k in range(2):
+                            _cur = []
+                            while _reste:
+                                _essai = " ".join(_cur + [_liste[_reste[0]]])
+                                if _cur and _sm_largeur(_essai, font_size) > _SM_ZONE_PX:
+                                    break
+                                _cur.append(_liste[_reste.pop(0)])
+                            if _cur:
+                                _ln.append(_cur)
+                            else:
+                                break
+                        if not _ln:
+                            break
+                        # Une seule ligne remplie et rien après : on la coupe en deux pour que
+                        # le blanc apparaisse (sinon toute la page serait d'une seule couleur).
+                        if len(_ln) == 1 and not _reste and len(_ln[0]) >= 2:
+                            _c = (len(_ln[0]) + 1) // 2
+                            _ln = [_ln[0][:_c], _ln[0][_c:]]
+                        _pages.append(_ln)
+
+                    # \q2 interdit à libass de replier le texte lui-même. Sans ça il ajoute ses
+                    # propres coupures par-dessus les nôtres : à l'écran on voyait deux lignes
+                    # de la MÊME couleur (son repli), au lieu d'une colorée et d'une blanche.
+                    _sm_tag = "{" + f"\\pos({_x_px},{_y_px})\\an8\\q2" + "}"
+
+                    def _sm_t(_i, _defaut):
+                        """Instant réel du i-ème mot de la cue, sinon valeur de repli."""
+                        if _mots_seg and 0 <= _i < len(_mots_seg):
+                            return float(_mots_seg[_i].get("start", _defaut))
+                        return _defaut
+
+                    _pos = 0   # index du 1er mot de la page courante dans la cue
+                    for _pi, _ln in enumerate(_pages):
+                        _n1 = len(_ln[0])
+                        _n2 = len(_ln[1]) if len(_ln) > 1 else 0
+                        _nb = _n1 + _n2
+                        # Bornes de la page : début du 1er mot -> début du 1er mot de la page
+                        # suivante (ou fin de la cue pour la dernière).
+                        _pt0 = _sm_t(_pos, t0 + (t1 - t0) * _pos / max(len(_liste), 1))
+                        _pt1 = (_sm_t(_pos + _nb, t1) if _pi < len(_pages) - 1 else t1)
+                        _pt0 = max(t0, min(_pt0, t1 - 0.10))
+                        _pt1 = max(_pt0 + 0.10, min(_pt1, t1))
+                        _txt1 = " ".join(_ln[0])
+                        _hl = _SM_CYCLE[_sm_idx % len(_SM_CYCLE)]; _sm_idx += 1
+
+                        if _n2 == 0:
+                            ass_lines.append(
+                                f"Dialogue: 0,{to_ass_time(_pt0)},{to_ass_time(_pt1)},Default,,0,0,0,,"
+                                f"{_sm_tag}{{\\c{_hl}}}{_txt1}")
+                        else:
+                            _txt2 = " ".join(_ln[1])
+                            _tmid = _sm_t(_pos + _n1, (_pt0 + _pt1) / 2)
+                            _tmid = max(_pt0 + 0.05, min(_tmid, _pt1 - 0.05))
+                            ass_lines.append(
+                                f"Dialogue: 0,{to_ass_time(_pt0)},{to_ass_time(_tmid)},Default,,0,0,0,,"
+                                f"{_sm_tag}{{\\c{_hl}}}{_txt1}\\N{{\\c&H00FFFFFF&}}{_txt2}")
+                            ass_lines.append(
+                                f"Dialogue: 0,{to_ass_time(_tmid)},{to_ass_time(_pt1)},Default,,0,0,0,,"
+                                f"{_sm_tag}{{\\c&H00FFFFFF&}}{_txt1}\\N{{\\c{_hl}}}{_txt2}")
+                        _pos += _nb
+                    continue
+
                 for t0, t1, txt in split_seg(t0, t1, txt):
                     if style == "typewriter":
                         words = txt.split()
@@ -3850,7 +4274,7 @@ async def process_clip_endpoint(
                         for i in range(n_steps):
                             a = 2.5 if i % 2 == 0 else -2.5
                             transforms.append(f"\\t({i*seg_ms},{(i+1)*seg_ms},\\frz{a})")
-                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an2\\org({_x_px},{_y_px})" + "".join(transforms) + "}"
+                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an8\\org({_x_px},{_y_px})" + "".join(transforms) + "}"
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{tag}{txt}")
                     elif style == "wave":
                         # Dégradé arc-en-ciel qui défile vraiment (pas figé) — toujours un seul
@@ -3873,7 +4297,7 @@ async def process_clip_endpoint(
                         # Fondu à l'apparition, position fixe — \move combiné à la boîte de fond
                         # (BorderStyle=3) empêchait la boîte de s'afficher à l'export.
                         dur_ms = max(1, min(300, int((t1 - t0) * 1000)))
-                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an2\\fad({dur_ms},0)" + "}"
+                        tag = "{" + f"\\pos({_x_px},{_y_px})\\an8\\fad({dur_ms},0)" + "}"
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{tag}{txt}")
                     elif style == "wordpop":
                         # Chaque mot apparaît avec un effet de zoom (\t anime l'échelle de 60% à 100%)
@@ -3968,7 +4392,18 @@ async def process_clip_endpoint(
             raise HTTPException(500, "Reframe/burn échoué")
         logger.info(f"[process-clip] OK — {out_path.stat().st_size // 1024}KB")
 
-        # Streamer le fichier directement — pas de temp URL, pas d'expiration
+        # On dépose sur R2 et on renvoie un LIEN plutôt que les 15 Mo du fichier : c'est ce qui
+        # débloque le téléchargement mobile (voir _r2_publier_clip). Si R2 est indisponible, on
+        # retombe sur l'ancien comportement — le flux ne casse jamais à cause de ça.
+        url_r2 = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: _r2_publier_clip(out_path, "clip_9x16.mp4")
+        )
+        if url_r2:
+            taille = out_path.stat().st_size
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return JSONResponse({"ok": True, "url": url_r2, "filename": "clip_9x16.mp4", "size": taille})
+
+        logger.warning("[process-clip] R2 indisponible — renvoi du fichier en direct (repli)")
         return FileResponse(str(out_path), media_type="video/mp4", filename="clip_9x16.mp4",
             background=BackgroundTask(shutil.rmtree, tmp_dir, True))
 

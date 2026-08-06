@@ -14,7 +14,8 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -33,7 +34,7 @@
   "mainEntity": [
     {"@type": "Question", "name": "CapCut découpe-t-il automatiquement les moments viraux ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. CapCut est un éditeur vidéo manuel : tu dois repérer et couper toi-même chaque extrait. Créatis identifie automatiquement les 10 meilleurs moments d'une vidéo longue et les découpe pour toi."}},
     {"@type": "Question", "name": "Peut-on remplacer CapCut par Créatis ?", "acceptedAnswer": {"@type": "Answer", "text": "Pour transformer une vidéo longue en clips, oui : Créatis automatise le repérage, le découpage 9:16, le recadrage et les sous-titres. CapCut reste utile pour des retouches manuelles fines ensuite."}},
-    {"@type": "Question", "name": "Créatis est-il aussi gratuit que CapCut ?", "acceptedAnswer": {"@type": "Answer", "text": "CapCut a une version gratuite avec montage manuel. Créatis offre 1 essai gratuit complet sans carte bancaire, puis 9,95€ le premier mois et 19,90€/mois pour un découpage 100% automatique."}}
+    {"@type": "Question", "name": "Créatis est-il aussi gratuit que CapCut ?", "acceptedAnswer": {"@type": "Answer", "text": "CapCut a une version gratuite avec montage manuel. Créatis analyse ta vidéo gratuitement et te montre tes clips en aperçu, puis 9,95€/mois (Starter) ou 14€/mois (Pro) pour un découpage 100% automatique."}}
   ]
 }
 </script>
@@ -76,6 +77,19 @@ article strong { color: var(--paper); }
 .compare-table .winner { color: var(--green); font-weight: 600; }
 </style>
   <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
 </head>
 <body>
 <nav class="blog-nav">
@@ -111,7 +125,7 @@ article strong { color: var(--paper); }
     <tr><td>Temps pour 10 clips</td><td>2-4 heures</td><td class="winner">~60 secondes</td></tr>
     <tr><td>Sous-titres karaoke</td><td>Manuel</td><td class="winner">Automatique</td></tr>
     <tr><td>Contrôle créatif fin</td><td class="winner">Total</td><td>Réglages guidés</td></tr>
-    <tr><td>Prix</td><td class="winner">Gratuit (manuel)</td><td>Essai gratuit puis 19,90€/mois</td></tr>
+    <tr><td>Prix</td><td class="winner">Gratuit (manuel)</td><td>Essai gratuit puis dès 9,95€/mois</td></tr>
   </table>
 
   <div class="cta-box">
@@ -129,12 +143,12 @@ article strong { color: var(--paper); }
     <h2>Questions fréquentes</h2>
     <details><summary>CapCut découpe-t-il automatiquement les moments viraux ?</summary><p>Non, CapCut est un éditeur manuel : tu repères et coupes toi-même. Créatis identifie automatiquement les 10 meilleurs moments d'une vidéo longue et les découpe.</p></details>
     <details><summary>Peut-on remplacer CapCut par Créatis ?</summary><p>Pour transformer une vidéo longue en clips, oui — Créatis automatise repérage, découpage, recadrage et sous-titres. CapCut reste utile pour des retouches manuelles fines ensuite.</p></details>
-    <details><summary>Créatis est-il aussi gratuit que CapCut ?</summary><p>CapCut a une version gratuite manuelle. Créatis offre 1 essai gratuit complet sans carte bancaire, puis 19,90€/mois pour un découpage 100% automatique.</p></details>
+    <details><summary>Créatis est-il aussi gratuit que CapCut ?</summary><p>CapCut a une version gratuite manuelle. Créatis analyse ta vidéo gratuitement et te montre tes clips en aperçu, puis dès 9,95€/mois pour un découpage 100% automatique.</p></details>
   </div>
 
   <div class="cta-box" style="margin-top:48px">
     <h3>Gagne des heures sur chaque vidéo</h3>
-    <p>1 essai gratuit · Sans carte bancaire · 10 clips en 60 secondes</p>
+    <p>Analyse gratuite · Sans carte bancaire · 10 clips en aperçu</p>
     <a href="/clips-v2.html" class="btn">Découper ma vidéo maintenant</a>
   </div>
 </article>

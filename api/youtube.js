@@ -17,7 +17,166 @@ export default async function handler(req, res) {
   if (type === 'channel') return handleChannel(req, res);
   if (type === 'video') return handleVideo(req, res);
   if (type === 'video-meta') return handleVideoMeta(req, res);
-  return res.status(400).json({ error: 'Paramètre "type" requis : "channel", "video" ou "video-meta"' });
+  if (type === 'latest-video') return handleLatestVideo(req, res);
+  return res.status(400).json({ error: 'Paramètre "type" requis : "channel", "video", "video-meta" ou "latest-video"' });
+}
+
+/* ============================================================
+ * LATEST-VIDEO — "la dernière vidéo de X" → URL analysable
+ * Utilisé par la commande vocale de clips-v2.
+ *
+ * Coût en quota (10 000 unités/jour pour TOUT le site) :
+ *   search.list = 100 · channels?forHandle = 1 · playlistItems = 1 · videos = 1
+ * D'où la résolution en cascade : channelId fourni par le client > cache
+ * d'instance > handle > recherche par nom. Le champ `channel_id` renvoyé doit
+ * être mémorisé côté client : la 2ᵉ demande sur le même créateur coûte 2 unités
+ * au lieu de 102.
+ * ============================================================ */
+
+const _cacheChaines = new Map(); // nom normalisé → channelId, vit tant que l'instance est chaude
+
+async function handleLatestVideo(req, res) {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({
+      error: 'YOUTUBE_API_KEY non configurée',
+      setup: 'Ajoute YOUTUBE_API_KEY dans les variables Vercel — console.cloud.google.com → APIs → YouTube Data API v3 → Credentials → API Key'
+    });
+  }
+
+  const { query, channelId: channelIdConnu, minDuration } = req.body || {};
+  const nom = (query || '').trim();
+  const dureeMin = Number.isFinite(+minDuration) ? Math.max(0, +minDuration) : 300;
+  if (!nom && !channelIdConnu) return res.status(400).json({ error: 'query ou channelId requis' });
+
+  const cle = nom.toLowerCase().replace(/\s+/g, ' ');
+  let quota = 0;
+
+  try {
+    // ── 1. Résolution de la chaîne, du moins cher au plus cher ──
+    let channelId = (channelIdConnu || '').trim();
+    let channelTitle = '';
+
+    if (!/^UC[\w-]{22}$/.test(channelId)) channelId = '';
+    if (!channelId && _cacheChaines.has(cle)) channelId = _cacheChaines.get(cle);
+
+    if (!channelId) {
+      const handle = _extraireHandle(nom);
+      if (handle) {
+        // 1 unité au lieu de 100 quand l'utilisateur a donné un @handle ou une URL
+        const params = new URLSearchParams({ part: 'snippet', forHandle: handle, key: apiKey });
+        const r = await fetch(`${YT_API}/channels?${params}`);
+        const data = await r.json(); quota += 1;
+        _checkApiError(data);
+        const item = data.items?.[0];
+        if (item) { channelId = item.id; channelTitle = item.snippet?.title || ''; }
+      }
+    }
+
+    if (!channelId) {
+      const params = new URLSearchParams({ part: 'snippet', type: 'channel', maxResults: 5, q: nom, key: apiKey });
+      const r = await fetch(`${YT_API}/search?${params}`);
+      const data = await r.json(); quota += 100;
+      _checkApiError(data);
+      const item = (data.items || [])[0];
+      channelId = item?.id?.channelId || item?.snippet?.channelId || '';
+      channelTitle = item?.snippet?.title || '';
+    }
+
+    if (!channelId) {
+      return res.status(404).json({ error: `Aucune chaîne trouvée pour « ${nom} »`, quota_used: quota });
+    }
+    if (cle) _cacheChaines.set(cle, channelId);
+
+    // ── 2. UC… → UU… : la playlist "uploads", déduite sans appel API ──
+    const playlistId = 'UU' + channelId.slice(2);
+
+    // ── 3/4/5/6. Remonter la playlist page par page jusqu'à trouver du contenu long.
+    // Une seule page de 15 ne suffit PAS : Yomi Denzel poste 4 Shorts par jour, sa dernière
+    // vidéo de 16 min était déjà en 15ᵉ position — le lendemain elle sortait de la fenêtre et
+    // la commande répondait « aucune vidéo longue » alors qu'elle existait.
+    // Pages de 50 (même coût qu'une page de 15 : 1 unité), 4 pages max = 200 vidéos, ~8 unités.
+    const MAX_PAGES = 4;
+    let pageToken = '', inspectees = 0, trouvee = null;
+
+    for (let page = 0; page < MAX_PAGES && !trouvee; page++) {
+      const pParams = new URLSearchParams({ part: 'contentDetails', playlistId, maxResults: 50, key: apiKey });
+      if (pageToken) pParams.set('pageToken', pageToken);
+      const pRes = await fetch(`${YT_API}/playlistItems?${pParams}`);
+      const pData = await pRes.json(); quota += 1;
+      if (pData.error && pRes.status === 404) {
+        return res.status(404).json({ error: 'Cette chaîne n\'a aucune vidéo publique', quota_used: quota });
+      }
+      _checkApiError(pData);
+
+      const ids = (pData.items || []).map(i => i.contentDetails?.videoId).filter(Boolean);
+      if (!ids.length) break;
+      inspectees += ids.length;
+
+      // Durées + titres de la page entière, un seul appel (1 unité)
+      const vParams = new URLSearchParams({ part: 'contentDetails,snippet', id: ids.join(','), key: apiKey });
+      const vRes = await fetch(`${YT_API}/videos?${vParams}`);
+      const vData = await vRes.json(); quota += 1;
+      _checkApiError(vData);
+
+      // Filtre : assez longue, ni live ni première
+      const retenues = (vData.items || [])
+        .filter(v => (v.snippet?.liveBroadcastContent || 'none') === 'none')
+        .map(v => ({
+          channel_id: channelId,
+          channel_title: v.snippet?.channelTitle || channelTitle,
+          video_id: v.id,
+          url: `https://www.youtube.com/watch?v=${v.id}`,
+          title: v.snippet?.title || '',
+          thumbnail: v.snippet?.thumbnails?.medium?.url || '',
+          duration_seconds: _dureeIsoEnSecondes(v.contentDetails?.duration),
+          published_at: v.snippet?.publishedAt || ''
+        }))
+        .filter(v => v.duration_seconds >= dureeMin);
+
+      // La playlist descend déjà du plus récent au plus ancien : la 1ʳᵉ page qui contient une
+      // vidéo longue contient LA bonne. On retrie quand même, videos.list ne garantit pas l'ordre.
+      if (retenues.length) {
+        retenues.sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
+        trouvee = retenues[0];
+      }
+
+      pageToken = pData.nextPageToken || '';
+      if (!pageToken) break;
+    }
+
+    if (!inspectees) {
+      return res.status(404).json({ error: 'Cette chaîne n\'a aucune vidéo publique', quota_used: quota });
+    }
+    if (!trouvee) {
+      return res.status(404).json({
+        error: `Aucune vidéo d'au moins ${Math.round(dureeMin / 60)} min parmi les ${inspectees} dernières de ${channelTitle || nom} — cette chaîne ne publie que des formats courts`,
+        channel_id: channelId,
+        quota_used: quota
+      });
+    }
+
+    return res.status(200).json({ ...trouvee, videos_inspectees: inspectees, quota_used: quota });
+
+  } catch (e) {
+    const msg = e.message || 'Erreur YouTube';
+    const estQuota = /quota/i.test(msg);
+    return res.status(estQuota ? 429 : 500).json({ error: msg, quota_used: quota });
+  }
+}
+
+function _extraireHandle(entree) {
+  const s = (entree || '').trim();
+  const m = s.match(/youtube\.com\/@([\w.-]+)/);
+  if (m) return '@' + m[1];
+  if (s.startsWith('@') && !/\s/.test(s)) return s;
+  return null;
+}
+
+function _dureeIsoEnSecondes(duree) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(duree || '');
+  if (!m) return 0;
+  return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
 }
 
 /* ============================================================

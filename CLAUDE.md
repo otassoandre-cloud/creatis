@@ -21,10 +21,11 @@ Serveur local : `node serveur.js` → port 3000
 ## Économie de tokens (IMPORTANT — lire à chaque session)
 
 **Fichiers volumineux — ne jamais lire en entier :**
-- `js/app.js` (~1500 lignes) : utiliser `offset`+`limit` ou `Grep` pour cibler la section
-- `js/agents.js` (~700 lignes) : idem
-- `css/app.css` (~1400 lignes) : idem
-- `index.html` : très long, cibler avec Grep
+- `clips-v2.html` (**6 661 lignes**) : le fichier principal du produit — toujours Grep d'abord
+- `repurpose-service/main.py` (4 259 lignes) : idem
+- `api/repurpose.js` (1 761 lignes) : idem
+- `js/app.js` (~1500 lignes), `js/agents.js` (~700), `css/app.css` (~1400) : hérités, peu touchés
+- `index.html` / `lp.html` : très longs, cibler avec Grep
 
 **Règles de lecture :**
 - Toujours utiliser `Grep` en premier pour localiser un symbole/fonction
@@ -45,7 +46,7 @@ Serveur local : `node serveur.js` → port 3000
 
 ```
 js/config.js          — clés API, modèles, plans tarifaires
-js/agents.js          — 8 agents IA (construirePrompt signature fixe)
+js/agents.js          — 10 agents IA (construirePrompt signature fixe)
 js/app.js             — AppCreatis class, logique principale
 js/integrations.js    — YouTube OAuth, Stripe
 js/youtube-context.js — collecte données chaîne, personnalisation agents
@@ -55,15 +56,17 @@ css/app.css           — layout app (sidebar + workspace)
 serveur.js            — Node.js HTTP server port 3000
 ```
 
-## Clés API configurées
+## Clés API
 
-- `GROQ_API_KEY` : configurée dans config.js ✓
-- `GEMINI_API_KEY` : configurée dans config.js ✓
-- `TOGETHER_API_KEY` : configurée dans config.js ✓
-- `HF_TOKEN` : **vide** — à configurer pour activer la génération d'images
-- `YOUTUBE_API_KEY` : **vide** — à configurer dans Vercel pour le fetch auto de chaîne (console.cloud.google.com → YouTube Data API v3 → Credentials → API Key)
-- `YOUTUBE_CLIENT_ID` : **vide** — OAuth optionnel, non prioritaire
-- `STRIPE_PUBLIC_KEY` : **vide** — à configurer pour les paiements
+**Elles ne sont plus dans `config.js`** — tout est passé côté serveur (Vercel + Railway). Ne pas
+chercher de clé secrète dans le code client : `config.js` ne contient plus que l'URL Supabase, la
+clé anon et le token PostHog, tous publics par nature.
+
+Liste complète des variables et de leur emplacement : `PROJECT_MAP.md` → *Variables d'environnement*.
+
+`YOUTUBE_CLIENT_ID` est **vide et le restera** : l'OAuth YouTube n'a jamais été branché. Le chemin
+réellement utilisé est le fetch public par handle (`api/youtube-channel.js`). Ne jamais supposer
+qu'OAuth fonctionne sans avoir vérifié.
 
 ## Standards de code (issus des skills installés)
 
@@ -113,11 +116,18 @@ Types d'agents :
 - `type: 'texte'` → appel Groq via `appelGroq(prompt)`
 - `type: 'image'` → appel HuggingFace via `appelHuggingFace(prompt)`
 
-## Plan gratuit / Pro
+## Tarification (à jour 2026-08-03)
 
-- Gratuit : 10 générations, agents `['youtube-complet', 'youtube-short', 'idees-videos']`
-- Pro 29€/mois : générations illimitées, tous les 8 agents
-- Agence 97€/mois : 5 chaînes, tout illimité
+Le produit vendu est **Clips Viraux**, pas les agents. Grille en vigueur :
+
+| Plan | Prix | Vidéos/mois | Clips téléchargeables |
+|---|---|---|---|
+| Découverte | 0 € | 2 | **0** (aperçu seul, paywall à l'export) |
+| Starter | 9,95 €/mois | 5 | 20 |
+| Pro | 14 €/mois | 30 | 150 |
+| Pro annuel | 139 €/an | 30 | 150 |
+
+Détail complet (price IDs Stripe LIVE, quotas serveur) dans `PROJECT_MAP.md`.
 
 ## Commandes utiles
 

@@ -32,6 +32,16 @@ const Auth = (() => {
       const { data } = await client.auth.getSession();
       _session = data?.session || null;
 
+      // Session absente mais un refresh token existe peut-être encore (onglet resté en veille
+      // longtemps sur mobile, réseau pas rétabli au retour) — un essai de refresh avant de
+      // considérer l'utilisateur déconnecté, pour éviter de le renvoyer à tort sur auth.html.
+      if (!_session) {
+        try {
+          const { data: refreshed } = await client.auth.refreshSession();
+          if (refreshed?.session) _session = refreshed.session;
+        } catch {}
+      }
+
       // No active session but user was previously registered → grant access
       // (email confirmation pending, or token expired between visits)
       if (!_session) {
@@ -43,10 +53,12 @@ const Auth = (() => {
 
       client.auth.onAuthStateChange((event, session) => {
         _session = session;
-        if (session) _demoMode = false; // real session restored → exit demo mode
+        if (session) _demoMode = false; // real session restourée → sort du mode démo
         if (event === 'SIGNED_OUT') {
           _demoMode = false;
-          localStorage.removeItem('creatis_user');
+          // Ne pas supprimer creatis_user ici : deconnecter() le fait déjà explicitement pour
+          // une vraie déconnexion. Le garder permet au filet de sécurité ci-dessus de fonctionner
+          // si ce SIGNED_OUT est un faux positif du SDK (refresh pas encore possible au réveil).
         }
       });
     },
@@ -228,13 +240,14 @@ const Auth = (() => {
   async function _syncUtilisateur(user, session) {
     if (!user?.email) return;
     try {
+      const source = localStorage.getItem('creatis_source') || 'web';
       await fetch(CONFIG.USER_SYNC_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
-        body: JSON.stringify({ action: 'upsert', userId: user.id, email: user.email, plan: 'gratuit' })
+        body: JSON.stringify({ action: 'upsert', userId: user.id, email: user.email, plan: 'gratuit', source })
       });
     } catch (e) { console.warn('[Auth] Sync utilisateur échoué:', e.message); }
   }

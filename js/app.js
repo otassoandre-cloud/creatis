@@ -1072,6 +1072,9 @@ class AppCreatis {
     panneau.style.cssText = 'padding:0;overflow:hidden;position:relative;';
     const iframe = document.createElement('iframe');
     iframe.src = '/clips-v2.html';
+    // Sans ça, la commande vocale de clips-v2 est bloquée en `not-allowed` :
+    // une iframe n'hérite pas de l'autorisation micro de la page parente.
+    iframe.allow = 'microphone';
     iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#050505;';
     iframe.onload = () => { try { iframe.contentDocument.querySelector('.nav').style.display = 'none'; } catch(e) {} };
     panneau.appendChild(iframe);

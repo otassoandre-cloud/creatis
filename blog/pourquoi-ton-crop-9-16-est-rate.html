@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pourquoi ton crop 9:16 est raté (et comment le corriger) | Créatis</title>
+<meta name="description" content="Tête coupée, cadrage statique, sujet hors champ : voici pourquoi ton recadrage 9:16 ne fonctionne pas et comment le corriger automatiquement avec l'IA.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://creatis.app/blog/pourquoi-ton-crop-9-16-est-rate.html">
+<meta property="og:title" content="Pourquoi ton crop 9:16 est raté (et comment le corriger)">
+<meta property="og:description" content="Les erreurs de recadrage 9:16 les plus fréquentes et comment les corriger automatiquement avec l'IA.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://creatis.app/blog/pourquoi-ton-crop-9-16-est-rate.html">
+<meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Pourquoi ton crop 9:16 est raté (et comment le corriger sans recadrer à la main)",
+  "author": {"@type": "Organization", "name": "Équipe Rédaction Créatis"},
+  "publisher": {"@type": "Organization", "name": "Créatis", "url": "https://creatis.app"},
+  "datePublished": "2026-07-09",
+  "dateModified": "2026-07-19",
+  "description": "Les erreurs de recadrage 9:16 les plus fréquentes et comment les corriger automatiquement avec l'IA.",
+  "mainEntityOfPage": "https://creatis.app/blog/pourquoi-ton-crop-9-16-est-rate.html"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Pourquoi un crop centré fixe ne fonctionne pas ?", "acceptedAnswer": {"@type": "Answer", "text": "Parce que le sujet bouge dans le cadre d'origine 16:9. Un crop centré fixe ne suit pas ce mouvement, ce qui coupe régulièrement le visage ou laisse le sujet sortir du cadre vertical."}},
+    {"@type": "Question", "name": "Qu'est-ce que le face tracking ?", "acceptedAnswer": {"@type": "Answer", "text": "C'est une technologie qui détecte le ou les visages dans une vidéo et ajuste automatiquement le cadrage 9:16 pour les garder centrés, y compris quand ils bougent ou changent de locuteur."}},
+    {"@type": "Question", "name": "Comment corriger le crop d'une vidéo avec plusieurs personnes ?", "acceptedAnswer": {"@type": "Answer", "text": "L'IA détecte qui parle à l'instant T et recadre sur cette personne. Le cadrage bascule automatiquement d'un intervenant à l'autre au fil de la conversation, sans intervention manuelle."}},
+    {"@type": "Question", "name": "Le recadrage 9:16 automatique fonctionne-t-il sur toutes les vidéos ?", "acceptedAnswer": {"@type": "Answer", "text": "Le face tracking fonctionne particulièrement bien sur du contenu avec un ou plusieurs visages visibles (interview, vlog, talking-head). Pour du contenu sans visage (gameplay, écran), un recadrage centré classique reste suffisant."}}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Corriger le crop 9:16 avec Créatis",
+  "step": [
+    {"@type": "HowToStep", "position": 1, "name": "Téléverse ta vidéo", "text": "Au format d'origine (16:9 ou autre), pas besoin de la recadrer toi-même avant."},
+    {"@type": "HowToStep", "position": 2, "name": "Détection des visages", "text": "L'IA calcule automatiquement le cadrage optimal pour chaque segment."},
+    {"@type": "HowToStep", "position": 3, "name": "Suivi du mouvement", "text": "Sur les vidéos à plusieurs locuteurs, le cadrage bascule sur la personne qui parle."},
+    {"@type": "HowToStep", "position": 4, "name": "Vérifie et exporte", "text": "Prévisualise le résultat avant de télécharger tes clips en 1080x1920."}
+  ]
+}
+</script>
+<link rel="stylesheet" href="/css/blog.css">
+  <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
+</head>
+<body>
+<nav class="blog-nav">
+  <a href="/" class="logo"><span>C</span> Créatis</a>
+  <a href="/clips-v2.html" class="blog-cta">Essayer gratuitement</a>
+</nav>
+
+<article>
+  <h1>Pourquoi ton crop 9:16 est raté (et comment le corriger sans recadrer à la main)</h1>
+  <div class="meta">Publié le 9 juillet 2026 · 5 min de lecture · Mis à jour le 19 juillet 2026</div>
+
+  <p>Tu as un bon clip, un bon hook, un bon sujet — mais le recadrage vertical coupe la tête, rate le sujet quand il bouge, ou laisse un cadrage bizarre. Le crop 9:16 est l'étape la plus sous-estimée du <a href="/blog/decouper-video-shorts-automatiquement.html">découpage de vidéos en Shorts</a>, et pourtant elle peut ruiner un clip pourtant bien choisi.</p>
+
+  <h2>Les 4 erreurs de crop les plus courantes</h2>
+
+  <h3>1. Le centre fixe qui rate le sujet</h3>
+  <p>La méthode la plus simple consiste à recadrer au centre de l'image d'origine (16:9) pour obtenir un format vertical (9:16). Problème : si le sujet n'est pas exactement au centre, ou s'il se déplace, il sort du cadre.</p>
+
+  <h3>2. La tête coupée en haut du cadre</h3>
+  <p>Un crop vertical mal calibré coupe fréquemment le haut du visage. C'est particulièrement fréquent sur les vidéos filmées en plan large, où le visage occupe une petite portion de l'image d'origine.</p>
+
+  <h3>3. Aucun suivi quand le sujet bouge</h3>
+  <p>Sur une vidéo filmée avec du mouvement — le créateur se déplace, gesticule, change de position — un crop statique perd le sujet dès qu'il sort de la zone recadrée fixe.</p>
+
+  <h3>4. Plusieurs locuteurs mal gérés</h3>
+  <p>Sur une interview ou un débat à plusieurs personnes, un crop centré ne peut pas suivre la bonne personne au bon moment. Résultat : le cadrage reste sur la mauvaise personne, ou coupe les deux au milieu.</p>
+
+  <h2>Pourquoi le crop manuel ne suffit pas</h2>
+
+  <p>Recadrer manuellement chaque clip, image par image, pour suivre le sujet est possible en théorie — mais dans la pratique, ça prend un temps considérable pour un seul clip de 30 secondes, encore plus si tu publies plusieurs Shorts par semaine. Ce n'est pas une solution qui scale.</p>
+
+  <h2>Comment le face tracking IA résout le problème</h2>
+
+  <p>Le <strong>face tracking</strong> est une technologie qui détecte automatiquement le ou les visages dans une vidéo et ajuste le cadrage 9:16 en continu :</p>
+
+  <ul>
+    <li><strong>Détection du visage</strong> — l'IA identifie la position exacte du visage image par image</li>
+    <li><strong>Suivi dynamique</strong> — le cadrage se déplace pour garder le visage centré, même quand le sujet bouge dans le plan</li>
+    <li><strong>Gestion multi-locuteurs</strong> — sur une interview, l'IA détecte qui parle à l'instant T et recadre sur cette personne, avec un basculement fluide quand la parole change</li>
+  </ul>
+
+  <div class="cta-box">
+    <h3>Corrige ton crop automatiquement</h3>
+    <p>Créatis recadre chaque clip en 9:16 avec suivi du visage — plus de têtes coupées, plus de cadrage statique.</p>
+    <a href="/clips-v2.html" class="btn">⚡ Recadrer mes clips avec l'IA</a>
+  </div>
+
+  <h2>Comment corriger ton crop avec Créatis</h2>
+
+  <ol>
+    <li><strong>Téléverse ta vidéo</strong> au format d'origine (16:9 ou autre), pas besoin de la recadrer toi-même avant</li>
+    <li><strong>L'IA détecte les visages</strong> et calcule automatiquement le cadrage optimal pour chaque segment</li>
+    <li><strong>Le recadrage suit le mouvement</strong> — sur les vidéos à plusieurs locuteurs, le cadrage bascule sur la personne qui parle</li>
+    <li><strong>Vérifie et exporte</strong> — prévisualise le résultat avant de télécharger tes clips en 1080x1920</li>
+  </ol>
+
+  <p>Un bon crop n'est utile que combiné aux autres fondamentaux : consulte notre guide sur le <a href="/blog/format-shorts-youtube-2026.html">format optimal des Shorts YouTube</a> pour la résolution et le ratio exacts, et découvre les <a href="/blog/erreurs-qui-tuent-tes-shorts.html">7 erreurs qui tuent tes Shorts</a> pour éviter les autres pièges fréquents. Si tu pars d'un contenu long, notre méthode pour <a href="/blog/decouper-video-longue-format-interview.html">découper une vidéo de 1h et plus</a> intègre déjà ce recadrage multi-locuteurs.</p>
+
+  <p>Retourne à la <a href="/">page d'accueil</a> pour voir l'outil en action, ou compare les <a href="/#tarifs">formules Créatis</a>.</p>
+
+  <div class="faq-section">
+    <h2>Questions fréquentes</h2>
+    <details>
+      <summary>Pourquoi un crop centré fixe ne fonctionne pas ?</summary>
+      <p>Parce que le sujet bouge dans le cadre d'origine 16:9. Un crop centré fixe ne suit pas ce mouvement, ce qui coupe régulièrement le visage ou laisse le sujet sortir du cadre vertical.</p>
+    </details>
+    <details>
+      <summary>Qu'est-ce que le face tracking ?</summary>
+      <p>C'est une technologie qui détecte le ou les visages dans une vidéo et ajuste automatiquement le cadrage 9:16 pour les garder centrés, y compris quand ils bougent ou changent de locuteur.</p>
+    </details>
+    <details>
+      <summary>Comment corriger le crop d'une vidéo avec plusieurs personnes ?</summary>
+      <p>L'IA détecte qui parle à l'instant T et recadre sur cette personne. Le cadrage bascule automatiquement d'un intervenant à l'autre au fil de la conversation, sans intervention manuelle.</p>
+    </details>
+    <details>
+      <summary>Le recadrage 9:16 automatique fonctionne-t-il sur toutes les vidéos ?</summary>
+      <p>Le face tracking fonctionne particulièrement bien sur du contenu avec un ou plusieurs visages visibles (interview, vlog, talking-head). Pour du contenu sans visage (gameplay, écran), un recadrage centré classique reste suffisant.</p>
+    </details>
+  </div>
+
+  <div class="cta-box" style="margin-top:48px">
+    <h3>Prêt à corriger ton crop 9:16 ?</h3>
+    <p>Analyse gratuite · Sans carte bancaire · Vois tes clips avant de payer</p>
+    <a href="/clips-v2.html" class="btn">⚡ Essayer Créatis gratuitement</a>
+  </div>
+</article>
+
+<footer class="blog-footer">
+  <p>© 2026 Créatis · <a href="/blog.html">Blog</a> · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@creatis.app">Contact</a></p>
+</footer>
+</body>
+</html>

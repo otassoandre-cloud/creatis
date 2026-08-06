@@ -59,6 +59,11 @@
     };
   })();
   </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
 </head>
 <body>
 
@@ -181,6 +186,15 @@
                 <span class="onb-sc-ico">→</span><span>Passer au Pro</span>
               </div>
             </div>
+
+            <!-- Gestion de l'abonnement. Volontairement présent et lisible : l'article L215-1-1
+                 du Code de la consommation impose une résiliation accessible « facilement,
+                 directement et en permanence » pour tout contrat souscrit en ligne. L'écran de
+                 rétention se place APRÈS le clic, jamais en obstacle à l'accès. -->
+            <button id="btn-gerer-abo" onclick="ouvrirGestionAbo()"
+              style="display:none;width:100%;margin-top:10px;background:transparent;border:1px solid rgba(255,255,255,.12);color:#9ca3af;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;text-align:center">
+              Gérer mon abonnement
+            </button>
           </div>
         </div>
 
@@ -188,7 +202,7 @@
         <button class="btn-sm w-100" title="Passer au Pro" style="position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;margin-bottom:6px;" id="btn-upgrade-sidebar" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           <span class="sidebar-btn-label">Passer au Pro</span>
-          <span class="sidebar-btn-promo" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f97316;color:#fff;font-size:11px;font-weight:800;padding:3px 7px;border-radius:20px;line-height:1.2;letter-spacing:0;">-50% le 1er mois</span>
+          
         </button>
         <button class="btn-ghost btn-sm w-100" title="Déconnexion" style="display:flex;align-items:center;justify-content:center;gap:6px;" id="btn-deconnexion" onclick="typeof Auth !== 'undefined' ? Auth.deconnecter() : (window.location.href='auth.html')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -525,14 +539,13 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
             <div style="display:flex;align-items:baseline;gap:10px;">
-              <div style="font-size:20px;font-weight:800;text-decoration:line-through;color:var(--texte-muted);">19,90€</div>
-              <div style="font-size:24px;font-weight:800;color:var(--texte);">9,95€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">le 1er mois</span></div>
+              <div style="font-size:24px;font-weight:800;color:var(--texte);">14€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
             </div>
-            <div style="font-size:12px;color:var(--texte-doux);">puis 19,90€/mois — Sans engagement · ou 149€/an</div>
+            <div style="font-size:12px;color:var(--texte-doux);">150 clips/mois · Sans engagement · ou 139€/an</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
             <span class="badge badge-vert">Le plus populaire</span>
-            <span style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">-50% le 1er mois</span>
+            
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
@@ -551,8 +564,8 @@
       <div style="background:var(--bg);border:1px solid var(--bordure);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
-            <div style="font-size:24px;font-weight:800;color:var(--texte);">149€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/an</span></div>
-            <div style="font-size:12px;color:var(--texte-doux);">Pro Annuel — soit 12,42€/mois</div>
+            <div style="font-size:24px;font-weight:800;color:var(--texte);">139€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/an</span></div>
+            <div style="font-size:12px;color:var(--texte-doux);">Pro Annuel — soit 11,58€/mois · 2 mois offerts</div>
           </div>
           <span class="badge badge-vert">-37%</span>
         </div>
@@ -562,7 +575,7 @@
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Sans engagement au renouvellement</div>
         </div>
         <button class="btn-secondaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('pro', true)">
-          Prendre l'annuel — 149€/an
+          Prendre l'annuel — 139€/an
         </button>
       </div>
 
@@ -717,7 +730,7 @@
     <div class="modal modal-post-gen">
       <div class="mpg-header">
         <div class="mpg-emoji">✂️</div>
-        <h2 class="mpg-titre">Ton essai gratuit est utilisé.</h2>
+        <h2 class="mpg-titre">Télécharge tes clips.</h2>
         <p class="mpg-sous">Passe Pro pour continuer à créer des clips viraux sans limite.</p>
       </div>
       <div class="mpg-benefits">
@@ -744,7 +757,7 @@
         </div>
       </div>
       <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 14px;margin-top:16px;text-align:center;font-size:13px;color:#f59e0b;font-weight:600;">
-        🎁 -50% sur ton 1er mois · offre de lancement
+        🎁 Analyse gratuite · vois tes clips avant de payer
       </div>
       <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="window.location.href='index.html#tarifs'">
         Passer Pro — 9,95€ le 1er mois →
@@ -943,6 +956,202 @@
       document.getElementById('modal-upgrade')?.classList.add('visible');
     }
   });
+
+/* ═══ Gestion / résiliation d'abonnement ═══
+   Le bouton n'apparaît que pour un plan payant : proposer « gérer mon abonnement » à quelqu'un
+   qui n'en a pas ne fait qu'ouvrir une impasse. */
+(function () {
+  function planPayant() {
+    try {
+      const u = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+      return u.plan && u.plan !== 'gratuit' && u.plan !== 'demo';
+    } catch { return false; }
+  }
+  function majBouton() {
+    const b = document.getElementById('btn-gerer-abo');
+    if (b) b.style.display = planPayant() ? 'block' : 'none';
+  }
+  document.addEventListener('DOMContentLoaded', majBouton);
+  setTimeout(majBouton, 1500);   // le plan arrive après la synchro Supabase
+  window._majBoutonAbo = majBouton;
+})();
+
+function ouvrirGestionAbo() {
+  if (document.getElementById('modal-resiliation')) {
+    document.getElementById('modal-resiliation').style.display = 'flex';
+    return;
+  }
+  const d = document.createElement('div');
+  d.id = 'modal-resiliation';
+  d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px';
+  d.innerHTML = `
+    <div style="background:#0d1512;border:1px solid #1f2e26;border-radius:16px;max-width:440px;width:100%;padding:26px;color:#fff;box-sizing:border-box;max-height:90vh;overflow:auto">
+      <h3 style="margin:0 0 6px;font-size:19px;font-weight:800">Gérer ton abonnement</h3>
+      <p style="margin:0 0 20px;font-size:13.5px;color:#9ca3af;line-height:1.55">
+        Tu peux mettre à jour ta carte, télécharger tes factures ou résilier. La résiliation prend
+        effet à la fin de la période déjà payée — tu gardes l'accès jusque-là.
+      </p>
+
+      <div style="font-size:12px;font-weight:700;color:#9ca3af;margin-bottom:8px">
+        Si tu pars, qu'est-ce qui n'a pas marché ? <span style="font-weight:400">(facultatif)</span>
+      </div>
+      <div id="motifs-resil" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        ${[
+          ['trop_cher', 'Trop cher pour mon usage'],
+          ['qualite', "La qualité des clips ne me convient pas"],
+          ['pas_le_temps', "Je ne l'utilise pas assez"],
+          ['bug', "J'ai rencontré trop de problèmes techniques"],
+          ['concurrent', "Je passe sur un autre outil"],
+          ['autre', 'Autre raison']
+        ].map(([v, t]) => `
+          <label style="display:flex;align-items:center;gap:9px;font-size:13px;color:#d1d5db;cursor:pointer;padding:7px 10px;border:1px solid #1f2e26;border-radius:8px">
+            <input type="radio" name="motif" value="${v}" style="accent-color:#10b981;flex-shrink:0">${t}
+          </label>`).join('')}
+      </div>
+      <textarea id="commentaire-resil" rows="2" placeholder="Un mot de plus ? Ça nous aide vraiment."
+        style="width:100%;background:#0a0f0a;border:1px solid #1f2e26;border-radius:8px;color:#fff;padding:9px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+
+      <div id="resil-erreur" style="display:none;color:#fca5a5;font-size:12.5px;margin-top:10px;line-height:1.5"></div>
+
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+        <button onclick="document.getElementById('modal-resiliation').style.display='none'"
+          style="flex:1;min-width:130px;background:#10b981;color:#04140d;border:none;border-radius:9px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">
+          Je reste
+        </button>
+        <button id="btn-vers-portail" onclick="afficherOffreRetention()"
+          style="flex:1;min-width:130px;background:transparent;color:#9ca3af;border:1px solid #374151;border-radius:9px;padding:11px;font-weight:600;font-size:14px;cursor:pointer">
+          Continuer
+        </button>
+      </div>
+      <p style="margin:14px 0 0;font-size:11.5px;color:#6b7280;line-height:1.5">
+        Un souci technique se règle souvent en une réponse — écris à
+        <a href="mailto:contact@creatis.app" style="color:#10b981">contact@creatis.app</a> avant de partir.
+      </p>
+    </div>`;
+  document.body.appendChild(d);
+}
+
+/* Offre de rétention adaptée au motif. Une remise uniforme coûterait de l'argent à des clients
+   qui seraient restés ; ici chaque motif reçoit la réponse qui le concerne, et « je passe sur un
+   autre outil » n'en reçoit aucune — insister n'y changerait rien. */
+const OFFRES_RETENTION = {
+  trop_cher: {
+    titre: 'Avant de partir — le Starter existe',
+    texte: '9,95 €/mois au lieu de 14 €, avec 20 clips par mois. Ta période déjà payée reste acquise, et le changement prend effet à la prochaine échéance.',
+    bouton: 'Passer au Starter (9,95 €)',
+    geste: 'starter'
+  },
+  pas_le_temps: {
+    titre: 'Mets-le en pause plutôt',
+    texte: "Un mois sans facturation, tes clips et ton historique restent intacts. Tout redémarre automatiquement, sans rien à refaire.",
+    bouton: 'Mettre en pause 1 mois',
+    geste: 'pause'
+  },
+  bug: {
+    titre: "Laisse-nous 24 h",
+    texte: "La plupart des problèmes techniques se règlent en un échange. Si on n'y arrive pas, tu résilies — l'option reste ouverte.",
+    bouton: 'Décrire le problème',
+    geste: 'support'
+  },
+  qualite: {
+    titre: 'Dis-nous ce qui coince',
+    texte: "Le cadrage, les sous-titres et le choix des moments se règlent souvent en deux minutes. On regarde ta vidéo avec toi.",
+    bouton: 'Demander un coup de main',
+    geste: 'support'
+  }
+};
+
+function afficherOffreRetention() {
+  const motif = document.querySelector('input[name="motif"]:checked')?.value || '';
+  const offre = OFFRES_RETENTION[motif];
+  if (!offre) { allerAuPortail(); return; }        // aucun geste pertinent → on ne retient pas
+  if (window.posthog) posthog.capture('retention_offre_vue', { motif, geste: offre.geste });
+
+  const boite = document.querySelector('#modal-resiliation > div');
+  if (!boite) { allerAuPortail(); return; }
+  boite.innerHTML = `
+    <h3 style="margin:0 0 8px;font-size:19px;font-weight:800">${offre.titre}</h3>
+    <p style="margin:0 0 22px;font-size:14px;color:#d1d5db;line-height:1.6">${offre.texte}</p>
+    <div id="resil-erreur" style="display:none;color:#fca5a5;font-size:12.5px;margin-bottom:12px;line-height:1.5"></div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <button id="btn-accepter-offre" onclick="accepterOffre('${offre.geste}','${motif}')"
+        style="background:#10b981;color:#04140d;border:none;border-radius:9px;padding:12px;font-weight:800;font-size:14px;cursor:pointer">
+        ${offre.bouton}
+      </button>
+      <button id="btn-vers-portail" onclick="allerAuPortail()"
+        style="background:transparent;color:#6b7280;border:none;padding:9px;font-size:13px;cursor:pointer;text-decoration:underline">
+        Non merci, je veux résilier
+      </button>
+    </div>`;
+}
+
+async function accepterOffre(geste, motif) {
+  const btn = document.getElementById('btn-accepter-offre');
+  const err = document.getElementById('resil-erreur');
+  if (err) err.style.display = 'none';
+
+  if (geste === 'support') {
+    if (window.posthog) posthog.capture('retention_acceptee', { motif, geste });
+    const sujet = encodeURIComponent(motif === 'bug' ? 'Problème technique' : 'Aide sur la qualité des clips');
+    window.location.href = `mailto:contact@creatis.app?subject=${sujet}`;
+    document.getElementById('modal-resiliation').style.display = 'none';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Application…'; }
+  try {
+    const tok = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : '';
+    if (!tok) throw new Error('Session expirée — reconnecte-toi puis réessaie.');
+    const r = await fetch('/api/user-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ action: 'retention_appliquer', metadata: { geste, motif } })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || `Erreur ${r.status}`);
+    if (window.posthog) posthog.capture('retention_acceptee', { motif, geste });
+
+    const boite = document.querySelector('#modal-resiliation > div');
+    if (boite) boite.innerHTML = `
+      <h3 style="margin:0 0 10px;font-size:19px;font-weight:800;color:#10b981">C'est fait</h3>
+      <p style="margin:0 0 22px;font-size:14px;color:#d1d5db;line-height:1.6">${d.message}</p>
+      <button onclick="location.reload()"
+        style="width:100%;background:#10b981;color:#04140d;border:none;border-radius:9px;padding:12px;font-weight:800;font-size:14px;cursor:pointer">
+        Revenir à mes clips
+      </button>`;
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+  }
+}
+
+async function allerAuPortail() {
+  const btn = document.getElementById('btn-vers-portail');
+  const err = document.getElementById('resil-erreur');
+  if (err) err.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Ouverture…'; }
+  try {
+    const tok = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : '';
+    if (!tok) throw new Error('Session expirée — reconnecte-toi puis réessaie.');
+    const motif = document.querySelector('input[name="motif"]:checked')?.value || '';
+    const commentaire = document.getElementById('commentaire-resil')?.value || '';
+    if (window.posthog) posthog.capture('resiliation_intention', { motif });
+
+    // Action de /api/user-sync et non fonction dédiée : Vercel Hobby plafonne à 12 fonctions.
+    const r = await fetch('/api/user-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ action: 'portail_abonnement', metadata: { motif, commentaire } })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.url) throw new Error([d.error, d.aide].filter(Boolean).join(' ') || `Erreur ${r.status}`);
+    window.location.href = d.url;
+  } catch (e) {
+    // Message affiché dans le modal plutôt qu'en alerte : sur mobile, une alerte bloque tout.
+    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Continuer'; }
+  }
+}
 </script>
 </body>
 </html>

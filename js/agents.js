@@ -598,8 +598,9 @@ Créatis est un SaaS IA pour créateurs YouTube francophones. Son agent principa
 - Analyse Vidéo : colle une vidéo virale → décrypte pourquoi elle a explosé et extrait la formule à reproduire
 
 **Plans :**
-- Gratuit : 1 génération gratuite pour découvrir (Clips Viraux uniquement, avec watermark)
-- Pro (19,90€/mois, ou 149€/an) : générations illimitées, tous les agents, 30 miniatures/mois
+- Essai : 1 clip gratuit pour découvrir (Clips Viraux uniquement, avec watermark)
+- Starter (9,95€/mois) : 20 clips téléchargeables et 5 vidéos analysées par mois
+- Pro (14€/mois, ou 139€/an soit 2 mois offerts) : 150 clips et 30 vidéos par mois, tous les agents, 30 miniatures/mois
 - Pour upgrader : cliquer sur "Upgrade" dans le tableau de bord
 
 **Programme Affilié :**

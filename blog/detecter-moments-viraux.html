@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comment l'IA détecte les moments viraux dans une vidéo | Créatis</title>
+<meta name="description" content="Transcription, analyse par LLM, score de viralité : comment un modèle IA identifie les passages à fort potentiel dans une vidéo longue. Explication complète.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://creatis.app/blog/detecter-moments-viraux.html">
+<meta property="og:title" content="Comment l'IA détecte les moments viraux dans une vidéo">
+<meta property="og:description" content="Le mécanisme derrière la détection automatique des moments à fort potentiel viral.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://creatis.app/blog/detecter-moments-viraux.html">
+<meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Comment l'IA détecte les moments viraux dans une vidéo",
+  "author": {"@type": "Organization", "name": "Équipe Rédaction Créatis"},
+  "publisher": {"@type": "Organization", "name": "Créatis", "url": "https://creatis.app"},
+  "datePublished": "2026-07-16",
+  "dateModified": "2026-07-19",
+  "description": "Comment un modèle IA identifie les passages à fort potentiel viral dans une vidéo longue : transcription, analyse LLM, score de viralité.",
+  "mainEntityOfPage": "https://creatis.app/blog/detecter-moments-viraux.html"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type": "Question", "name": "Comment l'IA sait-elle quels moments sont viraux ?", "acceptedAnswer": {"@type": "Answer", "text": "Elle analyse la transcription complète avec un modèle de langage entraîné à repérer les hooks, révélations, punchlines et pics d'émotion, puis attribue un score de viralité à chaque passage."}},
+    {"@type": "Question", "name": "L'IA est-elle plus fiable qu'un visionnage manuel ?", "acceptedAnswer": {"@type": "Answer", "text": "Pour le volume et la rapidité, oui : l'IA analyse une vidéo entière en quelques secondes sans fatigue ni biais de dernière minute. Un visionnage manuel reste utile pour valider le ton, mais devient impraticable sur du contenu long ou en volume."}},
+    {"@type": "Question", "name": "Qu'est-ce qu'un score de viralité ?", "acceptedAnswer": {"@type": "Answer", "text": "Une note attribuée à chaque passage détecté, qui reflète son potentiel estimé à capter l'attention et à performer une fois publié en clip court. Elle permet de prioriser les meilleurs extraits sans tout visionner."}},
+    {"@type": "Question", "name": "La détection fonctionne-t-elle sur tous les types de vidéos ?", "acceptedAnswer": {"@type": "Answer", "text": "Elle est la plus efficace sur du contenu parlé (interview, tutoriel, podcast). Les vidéos sans dialogue offrent moins de matière à analyser pour le modèle."}}
+  ]
+}
+</script>
+<link rel="stylesheet" href="/css/blog.css">
+  <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
+</head>
+<body>
+<nav class="blog-nav">
+  <a href="/" class="logo"><span>C</span> Créatis</a>
+  <a href="/clips-v2.html" class="blog-cta">Essayer gratuitement</a>
+</nav>
+
+<article>
+  <h1>Comment l'IA détecte les moments viraux dans une vidéo</h1>
+  <div class="meta">Publié le 16 juillet 2026 · 5 min de lecture · Mis à jour le 19 juillet 2026</div>
+
+  <div class="answer-box">
+    <p>L'IA détecte les moments viraux en transcrivant l'intégralité de l'audio d'une vidéo, puis en analysant ce texte avec un modèle de langage (LLM) capable de repérer les hooks, les révélations, les punchlines et les pics d'émotion. Chaque passage identifié reçoit un <strong>score de viralité</strong> qui indique s'il vaut la peine d'être extrait en clip.</p>
+  </div>
+
+  <p>C'est ce mécanisme qui rend possible l'extraction rapide de <a href="/blog/qu-est-ce-qu-un-clip-viral.html">clips viraux</a> depuis une vidéo longue, sans avoir à la visionner en entier.</p>
+
+  <h2>Étape 1 — La transcription complète</h2>
+
+  <p>Avant toute analyse, l'IA transcrit l'intégralité de l'audio avec un modèle comme Whisper, en associant à chaque mot un horodatage précis. Cette transcription sert de base de travail : c'est sur ce texte, pas sur l'image, que l'analyse de contenu s'appuie principalement.</p>
+
+  <h2>Étape 2 — L'analyse par un modèle de langage</h2>
+
+  <p>Un LLM lit la transcription complète et repère les passages qui présentent les caractéristiques d'un contenu à fort potentiel. Contrairement à un simple mot-clé ou une détection de silence, le modèle comprend le sens et le contexte de ce qui est dit — il peut distinguer une anecdote marquante d'une digression sans intérêt, même formulées avec un vocabulaire similaire.</p>
+
+  <h2>Les critères qui définissent un moment fort</h2>
+
+  <ul>
+    <li><strong>Les hooks</strong> — une phrase d'accroche, une révélation choc, une question intrigante</li>
+    <li><strong>Les moments de valeur dense</strong> — des conseils concrets, une information actionnable</li>
+    <li><strong>Les anecdotes et histoires</strong> — ce qui crée de l'émotion et de l'identification</li>
+    <li><strong>Les controverses et opinions tranchées</strong> — ce qui génère réactions et commentaires</li>
+    <li><strong>Les révélations et punchlines</strong> — une chute, une surprise, un twist</li>
+  </ul>
+
+  <div class="cta-box">
+    <h3>Laisse l'IA repérer tes meilleurs moments</h3>
+    <p>Créatis analyse ta vidéo entière et te propose directement les 10 passages avec le plus fort potentiel.</p>
+    <a href="/clips-v2.html" class="btn">⚡ Analyser ma vidéo maintenant</a>
+  </div>
+
+  <h2>Le score de viralité, à quoi ça sert</h2>
+
+  <p>Chaque passage détecté reçoit une note qui reflète son potentiel estimé. Ce score permet de prioriser : plutôt que de publier tous les extraits possibles, on se concentre sur ceux qui ont le plus de chances de performer. Comme détaillé dans notre <a href="/blog/combien-shorts-extraire-video-youtube.html">calcul du ratio de recyclage</a>, mieux vaut 4 clips à fort score que 15 clips moyens.</p>
+
+  <h2>Pourquoi l'IA repère mieux les moments forts qu'un visionnage manuel</h2>
+
+  <p>Un visionnage manuel est sujet à la fatigue, à l'humeur du moment et au temps disponible — sur une vidéo d'une heure, il est facile de rater un passage fort après 40 minutes d'attention déclinante. L'IA analyse l'intégralité du texte avec la même rigueur du début à la fin, et traite en quelques secondes ce qui prendrait des heures à un humain. Le détail complet du processus de découpe est dans <a href="/blog/decouper-video-shorts-automatiquement.html">comment découper une vidéo en Shorts automatiquement</a>.</p>
+
+  <p>Retrouve tous nos guides sur le <a href="/blog.html">blog Créatis</a>, ou compare les <a href="/#tarifs">formules Créatis</a>.</p>
+
+  <div class="faq-section">
+    <h2>Questions fréquentes</h2>
+    <details>
+      <summary>Comment l'IA sait-elle quels moments sont viraux ?</summary>
+      <p>Elle analyse la transcription complète avec un modèle de langage entraîné à repérer les hooks, révélations, punchlines et pics d'émotion, puis attribue un score de viralité à chaque passage.</p>
+    </details>
+    <details>
+      <summary>L'IA est-elle plus fiable qu'un visionnage manuel ?</summary>
+      <p>Pour le volume et la rapidité, oui : l'IA analyse une vidéo entière en quelques secondes sans fatigue ni biais de dernière minute. Un visionnage manuel reste utile pour valider le ton, mais devient impraticable sur du contenu long ou en volume.</p>
+    </details>
+    <details>
+      <summary>Qu'est-ce qu'un score de viralité ?</summary>
+      <p>Une note attribuée à chaque passage détecté, qui reflète son potentiel estimé à capter l'attention et à performer une fois publié en clip court. Elle permet de prioriser les meilleurs extraits sans tout visionner.</p>
+    </details>
+    <details>
+      <summary>La détection fonctionne-t-elle sur tous les types de vidéos ?</summary>
+      <p>Elle est la plus efficace sur du contenu parlé (interview, tutoriel, podcast). Les vidéos sans dialogue offrent moins de matière à analyser pour le modèle.</p>
+    </details>
+  </div>
+
+  <div class="cta-box" style="margin-top:48px">
+    <h3>Prêt à laisser l'IA trouver tes meilleurs moments ?</h3>
+    <p>Analyse gratuite · Sans carte bancaire · Vois tes clips avant de payer</p>
+    <a href="/clips-v2.html" class="btn">⚡ Essayer Créatis gratuitement</a>
+  </div>
+</article>
+
+<footer class="blog-footer">
+  <p>© 2026 Créatis · <a href="/blog.html">Blog</a> · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@creatis.app">Contact</a></p>
+</footer>
+</body>
+</html>

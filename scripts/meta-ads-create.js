@@ -45,7 +45,7 @@ Créatis gère tout à ta place :
 
 Crée plus. Prépare moins. Publie plus vite.
 
-→ 1 essai gratuit. Sans carte bancaire.`,
+→ Analyse gratuite. Sans carte bancaire.`,
     cta:    'SIGN_UP',
     lien:   SITE_URL,
   },
@@ -65,7 +65,7 @@ Créatis est le seul qui découpe vraiment bien :
 
 J'uploader ma vidéo et j'ai mes Shorts prêts en 30 secondes.
 
-→ 1 essai gratuit. Sans carte bancaire.`,
+→ Analyse gratuite. Sans carte bancaire.`,
     cta:    'SIGN_UP',
     lien:   SITE_URL,
   },
@@ -84,7 +84,7 @@ J'uploader ma vidéo et j'ai mes Shorts prêts en 30 secondes.
 
 Une vidéo. Dix Shorts. Trente secondes.
 
-→ 1 essai gratuit. Sans carte bancaire.`,
+→ Analyse gratuite. Sans carte bancaire.`,
     cta:    'SIGN_UP',
     lien:   SITE_URL,
   },
@@ -103,7 +103,7 @@ Uploade ta vidéo.
 Reçois tes Shorts.
 Envoie-les à ceux que tu aimes.
 
-→ 1 essai gratuit. Sans carte bancaire.`,
+→ Analyse gratuite. Sans carte bancaire.`,
     cta:    'SIGN_UP',
     lien:   SITE_URL,
   },

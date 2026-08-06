@@ -72,7 +72,43 @@ async function _fetchYT(url, opts = {}) {
 }
 
 // Credits par plan
-const CREDITS = { gratuit: 0, pro: 5, studio: 20 };
+const CREDITS = { gratuit: 0, starter: 5, pro: 20, studio: 20 };
+
+/* Quotas mensuels — DOIT rester aligné avec CONFIG.PLANS dans js/config.js.
+   `videos` = analyses lancées, `clips` = clips exportés. On plafonne les deux : une analyse coûte
+   surtout du CPU de transcription, un export coûte du téléchargement + de l'encodage. Ne limiter
+   que les exports laissait quelqu'un analyser 200 vidéos sans rien exporter — le poste le plus cher. */
+const QUOTAS = {
+  // Gratuit : 1 analyse pour voir ses clips en aperçu, mais AUCUN téléchargement.
+  gratuit: { videos: 2,  clips: 0   },
+  starter: { videos: 5,  clips: 20  },
+  pro:     { videos: 30, clips: 150 },
+  studio:  { videos: 30, clips: 150 },
+};
+
+const _moisCourant = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()}`; };
+
+/* Compteur du mois en cours : si la clé de reset stockée n'est pas le mois courant, le compteur
+   est périmé et vaut 0. Évite d'avoir à faire tourner un cron de remise à zéro. */
+function _compteurDuMois(valeur, cleReset) {
+  return cleReset === _moisCourant() ? (valeur || 0) : 0;
+}
+
+/* Vérifie le quota de vidéos analysées. Retourne null si OK, sinon la réponse d'erreur à renvoyer. */
+function verifierQuotaVideos(userData) {
+  const plan = userData?.plan || 'gratuit';
+  const max = (QUOTAS[plan] || QUOTAS.gratuit).videos;
+  const used = _compteurDuMois(userData?.videos_count, userData?.videos_reset);
+  if (used < max) return null;
+  if (plan === 'gratuit') {
+    return { status: 403, body: { ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' } };
+  }
+  return { status: 429, body: {
+    ok: false, error: 'quota_atteint',
+    message: `Limite atteinte : ${max} vidéos analysées ce mois-ci. Le compteur repart le 1er du mois — ou passe au plan supérieur.`,
+    videos_used: used, videos_max: max, plan
+  } };
+}
 
 async function verifyToken(token) {
   if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
@@ -93,7 +129,7 @@ async function verifyToken(token) {
 async function getUserPlan(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return 'gratuit';
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset,videos_count,videos_reset`, {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
@@ -110,6 +146,14 @@ async function incrementRepurposeCount(userId) {
   try {
     // Récupérer le count avant increment pour détecter la 1ère analyse
     const before = await getUserPlan(userId);
+    // BUG CORRIGÉ : on envoyait la CHAÎNE "repurpose_count + 1" dans le PATCH. PostgREST n'évalue
+    // pas les expressions SQL dans un body JSON — il tentait de caster ce texte en entier, échouait
+    // en 400, et l'erreur était avalée par le catch. Le compteur d'analyses n'a donc jamais été
+    // incrémenté. On lit puis on écrit la valeur, comme le fait déjà logClipExport.
+    // Ce compteur suit les VIDÉOS ANALYSÉES (videos_count), distinct des clips exportés
+    // (repurpose_count), pour pouvoir plafonner les deux séparément.
+    const moisCourant = _moisCourant();
+    const dejaFait = _compteurDuMois(before?.videos_count, before?.videos_reset);
     await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {
@@ -117,7 +161,7 @@ async function incrementRepurposeCount(userId) {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
-      body: JSON.stringify({ repurpose_count: `repurpose_count + 1` })
+      body: JSON.stringify({ videos_count: dejaFait + 1, videos_reset: moisCourant })
     });
     // Email de relance 1h après la 1ère analyse gratuite
     if ((before?.repurpose_count || 0) === 0 && before?.plan === 'gratuit') {
@@ -312,7 +356,7 @@ async function _fetchYouTubePage(videoId) {
       'Upgrade-Insecure-Requests': '1',
       'Cache-Control': 'max-age=0',
     },
-    timeout: 15000,
+    timeout: 9000,
   });
   if (!r.ok) throw new Error(`YouTube inaccessible (${r.status})`);
   return r.text();
@@ -327,84 +371,94 @@ function _parseCaptionTracks(html) {
 }
 
 // Retourne les segments avec timestamps (pour l'identification de clips)
+// Méthode A : page YouTube + piste ASR (LANGUE ORIGINALE — évite les sous-titres traduits).
+// Meilleure pour la langue, mais l'IP Vercel est parfois bot-bloquée → on la time-boxe.
+async function _captionsViaPage(videoId) {
+  const html = await _fetchYouTubePage(videoId);
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+  const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+  const tracks = _parseCaptionTracks(html);
+  if (!tracks?.length) return null;
+  // Sélection identique à celle de _captionsViaNpm — elles divergeaient, et c'est CE chemin-ci qui
+  // gagne la course. Il prenait la 1re piste ASR quelle que soit sa langue : sur une vidéo française
+  // dont l'auteur a déclaré l'audio en anglais (ou qui porte une piste anglaise), on récupérait des
+  // sous-titres anglais sur un contenu français. Une piste dont l'URL contient `tlang=` est une
+  // TRADUCTION automatique — jamais l'original, donc exclue partout.
+  const original = t => !/\btlang=/.test(t.baseUrl || '');
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr' && original(t))
+    || tracks.find(t => t.languageCode === 'fr' && original(t))
+    || tracks.find(t => t.kind === 'asr' && original(t))
+    || tracks.find(original)
+    || tracks[0];
+  if (!track?.baseUrl) return null;
+  const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
+  const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(7000) });
+  if (!cr.ok) return null;
+  const data = await cr.json();
+  const segments = (data.events || [])
+    .filter(e => e.segs && e.tStartMs != null)
+    .map(e => ({
+      start: e.tStartMs / 1000,
+      end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
+      text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
+    }))
+    .filter(s => s.text);
+  if (!segments.length) return null;
+  console.log(`[captions/page] ${segments.length} segments lang=${track.languageCode}`);
+  return { segments, title, duration: segments[segments.length - 1].end };
+}
+
+// Méthode B : Railway (IP différente + cookies → contourne le bot-check, prépare fr/en).
+async function _captionsViaRailway(videoId) {
+  if (!REPURPOSE_SERVICE_URL) return null;
+  const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcript/${videoId}`, {
+    headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  if (!d.segments?.length) return null;
+  console.log(`[captions/railway] ${d.segments.length} segments lang=${d.language}`);
+  return { segments: d.segments, title: '', duration: d.segments[d.segments.length - 1].end };
+}
+
+// Méthode C (dernier recours) : npm générique (ne contrôle pas la langue).
+async function _captionsViaNpm(videoId) {
+  const { YoutubeTranscript } = require('youtube-transcript');
+  const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
+  if (!raw?.length) return null;
+  const segments = raw.map(s => ({
+    start: s.offset / 1000,
+    end: (s.offset + s.duration) / 1000,
+    text: (s.text || '').replace(/\n/g, ' ').trim(),
+  })).filter(s => s.text);
+  if (!segments.length) return null;
+  console.log(`[captions/npm] ${segments.length} segments (fallback générique)`);
+  return { segments, title: '', duration: segments[segments.length - 1].end };
+}
+
 async function getYouTubeTranscriptSegments(videoId) {
-  // Méthode 1 (PRIORITAIRE) : fetch page + choix explicite de la piste ORIGINALE (ASR).
-  // On la met en premier car c'est la seule qui contrôle la LANGUE (évite les sous-titres
-  // traduits en anglais sur une vidéo française). Le npm générique passe en dernier recours.
-  try {
-    const html = await _fetchYouTubePage(videoId);
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
-    const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
-    const tracks = _parseCaptionTracks(html);
-    if (tracks?.length) {
-      // La piste `kind === 'asr'` est l'auto-génération = LANGUE ORIGINALE de la vidéo (quelle
-      // qu'elle soit). On la préfère à toute piste traduite (ex: une vidéo FR ne doit PAS sortir
-      // des sous-titres EN traduits). Fallback : piste sans code de traduction, sinon la 1ère.
-      const track = tracks.find(t => t.kind === 'asr')
-        || tracks.find(t => !/\btlang=/.test(t.baseUrl || ''))
-        || tracks[0];
-      if (track?.baseUrl) {
-        const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
-        const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(10000) });
-        if (cr.ok) {
-          const data = await cr.json();
-          const segments = (data.events || [])
-            .filter(e => e.segs && e.tStartMs != null)
-            .map(e => ({
-              start: e.tStartMs / 1000,
-              end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
-              text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
-            }))
-            .filter(s => s.text);
-          if (segments.length) {
-            console.log(`[captions/fetch] ${segments.length} segments, lang=${track.languageCode}`);
-            return { segments, title, duration: segments[segments.length - 1].end };
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('[captions/fetch] failed:', e.message);
-  }
+  // PARALLÈLE : page (langue originale) ET Railway lancés en même temps → on obtient la latence
+  // du plus rapide au lieu d'une cascade séquentielle (avant : jusqu'à 7s + 15s + npm empilés
+  // quand l'IP Vercel était bot-bloquée). C'est LE fix « bloqué sur transcription ».
+  const pageP    = _captionsViaPage(videoId).catch(e => { console.warn('[captions/page] fail:', e.message); return null; });
+  const railwayP = _captionsViaRailway(videoId).catch(e => { console.warn('[captions/railway] fail:', e.message); return null; });
 
-  // Méthode 3 : Railway service (IPs différentes de Vercel → contourne bot detection)
-  if (REPURPOSE_SERVICE_URL) {
-    try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcript/${videoId}`, {
-        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        signal: AbortSignal.timeout(30000),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.segments?.length) {
-          console.log(`[captions/railway] OK ${d.segments.length} segments lang=${d.language}`);
-          return { segments: d.segments, title: '', duration: d.segments[d.segments.length - 1].end };
-        }
-      }
-    } catch (e) {
-      console.warn('[captions/railway] failed:', e.message);
-    }
-  }
+  // Préfère la page si elle répond vite (≤9s, meilleure langue) ; sinon prend Railway dès qu'il
+  // est prêt (déjà en cours, aucun temps d'attente ajouté).
+  const pageFast = await Promise.race([pageP, new Promise(r => setTimeout(() => r('__timeout__'), 9000))]);
+  if (pageFast && pageFast !== '__timeout__' && pageFast.segments?.length) return pageFast;
 
-  // DERNIER RECOURS : youtube-transcript npm (générique, ne contrôle pas la langue → peut
-  // renvoyer une piste traduite). Utilisé seulement si toutes les méthodes ci-dessus ont échoué.
+  const railway = await railwayP;
+  if (railway?.segments?.length) return railway;
+
+  const pageLate = await pageP;
+  if (pageLate?.segments?.length) return pageLate;
+
   try {
-    const { YoutubeTranscript } = require('youtube-transcript');
-    const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
-    if (raw?.length) {
-      const segments = raw.map(s => ({
-        start: s.offset / 1000,
-        end: (s.offset + s.duration) / 1000,
-        text: (s.text || '').replace(/\n/g, ' ').trim(),
-      })).filter(s => s.text);
-      if (segments.length) {
-        console.log(`[captions/npm] OK ${segments.length} segments (fallback générique)`);
-        return { segments, title: '', duration: segments[segments.length - 1].end };
-      }
-    }
-  } catch (e) {
-    console.warn('[captions/npm] failed:', e.message);
-  }
+    const npm = await _captionsViaNpm(videoId);
+    if (npm?.segments?.length) return npm;
+  } catch (e) { console.warn('[captions/npm] fail:', e.message); }
 
   throw new Error('Pas de sous-titres disponibles pour cette vidéo');
 }
@@ -510,7 +564,7 @@ async function _classifyContentType(sampleText) {
         messages: [{ role: 'user', content: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }],
         temperature: 0.3, max_tokens: 200, response_format: { type: 'json_object' },
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(10000), // indice optionnel : ne doit pas retarder le vrai travail
     });
     if (!r.ok) return null;
     const d = await r.json();
@@ -529,12 +583,15 @@ function _energyHintForRange(energyPeaks, start, end) {
 }
 
 // Chaîne de fallback Groq → Gemini → Together, retourne le texte brut du LLM ou null si tout échoue.
+// Chaque étage est borné à ~30 s (et non 60) : un modèle qui n'a pas répondu en 30 s ne répondra
+// pas, et trois étages à 60 s faisaient monter l'analyse à 180 s rien que pour le LLM — on a mesuré
+// une analyse à 230 s en production. Pire cas désormais ~95 s pour toute la cascade.
 async function _callClipLLM(prompt, _dbg) {
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(30000),
   });
   _dbg.groq_status = r.status;
   if (r.ok) _dbg.provider = 'groq';
@@ -544,7 +601,7 @@ async function _callClipLLM(prompt, _dbg) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(30000),
     });
     _dbg.gemini_status = geminiRes.status;
     if (geminiRes.ok) {
@@ -567,7 +624,7 @@ async function _callClipLLM(prompt, _dbg) {
         ],
         temperature: 0.7, max_tokens: 4096
       }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(30000),
     });
     if (tr.ok) {
       const td = await tr.json();
@@ -658,7 +715,17 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
     _dbg.content_type = typeInfo.content_type;
   }
 
+  /* BUDGET DE TEMPS GLOBAL. Chaque morceau déclenche sa propre cascade LLM (jusqu'à ~95 s), et les
+     morceaux passent 3 par 3 : une vidéo longue = plusieurs vagues = 200 s et plus. Mesuré en
+     production : une analyse à 230 s, et des échecs en série dès que le client coupe avant.
+     Passé le budget, on arrête de lancer de nouveaux morceaux et on rend ce qu'on a déjà.
+     Six clips issus des premiers morceaux valent infiniment mieux qu'une erreur au bout de 2 min. */
+  const BUDGET_MS = 210000;
+  const _debut = Date.now();
+  let _abandonnes = 0;
+
   const chunkResults = await _mapWithConcurrency(chunks, 3, async (chunkSegs) => {
+    if (Date.now() - _debut > BUDGET_MS) { _abandonnes++; return []; }
     try {
       const transcript = chunkSegs.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n');
       const energyHint = _energyHintForRange(energyPeaks, chunkSegs[0].start, chunkSegs[chunkSegs.length - 1].end);
@@ -672,6 +739,9 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
       return [];
     }
   });
+  _dbg.chunks_abandonnes = _abandonnes;
+  _dbg.duree_llm_ms = Date.now() - _debut;
+  if (_abandonnes) console.warn(`[clips] budget ${BUDGET_MS}ms dépassé — ${_abandonnes}/${chunks.length} morceaux abandonnés`);
 
   const allClips = chunkResults.flat();
   console.log(`[clips] ${allClips.length} candidats avant dédoublonnage, sample:`, JSON.stringify(allClips[0] || {}).slice(0, 200));
@@ -735,9 +805,12 @@ async function getYouTubeTranscript(videoId) {
     throw new Error('Pas de sous-titres disponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube, ou utilise une vidéo avec des sous-titres.');
   }
 
-  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
-    || tracks.find(t => t.languageCode === 'fr')
-    || tracks.find(t => t.kind === 'asr')
+  // Une piste dont l'URL porte `tlang=` est une traduction automatique, pas l'original.
+  const estOriginal = t => !/\btlang=/.test(t.baseUrl || '');
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr' && estOriginal(t))
+    || tracks.find(t => t.languageCode === 'fr' && estOriginal(t))
+    || tracks.find(t => t.kind === 'asr' && estOriginal(t))
+    || tracks.find(estOriginal)
     || tracks[0];
 
   if (!track?.baseUrl) throw new Error('Aucune piste de sous-titres trouvable');
@@ -942,7 +1015,7 @@ module.exports = async (req, res) => {
                 <p style="color:#aaa;font-size:15px;line-height:1.6;margin:0 0 24px;">
                   L'analyse de <strong style="color:#fff;">"${name}"</strong> est terminée. Tes clips t'attendent sur Créatis.
                 </p>
-                <a href="https://creatis.app/clips-v2.html" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+                <a href="https://creatis.app/clips-v2.html${body.generation_id ? `?g=${encodeURIComponent(body.generation_id)}` : ''}" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
                   Voir mes clips →
                 </a>
               </div>`
@@ -985,19 +1058,221 @@ module.exports = async (req, res) => {
   }
 
   // Clips depuis fichier uploadé (segments déjà transcrits, pas d'URL YouTube)
+  /* Traduction des sous-titres d'un clip. On ne retranscrit pas : on traduit les segments déjà
+     transcrits, ce qui garde EXACTEMENT le même minutage. L'audio n'est pas touché — la vidéo
+     reste dans sa langue d'origine, seuls les sous-titres changent. */
+  /* Le client confirme qu'il a bien REÇU et AFFICHÉ ses clips → seulement là on décompte une
+     vidéo du quota. Avant, le décompte se faisait dès que le serveur avait fini son travail : si
+     la réponse n'arrivait jamais au navigateur (coupure réseau, onglet fermé), l'utilisateur
+     perdait un crédit sur un écran d'erreur. Cas réel : quelqu'un a brûlé ses 2 vidéos gratuites
+     sur deux analyses échouées, puis s'est fait bloquer par le paywall sans avoir vu un seul clip. */
+  if (mode === 'confirmer_analyse') {
+    const _auC = await verifyToken(token);
+    if (!_auC) return res.status(200).json({ ok: true, ignore: 'non authentifié' });
+    await incrementRepurposeCount(_auC.id);
+    return res.status(200).json({ ok: true });
+  }
+
+  /* Historique des générations — indispensable, pas confortable.
+     Avant, une analyse ne vivait que dans le localStorage du navigateur : une seule à la fois,
+     purgée au bout de 4 h, et invisible depuis un autre appareil. L'email « Tes clips sont prêts »
+     renvoyait vers une page vide dès qu'il était ouvert sur le téléphone. On ne stocke que les
+     métadonnées (bornes, titres, scores) : les vidéos se re-téléchargent depuis la source. */
+  if (mode === 'save_generation') {
+    const _auG = await verifyToken(token);
+    if (!_auG) return res.status(200).json({ ok: true, ignore: 'non authentifié' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(200).json({ ok: true, ignore: 'stockage indisponible' });
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations`, {
+        method: 'POST',
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          user_id: _auG.id,
+          nom: (body.name || 'Vidéo').slice(0, 200),
+          source_type: body.youtube_url ? 'youtube' : 'upload',
+          youtube_url: body.youtube_url || null,
+          video_id: body.video_id || null,
+          nb_clips: Array.isArray(body.clips) ? body.clips.length : 0,
+          clips: body.clips || [],
+          /* AUCUNE troncature. La limite de 200 amputait toute vidéo de plus de ~6 minutes :
+             une heure de parole produit ~1800 cues, donc les clips situés au-delà revenaient
+             sans le moindre sous-titre à la réouverture. Une génération rouverte doit se
+             comporter exactement comme l'analyse d'origine, quelle que soit la durée.
+             Le client allège déjà la charge si nécessaire (il retire les timings mot par mot
+             avant de toucher au texte) ; couper ici annulerait ce travail. */
+          segments: Array.isArray(body.segments) ? body.segments : [],
+          plan: body.plan || null
+        })
+      });
+      if (!r.ok) return res.status(200).json({ ok: false, error: (await r.text()).slice(0, 200) });
+      const row = (await r.json())?.[0];
+      return res.status(200).json({ ok: true, id: row?.id || null });
+    } catch (e) {
+      return res.status(200).json({ ok: false, error: String(e).slice(0, 200) });
+    }
+  }
+
+  if (mode === 'list_generations') {
+    const _auL = await verifyToken(token);
+    if (!_auL) return res.status(401).json({ error: 'non authentifié' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(200).json({ generations: [] });
+    try {
+      // Sans les colonnes lourdes (clips/segments) : la liste doit rester légère à charger.
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations?user_id=eq.${_auL.id}` +
+        `&select=id,nom,created_at,nb_clips,source_type,youtube_url&order=created_at.desc&limit=50`, {
+        headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+      });
+      if (!r.ok) return res.status(200).json({ generations: [] });
+      return res.status(200).json({ generations: await r.json() });
+    } catch {
+      return res.status(200).json({ generations: [] });
+    }
+  }
+
+  if (mode === 'get_generation') {
+    const _auX = await verifyToken(token);
+    if (!_auX) return res.status(401).json({ error: 'non authentifié' });
+    if (!body.id) return res.status(400).json({ error: 'id requis' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(404).json({ error: 'introuvable' });
+    try {
+      // Le filtre user_id est ce qui empêche de lire la génération de quelqu'un d'autre en
+      // devinant un identifiant : on utilise la clé de service, donc RLS ne s'applique pas ici.
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations?id=eq.${encodeURIComponent(body.id)}` +
+        `&user_id=eq.${_auX.id}&select=*&limit=1`, {
+        headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+      });
+      if (!r.ok) return res.status(404).json({ error: 'introuvable' });
+      const row = (await r.json())?.[0];
+      if (!row) return res.status(404).json({ error: 'introuvable' });
+      return res.status(200).json({ generation: row });
+    } catch {
+      return res.status(404).json({ error: 'introuvable' });
+    }
+  }
+
+  if (mode === 'translate_segments') {
+    const { segments, target_lang } = body;
+    if (!Array.isArray(segments) || !segments.length) return res.status(400).json({ error: 'segments requis' });
+    if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const cible = target_lang === 'en' ? 'anglais' : 'français';
+    // On borne : un clip de 60 s dépasse rarement 60 segments, au-delà c'est un appel abusif.
+    const textes = segments.slice(0, 120).map(s => String(s.text || '').trim());
+
+    const prompt = `Traduis en ${cible} chaque ligne du tableau JSON ci-dessous.
+
+RÈGLES STRICTES :
+- Renvoie UNIQUEMENT un tableau JSON de chaînes, rien d'autre, aucun commentaire.
+- Le tableau de sortie doit contenir EXACTEMENT ${textes.length} éléments, dans le même ordre.
+- Une ligne de sous-titre = une ligne traduite. Ne fusionne ni ne découpe jamais deux lignes.
+- Garde la longueur proche de l'original : ce sont des sous-titres, ils doivent tenir à l'écran.
+- Conserve le ton parlé, les noms propres et les nombres à l'identique.
+- Si une ligne est déjà en ${cible}, renvoie-la telle quelle.
+
+Entrée :
+${JSON.stringify(textes, null, 0)}`;
+
+    /* Chaîne de repli identique au reste du fichier : Groq est limité à 30 requêtes/minute sur le
+       plan gratuit et renvoie 429 dès qu'on enchaîne — sans repli, la traduction échouait
+       simplement sous les yeux de l'utilisateur. Groq → Gemini Flash → Together. */
+    async function _traduireAvecRepli() {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.2,           // traduction : on veut de la fidélité, pas de la créativité
+          max_tokens: 4096,
+          response_format: { type: 'json_object' }
+        }),
+        signal: AbortSignal.timeout(45000)
+      });
+      if (r.ok) return (await r.json()).choices?.[0]?.message?.content || '';
+
+      if (GEMINI_KEY) {
+        console.warn(`[translate] Groq ${r.status} → repli Gemini Flash`);
+        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } }),
+          signal: AbortSignal.timeout(45000)
+        });
+        if (g.ok) {
+          const gd = await g.json();
+          const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (gt) return gt;
+        }
+        console.warn('[translate] Gemini indisponible aussi');
+      }
+
+      if (TOGETHER_KEY) {
+        console.warn('[translate] → repli Together');
+        const t = await fetch('https://api.together.xyz/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
+          body: JSON.stringify({
+            model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+            messages: [
+              { role: 'system', content: 'Réponds UNIQUEMENT avec un tableau JSON valide de chaînes, sans aucun texte avant ou après.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.2, max_tokens: 4096
+          }),
+          signal: AbortSignal.timeout(60000)
+        });
+        if (t.ok) return (await t.json()).choices?.[0]?.message?.content || '';
+      }
+
+      throw new Error(r.status === 429
+        ? 'les 3 services de traduction sont saturés — réessaie dans une minute'
+        : `service de traduction indisponible (${r.status})`);
+    }
+
+    try {
+      const brut = await _traduireAvecRepli();
+      // Le modèle renvoie tantôt un tableau nu, tantôt un objet qui l'enveloppe — on gère les deux.
+      let arr;
+      try {
+        const parsed = JSON.parse(brut);
+        arr = Array.isArray(parsed) ? parsed : (Object.values(parsed).find(Array.isArray) || null);
+      } catch { arr = (brut.match(/\[[\s\S]*\]/) || [null])[0] ? JSON.parse(brut.match(/\[[\s\S]*\]/)[0]) : null; }
+      if (!Array.isArray(arr)) throw new Error('Réponse de traduction illisible');
+      // Alignement 1:1 obligatoire — sinon les sous-titres se décalent du son. En cas de
+      // désalignement on garde l'original pour les lignes manquantes plutôt que de tout décaler.
+      const out = textes.map((orig, i) => {
+        const t = typeof arr[i] === 'string' ? arr[i].trim() : '';
+        return t || orig;
+      });
+      console.log(`[translate] ${out.length}/${textes.length} lignes → ${cible}`);
+      return res.status(200).json({ ok: true, target_lang: target_lang === 'en' ? 'en' : 'fr', texts: out });
+    } catch (err) {
+      console.error('[translate] échec:', err.message);
+      return res.status(502).json({ error: `Traduction impossible : ${err.message}` });
+    }
+  }
+
   if (mode === 'clips' && body.segments?.length && body.video_id) {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
     const _au = await verifyToken(token);
     if (_au) {
-      const _ui = await getUserPlan(_au.id);
-      if (_ui?.plan === 'gratuit' && (_ui?.repurpose_count || 0) > 0) {
-        return res.status(403).json({ ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' });
-      }
+      const _refus = verifierQuotaVideos(await getUserPlan(_au.id));
+      if (_refus) return res.status(_refus.status).json(_refus.body);
     }
     try {
       const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5, body.energy_peaks || []);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       const _debug = clips[0]?._dbg || null;
+      // Décompte APRÈS succès uniquement : une analyse qui échoue ne doit pas coûter un crédit.
+      // Ce chemin (upload de fichier) ne décomptait rien du tout — le quota vidéos n'était donc
+      // jamais appliqué, `videos_count` restait à 0 et n'importe qui pouvait analyser sans limite.
+      // Décompte retiré d'ici : voir mode 'confirmer_analyse'. Le serveur pouvait terminer
+      // l'analyse et incrémenter alors que le client, lui, n'avait jamais reçu la réponse —
+      // l'utilisateur perdait son quota sur un écran d'erreur. C'est maintenant le client qui
+      // confirme la réception, une fois les clips réellement affichés.
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
         result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}`, segments: body.segments }
       });
@@ -1371,14 +1646,22 @@ module.exports = async (req, res) => {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
     const _au2 = await verifyToken(token);
     if (_au2) {
-      const _ui2 = await getUserPlan(_au2.id);
-      if (_ui2?.plan === 'gratuit' && (_ui2?.repurpose_count || 0) > 0) {
-        return res.status(403).json({ ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' });
-      }
+      const _refus2 = verifierQuotaVideos(await getUserPlan(_au2.id));
+      if (_refus2) return res.status(_refus2.status).json(_refus2.body);
     }
     const { n_clips } = body;
     const videoId = extractVideoId(url);
     if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
+
+    /* CHRONOMÉTRAGE ÉTAPE PAR ÉTAPE. Environ une analyse YouTube sur trois échoue avec des messages
+       réseau bruts (« Load failed », « Failed to fetch ») à des durées irrégulières — 37 s, 97 s —
+       qui ne correspondent à aucun seuil. Sans mesurer chaque étape, on ne peut que supposer : trois
+       hypothèses ont été formulées le 30/07, deux étaient fausses. Ces repères apparaissent dans les
+       logs Vercel ET dans la réponse (`_temps`), donc lisibles même sans accès aux logs. */
+    const _t0 = Date.now();
+    const _temps = {};
+    const _etape = (nom) => { _temps[nom] = Date.now() - _t0; console.log(`[clips][${videoId}] ${nom} à ${_temps[nom]}ms`); };
+
     try {
       let segments, title = '', duration = 0;
 
@@ -1391,32 +1674,53 @@ module.exports = async (req, res) => {
       try {
         const r = await getYouTubeTranscriptSegments(videoId);
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
+        _temps.source_transcription = 'sous-titres';
+        _etape('transcription');
         console.log(`[clips] captions OK: ${segments.length} segments`);
       } catch (e) {
+        _etape('sous_titres_echec');
         console.warn('[clips] captions failed, fallback Railway Whisper:', e.message);
         try {
           const r = await transcribeViaRailway(url);
           if (!r.segments?.length) throw new Error('Transcription vide');
           segments = r.segments; title = r.title || pageTitle; duration = r.duration;
+          _temps.source_transcription = 'whisper-railway';
+          _etape('transcription');
           console.log(`[clips] Railway Whisper OK: ${segments.length} segments`);
         } catch (e2) {
+          _etape('transcription_echec_total');
+          console.error(`[clips][${videoId}] ÉCHEC transcription — temps: ${JSON.stringify(_temps)}`);
           throw new Error(`Transcription impossible — ${e2.message}. Utilise l'option "Uploader une vidéo" pour les vidéos sans sous-titres.`);
         }
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
+      _temps.nb_segments = segments.length;
+      _temps.duree_video_s = Math.round(duration || 0);
 
       // 3. Identification clips via Groq LLM
       const clips = await identifyViralClips(segments, videoId, title, n_clips || 10);
+      _etape('identification_clips');
       console.log(`[clips] ${clips.length} clips identifiés pour ${videoId}`);
+      _temps.total_ms = Date.now() - _t0;
+      _temps.poids_reponse_ko = Math.round(Buffer.byteLength(JSON.stringify({ clips, segments: body.include_segments ? segments : undefined })) / 1024);
+      console.log(`[clips][${videoId}] TERMINÉ — ${JSON.stringify(_temps)}`);
+
+      // Décompte APRÈS succès uniquement (chemin URL YouTube) — même raison que ci-dessus.
+      // Décompte retiré d'ici : voir mode 'confirmer_analyse'. Le serveur pouvait terminer
+      // l'analyse et incrémenter alors que le client, lui, n'avait jamais reçu la réponse —
+      // l'utilisateur perdait son quota sur un écran d'erreur. C'est maintenant le client qui
+      // confirme la réception, une fois les clips réellement affichés.
 
       return res.status(200).json({
         ok: true, mode: 'clips', status: 'done',
+        _temps,
         result: { clips, title, duration, youtube_url: url, segments: body.include_segments ? segments : undefined }
       });
     } catch (err) {
-      console.error('[clips] fatal:', err.message);
-      return res.status(502).json({ error: err.message });
+      _temps.total_ms = Date.now() - _t0;
+      console.error(`[clips][${videoId}] FATAL: ${err.message} — temps: ${JSON.stringify(_temps)}`);
+      return res.status(502).json({ error: err.message, _temps });
     }
   }
 

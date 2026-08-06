@@ -21,7 +21,12 @@
     "description": "Transforme une vidéo longue en 10 clips viraux 9:16 pour TikTok, Instagram Reels, YouTube Shorts et Snapchat.",
     "url": "https://creatis.app/generateur-clips-viraux",
     "applicationCategory": "UtilitiesApplication",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "offers": [
+      {"@type": "Offer", "name": "Essai gratuit", "price": "0", "priceCurrency": "EUR", "description": "1 clip viral en essai unique, sous-titres automatiques, format 9:16, sans carte bancaire"},
+      {"@type": "Offer", "name": "Starter", "price": "9.95", "priceCurrency": "EUR", "description": "20 clips téléchargeables/mois, 5 vidéos analysées/mois", "url": "https://creatis.app/auth.html?plan=starter"},
+      {"@type": "Offer", "name": "Pro", "price": "14", "priceCurrency": "EUR", "description": "150 clips téléchargeables/mois, 30 vidéos analysées/mois, tous les outils créateur", "url": "https://creatis.app/auth.html?plan=pro"},
+      {"@type": "Offer", "name": "Pro Annuel", "price": "139", "priceCurrency": "EUR", "description": "150 clips téléchargeables/mois, facturation annuelle, soit 11,58€/mois", "url": "https://creatis.app/auth.html?plan=pro&annuel=1"}
+    ],
     "inLanguage": "fr"
   }
   </script>
@@ -64,7 +69,8 @@
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css">
   <style>
     .navbar { position: sticky; top: 0; z-index: 100; background: rgba(5,5,5,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--bordure); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
@@ -99,6 +105,19 @@
     .stat-label { font-size: 13px; color: var(--texte-muted); margin-top: 4px; }
   </style>
   <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
 </head>
 <body>
 
@@ -120,7 +139,7 @@
       <span class="plateforme-pill">👻 Snapchat</span>
     </div>
     <a href="/lp" class="cta-hero">Créer mes Clips Viraux →</a>
-    <p style="font-size:13px;color:var(--texte-muted);margin-top:12px">1 essai gratuit · Sans carte bancaire</p>
+    <p style="font-size:13px;color:var(--texte-muted);margin-top:12px">Analyse gratuite · Sans carte bancaire</p>
   </div>
 
   <div class="stats-grid">
@@ -161,8 +180,11 @@
 
   <article class="seo-article">
 
+    <h2>Qu'est-ce qu'un clip viral ?</h2>
+    <p>Un <strong>clip viral</strong> est un extrait court (15 à 60 secondes) tiré d'une vidéo plus longue, recadré en format vertical 9:16, sous-titré et pensé pour être découvert par l'algorithme de TikTok, Instagram Reels ou YouTube Shorts. Contrairement à un simple extrait coupé au hasard, il est structuré pour capter l'attention dès les 3 premières secondes et se suffire à lui-même, sans le contexte de la vidéo d'origine. Détail complet (caractéristiques, origine, différence avec une vidéo courte classique) dans notre guide <a href="/blog/qu-est-ce-qu-un-clip-viral.html">qu'est-ce qu'un clip viral</a>.</p>
+
     <h2>Comment créer des Clips Viraux pour TikTok et Instagram Reels ?</h2>
-    <p>La stratégie de contenu la plus efficace en 2026 est le <strong>repurposing</strong> : transformer un contenu long (vidéo YouTube, podcast, live) en dizaines de clips courts pour TikTok, Reels et Shorts. Un créateur qui publie une vidéo par semaine peut générer <strong>10 à 40 contenus courts</strong> par mois sans effort supplémentaire.</p>
+    <p>La stratégie de contenu la plus efficace en 2026 est le <strong>repurposing</strong> : transformer un contenu long (vidéo YouTube, podcast, live) en dizaines de clips courts pour TikTok, Reels et Shorts. Un créateur qui publie une vidéo par semaine peut générer <strong>10 à 40 contenus courts</strong> par mois sans effort supplémentaire — le détail du calcul est dans notre article <a href="/blog/combien-shorts-extraire-video-youtube.html">combien de Shorts extraire d'une vidéo</a>.</p>
     <p>Traditionnellement, ce travail de découpage prenait 2 à 4 heures : regarder la vidéo, identifier les meilleurs extraits, recadrer en 9:16, ajouter les sous-titres. Créatis automatise tout ça en 30 secondes.</p>
 
     <h3>Pourquoi le format 9:16 est devenu incontournable</h3>
@@ -181,7 +203,7 @@
     <p>Sans outil IA, créer 10 clips courts depuis une vidéo de 30 minutes prend en moyenne <strong>4 à 6 heures</strong> : visionner la vidéo, couper les extraits, recadrer en 9:16, synchroniser les sous-titres. Avec Créatis Clips Viraux, le même résultat en 30 secondes — sans compromis sur la qualité.</p>
 
     <h3>La stratégie des créateurs qui grossissent le plus vite</h3>
-    <p>Les créateurs qui progressent le plus rapidement sur TikTok et Instagram en 2026 appliquent tous la même stratégie : <strong>créer une fois, publier partout</strong>. Une vidéo YouTube devient 10 TikToks, 10 Reels, 10 Shorts. Ce volume de contenu multiplie les chances d'être mis en avant par l'algorithme de chaque plateforme.</p>
+    <p>Les créateurs qui progressent le plus rapidement sur TikTok et Instagram en 2026 appliquent tous la même stratégie : <strong>créer une fois, publier partout</strong>. Une vidéo YouTube devient 10 TikToks, 10 Reels, 10 Shorts. Ce volume de contenu multiplie les chances d'être mis en avant par l'algorithme de chaque plateforme. La méthode complète est détaillée dans notre guide <a href="/blog/decouper-video-shorts-automatiquement.html">comment découper une vidéo en Shorts automatiquement</a>.</p>
     <p>Créatis permet d'automatiser cette stratégie entièrement. Tu te concentres sur la création de contenu long, l'IA gère le repurposing court.</p>
 
     <h2>FAQ — Clips Viraux et formats courts</h2>
@@ -221,6 +243,11 @@
       <div style="font-size:28px;margin-bottom:8px">🛠️</div>
       <div style="font-weight:700;color:var(--texte);margin-bottom:4px">Tous les outils</div>
       <div style="font-size:13px;color:var(--texte-muted)">Voir tous les outils gratuits</div>
+    </a>
+    <a href="/blog.html" style="display:block;background:var(--bg);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px;text-decoration:none;width:220px;" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+      <div style="font-size:28px;margin-bottom:8px">📚</div>
+      <div style="font-weight:700;color:var(--texte);margin-bottom:4px">Guides clips viraux</div>
+      <div style="font-size:13px;color:var(--texte-muted)">Tous nos articles sur le blog</div>
     </a>
   </div>
 </section>

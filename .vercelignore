@@ -18,6 +18,13 @@ Vente Amazon Afilié
 node_modules
 .claude
 .cursor
+.agents
+
+# Scratch génération vidéos de démo (contient des .mp4 de plusieurs centaines de Mo)
+.scratch-demo
+
+# Profils navigateur Playwright (scripts locaux, jamais à déployer)
+.playwright-profile-social
 
 # Données de test
 tests/miniatures
@@ -29,3 +36,7 @@ serveur.js
 
 # Vercel cache
 .vercel
+
+# Profil navigateur Submagic + captures d analyse (contiennent des cookies de session)
+.playwright-profile-submagic
+.scratch-submagic

@@ -11,6 +11,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <!-- Montserrat 800 : police du style "Punch". DOIT être chargée ici, car c'est la même que
+       celle installée sur le serveur de rendu. Une police différente dans l'aperçu changerait
+       la largeur des lignes, donc l'endroit où le texte se coupe : l'aperçu et l'export ne
+       montreraient plus le même découpage. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -76,6 +81,20 @@
     .url-input { flex: 1; background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte); font-size: 14px; padding: 12px 16px; border-radius: 10px; outline: none; }
     .url-input:focus { border-color: var(--vert); }
     .url-input::placeholder { color: var(--texte-muted); }
+    /* ─── COMMANDE VOCALE ─── */
+    .btn-voix { flex-shrink: 0; width: 44px; background: var(--bg-card); border: 1px solid var(--bordure); border-radius: 10px; color: var(--texte-doux); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+    .btn-voix:hover { border-color: var(--vert); color: var(--vert); }
+    .btn-voix.ecoute { border-color: var(--vert); color: var(--vert); background: var(--vert-dim); animation: voix-pulse 1.4s ease-in-out infinite; }
+    @keyframes voix-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.45); } 50% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } }
+    .voix-statut { max-width: 600px; margin: 8px auto 0; font-size: 13px; color: var(--texte-doux); text-align: center; min-height: 18px; }
+    .voix-statut.err { color: #f97316; }
+    .voix-ml { display: none; align-items: center; justify-content: center; gap: 8px; margin: 8px auto 0; font-size: 12.5px; color: var(--texte-muted); cursor: pointer; user-select: none; }
+    .voix-ml input { accent-color: var(--vert); width: 15px; height: 15px; cursor: pointer; }
+    .voix-ml .pastille { width: 7px; height: 7px; border-radius: 50%; background: var(--bordure); flex-shrink: 0; }
+    .voix-ml.actif { color: var(--vert); }
+    .voix-ml.actif .pastille { background: var(--vert); animation: voix-pulse 1.4s ease-in-out infinite; }
+    .voix-annuler { background: transparent; border: 1px solid var(--bordure); color: var(--texte-doux); font-size: 12px; padding: 3px 10px; border-radius: 6px; cursor: pointer; margin-left: 8px; }
+    .voix-annuler:hover { border-color: #f97316; color: #f97316; }
     .upload-or { display: flex; align-items: center; gap: 12px; max-width: 600px; margin: 16px auto 0; color: var(--texte-muted); font-size: 12px; }
     .upload-or::before, .upload-or::after { content: ''; flex: 1; height: 1px; background: var(--bordure); }
 
@@ -222,6 +241,12 @@
     .modal-play-btn-big.paused svg.play-icon { display: block; }
     .modal-play-btn-big svg.pause-icon { display: block; }
     .modal-play-btn-big svg.play-icon { display: none; }
+    /* Bouton play de la barre d'outils timeline (Klap) */
+    #cad-play-btn svg.pause-icon { display: none; }
+    #cad-play-btn svg.play-icon { display: block; }
+    #cad-play-btn.playing svg.play-icon { display: none; }
+    #cad-play-btn.playing svg.pause-icon { display: block; }
+    #cad-play-btn:hover { filter: brightness(1.08); }
 
     /* Progress bar */
     .modal-controls { height: 38px; background: var(--bg); border-top: 1px solid var(--bordure); display: flex; align-items: center; gap: 8px; padding: 0 12px; flex-shrink: 0; }
@@ -324,6 +349,33 @@
     .mob-section.mob-open { display: block; }
     .mob-desktop-extra { display: block; }
 
+    /* ── Dispo éditeur DESKTOP (façon Klap) — mobile (≤660px) NON impacté ── */
+    .klap-rail { display: none; }
+    .modal-timeline-bar { display: none; }
+    @media (min-width: 661px) {
+      .clip-modal { max-width: 1180px; width: 94vw; max-height: 92vh;
+        display: grid; grid-template-columns: auto 1fr 366px; grid-template-rows: minmax(0,1fr) auto;
+        grid-template-areas: "rail player settings" "timeline timeline timeline"; }
+      .klap-rail { grid-area: rail; }
+      .modal-player-col { grid-area: player; flex: 1; width: auto; align-items: center; justify-content: center; padding: 22px 26px; min-height: 0; }
+      .modal-player-wrap { width: auto; height: auto; max-height: 62vh; aspect-ratio: 9/16; }
+      .modal-controls { width: 100%; max-width: 340px; }
+      .modal-settings-col { grid-area: settings; flex: 0 0 366px; max-width: 366px; }
+      .modal-timeline-bar { grid-area: timeline; display: block; background: #0b0e13; border-top: 1px solid var(--bordure); padding: 12px 22px; max-height: 34vh; overflow-y: auto; }
+      .modal-timeline-bar #cadrage-timeline { margin: 0; border-top: none; padding-top: 0; }
+      .cad-desk-hide { display: none !important; }        /* gros bouton Diviser + instruction : inutiles sur desktop */
+      #cad-modes-block { margin-top: 4px; }                /* remonté dans le panneau droit */
+      /* Un seul panneau qui montre TOUT (sous-titres + hook + edit), plus de bascule d'onglets */
+      .modal-settings-col .mob-section { display: block !important; border-top: 1px solid var(--bordure); padding-top: 16px; margin-top: 4px; }
+      .modal-settings-col .mob-section:first-of-type { border-top: none; padding-top: 0; }
+      /* Rail d'icônes gauche */
+      .klap-rail { display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; background: #0b0e13; border-right: 1px solid var(--bordure); flex-shrink: 0; }
+      .klap-rail-btn { width: 40px; height: 40px; border-radius: 9px; background: transparent; border: none; color: #7d8794; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; }
+      .klap-rail-btn:hover { background: rgba(255,255,255,0.06); color: #cbd5e1; }
+      .klap-rail-btn.active { background: var(--vert-dim); color: var(--vert); }
+      .desk-sec-tabs { display: none !important; }
+    }
+
     @media (max-width: 660px) {
       .modal-overlay { padding: 0; align-items: flex-end; }
       .clip-modal {
@@ -360,6 +412,9 @@
       .mob-icon-dl svg { stroke: #fff; }
       .mob-icon-dl .mob-dl-progress { position: absolute; bottom: 0; left: 0; height: 3px; background: #fff; border-radius: 2px; transition: width .3s; }
       .mob-always { display: none; }
+      /* Un seul bouton Export par écran : sur mobile c'est celui de la barre d'icônes (pouce +
+         barre de progression intégrée), donc on masque son jumeau de l'en-tête. */
+      #modal-dl-btn { display: none !important; }
 
       /* Cacher header score row + export groupé sur mobile */
       .modal-score-row { display: none; }
@@ -437,6 +492,49 @@
     .modal-dl-btn:disabled { opacity: .5; cursor: not-allowed; }
     .modal-dl-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 32px -6px var(--vert-glow); }
     .modal-dl-status { font-size: 12px; color: var(--texte-muted); text-align: center; min-height: 16px; }
+    /* Mini-vidéo intégrée dans le titre, à la place du mot « Shorts » */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+               clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    /* Hauteur ~2,2× la taille du texte. `vertical-align` doit suivre : elle vaut environ
+       -(hauteur - 1) / 2 - 0.1em, sinon la vignette « tombe » sous la ligne de base. */
+    .hero-vid-chip { display: inline-block; height: 2.2em; aspect-ratio: 9/16; vertical-align: -0.72em;
+                     border-radius: 14px; overflow: hidden; background: #10141C; margin: 0 .12em;
+                     border: 1.5px solid rgba(16,185,129,.5); box-shadow: 0 14px 34px -10px rgba(0,0,0,.85);
+                     transform: rotate(-3deg); transition: transform .25s ease; }
+    .hero-vid-chip:hover { transform: rotate(0deg) scale(1.06); }
+    /* Cadré sur le haut de l'image : à cette taille les sous-titres du clip seraient illisibles
+       et brouilleraient la vignette — on montre la scène, pas le texte. */
+    .hero-vid-chip video { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; display: block; }
+    .v1-hero-title { line-height: 1.62; }
+
+    /* Exemples réels — cartes flottantes de part et d'autre du formulaire.
+       En rangée sous le CTA, ça débordait et se faisait couper : illisible. Ici elles habillent
+       l'espace vide latéral, légèrement inclinées, sans jamais gêner la zone de dépôt. */
+    .v2-ex-side { position: absolute; top: 0; bottom: 0; width: 300px; pointer-events: none; z-index: 1; display: none; }
+    .v2-ex-side.left  { right: 100%; margin-right: 26px; }
+    .v2-ex-side.right { left: 100%;  margin-left: 26px; }
+    .v2-ex { position: absolute; margin: 0; width: 132px; pointer-events: auto; transition: transform .25s ease; }
+    .v2-ex video { width: 100%; aspect-ratio: 9/16; object-fit: cover; border-radius: 14px; background: #10141C;
+                   display: block; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 18px 40px -12px rgba(0,0,0,.75); }
+    .v2-ex figcaption { font-size: 10.5px; color: var(--texte-muted); margin-top: 7px; text-align: center; line-height: 1.3; }
+    .v2-ex.is-pair video { border-color: rgba(16,185,129,.5); }
+    .v2-ex.is-pair figcaption { color: var(--vert); font-weight: 700; }
+    .v2-ex:hover { transform: rotate(0deg) scale(1.04) !important; z-index: 3; }
+    /* Positions : légèrement décalées et inclinées pour un effet flottant, pas une grille */
+    .v2-ex-side.left  .v2-ex:nth-child(1) { top: 4%;   right: 8px;   transform: rotate(-7deg); }
+    .v2-ex-side.left  .v2-ex:nth-child(2) { top: 42%;  right: 78px;  transform: rotate(4deg); }
+    .v2-ex-side.right .v2-ex:nth-child(1) { top: 2%;   left: 12px;   transform: rotate(6deg); }
+    .v2-ex-side.right .v2-ex:nth-child(2) { top: 46%;  left: 78px;   transform: rotate(-5deg); }
+    .v2-ex-side.right .v2-ex:nth-child(3) { top: 74%;  left: 6px;    transform: rotate(3deg); }
+    /* Sous 1240px il n'y a plus la place sur les côtés — on masque plutôt que de chevaucher */
+    @media (min-width: 1240px) { .v2-ex-side { display: block; } }
+    /* Sélecteur de langue des sous-titres */
+    .sub-lang-btn { background: var(--bg); border: 1px solid var(--bordure); color: var(--texte-muted); font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .sub-lang-btn.active { border-color: var(--vert); color: var(--vert); background: rgba(16,185,129,0.08); }
+    .sub-lang-btn:disabled { opacity: .5; cursor: wait; }
+    /* Cartes de plan du paywall — cliquables en entier, pas juste un bouton en bas */
+    .pw-plan { width: 100%; padding: 12px 14px; border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: border-color .15s, transform .1s; }
+    .pw-plan:hover { border-color: #10b981 !important; transform: translateY(-1px); }
 
     /* Export button */
     .export-bar { position: sticky; bottom: 20px; z-index: 40; display: flex; justify-content: center; }
@@ -588,6 +686,14 @@
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.people.toString()+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonPropertiesForFlags".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||(window.posthog=[]));
     posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ', { api_host: 'https://eu.i.posthog.com', person_profiles: 'identified_only', session_recording: { recordCrossOriginIframes: true } });
   </script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
 </head>
 <body>
 
@@ -618,7 +724,14 @@
       <!-- LEFT — upload -->
       <div class="upload-hero-left">
         <p class="v1-hero-label">CLIPS VIRAUX IA</p>
-        <h1 class="v1-hero-title">1 vidéo longue,<br><span class="vert">10 Shorts</span> qui explosent.</h1>
+        <!-- Le mot « Shorts » est remplacé par une mini-vidéo 9:16 qui tourne en boucle : on montre
+             le produit au lieu de le nommer. Le mot reste présent pour les lecteurs d'écran et le
+             référencement (span sr-only) — sans lui, le titre perdrait son sens ET son SEO. -->
+        <h1 class="v1-hero-title">Transforme tes vidéos<br>en
+          <span class="hero-vid-chip" aria-hidden="true">
+            <video src="/images/exemples/exemple-hero.mp4" poster="/images/exemples/exemple-hero.webp" muted loop playsinline autoplay preload="metadata"></video>
+          </span><span class="sr-only">Shorts</span>
+          <span class="vert">viraux</span>.</h1>
         <p class="v1-hero-sub">Dépose ta vidéo. L'IA découpe les meilleurs moments, recadre en 9:16 et brûle les sous-titres.</p>
 
         <div class="v1-bar" id="drop-zone" style="cursor:pointer"
@@ -641,8 +754,25 @@
             inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
             name="yt-link-no-autofill" data-lpignore="true" data-1p-ignore data-form-type="other"
             oninput="V2.onUrlInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('btn-analyze').click();}">
+          <button type="button" id="btn-voix" class="btn-voix" style="display:none"
+            title="Dis « la dernière vidéo de Yomi Denzel »" aria-label="Chercher une vidéo à la voix"
+            onclick="V2.voiceStart()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
           <div id="yt-url-hint" style="display:none;font-size:12px;color:#f97316;margin-top:6px"></div>
         </div>
+        <div id="voix-options" style="display:none;flex-wrap:wrap;justify-content:center;gap:6px 18px">
+          <label id="voix-ml" class="voix-ml" style="display:flex">
+            <span class="pastille"></span>
+            <input type="checkbox" id="voix-ml-case" onchange="V2.voiceMainsLibres(this.checked)">
+            <span>Mains libres — dis « Créatis, la dernière vidéo de… »</span>
+          </label>
+          <label class="voix-ml" style="display:flex">
+            <input type="checkbox" id="voix-tts-case" checked onchange="V2.voiceReponses(this.checked)">
+            <span>🔊 Réponses vocales</span>
+          </label>
+        </div>
+        <div id="voix-statut" class="voix-statut"></div>
 
         <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
           <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
@@ -659,7 +789,32 @@
           <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 60 secondes</span>
           <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Gratuit</span>
         </div>
+
       </div>
+
+        <!-- Exemples réels qui FLOTTENT de part et d'autre du formulaire. La paire FR/EN est
+             gardée ensemble à gauche : c'est le message (même clip, deux langues), les deux
+             cartes doivent se lire d'un coup d'œil. -->
+        <div class="v2-ex-side left" id="v2-ex-left">
+          <figure class="v2-ex is-pair">
+            <video src="/images/exemples/exemple-fr.mp4" poster="/images/exemples/exemple-fr.webp" muted loop playsinline preload="none" aria-label="Clip Créatis sous-titré en français"></video>
+            <figcaption>🇫🇷 Sous-titres français</figcaption>
+          </figure>
+          <figure class="v2-ex is-pair">
+            <video src="/images/exemples/exemple-en.mp4" poster="/images/exemples/exemple-en.webp" muted loop playsinline preload="none" aria-label="Le même clip sous-titré en anglais"></video>
+            <figcaption>🇬🇧 Le même, traduit</figcaption>
+          </figure>
+        </div>
+        <div class="v2-ex-side right" id="v2-ex-right">
+          <figure class="v2-ex">
+            <video src="/images/exemples/exemple-2.mp4" poster="/images/exemples/exemple-2.webp" muted loop playsinline preload="none" aria-label="Exemple de clip vertical"></video>
+            <figcaption>Sous-titres karaoké</figcaption>
+          </figure>
+          <figure class="v2-ex">
+            <video src="/images/exemples/exemple-1.mp4" poster="/images/exemples/exemple-1.webp" muted loop playsinline preload="none" aria-label="Exemple de clip vertical"></video>
+            <figcaption>Cadrage auto sur le visage</figcaption>
+          </figure>
+        </div>
 
       <!-- RIGHT — placeholder pour futures vraies images -->
       <div class="upload-hero-right" style="display:none"></div>
@@ -679,6 +834,13 @@
       <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;padding:14px 16px;background:linear-gradient(transparent,rgba(0,0,0,0.85));">
         <div id="ai-typewriter" style="font-family:monospace;font-size:12px;color:#10b981;min-height:18px;letter-spacing:0.5px;"></div>
         <div class="prog-bar-wrap" style="margin-top:8px;margin-bottom:0"><div class="prog-bar-fill" id="analyze-bar" style="width:0%"></div></div>
+        <!-- Chronomètre + repère de durée. Sans ça, l'attente est aveugle : l'utilisateur ne sait
+             pas s'il en a pour 10 secondes ou 3 minutes, et il recharge la page (mesuré :
+             8 personnes ont perdu leur analyse en rechargeant). -->
+        <div id="analyze-chrono" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;font-family:monospace;font-size:11px;color:#8A93A3">
+          <span id="analyze-elapsed">0:00</span>
+          <span id="analyze-eta">habituellement 30 s à 1 min 30</span>
+        </div>
       </div>
       <!-- Badge IA -->
       <div style="position:absolute;top:12px;right:12px;z-index:4;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#10b981;backdrop-filter:blur(8px);display:flex;align-items:center;gap:5px;">
@@ -711,7 +873,7 @@
 
     <!-- Bannière gratuit : watermark + clips limités -->
     <div id="studio-gratuit-banner" style="display:none;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--texte-doux);align-items:center;justify-content:space-between;gap:10px;">
-      <span>🔒 Plan gratuit — 1 export avec filigrane Créatis · Passe au Pro pour exporter en illimité</span>
+      <span>🔒 Compte gratuit — 2 analyses offertes, aperçu complet · Passe au Pro pour télécharger tes clips</span>
       <button onclick="V2.showUpgradeModal()" style="background:var(--vert);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Passer au Pro →</button>
     </div>
 
@@ -746,6 +908,12 @@
 <!-- ═══ CLIP EDITOR MODAL ═══ -->
 <div class="modal-overlay" id="clip-modal-overlay" onclick="if(event.target===this)V2.closeModal()">
   <div class="clip-modal">
+    <!-- Rail d'icônes gauche (façon Klap) — desktop uniquement, remplace les onglets du haut -->
+    <div class="klap-rail">
+      <button class="klap-rail-btn" data-tab="subs" onclick="V2.deskTab('subs')" title="Sous-titres"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="6" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="14" y2="14"/></svg></button>
+      <button class="klap-rail-btn" data-tab="hook" onclick="V2.deskTab('hook')" title="Hook"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></button>
+      <button class="klap-rail-btn" data-tab="cadrage" onclick="V2.deskTab('cadrage')" title="Edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+    </div>
     <div class="modal-player-col">
       <div class="modal-player-wrap" id="modal-player-wrap" onclick="V2.togglePlay()">
         <div class="modal-player-placeholder" id="modal-player-ph">🎬</div>
@@ -780,7 +948,11 @@
             <div id="modal-score-badge" class="modal-score-badge">—</div>
           </div>
           <div class="modal-clip-meta" id="modal-clip-meta"></div>
+          <!-- État de l'export (progression, erreurs, "prêt"). Était sous le 2e bouton de
+               téléchargement, supprimé depuis : il ne restait qu'un seul bouton, en haut. -->
+          <div class="modal-dl-status" id="modal-dl-status" style="font-size:11px;color:var(--texte-muted);margin-top:3px;text-align:left;min-height:0"></div>
         </div>
+        <button id="modal-dl-btn" onclick="V2.exportFromModal()" title="Exporter ce clip en 9:16" style="background:var(--vert);border:none;color:#04120b;font-size:12px;font-weight:800;padding:8px 15px;border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:116px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
         <button class="modal-close" onclick="V2.closeModal()">✕</button>
       </div>
       <div class="modal-settings-body">
@@ -801,8 +973,8 @@
             Hook
           </button>
           <button class="mob-icon-btn" id="mob-btn-cadrage" onclick="V2.mobPanel('cadrage')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
-            Cadrage
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Edit
           </button>
           <button class="mob-icon-btn" id="mob-btn-edit" onclick="V2.mobPanel('edit')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -819,17 +991,26 @@
         <div class="desk-sec-tabs" id="desk-sec-tabs">
           <button class="desk-sec-tab active" onclick="V2.deskTab('subs')">Sous-titres</button>
           <button class="desk-sec-tab" onclick="V2.deskTab('hook')">Hook</button>
-          <button class="desk-sec-tab" onclick="V2.deskTab('cadrage')">Cadrage</button>
+          <button class="desk-sec-tab" onclick="V2.deskTab('cadrage')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit</button>
         </div>
 
         <!-- Section : Sous-titres -->
         <div class="mob-section mob-open" id="mob-sec-subs">
+          <!-- Langue des sous-titres. Traduit les segments déjà transcrits : le minutage ne bouge
+               pas et l'audio reste dans sa langue d'origine — seul le texte affiché change. -->
+          <div class="modal-opt-label" style="margin-bottom:6px">Langue des sous-titres</div>
+          <div class="sub-lang-row" style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+            <button class="sub-lang-btn active" data-lang="fr" onclick="V2.setSubLang('fr')">🇫🇷 Français</button>
+            <button class="sub-lang-btn" data-lang="en" onclick="V2.setSubLang('en')">🇬🇧 English</button>
+            <span id="sub-lang-etat" style="font-size:11px;color:var(--texte-muted)"></span>
+          </div>
           <div class="style-cats"><button class="style-cat active" onclick="V2.selectStyleCat('pop', this)">Populaire</button><button class="style-cat" onclick="V2.selectStyleCat('dyn', this)">Dynamique</button></div>
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')"><div class="mp"><span class="mt">—</span></div><span>Aucun</span></button>
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Wow</span></div><span>Bold</span></button>
             <button class="ms-pill active" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
+            <button class="ms-pill" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt" style="font-weight:900">W<span style="color:#3BFF2F">ow</span></span></div><span>Punch</span></button>
             <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
             <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Wow</span></div><span>Typewriter</span></button>
             <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Word Pop</span></button>
@@ -868,22 +1049,61 @@
             💡 <strong style="color:var(--texte-doux)">Glisse l'image</strong> (gauche/droite) pour placer le cadre sur la personne. Ta position est <strong style="color:var(--vert)">exactement celle de l'export</strong>.
           </div>
           <div id="cadrage-hint-split" style="display:none;font-size:12px;color:var(--texte-muted);line-height:1.5;margin-bottom:12px">
-            💡 <strong style="color:var(--texte-doux)">Glisse la moitié du haut</strong> pour cadrer la 1ʳᵉ personne, <strong style="color:var(--texte-doux)">la moitié du bas</strong> pour la 2ᵉ. Positions <strong style="color:var(--vert)">identiques à l'export</strong>.
+            💡 <strong style="color:var(--texte-doux)">Glisse la moitié du haut / du bas</strong> sur l'aperçu pour cadrer chaque personne. <strong style="color:var(--vert)">Chaque coupe de la barre se règle séparément</strong> : place-toi sur une coupe, puis glisse. Identique à l'export.
           </div>
 
-          <!-- Timeline sections : choisir split / solo selon le moment (visible en mode split) -->
+          <!-- Timeline visuelle type CapCut : barre colorée + tête de lecture déplaçable -->
           <div id="cadrage-timeline" style="display:none;margin:14px 0;padding-top:12px;border-top:1px solid var(--bordure)">
-            <div style="font-size:12px;color:var(--texte-doux);font-weight:600;margin-bottom:8px">🎬 Moments du clip — pose un repère à l'instant affiché :</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-              <button type="button" onclick="V2.addSplitKeyframe('split')" style="background:var(--vert-dim);border:1px solid rgba(16,185,129,0.3);color:var(--vert);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">⬛ Split (2 pers)</button>
-              <button type="button" onclick="V2.addSplitKeyframe('top')" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">▲ Solo haut</button>
-              <button type="button" onclick="V2.addSplitKeyframe('bot')" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit">▼ Solo bas</button>
+            <div class="cad-desk-hide" style="font-size:12px;color:var(--texte-doux);font-weight:600;margin-bottom:10px">🎬 <strong style="color:var(--vert)">Divise</strong> le clip, <strong style="color:var(--vert)">clique un morceau</strong> pour le sélectionner, puis choisis sa vue. Glisse l'aperçu pour le cadrer.</div>
+
+            <!-- Barre d'outils timeline (façon Klap) : cut · corbeille · transport · temps · zoom -->
+            <div style="display:flex;align-items:center;gap:6px;background:#0d1117;border:1px solid var(--bordure);border-radius:10px;padding:5px 8px;margin-bottom:10px">
+              <button type="button" onclick="V2.cutHere()" title="Diviser" style="background:transparent;border:none;color:#cbd5e1;cursor:pointer;padding:5px;border-radius:6px;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></button>
+              <button type="button" onclick="V2.removeSelCut()" title="Supprimer la coupe" style="background:transparent;border:none;color:#cbd5e1;cursor:pointer;padding:5px;border-radius:6px;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              <div style="width:1px;height:16px;background:var(--bordure);margin:0 2px"></div>
+              <div style="display:flex;align-items:center;gap:4px;margin:0 auto">
+                <button type="button" onclick="V2.seekRel(-3)" title="Reculer 3s" style="background:transparent;border:none;color:#cbd5e1;cursor:pointer;padding:5px;border-radius:6px;display:flex;align-items:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button type="button" id="cad-play-btn" onclick="V2.togglePlay()" title="Lecture / Pause" class="paused" style="background:var(--vert);border:none;color:#04120b;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center"><svg class="play-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg class="pause-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
+                <button type="button" onclick="V2.seekRel(3)" title="Avancer 3s" style="background:transparent;border:none;color:#cbd5e1;cursor:pointer;padding:5px;border-radius:6px;display:flex;align-items:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-2 6L5.5 6v12z"/></svg></button>
+                <span style="font-size:11px;color:var(--texte-doux);font-variant-numeric:tabular-nums;margin-left:6px"><span id="cad-t-cur">0:00</span> / <span id="cad-t-dur">0:00</span></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;color:var(--texte-muted)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <input type="range" min="1" max="2.2" value="1" step="0.1" oninput="V2.zoomCad(this.value)" style="width:64px;accent-color:var(--vert)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </div>
             </div>
-            <div id="cadrage-keyframes-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px"></div>
-            <div style="font-size:11px;color:var(--texte-muted);line-height:1.4">Sans repère : tout le clip est en split. Chaque repère change le mode à partir de son instant.</div>
+
+            <!-- Zone timeline : règle de temps (haut) + piste (blocs du clip) + playhead qui traverse tout -->
+            <div id="cad-tl-area" style="position:relative;margin-bottom:12px;user-select:none;-webkit-user-select:none;-moz-user-select:none">
+              <div id="cad-ruler" style="position:relative;height:16px;margin-bottom:4px"></div>
+              <div id="cad-track" onpointerdown="V2.seekCadrage(event)" style="position:relative;height:48px;border-radius:9px;overflow:hidden;background:#0d1117;border:1px solid var(--bordure);cursor:pointer;touch-action:none">
+                <div id="cad-filmstrip" style="position:absolute;inset:0;display:flex"></div>
+                <div id="cad-track-segs" style="position:absolute;inset:0"></div>
+                <div id="cad-marks" style="position:absolute;inset:0;pointer-events:none"></div>
+              </div>
+              <div id="cad-playhead" style="position:absolute;top:0;bottom:0;left:0;width:2px;background:#fff;box-shadow:0 0 5px rgba(0,0,0,0.75);z-index:10;pointer-events:none">
+                <div onpointerdown="V2.seekCadrage(event)" style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:12px;height:14px;border-radius:3px 3px 6px 6px;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,0.6);pointer-events:auto;cursor:grab;touch-action:none"></div>
+              </div>
+            </div>
+
+            <!-- Étape 1 : diviser à la tête de lecture (masqué desktop : la barre ✂ le fait déjà) -->
+            <button type="button" class="cad-desk-hide" onclick="V2.cutHere()" style="width:100%;background:var(--vert);border:none;color:#04120b;font-size:13px;font-weight:800;padding:11px;border-radius:10px;cursor:pointer;font-family:inherit;margin-bottom:12px">✂️ Diviser ici</button>
+
+            <!-- Étape 2 : vue du morceau sélectionné — remontée dans le panneau droit sur desktop -->
+            <div id="cad-modes-block">
+            <div style="font-size:11px;color:var(--texte-muted);margin-bottom:6px">Vue du morceau <strong style="color:var(--vert)">sélectionné</strong> :</div>
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <button type="button" id="segmode-split" onclick="V2.setSegMode('split')" style="flex:1;background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:9px 6px;border-radius:8px;cursor:pointer;font-family:inherit">⬛ Split</button>
+              <button type="button" id="segmode-top" onclick="V2.setSegMode('top')" style="flex:1;background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:9px 6px;border-radius:8px;cursor:pointer;font-family:inherit">▲ Solo haut</button>
+              <button type="button" id="segmode-bot" onclick="V2.setSegMode('bot')" style="flex:1;background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:11px;font-weight:700;padding:9px 6px;border-radius:8px;cursor:pointer;font-family:inherit">▼ Solo bas</button>
+            </div>
+            </div><!-- /cad-modes-block -->
+            <div id="cadrage-keyframes-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+            <div style="font-size:11px;color:var(--texte-muted);line-height:1.4"><span style="color:#10b981">🟢 Split</span> · <span style="color:#3b82f6">🔵 Solo haut</span> · <span style="color:#f59e0b">🟠 Solo bas</span> — clique un morceau (barre ou liste) pour le sélectionner, × pour supprimer une coupe.</div>
           </div>
 
-          <button type="button" onclick="V2.resetCadrage()" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:12px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit;margin-top:12px">↺ Réinitialiser le cadrage (auto)</button>
+          <button type="button" id="cad-reset-btn" onclick="V2.resetCadrage()" style="background:var(--bg-input);border:1px solid var(--bordure);color:var(--texte-doux);font-size:12px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;font-family:inherit;margin-top:12px">↺ Réinitialiser le cadrage (auto)</button>
         </div>
 
         <!-- Section : Hook -->
@@ -920,15 +1140,9 @@
           </button>
         </div>
 
-        <!-- Toujours visible : download -->
-        <div class="mob-always">
-          <button class="modal-dl-btn" id="modal-dl-btn" onclick="V2.exportFromModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Télécharger ce clip 9:16
-          </button>
-          <div class="modal-dl-status" id="modal-dl-status" style="text-align:center;font-size:12px;color:var(--texte-muted);margin-top:6px"></div>
-        </div>
-
+        <!-- (Le gros bouton "Télécharger ce clip 9:16" vivait ici — supprimé : il faisait doublon
+             avec le bouton Export de l'en-tête, qui porte désormais l'id modal-dl-btn et affiche
+             la progression directement dessus.) -->
 
       </div>
     </div>
@@ -944,6 +1158,9 @@
       </div>
       <div id="modal-transcript-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding:8px;-webkit-overflow-scrolling:touch"></div>
     </div>
+
+    <!-- Barre timeline pleine largeur (Klap) — desktop ; #cadrage-timeline y est déplacé au runtime -->
+    <div class="modal-timeline-bar" id="modal-timeline-bar"></div>
 
   </div>
 </div>
@@ -964,7 +1181,11 @@ const V2 = (() => {
   let _thumbs = {};           // index → dataUrl (sauvegardé pour la récupération)
   let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
   let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
-  const FREE_CLIP_LIMIT = 1; // 1 export gratuit avec watermark
+  // 0 = aucun export gratuit. Le compte gratuit sert à ANALYSER et VOIR ses clips (aperçu complet,
+  // 9:16, sous-titres) ; le téléchargement est réservé aux plans payants. Choix assumé : l'export
+  // était le seul moment du parcours qui échouait (9 lancements sur 14 n'aboutissaient jamais), et
+  // il consommait le crédit au passage — les gens repartaient murés sans avoir rien reçu.
+  const FREE_CLIP_LIMIT = 0;
   let _ytUrl = '';            // YouTube URL (if any)
   let _segments = [];         // Whisper transcript segments
   let _clips = [];            // Identified clips
@@ -979,6 +1200,34 @@ const V2 = (() => {
 
   // ── Init ──
   async function init() {
+    // Le micro n'apparaît que si le navigateur sait reconnaître la parole (pas Firefox) —
+    // un bouton qui ne peut rien faire est pire que pas de bouton.
+    if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+      const bv = document.getElementById('btn-voix');
+      if (bv) bv.style.display = 'flex';
+      const opts = document.getElementById('voix-options');
+      if (opts) opts.style.display = 'flex';
+      try { _tts = localStorage.getItem(TTS_PREF) !== '0'; } catch {}
+      const ctts = document.getElementById('voix-tts-case'); if (ctts) ctts.checked = _tts;
+      if (window.speechSynthesis) {
+        ttsVoixFr();
+        speechSynthesis.addEventListener?.('voiceschanged', () => { _voixTTS = null; ttsVoixFr(); });
+      }
+      // Mains libres réarmé au chargement seulement si le micro est DÉJÀ autorisé : sinon on
+      // ouvrirait une demande de permission à chaque visite, sans que l'utilisateur ait rien demandé.
+      let voulu = false;
+      try { voulu = localStorage.getItem(ML_PREF) === '1'; } catch {}
+      if (voulu && navigator.permissions?.query) {
+        navigator.permissions.query({ name: 'microphone' })
+          .then(p => { if (p.state === 'granted') voiceMainsLibres(true); })
+          .catch(() => {});
+      }
+      // Onglet masqué → on coupe l'écoute ; de retour → on relance si la case est cochée.
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { try { _mlReco && _mlReco.abort(); } catch {} _mlReco = null; }
+        else if (_ml) mlDemarrer();
+      });
+    }
     // Auth check + récupération plan (Auth.init() requis pour restaurer la session Supabase dans l'iframe)
     if (typeof Auth !== 'undefined') {
       await Auth.init().catch(() => {});
@@ -1000,12 +1249,22 @@ const V2 = (() => {
       if (v) v.textContent = wmOp.value + '%';
     });
 
-    // Recovery : vérifier si une analyse récente est dans localStorage
-    _checkRecovery();
-    if (localStorage.getItem('creatis_transcribe_job')) {
-      _resumeTranscribeJobIfAny(); // reprend le job en tâche de fond, ne bloque pas le reste de l'init
+    /* Lien « Voir mes clips » de l'email : ?g=<id>. Il doit fonctionner depuis n'importe quel
+       appareil, donc on va chercher la génération sur le serveur au lieu du localStorage — qui
+       est vide quand le mail est ouvert sur le téléphone ou dans le navigateur intégré de Gmail.
+       Prioritaire sur _checkRecovery() : l'utilisateur a demandé une génération précise. */
+    const _gid = new URLSearchParams(location.search).get('g');
+    if (_gid) {
+      _ouvrirGeneration(_gid);
     } else {
-      _checkAnalysisInterrupted();
+      // Recovery : vérifier si une analyse récente est dans localStorage
+      _checkRecovery();
+      if (localStorage.getItem('creatis_transcribe_job')) {
+        _resumeTranscribeJobIfAny(); // reprend le job en tâche de fond, ne bloque pas le reste de l'init
+      } else {
+        _checkAnalysisInterrupted();
+      }
+      _chargerHistorique();   // liste des analyses passées, sous la zone d'upload
     }
     _setupProgBarDrag();
     // Tracker upload_started au clic sur la zone d'upload
@@ -1036,27 +1295,73 @@ const V2 = (() => {
     _silentAudioCtx = null;
   }
 
+
+  /* Confirme au serveur que les clips sont bien arrivés ET affichés — c'est SEULEMENT à ce
+     moment qu'une vidéo est décomptée du quota. Une analyse dont la réponse n'atteint jamais le
+     navigateur ne doit rien coûter à l'utilisateur : il n'a rien reçu. */
+  function _confirmerAnalyse() {
+    try {
+      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      if (!tok) return;
+      fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ mode: 'confirmer_analyse' })
+      }).catch(() => {});
+    } catch (e) {}
+  }
+
   function _saveAnalysisAndNotify(clips, segments, name) {
+    _confirmerAnalyse();
     // Sauvegarder dans localStorage pour récupération
     try {
       localStorage.setItem('creatis_last_analysis', JSON.stringify({
-        ts: Date.now(), name, clips, segments: segments?.slice(0, 200), plan: _userPlan,
-        segmentIds: _clipSegmentIds
+        ts: Date.now(), name, clips, segments: _segmentsPourSauvegarde(segments), plan: _userPlan,
+        segmentIds: _clipSegmentIds,
+        ytUrl: _ytUrl   // sans ça, une analyse restaurée perd la source YouTube → aucun préchargement
       }));
     } catch {}
     try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
     _stopSilentAudio();
-    // Email notification (fire & forget)
-    try {
-      const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
-      if (tok) {
+    /* Historique serveur, PUIS email. L'ordre compte : sans identifiant de génération, le lien
+       du mail renvoie vers une page vide dès qu'il est ouvert depuis un autre appareil que celui
+       qui a lancé l'analyse — le localStorage n'y est pas. C'est le défaut signalé le 03/08/2026. */
+    (async () => {
+      try {
+        const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
+        if (!tok) return;
+        let genId = null;
+        try {
+          const r = await fetch('/api/repurpose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+            body: JSON.stringify({
+              mode: 'save_generation', name, clips,
+              segments: _segmentsPourSauvegarde(segments), plan: _userPlan,
+              youtube_url: _ytUrl || null,
+              video_id: clips?.[0]?.video_id || null
+            })
+          });
+          genId = (await r.json())?.id || null;
+          /* Le marqueur va DANS creatis_last_analysis, pas dans une clé à part : c'est là que
+             _sauverGenerationSiAbsente() le cherche. Avec une clé séparée, un « Reprendre »
+             ultérieur ne l'aurait pas vu et aurait créé un doublon dans l'historique. */
+          if (genId) {
+            try {
+              const brut = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
+              brut.generationId = genId;
+              localStorage.setItem('creatis_last_analysis', JSON.stringify(brut));
+            } catch {}
+            _chargerHistorique();   // la liste doit exister sans attendre un rechargement
+          }
+        } catch {}
         fetch('/api/repurpose', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
-          body: JSON.stringify({ mode: 'notify_clips_ready', count: clips.length, name })
+          body: JSON.stringify({ mode: 'notify_clips_ready', count: clips.length, name, generation_id: genId })
         }).catch(() => {});
-      }
-    } catch {}
+      } catch {}
+    })();
   }
 
   function _checkAnalysisInterrupted() {
@@ -1075,6 +1380,176 @@ const V2 = (() => {
     } catch {}
   }
 
+  /* Prépare les segments pour l'enregistrement en base.
+
+     La limite était fixée à 200, ce qui paraissait prudent mais ne l'était pas : une vidéo
+     d'une heure produit ~1800 cues de 4 mots. On n'en gardait donc que les premières minutes,
+     et TOUS les clips situés plus loin revenaient sans le moindre sous-titre à la réouverture.
+     Signalé le 05/08/2026 : « les sous-titres ne fonctionnent pas du tout ».
+
+     3000 couvre largement une vidéo de 90 min. Si la charge dépasse malgré tout la limite de
+     Vercel (4,5 Mo), on retire d'abord les timings mot par mot — le sous-titre reste juste, il
+     perd seulement la synchronisation fine — plutôt que d'amputer la fin de la vidéo. */
+  const _MAX_SEGMENTS_SAUVE = 3000;
+  function _segmentsPourSauvegarde(segments) {
+    if (!Array.isArray(segments)) return [];
+    let out = segments.slice(0, _MAX_SEGMENTS_SAUVE);
+    if (JSON.stringify(out).length > 3_500_000) {
+      out = out.map(s => { const { words, ...reste } = s; return reste; });
+      console.warn('[historique] charge trop lourde — timings mot par mot retirés');
+    }
+    return out;
+  }
+
+  /* Enregistre une analyse dans l'historique serveur si ce n'est pas déjà fait. Le marqueur est
+     posé dans `creatis_last_analysis` lui-même : il survit au rechargement et évite de créer un
+     doublon à chaque « Reprendre ». */
+  async function _sauverGenerationSiAbsente(nom, clips, segments) {
+    try {
+      const brut = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
+      if (brut.generationId) return;                    // déjà enregistrée
+      const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
+      if (!tok || !clips?.length) return;
+      const r = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+        body: JSON.stringify({
+          mode: 'save_generation', name: nom, clips,
+          segments: _segmentsPourSauvegarde(segments), plan: _userPlan,
+          youtube_url: _ytUrl || null,
+          video_id: clips?.[0]?.video_id || null
+        })
+      });
+      const d = await r.json();
+      if (!d?.id) { console.warn('[historique] non enregistrée :', d?.error || 'réponse sans id'); return; }
+      brut.generationId = d.id;
+      localStorage.setItem('creatis_last_analysis', JSON.stringify(brut));
+      _chargerHistorique();
+    } catch (e) { console.warn('[historique] échec sauvegarde :', e.message); }
+  }
+
+  /* Ouvre une génération enregistrée côté serveur (lien de l'email, ou clic dans l'historique).
+     Contrairement à _restoreAnalysis(), ne dépend pas du localStorage : c'est ce qui permet
+     d'ouvrir ses clips depuis un autre appareil que celui qui a lancé l'analyse. */
+  async function _ouvrirGeneration(id) {
+    const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
+    if (!tok) {
+      // Pas connecté : on passe par l'authentification en gardant l'identifiant dans le retour.
+      window.location.href = '/auth.html?returnUrl=' + encodeURIComponent('/clips-v2.html?g=' + id);
+      return;
+    }
+    try {
+      setState('analyse');
+      // setBar/setStep sont locaux aux fonctions d'analyse — on pilote la barre directement.
+      const _bar = document.getElementById('analyze-bar');
+      if (_bar) _bar.style.width = '60%';
+      const r = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+        body: JSON.stringify({ mode: 'get_generation', id })
+      });
+      const d = await _lireReponseJson(r, 'ouverture de la génération');
+      const g = d?.generation;
+      if (!g || !g.clips?.length) throw new Error('Génération introuvable ou expirée');
+
+      _clips = g.clips;
+      _segments = g.segments || [];
+      _userPlan = g.plan || _userPlan;
+      _clipSegmentIds = {};      // les identifiants Railway de la session d'origine ont expiré
+      _fullFileVideoId = null;
+      _thumbs = {};
+      _ytUrl = g.youtube_url || (g.video_id ? `https://youtu.be/${g.video_id}` : '');
+      if (_bar) _bar.style.width = '100%';
+      renderStudio(g.nom || 'Vidéo');
+      if (window.posthog) posthog.capture('generation_ouverte', { clips: _clips.length, source: g.source_type });
+
+      /* Générations enregistrées avant le 05/08/2026 : les segments étaient tronqués à 200,
+         soit ~6 min 30 de parole. Les clips situés au-delà n'ont AUCUN sous-titre, et rien à
+         l'écran ne l'expliquait — l'utilisateur croyait à une panne du style choisi. */
+      const _finSeg = _segments.length
+        ? Math.max(..._segments.map(s => Number(s.end ?? s.start ?? 0)))
+        : 0;
+      const _finClips = _clips.length
+        ? Math.max(..._clips.map(c => Number(c.end_time ?? c.end ?? 0)))
+        : 0;
+      if (_finClips > _finSeg + 5) {
+        const _mm = Math.floor(_finSeg / 60), _ss = String(Math.floor(_finSeg % 60)).padStart(2, '0');
+        toast(`Sous-titres disponibles jusqu'à ${_mm}:${_ss} seulement — cette analyse date d'avant la correction. Relance-la pour les récupérer en entier.`, 'info', 9000);
+        if (window.posthog) posthog.capture('generation_segments_tronques', { fin_segments: Math.round(_finSeg), fin_clips: Math.round(_finClips) });
+      }
+      if (!_ytUrl) {
+        // Génération issue d'un fichier local : la vidéo source n'est stockée nulle part, seuls
+        // les repères le sont. On le dit plutôt que de laisser l'export échouer sans explication.
+        toast('Recharge ta vidéo pour exporter — seuls les repères de découpe ont été conservés.', 'info', 7000);
+      }
+    } catch (e) {
+      setState('upload');
+      toast(`Impossible d'ouvrir cette génération (${e.message}) — relance une analyse.`, 'erreur', 7000);
+      if (window.posthog) posthog.capture('generation_ouverte_echec', { message: e.message });
+    }
+  }
+
+  /* Liste des générations passées, affichée sur l'écran d'upload. Sans elle, une analyse
+     terminée n'est retrouvable que par l'email : tout ce qui n'est pas rouvert dans les 4 h
+     disparaissait définitivement. */
+  async function _chargerHistorique() {
+    const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
+    if (!tok) { console.warn('[historique] pas de session — liste non chargée'); return; }
+    let gens = [];
+    try {
+      const r = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+        body: JSON.stringify({ mode: 'list_generations' })
+      });
+      gens = (await r.json())?.generations || [];
+    } catch (e) { console.warn('[historique] liste indisponible :', e.message); return; }
+    console.log(`[historique] ${gens.length} génération(s)`);
+    if (!gens.length) return;
+
+    const hote = document.getElementById('state-upload');
+    if (!hote) return;
+    /* #state-upload.active est un flex EN LIGNE (align/justify center) : ajouter la grille en
+       ferait un second élément posé À CÔTÉ du formulaire, par-dessus les exemples flottants.
+       On bascule en colonne dès qu'il y a un historique — le formulaire reste centré, la grille
+       passe dessous. Ancrage en haut, sinon le contenu déborde hors de l'écran par le haut. */
+    hote.style.flexDirection = 'column';
+    hote.style.justifyContent = 'flex-start';
+    hote.style.paddingTop = '6vh';
+    document.getElementById('historique-generations')?.remove();
+    const bloc = document.createElement('div');
+    bloc.id = 'historique-generations';
+    bloc.style.cssText = 'max-width:900px;margin:40px auto 0;padding:0 16px 32px;box-sizing:border-box;position:relative;z-index:2';
+    bloc.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:#9ca3af;margin-bottom:12px;letter-spacing:.02em">TES VIDÉOS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px">
+        ${gens.map(g => {
+          const d = new Date(g.created_at);
+          const quand = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          const nom = (g.nom || 'Vidéo').replace(/[<>&"]/g, '');   // titre venu de YouTube → jamais injecté brut
+          // Miniature servie par YouTube : rien à stocker de notre côté, et elle existe déjà.
+          // Repli sur l'URL quand video_id n'a pas été enregistré — sans ça, carte noire.
+          const vid = g.video_id ||
+            (g.youtube_url || '').match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/)?.[1] || '';
+          const vignette = vid
+            ? `<img src="https://i.ytimg.com/vi/${encodeURIComponent(vid)}/hqdefault.jpg" alt=""
+                    loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block"
+                    onerror="this.style.display='none'">`
+            : `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.35">🎬</span>`;
+          return `<button onclick="V2._ouvrirGeneration('${g.id}')" title="${nom}"
+              style="text-align:left;background:transparent;border:none;padding:0;cursor:pointer;color:#fff;min-width:0">
+              <span style="display:block;position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#0d1512;border:1px solid #1f2e26">
+                ${vignette}
+                <span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px">${g.nb_clips} clips</span>
+              </span>
+              <span style="display:block;font-size:13px;font-weight:700;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nom}</span>
+              <span style="display:block;font-size:11px;color:#6b7280;margin-top:2px">${quand}</span>
+            </button>`;
+        }).join('')}
+      </div>`;
+    hote.appendChild(bloc);
+  }
+
   function _checkRecovery() {
     try {
       const raw = localStorage.getItem('creatis_last_analysis');
@@ -1082,8 +1557,19 @@ const V2 = (() => {
       const data = JSON.parse(raw);
       const age = Date.now() - (data.ts || 0);
       if (age > 4 * 3600 * 1000 || !data.clips?.length) { localStorage.removeItem('creatis_last_analysis'); return; }
+      /* Déjà dans l'historique serveur ? Alors la grille « Tes vidéos » fait le même travail en
+         mieux (toutes les analyses, sans limite de durée, depuis n'importe quel appareil) et ce
+         bandeau ne ferait que doubler l'information en mangeant le bas de l'écran.
+         On ne le garde que comme filet : analyse non enregistrée (hors ligne, non connecté). */
+      if (data.generationId) return;
       const ageMin = Math.floor(age / 60000);
       const ageStr = ageMin < 60 ? `il y a ${ageMin} min` : `il y a ${Math.floor(ageMin/60)}h`;
+      /* Une analyse venue d'un lien YouTube n'a AUCUN fichier local à ré-attacher : la source se
+         retélécharge depuis YouTube. Lui présenter un sélecteur de fichier (le cas historique)
+         rendait le bouton inopérant — l'utilisateur annulait, `if (!f) return` sortait, et rien
+         ne se passait. Signalé le 03/08/2026 : « le bouton reprendre ça fonctionne pas ». */
+      const estYoutube = !!(data.ytUrl || data.clips?.[0]?.video_id);
+      const styleBtn = 'background:#10b981;color:#000;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap';
       const banner = document.createElement('div');
       banner.id = 'recovery-banner';
       banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:200;background:#0d1f17;border-top:1px solid #10b981;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;';
@@ -1092,10 +1578,12 @@ const V2 = (() => {
           🎬 <strong style="color:#fff">${data.clips.length} clips</strong> — <span style="color:#10b981">${data.name.substring(0,30)}${data.name.length>30?'…':''}</span> <span style="color:#6b7280;font-size:11px">${ageStr}</span>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
-          <label style="background:#10b981;color:#000;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap">
-            Reprendre →
-            <input type="file" accept="video/*" style="display:none" onclick="this.value=''" onchange="V2._reattachAndRestore(this)">
-          </label>
+          ${estYoutube
+            ? `<button onclick="V2._restoreAnalysis()" style="${styleBtn}">Reprendre →</button>`
+            : `<label style="${styleBtn}">
+                 Reprendre →
+                 <input type="file" accept="video/*" style="display:none" onclick="this.value=''" onchange="V2._reattachAndRestore(this)">
+               </label>`}
           <button onclick="document.getElementById('recovery-banner').remove();localStorage.removeItem('creatis_last_analysis')" style="background:transparent;color:#6b7280;border:none;font-size:20px;cursor:pointer;line-height:1;padding:0 4px">×</button>
         </div>`;
       const upload = document.getElementById('state-upload');
@@ -1162,7 +1650,14 @@ const V2 = (() => {
       _userPlan = data.plan || _userPlan;
       _clipSegmentIds = data.segmentIds || {};
       _thumbs = data.thumbs || {};
+      // Restaure la source YouTube — sinon renderStudio() ne lance pas le préchargement des
+      // segments et l'utilisateur retombe sur "Téléchargement du clip…" au premier clic.
+      _ytUrl = data.ytUrl || (data.clips?.[0]?.video_id ? `https://youtu.be/${data.clips[0].video_id}` : '');
       document.getElementById('recovery-banner')?.remove();
+      // Une analyse restaurée depuis le localStorage n'a jamais été envoyée au serveur : sans
+      // ça, tout ce qui a été généré avant l'historique resterait invisible et disparaîtrait
+      // à l'expiration des 4 h. On la sauvegarde à la volée, une seule fois.
+      _sauverGenerationSiAbsente(data.name || 'Vidéo', data.clips, data.segments);
       renderStudio(data.name || 'Vidéo');
       // Injecter les thumbnails sauvegardées
       if (data.thumbs) {
@@ -1194,6 +1689,15 @@ const V2 = (() => {
     window.scrollTo(0, 0);
     if (id === 'upload') {
       _historyPushed = false;
+      // Retour à l'écran d'upload = analyse finie, annulée ou en erreur : on réarme l'écoute
+      // ici plutôt que dans restart(), qui n'est qu'un des huit chemins de retour.
+      if (_ml && _pauseEcoute) { _pauseEcoute = false; setTimeout(mlDemarrer, 400); }
+      else _pauseEcoute = false;
+      // Retour à l'écran d'upload = l'analyse est finie, annulée ou tombée en erreur : on
+      // réarme l'écoute mains libres ici plutôt que dans restart(), qui n'est qu'un des huit
+      // chemins de retour. Sur un échec d'analyse, la case serait restée cochée sans micro.
+      if (_ml && _pauseEcoute) { _pauseEcoute = false; setTimeout(mlDemarrer, 400); }
+      else _pauseEcoute = false;
     } else if (!_historyPushed) {
       // Un seul point de reprise : le premier retour navigateur depuis n'importe quel état de
       // l'app ramène à l'écran d'upload (clips générés conservés en mémoire) au lieu de quitter
@@ -1203,7 +1707,28 @@ const V2 = (() => {
     }
   }
 
+  let _modalHistoryPushed = false;
+
   window.addEventListener('popstate', () => {
+    /* PRIORITÉ À LA MODALE. Sur téléphone, le Retour depuis l'éditeur d'un clip doit simplement
+       refermer l'éditeur et redonner la grille des 10 clips. Avant, ce handler renvoyait à l'écran
+       d'upload SANS fermer la modale : les clips disparaissaient derrière une modale restée
+       ouverte, l'utilisateur croyait avoir tout perdu — et quittait. C'était le réflexe le plus
+       naturel du mobile qui cassait le parcours juste avant l'export. */
+    if (_modalIdx !== null) {
+      _modalHistoryPushed = false;   // notre entrée vient d'être dépilée par le navigateur
+      _fermerModalDom();
+      return;
+    }
+    /* JAMAIS de retour à l'écran d'upload tant que des clips sont à l'écran. Sur Chrome Android,
+       lancer la lecture d'une vidéo empile une entrée d'historique (passage en plein écran) ; en
+       sortant, un `popstate` arrivait ici et renvoyait à l'upload — les 10 clips disparaissaient
+       alors que l'utilisateur avait juste appuyé sur Play. Il croyait avoir tout perdu.
+       Tant qu'il y a des clips, on reste sur la grille, quoi qu'il arrive. */
+    if (_clips.length) {
+      if (_currentState !== 'studio') setState('studio');
+      return;
+    }
     if (_currentState !== 'upload') setState('upload');
   });
 
@@ -1270,7 +1795,27 @@ const V2 = (() => {
     spawnBox();
   }
 
+  /* Chronomètre de l'analyse. Affiche le temps écoulé et un repère honnête tiré des mesures
+     réelles (médiane 49 s, p90 115 s sur le chemin YouTube). Passé 2 min, le ton change pour dire
+     que c'est anormalement long — mieux vaut l'annoncer que laisser croire à un blocage. */
+  let _chronoTimer = null;
+  function _startChrono() {
+    const t0 = Date.now();
+    const el = document.getElementById('analyze-elapsed');
+    const eta = document.getElementById('analyze-eta');
+    if (eta) { eta.textContent = 'habituellement 30 s à 1 min 30'; eta.style.color = '#8A93A3'; }
+    clearInterval(_chronoTimer);
+    _chronoTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - t0) / 1000);
+      if (el) el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      if (eta && s === 95) { eta.textContent = 'un peu plus long que d\'habitude — on continue'; eta.style.color = '#f59e0b'; }
+      if (eta && s === 150) { eta.textContent = 'vidéo longue — ne ferme pas la page'; eta.style.color = '#f59e0b'; }
+    }, 1000);
+  }
+  function _stopChrono() { clearInterval(_chronoTimer); _chronoTimer = null; }
+
   function _stopScanAnim() {
+    _stopChrono();
     _scanIntervals.forEach(clearTimeout);
     _scanIntervals = [];
     const vid = document.getElementById('ai-scan-video');
@@ -1640,6 +2185,347 @@ const V2 = (() => {
     }
   }
 
+  /* ─── COMMANDE VOCALE ───────────────────────────────────────────────
+     « va me chercher la dernière vidéo de Yomi Denzel » → URL → analyse.
+     La reconnaissance est faite par le navigateur (Web Speech API, gratuit) ;
+     seule la résolution du nom passe par notre API. Le channelId est mémorisé
+     en local car la recherche par nom coûte 100 unités de quota YouTube sur
+     les 10 000 quotidiennes du site — la 2ᵉ demande sur le même créateur n'en
+     coûte que 2. */
+  const VOIX_CACHE = 'creatis_voix_chaines';
+  let _reco = null, _ecoute = false;
+
+  function voixStatut(txt, erreur) {
+    const el = document.getElementById('voix-statut');
+    if (!el) return;
+    el.textContent = txt || '';
+    el.classList.toggle('err', !!erreur);
+  }
+
+  function voixEtat(actif) {
+    _ecoute = actif;
+    document.getElementById('btn-voix')?.classList.toggle('ecoute', actif);
+  }
+
+  // « va me chercher la dernière vidéo de Yomi Denzel » → « yomi denzel »
+  function voixExtraireNom(phrase) {
+    let t = (phrase || '').toLowerCase().replace(/[.,!?;:]/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/\b(s'?il te pla[iî]t|steuplait|merci)\b/g, ' ').trim();
+    // « … de X » / « … chez X » : on prend tout ce qui suit. Le \b évite que
+    // « dernière » soit lu comme un « de ».
+    const m = t.match(/\b(?:de|du|des|chez)\b\s+(.+)$/) || t.match(/\bd'(.+)$/);
+    if (m && /\b(vid[ée]o|clip|short|cha[iî]ne|derni|nouvel|cherch|analys|trouv)/.test(t)) {
+      t = m[1];
+    } else {
+      t = t.replace(/^(?:va me chercher|va chercher|cherche moi|cherche|trouve moi|trouve|donne moi|donne|prends|prend|fais|analyse)\s+/, '');
+    }
+    // « fais des clips de X » fait matcher le « des » de « des clips » : on retire
+    // les mots outils APRÈS coup, autant de fois qu'ils se répètent en tête.
+    return t.replace(/\b(?:derni[èe]re?|nouvelle?|nouveau)\s+(?:vid[ée]o|clip|short)s?\b/g, '')
+            .replace(/\b(?:vid[ée]o|clips?|shorts?|cha[iî]ne)\b/g, '')
+            .replace(/^\s*(?:(?:de|du|des|chez|la|le|les)\s+|l'|d')+/g, '')
+            .replace(/\s+/g, ' ').trim();
+  }
+
+  function voiceStart() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast('❌ Ton navigateur ne gère pas la dictée — utilise Chrome, Edge ou Safari', 'erreur'); return; }
+    // En mains libres le micro tourne déjà : un 2ᵉ SpeechRecognition lèverait InvalidStateError.
+    // Le clic vaut alors « je te parle maintenant » — on saute le mot de réveil.
+    if (_ml) { _attenteCmd = Date.now(); voixStatut('🎙 Je t\'écoute — dis le nom du créateur'); return; }
+    if (_ecoute) { try { _reco.stop(); } catch {} return; }
+
+    _reco = new SR();
+    _reco.lang = 'fr-FR';
+    _reco.continuous = false;
+    _reco.interimResults = true;
+    _reco.maxAlternatives = 1;
+
+    let phrase = '';
+    _reco.onstart = () => { voixEtat(true); voixStatut('🎙 Je t\'écoute — « la dernière vidéo de… »'); };
+    _reco.onresult = (e) => {
+      phrase = Array.from(e.results).map(r => r[0].transcript).join(' ');
+      if (!e.results[e.results.length - 1].isFinal) voixStatut('🎙 ' + phrase);
+    };
+    _reco.onerror = (e) => {
+      voixEtat(false);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        voixStatut('Micro refusé — autorise-le dans les réglages du navigateur, puis réessaie', true);
+      } else if (e.error === 'no-speech') {
+        voixStatut('Je n\'ai rien entendu — reclique et parle après le bip', true);
+      } else if (e.error === 'network') {
+        voixStatut('La dictée n\'a pas pu joindre le service de reconnaissance — réessaie', true);
+      } else if (e.error !== 'aborted') {
+        voixStatut('Dictée interrompue (' + e.error + ') — réessaie', true);
+      }
+    };
+    _reco.onend = () => { voixEtat(false); if (phrase.trim()) voixTraiter(phrase); };
+
+    try { _reco.start(); }
+    catch { voixStatut('Dictée déjà en cours', true); }
+  }
+
+  /* ─── MAINS LIBRES : mot de réveil « Créatis » ──────────────────────
+     Écoute continue tant que la case est cochée. Le navigateur coupe la session
+     après quelques secondes de silence — d'où le redémarrage dans onend.
+     Jamais actif par défaut : un micro ouvert en permanence sans l'avoir demandé
+     n'est pas acceptable, et Chrome laisse la pastille d'enregistrement allumée. */
+  const ML_PREF = 'creatis_voix_mains_libres';
+  const TTS_PREF = 'creatis_voix_reponses';
+  const DELAI_ANNULATION = 4;   // secondes pour annuler avant que l'analyse parte
+  let _ml = false, _mlReco = null, _attenteCmd = 0, _mlTimer = null, _dernierDeclench = 0;
+  let _tts = true, _voixTTS = null, _parle = false, _viaVoix = false, _pauseEcoute = false;
+
+  /* ─── RÉPONSES VOCALES (speechSynthesis, natif navigateur, gratuit) ───
+     Le micro entendrait la page se parler à elle-même : on le coupe pendant la phrase et
+     on le relance après. C'est aussi pour ça que mlDemarrer() refuse de démarrer tant que
+     _parle est vrai. */
+  function ttsVoixFr() {
+    if (_voixTTS || !window.speechSynthesis) return _voixTTS;
+    const dispo = speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
+    _voixTTS = dispo.find(v => v.localService) || dispo[0] || null;   // locale = pas de latence
+    return _voixTTS;
+  }
+
+  function voixParler(texte, apres) {
+    const fini = () => { _parle = false; if (_ml && !document.hidden) mlDemarrer(); if (apres) apres(); };
+    if (!_tts || !window.speechSynthesis || !texte) { if (apres) apres(); return; }
+    try {
+      speechSynthesis.cancel();
+      _parle = true;
+      try { _mlReco && _mlReco.abort(); } catch {}
+      _mlReco = null;
+      const u = new SpeechSynthesisUtterance(texte);
+      const v = ttsVoixFr(); if (v) u.voice = v;
+      u.lang = 'fr-FR'; u.rate = 1.05;
+      u.onend = fini;
+      u.onerror = fini;
+      speechSynthesis.speak(u);
+      // Filet : si onend ne part jamais (bug connu de Chrome sur les phrases longues), on ne
+      // laisse pas le micro éteint indéfiniment.
+      setTimeout(() => { if (_parle) fini(); }, Math.min(2000 + texte.length * 90, 15000));
+    } catch { fini(); }
+  }
+
+  function voiceReponses(actif) {
+    _tts = !!actif;
+    try { localStorage.setItem(TTS_PREF, _tts ? '1' : '0'); } catch {}
+    const c = document.getElementById('voix-tts-case'); if (c) c.checked = _tts;
+    if (!_tts && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch {} }
+    else if (_tts) voixParler('Je te réponds à voix haute.');
+  }
+
+  // Coupe l'écoute pour toute la durée de l'analyse. setState('upload') la réarme.
+  function voixCouperEcoute() {
+    _pauseEcoute = true;
+    try { _mlReco && _mlReco.abort(); } catch {}
+    _mlReco = null;
+  }
+
+  function voixAnnulerLancement() {
+    if (!_mlTimer) return false;
+    clearInterval(_mlTimer); _mlTimer = null;
+    _viaVoix = false;
+    voixStatut('Analyse annulée');
+    voixParler('C\'est annulé.');
+    return true;
+  }
+
+  // Chrome transcrit « Créatis » de plusieurs façons — on compare sans accents.
+  const RE_REVEIL = /\b[ck]rea\s?ti(?:s|ss|ce|z)e?\b/;
+  // « créatif » / « créative » sont des transcriptions plausibles de Créatis, mais aussi des
+  // mots français courants : on ne les accepte que suivis d'une vraie intention, sinon
+  // « il faut être créatif dans la vie » lancerait une recherche.
+  const RE_REVEIL_FLOU = /\b[ck]reati(?:f|ve)s?\b/;
+  const RE_INTENTION = /\b(?:videos?|clips?|shorts?|chaine|derni[eè]re?|dernier|nouvelles?|nouveau|cherche|trouve|analyse)\b/;
+
+  function sansAccents(t) {
+    return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  function voiceMainsLibres(actif) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (actif && !SR) { toast('❌ Ton navigateur ne gère pas la dictée', 'erreur'); return; }
+    _ml = !!actif;
+    try { localStorage.setItem(ML_PREF, _ml ? '1' : '0'); } catch {}
+    const bloc = document.getElementById('voix-ml');
+    const case_ = document.getElementById('voix-ml-case');
+    if (bloc) bloc.classList.toggle('actif', _ml);
+    if (case_) case_.checked = _ml;
+
+    if (!_ml) {
+      try { _mlReco && _mlReco.abort(); } catch {}
+      _mlReco = null; _attenteCmd = 0;
+      voixStatut('');
+      return;
+    }
+    mlDemarrer();
+  }
+
+  function mlDemarrer() {
+    // _parle : la page est en train de parler, elle s'entendrait elle-même.
+    // _pauseEcoute : une analyse tourne — écouter garderait la pastille d'enregistrement
+    // allumée pour rien, et un « Créatis » de trop lancerait une 2ᵉ analyse par-dessus.
+    if (!_ml || _mlReco || _parle || _pauseEcoute) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    _mlReco = new SR();
+    _mlReco.lang = 'fr-FR';
+    _mlReco.continuous = true;
+    _mlReco.interimResults = true;
+    _mlReco.maxAlternatives = 1;
+
+    _mlReco.onstart = () => voixStatut('🎙 En veille — dis « Créatis »');
+    _mlReco.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) mlPhrase(e.results[i][0].transcript);
+      }
+    };
+    _mlReco.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        voiceMainsLibres(false);
+        voixStatut('Micro refusé — autorise-le dans les réglages du navigateur', true);
+      }
+      // no-speech / aborted / network : onend relance, rien à dire à l'utilisateur
+    };
+    _mlReco.onend = () => {
+      _mlReco = null;
+      // Le navigateur coupe tout seul après un silence : on relance tant que la case est cochée,
+      // que l'onglet est visible (sinon on écoute en arrière-plan pour rien) et que la page
+      // n'est pas en train de parler.
+      if (_ml && !document.hidden && !_parle) setTimeout(mlDemarrer, 400);
+    };
+
+    try { _mlReco.start(); }
+    catch { _mlReco = null; }
+  }
+
+  function mlPhrase(brut) {
+    const t = sansAccents(brut).trim();
+    if (!t) return;
+    // « annuler » pendant le compte à rebours : pas besoin du mot de réveil, on vient de lui
+    // dire de le dire.
+    if (_mlTimer && /\b(?:annule|annuler|annulation|stop|arrete|arreter|non)\b/.test(t)) {
+      voixAnnulerLancement(); return;
+    }
+    if (Date.now() - _dernierDeclench < 3000) return;   // anti-double déclenchement
+
+    const armee = _attenteCmd && (Date.now() - _attenteCmd < 10000);
+    let m = t.match(RE_REVEIL);
+    if (!m && RE_INTENTION.test(t)) m = t.match(RE_REVEIL_FLOU);
+    if (!m && !armee) return;                            // pas pour nous
+
+    // Ce qui suit le mot de réveil est la commande ; si la phrase s'arrête là, on s'arme
+    const suite = m ? t.slice(m.index + m[0].length).replace(/^[\s,.:]+/, '') : t;
+    if (voixExtraireNom(suite).length < 2) {
+      _attenteCmd = Date.now();
+      voixStatut('🎙 Oui ? — « la dernière vidéo de… »');
+      voixParler('Oui ?');
+      return;
+    }
+    _attenteCmd = 0;
+    _dernierDeclench = Date.now();
+    voixTraiter(suite, true);
+  }
+
+  // Analyse déclenchée à la voix : fenêtre d'annulation avant de consommer une vidéo du quota.
+  function voixLancerDiffere(data) {
+    clearInterval(_mlTimer);
+    const el = document.getElementById('voix-statut');
+    if (!el) { startAnalyze(); return; }
+    let reste = DELAI_ANNULATION;
+    const rendu = () => {
+      el.classList.remove('err');
+      el.textContent = '▶ ' + data.channel_title + ' — « ' + data.title + ' » · analyse dans ' + reste + ' s ';
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'voix-annuler'; b.textContent = 'Annuler';
+      b.onclick = () => voixAnnulerLancement();
+      el.appendChild(b);
+    };
+    rendu();
+    _mlTimer = setInterval(() => {
+      reste--;
+      if (reste > 0) { rendu(); return; }
+      clearInterval(_mlTimer); _mlTimer = null;
+      voixStatut('▶ Analyse lancée — ' + data.title);
+      voixCouperEcoute();
+      startAnalyze();
+    }, 1000);
+  }
+
+  async function voixTraiter(phrase, mainsLibres) {
+    const nom = voixExtraireNom(phrase);
+    if (!nom || nom.length < 2) {
+      voixStatut('Compris « ' + phrase.trim() +' » — dis plutôt « la dernière vidéo de <nom de la chaîne> »', true);
+      voixParler('Je n\'ai pas saisi le nom. Dis : la dernière vidéo de, puis le nom de la chaîne.');
+      return;
+    }
+
+    voixStatut('🔎 Je cherche la dernière vidéo de ' + nom + '…');
+    voixParler('Je cherche la dernière vidéo de ' + nom + '.');
+    let cache = {};
+    try { cache = JSON.parse(localStorage.getItem(VOIX_CACHE) || '{}'); } catch {}
+    const cle = nom.toLowerCase();
+
+    const corps = { type: 'latest-video', query: nom, minDuration: 300 };
+    if (cache[cle]) corps.channelId = cache[cle];
+
+    let data;
+    try {
+      const r = await fetch('/api/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corps)
+      });
+      data = await r.json();
+      if (!r.ok) {
+        voixStatut(data?.error || 'Recherche impossible', true);
+        // On annonce l'échec en clair : en mains libres, l'utilisateur ne regarde pas
+        // forcément l'écran.
+        voixParler(/aucune chaîne/i.test(data?.error || '')
+          ? 'Je n\'ai pas trouvé de chaîne au nom de ' + nom + '.'
+          : (data?.error || 'La recherche a échoué.'));
+        return;
+      }
+    } catch (e) {
+      voixStatut('Recherche impossible : ' + e.message, true);
+      voixParler('La recherche a échoué.');
+      return;
+    }
+
+    if (data.channel_id) { cache[cle] = data.channel_id; try { localStorage.setItem(VOIX_CACHE, JSON.stringify(cache)); } catch {} }
+
+    const input = document.getElementById('yt-url-input');
+    if (input) input.value = data.url;
+    onUrlInput(data.url);
+    if (window.posthog) try { posthog.capture('commande_vocale', { chaine: data.channel_title, duree: data.duration_seconds, mains_libres: !!mainsLibres }); } catch {}
+
+    _viaVoix = true;   // → la fin d'analyse sera annoncée à voix haute
+    const mn = Math.round(data.duration_seconds / 60);
+    // Les titres YouTube sont pleins d'emojis, de hashtags et de « | chaîne » : lus à voix
+    // haute ça donne du charabia. On ne garde que la partie prononçable.
+    const titreParle = (data.title || '').replace(/[#|].*$/, '')
+      .replace(/[^\p{L}\p{N}\s',.:!?-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+    const annonce = 'J\'ai trouvé : ' + titreParle + ', de ' + data.channel_title
+      + ', ' + mn + ' minute' + (mn > 1 ? 's' : '') + '. ';
+
+    // Au clic sur le micro l'intention est explicite → on lance. En mains libres un mot de
+    // réveil mal entendu ne doit pas brûler une vidéo du quota → fenêtre d'annulation, qui ne
+    // démarre qu'à la fin de la phrase (sinon l'analyse partirait avant qu'il ait fini
+    // d'annoncer qu'on peut l'annuler).
+    if (mainsLibres) {
+      voixParler(annonce + 'Je lance l\'analyse. Dis annuler pour arrêter.',
+                 () => voixLancerDiffere(data));
+      return;
+    }
+
+    const sc = data.duration_seconds % 60;
+    voixStatut('▶ ' + data.channel_title + ' — « ' + data.title + ' » ('
+      + Math.floor(data.duration_seconds / 60) + ' min ' + String(sc).padStart(2, '0') + ') — analyse lancée');
+    voixCouperEcoute();
+    voixParler(annonce + 'J\'analyse.');
+    startAnalyze();
+  }
+
   function onWatermarkSelect(input) {
     const f = input.files?.[0];
     if (!f) return;
@@ -1729,8 +2615,8 @@ const V2 = (() => {
     ov.innerHTML = `
       <div style="background:#10141C;border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:36px 32px;max-width:400px;width:90%;text-align:center;">
         <div style="font-size:28px;margin-bottom:8px">⚡</div>
-        <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:6px;color:#f2f4f7">1 essai gratuit</h2>
-        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Connecte-toi en 1 clic pour générer tes clips viraux. Sans carte bancaire.</p>
+        <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:6px;color:#f2f4f7">Analyse gratuite</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Connecte-toi en 1 clic : l'IA analyse ta vidéo et te montre tes clips. Sans carte bancaire.</p>
         <button onclick="window._authGoogle()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:#fff;color:#111;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px;">
           <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Continuer avec Google
@@ -1794,6 +2680,7 @@ const V2 = (() => {
     localStorage.removeItem('creatis_transcribe_job'); // consommé — évite une boucle de reprise si ça échoue encore
     setState('analyze');
     _startScanAnim();
+    _startChrono();
     const setStep = i => { for (let k = 1; k <= 5; k++) { const el = document.getElementById(`as-${k}`); if (!el) continue; el.classList.toggle('active', k === i); el.classList.toggle('done', k < i); } };
     const setBar = p => { const el = document.getElementById('analyze-bar'); if (el) el.style.width = p + '%'; };
     const setMsg = t => { const el = document.getElementById('analyze-msg'); if (el) el.textContent = t; };
@@ -1811,7 +2698,7 @@ const V2 = (() => {
         mode: 'clips', segments: _segments, video_id: `local_${Date.now()}`, title: nameNoExt,
         duration: transcribeData.duration, n_clips: 10, energy_peaks: transcribeData.energy_peaks || []
       }) });
-      const clipsData = await clipsRes.json();
+      const clipsData = await _lireReponseJson(clipsRes, 'identification des clips');
       if (!clipsData.ok) throw new Error(clipsData.error || 'Erreur identification clips');
       _clips = clipsData.result.clips || [];
       if (window.posthog) posthog.capture('clips_generated', { count: _clips.length, source: 'file', plan: _userPlan, resumed: true });
@@ -1852,6 +2739,7 @@ const V2 = (() => {
     if (_pw) _pw.style.display = 'none';
     setState('analyze');
     _startScanAnim();
+    _startChrono();
     // Marqueur d'analyse en cours — si la page recharge sans qu'il soit nettoyé (onglet mobile
     // suspendu/tué par l'OS en arrière-plan), on peut expliquer à l'utilisateur ce qui s'est passé
     // au lieu de le renvoyer silencieusement sur l'écran d'upload.
@@ -1900,11 +2788,33 @@ const V2 = (() => {
         stepLabels.forEach((txt, i) => { const el = document.getElementById(`as-${i+1}`); if (el) el.textContent = txt; });
         setStep(1); setBar(20);
         setMsg('Récupération des sous-titres / téléchargement audio…');
-        const res = await fetch('/api/repurpose', {
-          method: 'POST', headers,
-          body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
-        });
-        const data = await res.json();
+        /* PAS de coupure côté client — volontairement. J'en avais ajouté une le 30/07 (100 s puis
+           140 s) en croyant que Vercel tuait la fonction à 15 s. C'était faux : le matin même, une
+           analyse de 230 s avait abouti normalement. Ma limite ne protégeait donc de rien, elle
+           coupait du travail qui allait réussir — et transformait une attente longue en échec.
+           La réponse à « c'est trop long », c'est le chronomètre affiché sous la barre de
+           progression, pas un couperet. */
+        /* L'analyse YouTube est UNE requête opaque de 30 à 90 s : sans animation, la barre reste
+           bloquée à 20 % tout du long et l'utilisateur croit que c'est planté — il recharge, et il
+           perd tout (mesuré : 19 personnes). On fait donc avancer la barre en continu, et on fait
+           défiler les étapes aux moments où elles se produisent réellement côté serveur (médianes
+           mesurées : sous-titres ~15 s, puis identification des clips). */
+        let _pct = 20, _tick = null, _t0 = Date.now();
+        _tick = setInterval(() => {
+          const s = (Date.now() - _t0) / 1000;
+          _pct += Math.max(0.25, (88 - _pct) * 0.035);   // approche asymptotique de 88 %
+          setBar(Math.round(Math.min(88, _pct)));
+          if (s > 14 && s < 15.5) { setStep(3); setMsg('Identification des meilleurs moments…'); }
+          else if (s > 45 && s < 46.5) { setMsg('Analyse en cours — vidéo longue, on continue…'); }
+        }, 700);
+        let res;
+        try {
+          res = await fetch('/api/repurpose', {
+            method: 'POST', headers,
+            body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
+          });
+        } finally { clearInterval(_tick); }
+        const data = await _lireReponseJson(res, 'analyse YouTube');
         if (!data.ok) {
           if (data.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
           throw new Error(data.error || 'Erreur analyse YouTube');
@@ -1916,7 +2826,9 @@ const V2 = (() => {
         // Injecter video_id (11 chars) sur chaque clip pour l'export Railway
         const _ytVid = _ytVideoId();
         if (_ytVid) _clips = _clips.map(c => ({ ...c, video_id: _ytVid }));
-        if (window.posthog) { posthog.capture('clips_generated', { count: _clips.length, source: 'youtube', plan: _userPlan, generation_time_ms: Date.now() - _genStart }); if (_repurposeCount === 0) posthog.capture('first_upload_completed', { plan: _userPlan, source: 'youtube' }); }
+        // Les temps serveur (_temps) accompagnent l'événement : c'est ce qui permet de savoir OÙ
+        // part la durée — sous-titres, Whisper de secours, ou identification des clips.
+        if (window.posthog) { posthog.capture('clips_generated', { count: _clips.length, source: 'youtube', plan: _userPlan, generation_time_ms: Date.now() - _genStart, ...(data._temps || {}) }); if (_repurposeCount === 0) posthog.capture('first_upload_completed', { plan: _userPlan, source: 'youtube' }); }
         _saveAnalysisAndNotify(_clips, _segments, data.result.title || 'Vidéo YouTube');
         renderStudio(data.result.title || 'Vidéo YouTube');
 
@@ -1950,6 +2862,13 @@ const V2 = (() => {
             });
             audioBlob = new Blob([rawData.buffer], { type: 'audio/mpeg' });
           }
+        } else if (_onMobileNative) {
+          /* Sur mobile au-delà de 150 Mo : l'extraction native ne passe pas, et le repli
+             ffmpeg.wasm est désactivé depuis le correctif anti-crash (il tuait l'onglet). On
+             tombait donc dans une erreur SANS message — 8 échecs mesurés sur Android, dont 5
+             d'affilée chez un utilisateur qui revenait depuis deux jours. On l'annonce et on
+             propose la sortie plutôt que d'échouer en silence. */
+          throw new Error(`Cette vidéo fait ${(_file.size/1048576).toFixed(0)} Mo — trop lourde pour être traitée depuis un téléphone (limite 150 Mo). Colle plutôt le lien YouTube de ta vidéo, ou réessaie depuis un ordinateur.`);
         } else {
           setMsg(`Fichier lourd (${(_file.size/1e9).toFixed(1)} Go) — extraction en cours…`);
           const rawData = await extractAudio(_file, (pct) => {
@@ -2016,7 +2935,7 @@ const V2 = (() => {
           title: _file.name.replace(/\.[^.]+$/, ''), duration: transcribeData.duration, n_clips: N_FINAL + 6,
           energy_peaks: transcribeData.energy_peaks || []
         }) });
-        const clipsData = await clipsRes.json();
+        const clipsData = await _lireReponseJson(clipsRes, 'identification des clips');
         if (!clipsData.ok) {
           if (clipsData.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
           throw new Error(clipsData.error || 'Erreur identification clips');
@@ -2063,8 +2982,32 @@ const V2 = (() => {
       }
 
     } catch(err) {
-      if (window.posthog) { posthog.capture('analysis_error', { message: err.message, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file' }); posthog.capture('generation_failed', { plan: _userPlan, reason: err.message?.substring(0, 100), source: _ytUrl ? 'youtube' : 'file' }); }
-      toast(`❌ ${err.message}`, 'erreur', 8000);
+      // « Failed to fetch » / « Load failed » sont les messages bruts du navigateur quand la
+      // connexion à un service est coupée net — typiquement pendant un redéploiement Railway, ou
+      // sur une bascule wifi/4G. Tel quel, l'utilisateur lit un jargon anglais et croit que son
+      // fichier est en cause : mesuré, 8 occurrences sur 3 jours, et un utilisateur a réessayé
+      // 4 fois de suite en changeant de vidéo avant que ça passe. On dit ce qui se passe et quoi faire.
+      const brut = String(err?.message || '');
+      const reseau = /failed to fetch|load failed|networkerror|erreur réseau/i.test(brut);
+      const message = reseau
+        ? 'Connexion au service d\'analyse interrompue. Ce n\'est pas ta vidéo — réessaie dans une minute.'
+        : (brut || 'Erreur inattendue pendant l\'analyse. Réessaie — si ça persiste, écris-nous.');
+      /* Un message vide ne dit RIEN. Cas réel : 5 échecs d'affilée en 1 seconde chez un même
+         utilisateur, `message` vide dans PostHog — impossible de savoir ce qui a cassé. On capture
+         désormais le type d'erreur, la 1re ligne de pile, l'étape affichée à l'écran au moment du
+         plantage, et le temps écoulé : de quoi identifier la cause sans avoir à reproduire. */
+      const _diag = {
+        message: brut,
+        err_nom: String(err?.name || typeof err),
+        pile: String(err?.stack || '').split('\n')[1]?.trim().slice(0, 160) || '',
+        etape: (document.getElementById('analyze-msg')?.textContent || '').slice(0, 90),
+        ms_ecoule: Date.now() - _genStart,
+        fichier_mo: _file ? Math.round(_file.size / 1048576) : null,
+        reseau, plan: _userPlan, source: _ytUrl ? 'youtube' : 'file'
+      };
+      console.error('[analyse] échec —', _diag);
+      if (window.posthog) { posthog.capture('analysis_error', _diag); posthog.capture('generation_failed', { ..._diag, reason: brut.substring(0, 100) }); }
+      toast(`❌ ${message}`, 'erreur', 8000);
       try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
       _stopScanAnim();
       setState('upload');
@@ -2147,6 +3090,12 @@ const V2 = (() => {
     _stopScanAnim();
     setState('studio');
     setTimeout(() => toast(`🎬 ${_clips.length} clips prêts — clique sur un clip pour personnaliser et télécharger`, 'succes', 5000), 600);
+    // Annonce parlée seulement si l'analyse a été lancée à la voix : une analyse démarrée au
+    // clavier n'a aucune raison de se mettre à parler.
+    if (_viaVoix) {
+      _viaVoix = false;
+      setTimeout(() => voixParler('C\'est prêt. ' + _clips.length + ' clips t\'attendent.'), 900);
+    }
     // Generate thumbnails + pré-analyser visages en arrière-plan
     // Mobile traité comme desktop : generateThumbnails() locale (<video>+<canvas>), une seule frame
     // à la fois, séquentiel — même logique que l'aperçu vidéo du modal qui s'est avéré stable sur
@@ -2335,46 +3284,75 @@ const V2 = (() => {
       <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:36px 32px;max-width:420px;width:90%;text-align:center;position:relative;">
         <button onclick="document.getElementById('paywall-modal').remove();if(window.posthog)posthog.capture('paywall_dismissed',{plan:'${_userPlan}'})" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
         <div style="font-size:36px;margin-bottom:12px">🚀</div>
-        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tu as utilisé ton essai gratuit</h2>
-        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:24px;line-height:1.5">Passe au Pro pour exporter tous tes clips — sans watermark, en illimité.</p>
-        <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:18px;margin-bottom:20px;text-align:left;">
-          <div style="font-size:1.8rem;font-weight:800;color:#f2f4f7;margin-bottom:4px">9,95€ <span style="font-size:0.85rem;color:#8A93A3;font-weight:500">le 1er mois</span></div>
-          <div style="font-size:0.78rem;color:#8A93A3;margin-bottom:12px">puis 19,90€/mois · résiliable à tout moment</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:0.8rem;color:#f2f4f7;">
-            <div>✓ Clips viraux illimités</div>
-            <div>✓ Sans watermark</div>
-            <div>✓ YouTube Complet</div>
-            <div>✓ Miniature Pro IA</div>
-            <div>✓ Recyclage contenu</div>
-            <div>✓ 30 idées de vidéos</div>
-            <div>✓ Réponses commentaires</div>
-            <div>✓ Analyse vidéo</div>
-            <div>✓ Assistant & Support</div>
-            <div>✓ 8 agents IA débloqués</div>
-          </div>
+        <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Tes clips sont prêts à télécharger</h2>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:20px;line-height:1.5">L'analyse et l'aperçu sont gratuits. Choisis un plan pour télécharger tes clips en 9:16, sous-titrés et sans watermark.</p>
+
+        <!-- Les 3 offres présentées ensemble : n'afficher que le Pro faisait fermer la modale au
+             prix-sensible au lieu de lui vendre le Starter, et masquait l'annuel (le meilleur ARPU). -->
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;text-align:left">
+
+          <button onclick="window._goToPro('starter')" class="pw-plan" style="border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Starter</span>
+              <span style="font-size:1.1rem;font-weight:800;color:#f2f4f7">9,95€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/mois</span></span>
+            </div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">20 clips par mois</div>
+          </button>
+
+          <button onclick="window._goToPro('pro')" class="pw-plan" style="border:1.5px solid #10b981;background:rgba(16,185,129,0.08);position:relative">
+            <span style="position:absolute;top:-8px;right:12px;background:#10b981;color:#04120b;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">LE PLUS CHOISI</span>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro</span>
+              <span style="font-size:1.3rem;font-weight:800;color:#f2f4f7">14€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/mois</span></span>
+            </div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">150 clips par mois · tous les outils IA</div>
+          </button>
+
+          <button onclick="window._goToPro('pro', true)" class="pw-plan" style="border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro Annuel</span>
+              <span style="font-size:1.1rem;font-weight:800;color:#f2f4f7">139€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/an</span></span>
+            </div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Tout le Pro · soit 11,58€/mois · 2 mois offerts</div>
+          </button>
+
         </div>
-        <button onclick="window._goToPro()" style="width:100%;padding:14px;background:linear-gradient(180deg,#10b981,#059669);color:#0a0f0a;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 8px 30px -8px rgba(16,185,129,0.4);">⚡ Passer au Pro</button>
-        <p style="font-size:11px;color:#8A93A3;margin-top:12px">Annule quand tu veux · Sans engagement</p>
+        <p style="font-size:11px;color:#8A93A3;margin-top:4px">Annule quand tu veux · Sans engagement</p>
       </div>
     `;
     document.body.appendChild(m);
   }
 
-  window._goToPro = function() {
-    if (window.posthog) posthog.capture('upgrade_clicked', { trigger: 'paywall', plan_from: _userPlan });
-    const planConfig = window.CONFIG?.PLANS?.pro;
-    if (planConfig?.stripeId) {
-      const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
-      sessionStorage.setItem('creatis_paiement', JSON.stringify({
-        priceId: planConfig.stripeId, plan: 'pro', annuel: false,
-        userId: currentUser.id || currentUser.email || null,
-        userEmail: currentUser.email || null
-      }));
-      (window.top || window).location.href = '/paiement.html';
-    } else {
-      // CONFIG absent dans clips-v2 → passer par auth.html qui charge config.js et lance le paiement
-      (window.top || window).location.href = '/auth.html?plan=pro';
+  window._goToPro = function(plan = 'pro', annuel = false) {
+    if (window.posthog) posthog.capture('upgrade_clicked', { trigger: 'paywall', plan_from: _userPlan, plan_to: plan, annuel });
+
+    /* Le plan voyage AUSSI dans l'URL, et la navigation se fait EN DERNIER, hors de tout ce qui
+       peut lever une exception. Trois pièges silencieux existaient ici, et le résultat était le
+       même à chaque fois : `upgrade_clicked` partait, puis plus rien — l'utilisateur restait sur
+       la modale en croyant que le bouton était mort. Mesuré : 0 arrivée sur /paiement.html en
+       30 jours alors que les clics étaient bien tracés.
+         1. `JSON.parse(localStorage...)` sans try/catch → un localStorage corrompu faisait échouer
+            la fonction AVANT la redirection.
+         2. `sessionStorage.setItem` peut lever (navigation privée Safari, stockage bloqué, quota).
+         3. Si CONFIG n'était pas encore chargé (script en `defer`), on partait sur auth.html —
+            une impasse pour quelqu'un déjà connecté. */
+    const url = `/paiement.html?plan=${encodeURIComponent(plan)}${annuel ? '&annuel=1' : ''}`;
+    try {
+      const planConfig = window.CONFIG?.PLANS?.[plan];
+      const priceId = annuel ? (planConfig?.stripeIdAnnuel || planConfig?.stripeId) : planConfig?.stripeId;
+      let currentUser = {};
+      try { currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch { currentUser = {}; }
+      if (priceId) {
+        sessionStorage.setItem('creatis_paiement', JSON.stringify({
+          priceId, plan, annuel,
+          userId: currentUser.id || currentUser.email || null,
+          userEmail: currentUser.email || null
+        }));
+      }
+    } catch (e) {
+      console.warn('[paiement] stockage indisponible — on passe par les paramètres d\'URL :', e?.message);
     }
+    try { (window.top || window).location.assign(url); } catch { window.location.assign(url); }
   };
   function closeUpgradeModal() {}
 
@@ -2382,6 +3360,23 @@ const V2 = (() => {
     // pas de blocage à l'ouverture — on bloque à l'export uniquement
     const clip = _clips[i];
     if (!clip) return;
+    /* Une entrée d'historique par ouverture d'éditeur : c'est elle que le bouton Retour du
+       téléphone consomme, ce qui referme la modale au lieu de faire dérailler toute l'app.
+       Une seule à la fois — passer d'un clip à l'autre ne doit pas empiler dix entrées. */
+    if (_modalIdx === null && !_modalHistoryPushed) {
+      try { history.pushState({ creatisClipModal: true }, '', location.href); _modalHistoryPushed = true; } catch {}
+    }
+    // DESKTOP (Klap) : déplace la timeline Edit en bas pleine largeur. appendChild garde l'élément,
+    // ses IDs et ses listeners → aucune fonction cassée. Idempotent. Mobile : on n'y touche pas.
+    try {
+      if (window.matchMedia('(min-width:661px)').matches) {
+        const _tb = document.getElementById('modal-timeline-bar'), _ct = document.getElementById('cadrage-timeline');
+        if (_tb && _ct && _ct.parentElement !== _tb) _tb.appendChild(_ct);
+        // Remonter les vues Split/Solo dans le panneau droit (bas = timeline fine, façon Klap)
+        const _mb = document.getElementById('cad-modes-block'), _rb = document.getElementById('cad-reset-btn');
+        if (_mb && _rb && _mb.parentElement !== _rb.parentElement) _rb.parentElement.insertBefore(_mb, _rb);
+      }
+    } catch {}
     if (window.posthog) posthog.capture('clip_opened', { clip_index: i, plan: _userPlan, clip_score: clip.score });
     // Reset preview précédent si on change de clip
     if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); _exportPreviewUrl = null; }
@@ -2395,6 +3390,13 @@ const V2 = (() => {
     if (!_isIOS() && !/Android/i.test(navigator.userAgent)) {
       _analyzeClipFaces(i);
       _showPodcastIfMultiFace(i);
+    }
+    // Desktop : tout est dans un seul panneau visible → on rend la timeline Edit et on surligne Edit
+    // dans le rail (sans scroller — le scroll ne se fait que sur clic du rail).
+    if (window.matchMedia('(min-width:661px)').matches) {
+      try { _syncCadrageHints(); document.querySelectorAll('.klap-rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'cadrage')); } catch {}
+      // Le sélecteur de langue est par clip : le remettre sur l'état réel du clip qu'on ouvre.
+      try { _majSubLangUI(_clipSettings[i]?.subLang || 'fr', ''); } catch {}
     }
     const sc = scoreColor(clip.score);
     const start = clip.start_time ?? clip.start;
@@ -2523,7 +3525,7 @@ const V2 = (() => {
     const wrap = document.getElementById('modal-player-wrap');
     const subOv = document.getElementById('modal-sub-overlay');
     const hookOv = document.getElementById('modal-hook-overlay');
-    if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX');
+    if (subOv && wrap) _setupDraggable(subOv, wrap, 'subY', 'subX'); // liberté totale : glisser dans les 2 axes, aperçu = export
     if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
     const subHandle = document.getElementById('modal-sub-handle');
     const hookHandle = document.getElementById('modal-hook-handle');
@@ -2658,7 +3660,7 @@ const V2 = (() => {
         clip._rawOffset = clipStart; // offset pour sous-titres
         const subOv  = document.getElementById('modal-sub-overlay');
         const hookOv = document.getElementById('modal-hook-overlay');
-        if (subOv  && wrap) _setupDraggable(subOv,  wrap, 'subY',  'subX');
+        if (subOv  && wrap) _setupDraggable(subOv,  wrap, 'subY',  'subX'); // liberté totale (aperçu = export)
         if (hookOv && wrap) _setupDraggable(hookOv, wrap, 'hookY', 'hookX');
         const subHandle  = document.getElementById('modal-sub-handle');
         const hookHandle = document.getElementById('modal-hook-handle');
@@ -2736,28 +3738,118 @@ const V2 = (() => {
     return p;
   }
 
-  // Pré-télécharge tous les segments en arrière-plan, 3 EN PARALLÈLE (YouTube limite chaque
-  // download, donc paralléliser = clips prêts ~3x plus vite) dès la fin de l'analyse.
+  // Pré-télécharge les segments en arrière-plan dès la fin de l'analyse.
+  //
+  // DEUX PHASES, volontairement :
+  //  1. Les 2 premiers clips (= les mieux notés, ceux affichés en haut et ouverts en premier) sont
+  //     GARANTIS : ils ont droit au secours API payant si le chemin gratuit est bot-bloqué. C'est LE
+  //     point qui manquait — avant, tout le préchargement était gratuit-only, donc quand YouTube
+  //     bot-bloquait (le cas courant depuis l'IP datacenter Railway) il échouait en SILENCE, et
+  //     l'utilisateur tombait sur "Téléchargement du clip…" au premier clic. C'est l'étape qui
+  //     faisait fuir. Ces 2-là passent seuls et à pleine bande passante pour être prêts au plus vite.
+  //  2. Le reste suit en fond, 3 en parallèle, gratuit-only : aucun crédit API brûlé pour des clips
+  //     que l'utilisateur n'ouvrira peut-être jamais. Ils garderont le secours API à l'ouverture.
+  //
+  // Note coût : allowApi=true ne veut pas dire "payant". Le serveur tente TOUJOURS le gratuit
+  // d'abord et ne bascule sur l'API que s'il échoue — donc zéro surcoût quand le gratuit passe.
+  const _PREFETCH_GARANTIS = 2;
   async function _prefetchYtSegments() {
-    if (!_ytUrl) return;
+    // On se base sur le video_id porté par les clips autant que sur _ytUrl : après une restauration
+    // depuis localStorage, _ytUrl peut être vide alors que les clips savent d'où ils viennent.
+    if (!_clips.length) return;
+    if (!_ytUrl && !_clips[0]?.video_id) return;
+    const nGarantis = Math.min(_PREFETCH_GARANTIS, _clips.length);
+
+    /* SONDE : un seul clip en gratuit avant de lancer les autres.
+       - Si le gratuit répond, tout le préchargement se fait sans proxy : c'est le régime normal,
+         il ne coûte rien, et les 10 clips se préparent.
+       - S'il ne répond pas (SABR / jeton PO côté YouTube), on n'insiste pas en gratuit — on
+         autorise le proxy résidentiel pour les PREMIERS clips seulement, de façon à ce que
+         l'utilisateur ait quelque chose d'ouvrable tout de suite. Le reste attend le clic.
+       Le drapeau `allowApi` ouvre à la fois l'API payante ET le proxy côté Railway : le passer à
+       true partout avait brûlé 4,5 Go de forfait en deux jours (25-30/07) pour des clips que
+       personne n'avait demandés. D'où la sonde, la limite à nGarantis, et le plafond serveur de
+       24 segments/heure. */
+    if (!_ytSegCache[0]) _markClipPending(0);
+    let _gratuitOk = true;
+    try { await _getYtSegment(_clips[0], 0, null, false); }
+    catch (e) { _gratuitOk = false; }
+
+    if (!_gratuitOk) {
+      console.warn('[prefetch] gratuit indisponible — bascule proxy sur les clips prioritaires');
+      if (window.posthog) posthog.capture('prefetch_bascule_proxy', { clips: _clips.length });
+      for (let i = 0; i < nGarantis; i++) if (!_ytSegCache[i]) _markClipPending(i);
+      await Promise.all(Array.from({ length: nGarantis }, (_, i) =>
+        _ytSegCache[i] ? Promise.resolve() : _getYtSegment(_clips[i], i, null, true)
+          .catch(() => { _markClipFailed(i); })
+      ));
+      // Les clips non préchargés restent ouvrables au clic : on l'affiche plutôt que de laisser
+      // la vignette nue, sinon l'utilisateur ne sait pas s'il doit attendre ou cliquer.
+      for (let i = nGarantis; i < _clips.length; i++) if (!_ytSegCache[i]) _markClipFailed(i);
+      return;   // le reste des clips : à l'ouverture, pour ne pas vider le forfait
+    }
+
+    for (let i = 1; i < nGarantis; i++) if (!_ytSegCache[i]) _markClipPending(i);
+    await Promise.all(Array.from({ length: nGarantis }, (_, i) =>
+      (i === 0 || _ytSegCache[i]) ? Promise.resolve() : _getYtSegment(_clips[i], i, null, false)
+        .catch(() => { _markClipFailed(i); })
+    ));
+    if (!_allReadyNotified && _ytSegCache[0]) {
+      toast(nGarantis > 1 && _ytSegCache[1]
+        ? '✅ Tes 2 premiers clips sont prêts — ouverture instantanée'
+        : '✅ Ton premier clip est prêt — ouverture instantanée', 'succes', 4000);
+    }
+
+    // Phase 2 — le reste en fond, gratuit-only.
+    // Concurrence à 3 : YouTube throttle par connexion (~350 Ko/s chacune, mesuré sur les logs
+    // Railway), donc paralléliser divise bien le temps total — mais au-delà de 3 connexions
+    // simultanées l'IP datacenter se fait bot-check, et un bot-check est précisément ce qui
+    // ferait basculer sur le proxy payant. 3 est le compromis.
     const CONCURRENCY = 3;
-    let next = 0;
+    const restants = _clips.length - nGarantis;
+    if (restants <= 0) return;
+    for (let i = nGarantis; i < _clips.length; i++) if (!_ytSegCache[i]) _markClipPending(i);
+    let next = nGarantis;
     const worker = async () => {
       while (next < _clips.length) {
         const i = next++;
         if (_ytSegCache[i]) continue;
-        // allowApi=false : le préchargement en arrière-plan n'engage JAMAIS l'API payante
-        // (sinon crédits brûlés en silence si le gratuit est bot-bloqué). L'API n'est utilisée
-        // que quand l'utilisateur ouvre/exporte réellement un clip.
-        try { await _getYtSegment(_clips[i], i, null, false); } catch (e) { /* silencieux — réessayé à l'ouverture */ }
+        // silencieux : un échec ici n'est pas bloquant, le clip se retélécharge à l'ouverture
+        try { await _getYtSegment(_clips[i], i, null, false); } catch (e) { _markClipFailed(i); }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, _clips.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, restants) }, worker));
+  }
+
+  // Badges d'état sur la vignette. Sans retour visuel, l'utilisateur ne sait pas qu'un
+  // préchargement tourne : il clique, tombe sur l'écran d'attente, et croit que rien n'a marché.
+  function _setClipBadge(i, cls, bg, fg, html) {
+    const card = document.getElementById(`clip-thumb-${i}`);
+    if (!card) return null;
+    card.querySelectorAll('.clip-ready-badge, .clip-pending-badge, .clip-failed-badge').forEach(b => b.remove());
+    const b = document.createElement('div');
+    b.className = cls;
+    b.style.cssText = `position:absolute;top:6px;left:6px;z-index:4;background:${bg};color:${fg};font-size:10px;font-weight:800;padding:2px 6px;border-radius:20px;display:flex;align-items:center;gap:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)`;
+    b.innerHTML = html;
+    card.appendChild(b);
+    return b;
+  }
+
+  function _markClipPending(i) {
+    _setClipBadge(i, 'clip-pending-badge', 'rgba(0,0,0,.72)', '#e5e7eb',
+      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);border-top-color:#10b981;animation:spin .8s linear infinite"></span>Préparation…');
+  }
+
+  // Échec du préchargement : le clip reste ouvrable (nouvelle tentative au clic), on le dit juste.
+  function _markClipFailed(i) {
+    if (_ytSegCache[i]) return;
+    _setClipBadge(i, 'clip-failed-badge', 'rgba(0,0,0,.72)', '#fbbf24', 'À la demande');
   }
 
   // Petit badge ✓ vert sur la vignette du clip quand son aperçu est prêt.
   function _markClipReady(i) {
     const card = document.getElementById(`clip-thumb-${i}`);
+    card?.querySelectorAll('.clip-pending-badge, .clip-failed-badge').forEach(b => b.remove());
     if (card && !card.querySelector('.clip-ready-badge')) {
       const b = document.createElement('div');
       b.className = 'clip-ready-badge';
@@ -2803,6 +3895,8 @@ const V2 = (() => {
     // rawOffset : le segment a été découpé, la vidéo commence à t=0 mais les sous-titres sont en temps absolu
     const rawOffset = clip._rawOffset ?? null;
     const t = rawOffset != null ? video.currentTime + rawOffset : video.currentTime;
+    // Playhead de la timeline Edit — mis à jour EN CONTINU (throttle ~15 fps), quel que soit le mode.
+    if (performance.now() - _cadPhTs > 60) { _cadPhTs = performance.now(); try { _updateCadPlayhead(); } catch {} }
     const rel = t - clipStart;
 
     if (!video.paused && rawOffset != null && video.currentTime >= clipDur) video.currentTime = 0;
@@ -2830,8 +3924,40 @@ const V2 = (() => {
         subEl.style.display = 'none';
       } else {
         const rawText = segKey && opts.segEdits?.[segKey] ? opts.segEdits[segKey] : (seg ? seg.text.trim() : '');
-        if (segKey !== _lastSegKey) {
-          _lastSegKey = segKey;
+        /* Le style Punch change d'aspect À L'INTÉRIEUR d'un segment : la couleur passe de la
+           ligne 1 à la ligne 2 au moment où le premier mot de la ligne 2 est prononcé. Il faut
+           donc redessiner sur ce changement-là aussi, pas seulement au changement de segment —
+           sinon l'aperçu resterait figé alors que l'export, lui, bascule. */
+        let _smCle = segKey;
+        if (opts.style === 'submagic' && seg) {
+          opts._smWords = Array.isArray(seg.words) ? seg.words : null;
+          opts._smIndex = _segments.indexOf(seg);
+          const mots = opts._smWords;
+          let ligne = 1;
+          let page = 0;
+          if (mots && mots.length) {
+            /* Même découpage en pages que le rendu et que le serveur. On choisit la page dont
+               le premier mot a déjà été prononcé, puis la ligne active à l'intérieur — les deux
+               décisions reposent sur les timings réels, jamais sur une durée moyenne. */
+            const pages = _smPages(mots.map(w => String(w.word || '').toUpperCase()),
+                                   opts.fontSize || 55);
+            for (let p = 0; p < pages.length; p++) {
+              if (t >= (mots[pages[p].debut]?.start ?? Infinity)) page = p;
+            }
+            const pg = pages[page];
+            if (pg && pg.l2.length) {
+              const iL2 = pg.debut + pg.l1.length;
+              if (iL2 < mots.length && t >= (mots[iL2].start ?? Infinity)) ligne = 2;
+            }
+          }
+          opts._smPage = page;
+          opts._smLigne = ligne;
+          // La page DOIT figurer dans la clé : sans elle, l'aperçu ne se redessine pas au
+          // passage d'une page à la suivante quand la ligne active reste la 1.
+          _smCle = segKey + '|' + page + '|' + ligne;
+        }
+        if (_smCle !== _lastSegKey) {
+          _lastSegKey = _smCle;
           _renderSubText(subEl, rawText, opts);
           if (segKey) highlightSeg(segKey);
         }
@@ -2949,6 +4075,52 @@ const V2 = (() => {
     return wrap ? Math.max(0.15, wrap.offsetWidth / 720) : 0.24;
   }
 
+  /* Indice du premier mot de la 2e ligne. DOIT donner exactement le même résultat que le
+     serveur (branche "submagic" de main.py) : c'est ce calcul qui détermine à la fois où le
+     texte se coupe et l'instant où la couleur bascule. Toute divergence ici se voit
+     immédiatement comme un écart entre l'aperçu et l'export.
+     Largeur utile 720−88 px, ~0.62 × le corps par majuscule en Montserrat ExtraBold. */
+  let _smCtx = null;
+  /* Largeur RÉELLE de la chaîne dans la police d'export, mesurée au canvas.
+     Aucun coefficient ne convient : mesuré sur Montserrat ExtraBold, la largeur moyenne d'une
+     majuscule vaut 0.743 × le corps, mais le pire cas (M, W) monte à 1.185. « CERVEAU
+     FONCTIONNE » fait 691 px pour 632 px utiles — un compte de caractères le déclarait bon. */
+  function _smLargeur(txt, fontSize) {
+    if (!_smCtx) _smCtx = document.createElement('canvas').getContext('2d');
+    _smCtx.font = `800 ${fontSize}px Montserrat, "Arial Black", sans-serif`;
+    return _smCtx.measureText(txt).width;
+  }
+
+  /* Découpe une cue en PAGES de 2 lignes — copie exacte de la logique serveur.
+     Une page dont le reste ne tient pas engendre une page suivante, affichée après elle :
+     jamais de 3e ligne, jamais de ligne qui dépasse du cadre.
+     Renvoie [{l1:[], l2:[], debut:<index du 1er mot>}] */
+  function _smPages(mots, fontSize) {
+    const ZONE = 720 - 88;
+    const pages = [];
+    let i = 0;
+    while (i < mots.length) {
+      const debut = i;
+      const lignes = [];
+      for (let k = 0; k < 2; k++) {
+        const cur = [];
+        while (i < mots.length) {
+          if (cur.length && _smLargeur(cur.concat(mots[i]).join(' '), fontSize) > ZONE) break;
+          cur.push(mots[i]); i++;
+        }
+        if (cur.length) lignes.push(cur); else break;
+      }
+      if (!lignes.length) break;
+      // Une seule ligne et plus rien après → on la coupe en deux pour que le blanc apparaisse.
+      if (lignes.length === 1 && i >= mots.length && lignes[0].length >= 2) {
+        const c = Math.ceil(lignes[0].length / 2);
+        lignes[1] = lignes[0].slice(c); lignes[0] = lignes[0].slice(0, c);
+      }
+      pages.push({ l1: lignes[0], l2: lignes[1] || [], debut });
+    }
+    return pages;
+  }
+
   function _renderSubText(el, text, opts) {
     const sc = _previewScale();
     const fs = Math.round((opts.fontSize || 70) * sc);
@@ -2980,6 +4152,49 @@ const V2 = (() => {
     { const wArr = text.split(' ').filter(Boolean); if (wArr.length > 5) text = wArr.slice(0, 5).join(' '); }
 
     switch(style) {
+      /* Style "Punch" — doit correspondre TRAIT POUR TRAIT au rendu ASS du serveur :
+         mêmes capitales, même police (Montserrat ExtraBold, chargée dans <head>), même
+         contour à 10 % du corps, même découpage en 2 lignes, même cycle de couleurs.
+         Le mot actif n'est pas surligné : c'est la LIGNE en cours qui se colore.
+         La ligne affichée est choisie par _submagicLigneActive() à partir des timings
+         réels de chaque mot — la même donnée que celle envoyée au serveur. */
+      case 'submagic': {
+        const mots = (opts._smWords && opts._smWords.length)
+          ? opts._smWords.map(w => String(w.word || '').toUpperCase())
+          : text.toUpperCase().split(' ').filter(Boolean);
+        /* Coupure SYSTÉMATIQUE en deux, moitié-moitié — exactement comme le serveur.
+           Un budget de caractères ne se déclenchait quasiment jamais (4 mots ≈ 25 caractères
+           pour un budget de 43) : tout le bloc restait d'une seule couleur, et le blanc
+           n'apparaissait jamais. */
+        const pages = _smPages(mots, opts.fontSize || 55);
+        const page = pages[Math.min(opts._smPage || 0, pages.length - 1)] || { l1: mots, l2: [] };
+        const l1 = page.l1, l2 = page.l2;
+        const cycle = ['#3BFF2F', '#DD021A', '#FBFF1E'];
+        const hl = cycle[(opts._smIndex || 0) % cycle.length];
+        const actif = opts._smLigne === 2 ? 2 : 1;
+
+        el.style.fontFamily = "'Montserrat', 'Arial Black', sans-serif";
+        el.style.fontWeight = '800';
+        /* Correction d'échelle aperçu -> export. À taille égale, libass et le navigateur ne
+           dessinent PAS la même hauteur de majuscule : mesuré sur six tailles (40 à 160),
+           libass rend Montserrat ExtraBold à 0.629 de la taille demandée, le navigateur à 0.70.
+           L'aperçu paraissait donc ~11 % plus grand que le fichier exporté. Le facteur 0.899
+           (0.629 / 0.70) aligne les deux. Ne pas l'appliquer aux autres styles : ils utilisent
+           une autre police, donc un autre rapport. */
+        el.style.fontSize = Math.round(fs * 0.899) + 'px';
+        el.style.lineHeight = '1.1';
+        el.style.textShadow = _ol('#000', Math.max(3, (opts.fontSize || 55) * 0.10));
+        el.style.background = 'transparent';
+        el.style.padding = '0';
+        [[l1, 1], [l2, 2]].forEach(([arr, idx]) => {
+          if (!arr.length) return;
+          const d = document.createElement('div');
+          d.textContent = arr.join(' ');
+          d.style.color = (idx === actif) ? hl : '#ffffff';
+          el.appendChild(d);
+        });
+        break;
+      }
       case 'bold': {
         el.textContent = text;
         el.style.color = ct;
@@ -3139,7 +4354,12 @@ const V2 = (() => {
   function _applySubPosition(el, xPct, yPct) {
     el.style.top = `${yPct}%`;
     el.style.bottom = 'auto';
-    // Ne pas toucher left/right/transform — géré par _renderSubText (left:4%;right:4%)
+    // Position horizontale RÉELLE (centre du bloc à xPct%) → identique à l'export ASS \pos(x)\an8.
+    // Avant, l'aperçu centrait toujours (left:4%;right:4%) alors que l'export suivait subX → décalage.
+    el.style.left = `${xPct}%`;
+    el.style.right = 'auto';
+    el.style.transform = 'translateX(-50%)';
+    el.style.width = '92%';   // boîte fixe centrée sur xPct → texte centré au bon endroit, contour non rogné
   }
 
   function _setupDraggable(el, wrap, yKey, xKey) {
@@ -3381,19 +4601,31 @@ const V2 = (() => {
     const wrap = document.getElementById('modal-player-wrap');
     if (!wrap || wrap._cropDragWired) return;
     wrap._cropDragWired = true;
-    let dragging = false, moved = false, startX = 0, startFrac = 0.5, dragKey = 'cropXFrac';
+    let dragging = false, moved = false, startX = 0, startFrac = 0.5, dragKey = 'cropXFrac', dragObj = null;
     wrap.addEventListener('pointerdown', (e) => {
       if (_modalIdx === null) return;
       // ne pas capturer les poignées de sous-titres/hook
       if (e.target.closest && e.target.closest('#modal-sub-overlay, #modal-hook-overlay, #modal-sub-handle, #modal-hook-handle')) return;
       const opts = _clipSettings[_modalIdx] || {};
-      // En SPLIT : la moitié cliquée détermine quelle personne on cadre (haut=gauche, bas=droite).
+      // En SPLIT : le cadrage s'écrit sur le SEGMENT ACTIF (celui sous la tête de lecture) → chaque
+      // coupe est réglable indépendamment. La moitié cliquée choisit la personne (haut/bas) ; en solo
+      // (segment ▲/▼) tout le glisser pilote le cadrage unique de ce segment.
       if (opts.reframeMode === 'split') {
+        _ensureSeg0();
+        const seg = _activeSegKf() || _clipSettings[_modalIdx].splitKeyframes[0];
+        dragObj = seg;
+        const segMode = seg?.mode || 'split';
         const rect = wrap.getBoundingClientRect();
-        const isTop = (e.clientY - rect.top) < rect.height / 2;
-        dragKey = isTop ? 'splitTopXFrac' : 'splitBotXFrac';
-        startFrac = (opts[dragKey] != null) ? opts[dragKey] : (isTop ? 0.30 : 0.70);
+        if (segMode === 'top' || segMode === 'bot') {
+          dragKey = 'xFrac';
+          startFrac = (seg.xFrac != null) ? seg.xFrac : (segMode === 'bot' ? 0.70 : 0.30);
+        } else {
+          const isTop = (e.clientY - rect.top) < rect.height / 2;
+          dragKey = isTop ? 'topXFrac' : 'botXFrac';
+          startFrac = (seg[dragKey] != null) ? seg[dragKey] : (isTop ? 0.30 : 0.70);
+        }
       } else {
+        dragObj = (_clipSettings[_modalIdx] = _clipSettings[_modalIdx] || getClipOpts(_modalIdx));
         dragKey = 'cropXFrac';
         startFrac = (opts.cropXFrac != null) ? opts.cropXFrac : 0.5;
       }
@@ -3402,7 +4634,7 @@ const V2 = (() => {
       try { wrap.setPointerCapture(e.pointerId); } catch {}
     });
     wrap.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
+      if (!dragging || !dragObj) return;
       const rect = wrap.getBoundingClientRect();
       const dx = e.clientX - startX;
       if (Math.abs(dx) > 4) moved = true;
@@ -3412,10 +4644,10 @@ const V2 = (() => {
       // Pan : glisser à droite → voir plus à gauche → frac diminue
       const fracDelta = -(dx / rect.width) * (cropW / vw);
       const newFrac = Math.max(0, Math.min(1, startFrac + fracDelta));
-      if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
-      _clipSettings[_modalIdx][dragKey] = newFrac;
+      dragObj[dragKey] = newFrac;
       _clipSettings[_modalIdx]._reframeUserSet = true;
       _updateCropPreview();
+      _renderKeyframesList(); _renderCadrageTrack();
     });
     const end = (e) => {
       if (!dragging) return;
@@ -3437,11 +4669,17 @@ const V2 = (() => {
     document.querySelectorAll('.desk-sec-tab').forEach(t => t.classList.remove('active'));
     const btn = document.querySelector(`.desk-sec-tab[onclick*="'${panel}'"]`);
     if (btn) btn.classList.add('active');
+    document.querySelectorAll('.klap-rail-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === panel)); // rail gauche
     ['subs','hook','cadrage','edit'].forEach(p => {
       const el = document.getElementById('mob-sec-' + p);
       if (el) el.classList.toggle('mob-open', p === panel || (panel === 'subs' && p === 'edit'));
     });
     if (panel === 'cadrage') _syncCadrageHints();
+    // Desktop : toutes les sections sont visibles (un seul panneau) → le rail SCROLLE vers la section.
+    if (window.matchMedia && window.matchMedia('(min-width:661px)').matches) {
+      const _sec = document.getElementById('mob-sec-' + panel);
+      if (_sec && _sec.scrollIntoView) { try { _sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }
+    }
   }
 
   // Affiche le bon indice (1 personne vs split) dans l'onglet Cadrage
@@ -3452,8 +4690,19 @@ const V2 = (() => {
     const tl     = document.getElementById('cadrage-timeline');
     if (single) single.style.display = isSplit ? 'none' : 'block';
     if (split)  split.style.display  = isSplit ? 'block' : 'none';
-    if (tl)     tl.style.display      = isSplit ? 'block' : 'none';
+    // La timeline s'affiche TOUJOURS en Edit (plus besoin d'activer le split avant) — on peut
+    // couper/cadrer direct. Le split s'engage tout seul dès qu'on coupe ou choisit une vue.
+    if (tl)     tl.style.display      = 'block';
     _renderKeyframesList();
+    _renderCadrageTrack();
+    _buildCadFilmstrip(_modalIdx).catch(() => {});
+    // Synchronise l'icône ▶/⏸ de la barre d'outils avec l'état de lecture
+    const _v = document.getElementById('modal-video'), _pb = document.getElementById('cad-play-btn');
+    if (_v && _pb && !_pb._wired) {
+      _pb._wired = true;
+      const _u = () => _pb.classList.toggle('playing', !_v.paused);
+      _v.addEventListener('play', _u); _v.addEventListener('pause', _u); _u();
+    }
   }
 
   // Réinitialise le cadrage manuel → retour à l'auto-détection
@@ -3462,7 +4711,7 @@ const V2 = (() => {
     const s = _clipSettings[_modalIdx];
     if (s) { delete s.cropXFrac; delete s.splitTopXFrac; delete s.splitBotXFrac; delete s.splitKeyframes; }
     _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0;
-    _renderKeyframesList();
+    _renderKeyframesList(); _renderCadrageTrack();
     _updateCropPreview();
     toast('↺ Cadrage remis en automatique', 'succes', 2500);
   }
@@ -3480,32 +4729,131 @@ const V2 = (() => {
     return (clip?._rawOffset != null) ? video.currentTime : Math.max(0, video.currentTime - clipStart);
   }
 
-  function addSplitKeyframe(mode) {
-    if (_modalIdx === null) return;
-    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
-    const t = Math.round(_playheadRel() * 10) / 10;
-    const kfs = _clipSettings[_modalIdx].splitKeyframes || [];
-    const ex = kfs.findIndex(k => Math.abs(k.t - t) < 0.3);
-    if (ex >= 0) kfs[ex].mode = mode; else kfs.push({ t, mode });
-    kfs.sort((a, b) => a.t - b.t);
-    _clipSettings[_modalIdx].splitKeyframes = kfs;
-    _renderKeyframesList();
-    toast(`Repère « ${mode === 'split' ? 'Split' : mode === 'top' ? 'Solo haut' : 'Solo bas'} » à ${_fmtT(t)}`, 'succes', 1800);
+  // ── Modèle CapCut : Diviser → sélectionner un morceau → choisir sa vue ──
+  // Les segments dérivent des repères (chaque repère = début d'un morceau, mode + cadrage propres).
+  function _cadSegments() {
+    const dur = _cadDur();
+    const kfs = ((_clipSettings[_modalIdx]?.splitKeyframes) || []).slice().sort((a, b) => a.t - b.t);
+    const segs = [];
+    let m0 = 'split', kf0 = null;
+    if (kfs.length && kfs[0].t <= 0.05) { m0 = kfs[0].mode; kf0 = kfs[0]; }
+    segs.push({ t0: 0, mode: m0, kf: kf0 });
+    kfs.forEach(k => { if (k.t > 0.05) segs.push({ t0: k.t, mode: k.mode, kf: k }); });
+    for (let i = 0; i < segs.length; i++) segs[i].t1 = (i + 1 < segs.length) ? segs[i + 1].t0 : dur;
+    return segs;
+  }
+  // Index du morceau sélectionné = celui qui contient la tête de lecture
+  function _activeSegIdx(segs) {
+    const rel = _playheadRel();
+    let idx = 0;
+    for (let i = 0; i < segs.length; i++) { if (segs[i].t0 <= rel + 0.05) idx = i; else break; }
+    return idx;
   }
 
-  function removeSplitKeyframe(i) {
-    if (_modalIdx === null || !_clipSettings[_modalIdx]?.splitKeyframes) return;
-    _clipSettings[_modalIdx].splitKeyframes.splice(i, 1);
-    _renderKeyframesList();
-    _updateCropPreview();
+  // ✂️ DIVISER : crée une coupe à la tête de lecture (le nouveau morceau hérite du réglage courant)
+  // Engage le mode split/timeline dès qu'on édite (couper/choisir une vue), pour que ces réglages
+  // s'appliquent à l'export — sans que l'user ait à activer le toggle « Format 2 personnes » d'abord.
+  function _engageSplit() {
+    if (_modalIdx === null) return;
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+    if (_clipSettings[_modalIdx].reframeMode !== 'split') {
+      _clipSettings[_modalIdx].reframeMode = 'split';
+      _clipSettings[_modalIdx]._reframeUserSet = true;
+      _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0;
+      const cb = document.getElementById('modal-split-on'); if (cb) cb.checked = true;
+      const s1 = document.getElementById('cadrage-hint-single'); if (s1) s1.style.display = 'none';
+      const s2 = document.getElementById('cadrage-hint-split');  if (s2) s2.style.display = 'block';
+    }
+  }
+
+  function cutHere() {
+    if (_modalIdx === null) return;
+    _ensureSeg0();
+    _engageSplit();
+    const s = _clipSettings[_modalIdx];
+    const dur = _cadDur();
+    const t = Math.round(_playheadRel() * 10) / 10;
+    if (t <= 0.2 || t >= dur - 0.2) { toast('Place-toi plus au milieu du clip pour diviser', 'info', 2200); return; }
+    if (s.splitKeyframes.some(k => Math.abs(k.t - t) < 0.3)) { toast('Il y a déjà une coupe ici', 'info', 1600); return; }
+    const cur = _activeSegKf() || s.splitKeyframes[0];
+    const nk = { t, mode: cur?.mode || 'split' };
+    if (cur?.topXFrac != null) nk.topXFrac = cur.topXFrac;
+    if (cur?.botXFrac != null) nk.botXFrac = cur.botXFrac;
+    if (cur?.xFrac != null) nk.xFrac = cur.xFrac;
+    s.splitKeyframes.push(nk);
+    s.splitKeyframes.sort((a, b) => a.t - b.t);
+    _renderKeyframesList(); _renderCadrageTrack(); _updateCropPreview();
+    toast('✂️ Divisé — choisis la vue de ce morceau', 'succes', 2200);
+  }
+
+  // Change la vue du morceau SÉLECTIONNÉ (celui sous la tête de lecture)
+  function setSegMode(mode) {
+    if (_modalIdx === null) return;
+    _ensureSeg0();
+    _engageSplit();
+    const seg = _activeSegKf() || _clipSettings[_modalIdx].splitKeyframes[0];
+    if (!seg) return;
+    seg.mode = mode;
+    _renderKeyframesList(); _renderCadrageTrack(); _updateCropPreview();
+  }
+
+  // Sélectionne un morceau (déplace la tête de lecture en son milieu)
+  function selectSeg(i) {
+    const segs = _cadSegments();
+    if (!segs[i]) return;
+    _seekToRel((segs[i].t0 + segs[i].t1) / 2);
+    _renderKeyframesList(); _renderCadrageTrack(); _updateCropPreview();
+  }
+
+  // Glisser une COUPE pour la déplacer dans le temps (poignée CapCut). segT = position actuelle de la coupe.
+  function dragCut(e, segT) {
+    e.stopPropagation(); e.preventDefault();
+    if (_modalIdx === null) return;
+    const track = document.getElementById('cad-track');
+    const kfs = _clipSettings[_modalIdx]?.splitKeyframes;
+    if (!track || !kfs) return;
+    const kf = kfs.find(k => Math.abs(k.t - segT) < 0.25); // le repère de CETTE coupe
+    if (!kf) return;
+    const dur = _cadDur();
+    let moved = false;
+    const move = (ev) => {
+      const rect = track.getBoundingClientRect();
+      const frac = Math.max(0.02, Math.min(0.98, (ev.clientX - rect.left) / rect.width));
+      kf.t = Math.round(frac * dur * 10) / 10;
+      moved = true;
+      _renderCadrageTrack(); _updateCropPreview();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      if (moved) { kfs.sort((a, b) => a.t - b.t); _renderKeyframesList(); _renderCadrageTrack(); }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  // Supprime une coupe (fusionne le morceau avec le précédent). Jamais sur le 1er morceau.
+  function removeCut(i) {
+    const segs = _cadSegments();
+    const kf = segs[i]?.kf;
+    if (!kf || i === 0) return;
+    const kfs = _clipSettings[_modalIdx].splitKeyframes;
+    const idx = kfs.indexOf(kf);
+    if (idx >= 0) kfs.splice(idx, 1);
+    _renderKeyframesList(); _renderCadrageTrack(); _updateCropPreview();
   }
 
   function _renderKeyframesList() {
     const el = document.getElementById('cadrage-keyframes-list');
     if (!el) return;
-    const kfs = (_modalIdx !== null && _clipSettings[_modalIdx]?.splitKeyframes) || [];
-    const label = m => m === 'split' ? '⬛ Split (2 pers)' : m === 'top' ? '▲ Solo haut' : '▼ Solo bas';
-    el.innerHTML = kfs.map((k, i) => `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-input);border:1px solid var(--bordure);border-radius:7px;padding:5px 9px;font-size:11px"><span style="color:var(--texte-doux)"><b style="color:var(--vert)">${_fmtT(k.t)}</b> → ${label(k.mode)}</span><button onclick="V2.removeSplitKeyframe(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;font-weight:700;line-height:1;padding:0 2px">×</button></div>`).join('');
+    const segs = (_modalIdx !== null) ? _cadSegments() : [];
+    if (segs.length <= 1) { el.innerHTML = ''; return; } // pas de découpe → rien à lister
+    const act = _activeSegIdx(segs);
+    const label = m => m === 'split' ? '⬛ Split' : m === 'top' ? '▲ Solo haut' : '▼ Solo bas';
+    el.innerHTML = segs.map((sg, i) => {
+      const sel = (i === act);
+      const del = (i > 0) ? `<button onclick="event.stopPropagation();V2.removeCut(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;font-weight:700;line-height:1;padding:0 2px">×</button>` : '<span style="width:14px;display:inline-block"></span>';
+      return `<div onclick="V2.selectSeg(${i})" style="display:flex;align-items:center;justify-content:space-between;background:${sel ? 'rgba(16,185,129,0.12)' : 'var(--bg-input)'};border:1px solid ${sel ? 'var(--vert)' : 'var(--bordure)'};border-radius:7px;padding:5px 9px;font-size:11px;cursor:pointer"><span style="color:var(--texte-doux)"><b style="color:var(--vert)">${_fmtT(sg.t0)}–${_fmtT(sg.t1)}</b> · ${label(sg.mode)}</span>${del}</div>`;
+    }).join('');
   }
 
   // Mode actif à l'instant relatif t d'après les repères (défaut 'split')
@@ -3514,6 +4862,203 @@ const V2 = (() => {
     let mode = 'split';
     for (const k of kfs) { if (k.t <= relT + 0.05) mode = k.mode; else break; }
     return mode;
+  }
+
+  // Repère (= segment) qui GOUVERNE l'instant de lecture courant. Chaque segment porte son
+  // propre cadrage (topXFrac/botXFrac/xFrac) → slide gauche/droite indépendant, façon CapCut.
+  function _activeSegKf() {
+    const kfs = (_modalIdx !== null && _clipSettings[_modalIdx]?.splitKeyframes) || [];
+    const rel = _playheadRel();
+    let cur = null;
+    for (const k of kfs) { if (k.t <= rel + 0.05) cur = k; else break; }
+    return cur;
+  }
+  // Garantit un segment à t=0 (pour pouvoir cadrer le tout 1er segment indépendamment)
+  function _ensureSeg0() {
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
+    const s = _clipSettings[_modalIdx];
+    if (!s.splitKeyframes) s.splitKeyframes = [];
+    if (!s.splitKeyframes.some(k => k.t <= 0.05)) s.splitKeyframes.unshift({ t: 0, mode: 'split' });
+    s.splitKeyframes.sort((a, b) => a.t - b.t);
+  }
+
+  // ── Barre timeline visuelle (type CapCut) ──
+  function _cadDur() {
+    const clip = _clips[_modalIdx];
+    const st = clip?.start_time ?? clip?.start ?? 0;
+    const en = clip?.end_time ?? clip?.end ?? (st + 60);
+    return Math.max(1, en - st);
+  }
+  // Place la vidéo à l'instant RELATIF (gère segment YouTube 0-based vs fichier local décalé)
+  function _seekToRel(relT) {
+    const video = document.getElementById('modal-video');
+    const clip = _clips[_modalIdx];
+    if (!video || !clip) return;
+    const clipStart = clip?.start_time ?? clip?.start ?? 0;
+    try { video.currentTime = (clip?._rawOffset != null) ? relT : clipStart + relT; } catch {}
+  }
+
+  // ── Barre d'outils timeline (transport façon Klap) ──
+  function seekRel(delta) { // avancer / reculer de `delta` secondes
+    if (_modalIdx === null) return;
+    _seekToRel(Math.max(0, Math.min(_cadDur(), _playheadRel() + delta)));
+    _renderCadrageTrack();
+  }
+  function removeSelCut() { // supprime la coupe du morceau sélectionné (bouton corbeille)
+    if (_modalIdx === null) return;
+    removeCut(_activeSegIdx(_cadSegments()));
+  }
+  function zoomCad(v) { // "zoom" visuel : agrandit la hauteur de la barre
+    const t = document.getElementById('cad-track');
+    if (t) t.style.height = Math.round(48 * parseFloat(v)) + 'px';
+  }
+
+  // Clique/glisse sur la barre → déplace la tête de lecture (scrub)
+  function seekCadrage(e) {
+    if (_modalIdx === null) return;
+    const track = document.getElementById('cad-track');
+    if (!track) return;
+    const dur = _cadDur();
+    const move = (ev) => {
+      const rect = track.getBoundingClientRect();
+      const frac = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      _seekToRel(frac * dur);
+      _renderCadrageTrack();
+    };
+    move(e);
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  // Met à jour la position du playhead (en continu, quel que soit le mode) + le temps courant.
+  function _updateCadPlayhead() {
+    const ph = document.getElementById('cad-playhead');
+    if (!ph || !ph.offsetParent) return;
+    const dur = _cadDur(), rel = _playheadRel();
+    ph.style.left = Math.max(0, Math.min(100, (rel / dur) * 100)) + '%';
+    const cur = document.getElementById('cad-t-cur'); if (cur) cur.textContent = _fmtT(rel);
+  }
+
+  // Dessine les morceaux comme des blocs distincts (séparateurs) + surligne le sélectionné
+  function _renderCadrageTrack() {
+    const segsEl = document.getElementById('cad-track-segs');
+    const marksEl = document.getElementById('cad-marks');
+    if (!segsEl || !marksEl || _modalIdx === null) return;
+    const dur = _cadDur();
+    const segs = _cadSegments();
+    const act = _activeSegIdx(segs);
+    const colOf = m => m === 'top' ? '#3b82f6' : m === 'bot' ? '#f59e0b' : '#10b981';
+    const imgs = (_cadFilmCache[_modalIdx] && _cadFilmCache[_modalIdx].length) ? _cadFilmCache[_modalIdx] : null;
+    const GAP = 5; // px : espace sombre entre les blocs (montre nettement les coupes)
+    let html = '';
+    segs.forEach((sg, i) => {
+      const left = (sg.t0 / dur) * 100, w = Math.max(0.6, ((sg.t1 - sg.t0) / dur) * 100);
+      const segDur = Math.max(0.1, sg.t1 - sg.t0);
+      const c = colOf(sg.mode);
+      const sel = (i === act);
+      const gl = i > 0 ? GAP / 2 : 0, gr = i < segs.length - 1 ? GAP / 2 : 0;
+      // Fenêtre filmstrip : la pellicule complète, décalée pour que [t0,t1] remplisse EXACTEMENT le bloc.
+      const fs = imgs
+        ? `<div style="position:absolute;top:0;bottom:0;left:${-(sg.t0 / segDur) * 100}%;width:${(dur / segDur) * 100}%;display:flex">${imgs.map(u => `<div style="flex:1 1 0;height:100%;background:${u ? `center/cover no-repeat url(${u})` : '#141821'}"></div>`).join('')}</div>`
+        : `<div style="position:absolute;inset:0;background:#141821"></div>`;
+      // Chaque morceau = un BLOC arrondi distinct, avec un gap → on voit clairement que c'est cut.
+      html += `<div style="position:absolute;left:calc(${left}% + ${gl}px);width:calc(${w}% - ${gl + gr}px);top:0;bottom:0;border-radius:7px;overflow:hidden;background:#0d1117;box-shadow:${sel ? '0 0 0 2px #22d3ee' : 'inset 0 0 0 1px rgba(255,255,255,0.10)'};z-index:${sel ? 4 : 2};pointer-events:none">`
+            + fs
+            + `<div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:${c}"></div>`
+            + `</div>`;
+    });
+    segsEl.innerHTML = html;
+    const _fsEl = document.getElementById('cad-filmstrip'); if (_fsEl) _fsEl.innerHTML = ''; // chaque bloc a sa pellicule
+    // Poignées de coupe DÉPLAÇABLES (façon CapCut) — sur chaque division (segments après le 1er)
+    marksEl.innerHTML = segs.map((sg, i) => {
+      if (i === 0 || !sg.kf) return '';
+      const left = (sg.t0 / dur) * 100;
+      return `<div onpointerdown="V2.dragCut(event,${sg.t0})" title="Glisser pour déplacer la coupe" style="position:absolute;top:-4px;bottom:-4px;left:${left}%;width:20px;margin-left:-10px;pointer-events:auto;cursor:ew-resize;z-index:7;display:flex;align-items:center;justify-content:center;touch-action:none"><div style="width:3px;height:100%;background:#fff;border-radius:3px;box-shadow:0 0 4px rgba(0,0,0,.65)"></div></div>`;
+    }).join('');
+    // Règle de temps en haut : ~6 repères du clip (0:00 … durée)
+    const rul = document.getElementById('cad-ruler');
+    if (rul) {
+      const N = 6; let rh = '';
+      for (let k = 0; k <= N; k++) {
+        const lp = (k / N) * 100, t = (k / N) * dur;
+        const pos = k === 0 ? 'left:2px' : k === N ? 'right:2px' : `left:${lp}%;transform:translateX(-50%)`;
+        rh += `<span style="position:absolute;top:1px;${pos};font-size:9px;color:var(--texte-muted);font-variant-numeric:tabular-nums">${_fmtT(t)}</span>`
+            + `<div style="position:absolute;left:${lp}%;bottom:0;width:1px;height:5px;background:var(--bordure)"></div>`;
+      }
+      rul.innerHTML = rh;
+    }
+    _updateCadPlayhead();
+    // Synchronise l'état des 3 boutons de vue avec le morceau sélectionné
+    const am = segs[act]?.mode || 'split';
+    [['segmode-split', 'split', '#10b981'], ['segmode-top', 'top', '#3b82f6'], ['segmode-bot', 'bot', '#f59e0b']].forEach(([id, m, col]) => {
+      const b = document.getElementById(id); if (!b) return;
+      const on = (am === m);
+      b.style.borderColor = on ? col : 'var(--bordure)';
+      b.style.color = on ? col : 'var(--texte-doux)';
+      b.style.background = on ? 'rgba(255,255,255,0.05)' : 'var(--bg-input)';
+    });
+    const dr = document.getElementById('cad-t-dur'); if (dr) dr.textContent = _fmtT(dur);
+    const cur = document.getElementById('cad-t-cur'); if (cur) cur.textContent = _fmtT(_playheadRel());
+  }
+
+  // ── Filmstrip : vignettes du clip en fond de la barre (comme CapCut) ──
+  const _cadFilmCache = {}; // idx -> [dataURL,...]
+  function _renderFilmstrip(idx) {
+    const fs = document.getElementById('cad-filmstrip');
+    if (!fs) return;
+    const imgs = _cadFilmCache[idx];
+    if (imgs && imgs.length) {
+      fs.innerHTML = imgs.map(u => `<div style="flex:1 1 0;height:100%;background:${u ? `center/cover no-repeat url(${u})` : '#111'};border-right:1px solid rgba(0,0,0,0.35)"></div>`).join('');
+    } else {
+      fs.innerHTML = '';
+    }
+  }
+
+  async function _buildCadFilmstrip(idx) {
+    if (_cadFilmCache[idx]) { _renderFilmstrip(idx); return; }
+    // Vignettes lourdes → on évite sur mobile (décodeurs vidéo limités iOS) : la barre colorée suffit.
+    if (_isIOS() || /Android/i.test(navigator.userAgent)) return;
+    const track = document.getElementById('cad-track');
+    if (!track) return;
+    let srcUrl = null, revoke = false;
+    if (_file) { srcUrl = URL.createObjectURL(_file); revoke = true; }
+    else if (_ytSegCache[idx]) { srcUrl = _ytSegCache[idx]; }
+    if (!srcUrl) return;
+    const clip = _clips[idx];
+    const clipStart = clip?.start_time ?? clip?.start ?? 0;
+    const isRaw = clip?._rawOffset != null; // segment YouTube : temps 0-based
+    const dur = _cadDur();
+    const w = track.clientWidth || 320;
+    const n = Math.max(5, Math.min(10, Math.round(w / 52)));
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = srcUrl;
+    try {
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = rej; setTimeout(res, 3000); });
+      const vw = v.videoWidth || 16, vh = v.videoHeight || 9;
+      const th = 56, tw = Math.max(1, Math.round(th * vw / vh));
+      const cvs = document.createElement('canvas'); cvs.width = tw; cvs.height = th;
+      const ctx = cvs.getContext('2d');
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        if (_modalIdx !== idx) break; // modale changée → abandon
+        const relT = (i + 0.5) / n * dur;
+        const seekT = Math.max(0, isRaw ? relT : clipStart + relT);
+        await new Promise(res => {
+          let done = false;
+          const on = () => { if (done) return; done = true; v.removeEventListener('seeked', on); res(); };
+          v.addEventListener('seeked', on);
+          try { v.currentTime = seekT; } catch { on(); }
+          setTimeout(on, 700);
+        });
+        try { ctx.drawImage(v, 0, 0, tw, th); out.push(cvs.toDataURL('image/jpeg', 0.5)); } catch { out.push(null); }
+      }
+      _cadFilmCache[idx] = out;
+      if (_modalIdx === idx) { _renderFilmstrip(idx); _renderCadrageTrack(); }
+    } catch {} finally {
+      v.src = ''; try { v.load(); } catch {}
+      if (revoke) URL.revokeObjectURL(srcUrl);
+    }
   }
 
   // ── BlazeFace (TF.js) — détection visages cross-browser ──
@@ -3616,6 +5161,7 @@ const V2 = (() => {
   // Live face detection state
   let _livePreds = null;
   let _liveDetectTs = 0;
+  let _cadPhTs = 0; // throttle mise à jour tête de lecture timeline
   // Aperçu split adaptatif : hystérésis pour éviter le clignotement (la détection frontale rate
   // par intermittence). On ne bascule en plein écran qu'après plusieurs détections "1 visage".
   let _splitShowSingle = false;
@@ -3697,6 +5243,7 @@ const V2 = (() => {
       } else if (mode === 'split') {
         // Repères manuels (timeline) prioritaires ; sinon aperçu adaptatif auto.
         const _kfs = _clipSettings[_modalIdx]?.splitKeyframes || [];
+        const _seg = _activeSegKf(); // segment gouvernant l'instant courant (cadrage indépendant)
         let _forced = null; // 'split' | 'top' | 'bot' si des repères existent
         if (_kfs.length) {
           _forced = _splitModeAt(_playheadRel());
@@ -3706,12 +5253,12 @@ const V2 = (() => {
           else if (nLive === 1) { _split1Streak++; _split2Streak = 0; if (_split1Streak > 8) _splitShowSingle = true; }
         }
 
-        // SOLO d'après un repère (haut/bas) → plein écran sur cette personne
+        // SOLO d'après un repère (haut/bas) → plein écran sur cette personne, cadrage du SEGMENT
         if (_forced === 'top' || _forced === 'bot') {
-          const _o = _clipSettings[_modalIdx] || {};
           let soloCx;
-          if (_forced === 'top') soloCx = (_o.splitTopXFrac != null ? _o.splitTopXFrac : (cache?.splitLeftCx != null ? cache.splitLeftCx / vw : 0.30)) * vw;
-          else                   soloCx = (_o.splitBotXFrac != null ? _o.splitBotXFrac : (cache?.splitRightCx != null ? cache.splitRightCx / vw : 0.70)) * vw;
+          if (_seg?.xFrac != null) soloCx = _seg.xFrac * vw;
+          else if (_forced === 'top') soloCx = (cache?.splitLeftCx != null ? cache.splitLeftCx / vw : 0.30) * vw;
+          else                        soloCx = (cache?.splitRightCx != null ? cache.splitRightCx / vw : 0.70) * vw;
           ctx.drawImage(video, getCropX(vw, cropW, soloCx, 0.5), 0, cropW, vh, dx, dy, dw, dh);
         } else if (!_forced && _splitShowSingle && nLive >= 1) {
           // Solo AUTO (pas de repère) : plein écran sur la personne visible
@@ -3731,10 +5278,13 @@ const V2 = (() => {
             leftCx  = cache?.splitLeftCx  ?? (vw * 0.30);
             rightCx = cache?.splitRightCx ?? (vw * 0.70);
           }
-          // Overrides MANUELS (glisser chaque moitié) — prioritaires sur l'auto
+          // Overrides MANUELS du SEGMENT ACTIF (glisser chaque moitié) — prioritaires sur l'auto,
+          // repli sur l'ancien réglage global si présent (compat).
           const _optS = _clipSettings[_modalIdx] || {};
-          if (_optS.splitTopXFrac != null) leftCx  = _optS.splitTopXFrac * vw;
-          if (_optS.splitBotXFrac != null) rightCx = _optS.splitBotXFrac * vw;
+          const _tf = (_seg?.topXFrac != null) ? _seg.topXFrac : _optS.splitTopXFrac;
+          const _bf = (_seg?.botXFrac != null) ? _seg.botXFrac : _optS.splitBotXFrac;
+          if (_tf != null) leftCx  = _tf * vw;
+          if (_bf != null) rightCx = _bf * vw;
           const ratioH = 720 / 640;
           let cropWh = Math.min(vw, Math.max(faceW * 2.6, vh * ratioH));
           let cropHh = cropWh / ratioH;
@@ -3838,18 +5388,21 @@ const V2 = (() => {
     // Supprimer le badge aperçu 9:16 de l'export précédent
     const badge = document.getElementById('preview-9-16-badge');
     if (badge) badge.remove();
-    // Réactiver le bouton export
+    // Bouton Export remis à neuf à chaque ouverture de clip : un export précédent a pu le laisser
+    // sur "Télécharger", sur un fond de progression, ou branché sur le blob de l'ancien clip.
     const dlBtn = document.getElementById('modal-dl-btn');
-    if (dlBtn && dlBtn.disabled) {
+    if (dlBtn) {
       dlBtn.disabled = false;
-      dlBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger ce clip 9:16';
       dlBtn.onclick = () => V2.exportFromModal();
+      _dlBtnReset();
     }
     const dlStatus = document.getElementById('modal-dl-status');
     if (dlStatus) dlStatus.textContent = '';
   }
 
-  function closeModal() {
+  /* Fermeture réelle de la modale, sans toucher à l'historique. Appelée soit par le bouton ✕
+     (qui consomme d'abord l'entrée d'historique), soit par le Retour du navigateur. */
+  function _fermerModalDom() {
     stopModalVideo();
     if (_exportPreviewUrl) { URL.revokeObjectURL(_exportPreviewUrl); _exportPreviewUrl = null; }
     const badge = document.getElementById('preview-9-16-badge');
@@ -3865,6 +5418,17 @@ const V2 = (() => {
     document.getElementById('clip-modal-overlay').classList.remove('open');
     document.body.style.overflow = '';
     _modalIdx = null;
+  }
+
+  /* Bouton ✕ : on repasse par l'historique pour que l'entrée poussée à l'ouverture soit bien
+     consommée. Sans ça, un Retour ultérieur retomberait sur une entrée fantôme et renverrait
+     l'utilisateur à l'écran d'upload alors qu'il est déjà revenu à la grille. */
+  function closeModal() {
+    if (_modalHistoryPushed) {
+      _modalHistoryPushed = false;
+      try { history.back(); return; } catch {}
+    }
+    _fermerModalDom();
   }
 
   function updateModalSelBtn(i) {
@@ -3883,6 +5447,116 @@ const V2 = (() => {
 
   // ── Panneau transcription (toggle overlay) ──
   let _transcriptOpen = false;
+
+  /* ── Langue des sous-titres ────────────────────────────────────────────────────
+     On ne retranscrit pas : on traduit les segments déjà obtenus. Le minutage est donc
+     rigoureusement conservé, l'audio n'est pas touché, et le passage FR↔EN est instantané
+     à partir du 2e appel. Les traductions sont écrites dans `segEdits` — le même canal que les
+     corrections manuelles — donc l'aperçu ET l'export les prennent en compte sans code en plus.
+     On retient les clés écrites (`tradKeys`) pour pouvoir revenir au français SANS effacer les
+     corrections manuelles que l'utilisateur aurait faites avant de traduire. */
+  function _majSubLangUI(lang, etat) {
+    document.querySelectorAll('.sub-lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+      b.disabled = false;
+      // Restaure le libellé d'origine (il a pu être remplacé par l'indicateur de chargement)
+      if (b.dataset.libelle) { b.innerHTML = b.dataset.libelle; }
+    });
+    const el = document.getElementById('sub-lang-etat');
+    if (el) el.textContent = etat || '';
+  }
+
+  function _segmentsDuClip(i) {
+    const clip = _clips[i];
+    if (!clip) return [];
+    const start = clip.start_time ?? clip.start;
+    const end = clip.end_time ?? clip.end;
+    return _segments.filter(s => {
+      const ss = s.start ?? s.offset ?? 0;
+      const se = s.end ?? (ss + (s.duration ?? 2));
+      return ss < end && se > start;
+    });
+  }
+
+  async function setSubLang(lang) {
+    if (_modalIdx === null) return;
+    const s = _clipSettings[_modalIdx];
+    if (!s) return;
+    if ((s.subLang || 'fr') === lang) return;
+
+    if (lang === 'fr') {
+      (s.tradKeys || []).forEach(k => { if (s.segEdits) delete s.segEdits[k]; });
+      s.tradKeys = [];
+      s.subLang = 'fr';
+      _majSubLangUI('fr', '');
+      _lastSegKey = null;                 // force le re-rendu du sous-titre affiché
+      renderTranscript(_modalIdx);
+      return;
+    }
+
+    const segs = _segmentsDuClip(_modalIdx);
+    if (!segs.length) { toast('Aucun sous-titre à traduire sur ce clip', 'info', 3000); return; }
+
+    /* Le retour visuel doit être SUR le bouton cliqué. Avec un simple texte « Traduction… » placé
+       à côté (invisible sur mobile), les gens ne voyaient rien pendant les ~2 s de traduction et
+       recliquaient : c'était le 1er bouton rage-cliqué du site, 7 fois chez 5 personnes. */
+    document.querySelectorAll('.sub-lang-btn').forEach(b => { b.disabled = true; b.dataset.libelle = b.dataset.libelle || b.innerHTML; });
+    const _btnCible = document.querySelector('.sub-lang-btn[data-lang="en"]');
+    if (_btnCible) _btnCible.innerHTML = '<span style="display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);border-top-color:currentColor;animation:spin .8s linear infinite"></span>Traduction…';
+    const el = document.getElementById('sub-lang-etat');
+    if (el) el.textContent = '';
+    try {
+      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      const r = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': `Bearer ${tok}` } : {}) },
+        body: JSON.stringify({
+          mode: 'translate_segments', target_lang: 'en',
+          segments: segs.map(x => ({ text: x.text || x.word || '' }))
+        })
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.error || 'Traduction impossible');
+
+      if (!s.segEdits) s.segEdits = {};
+      const cles = [];
+      segs.forEach((x, i) => {
+        const t = (d.texts || [])[i];
+        if (!t) return;
+        const k = String(x.start ?? x.offset ?? 0);
+        s.segEdits[k] = t;
+        cles.push(k);
+      });
+      s.tradKeys = cles;
+      s.subLang = 'en';
+      _majSubLangUI('en', '');
+      _lastSegKey = null;
+      renderTranscript(_modalIdx);
+      if (window.posthog) posthog.capture('subtitles_translated', { clip_index: _modalIdx, target: 'en', lignes: cles.length });
+      toast(`✅ ${cles.length} sous-titres traduits en anglais`, 'succes', 3000);
+    } catch (e) {
+      _majSubLangUI(s.subLang || 'fr', '');
+      toast(`❌ ${e.message}`, 'erreur', 5000);
+    }
+  }
+
+  /* Lit une réponse d'API en tolérant qu'elle ne soit PAS du JSON. Quand une fonction Vercel
+     dépasse sa durée maximale, la plateforme renvoie une page de texte « An error occurred with
+     this application » — `res.json()` explosait alors en « Unexpected token 'A' », un message
+     incompréhensible qui masquait la vraie cause (l'analyse est trop longue). */
+  async function _lireReponseJson(res, contexte) {
+    const brut = await res.text();
+    try {
+      return JSON.parse(brut);
+    } catch {
+      const t = brut.slice(0, 200);
+      if (/an error occurred|FUNCTION_INVOCATION_TIMEOUT|504|Gateway/i.test(t) || res.status === 504) {
+        throw new Error(`L'${contexte} a dépassé le temps maximum. Essaie une vidéo plus courte, ou réessaie dans un instant.`);
+      }
+      if (res.status === 413) throw new Error('Vidéo trop lourde pour être analysée d\'un coup.');
+      throw new Error(`Réponse inattendue du serveur (${res.status}) — réessaie.`);
+    }
+  }
 
   function toggleTranscript() {
     _transcriptOpen = !_transcriptOpen;
@@ -3980,11 +5654,32 @@ const V2 = (() => {
 
   const _isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  // Bouton Export unique (en-tête du panneau). L'ancien gros bouton en bas faisait doublon, il a
+  // été supprimé : celui-ci porte le libellé, la progression et les états post-export.
+  const _DL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+  // La progression est peinte en FOND (dégradé) plutôt que dans un élément enfant : les différents
+  // états réécrivent innerHTML, ce qui détruirait une barre interne au premier changement de texte.
+  function _dlBtnProgress(pct) {
+    const b = document.getElementById('modal-dl-btn');
+    if (!b) return;
+    const p = Math.max(0, Math.min(100, Math.round(pct || 0)));
+    b.style.background = `linear-gradient(90deg, var(--vert) ${p}%, rgba(16,185,129,0.26) ${p}%)`;
+    b.innerHTML = `${_DL_ICON}${p}%`;
+  }
+
+  function _dlBtnReset(label, icon = true) {
+    const b = document.getElementById('modal-dl-btn');
+    if (!b) return;
+    b.style.background = 'var(--vert)';
+    b.innerHTML = (icon ? _DL_ICON : '') + (label || 'Export');
+  }
+
   function _resetModalBtn(btn) {
     if (!btn) return;
     btn.disabled = false;
     btn.onclick = () => V2.exportFromModal();
-    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip 9:16';
+    _dlBtnReset();
     // Le jumeau mobile (mob-dl-btn) a son onclick réécrit après un export (vers _iosSharePending
     // ou _doDownload) — sans ce reset, il reste bloqué sur l'ancien clip pour toute la session.
     const mobBtn = document.getElementById('mob-dl-btn');
@@ -4006,18 +5701,18 @@ const V2 = (() => {
         if (d?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, d.repurpose_count);
       } catch {}
     }
+    // Compte gratuit → paywall immédiat, AVANT tout traitement : aucun crédit consommé, aucune
+    // attente infligée. La personne a déjà vu ses clips en aperçu, c'est le bon moment pour vendre.
     if (_userPlan === 'gratuit' && _repurposeCount >= FREE_CLIP_LIMIT) {
-      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'free_limit_reached', repurpose_count: _repurposeCount });
+      if (window.posthog) posthog.capture('paywall_shown', { trigger: 'export_gratuit', repurpose_count: _repurposeCount });
       showUpgradeModal(); return;
     }
-    // Incrémenter + ATTENDRE l'écriture serveur avant de lancer l'export (bloque toute 2e tentative)
-    if (_userPlan === 'gratuit') { _repurposeCount++; await logClipExport(1); }
     if (window.posthog) { posthog.capture('export_clicked', { clip_index: _modalIdx, plan: _userPlan }); posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' }); }
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const mobBtn = document.getElementById('mob-dl-btn');
     const status = document.getElementById('modal-dl-status');
-    if (btn) { btn.disabled = true; btn.onclick = null; btn.innerHTML = '<span style="animation:spin 1s linear infinite;display:inline-block">⚙</span> Export en cours…'; }
+    if (btn) { btn.disabled = true; btn.onclick = null; _dlBtnProgress(0); }
     const mobLabel = document.getElementById('mob-dl-label');
     const mobProg = document.getElementById('mob-dl-progress');
     if (mobBtn) { mobBtn.disabled = true; }
@@ -4031,26 +5726,80 @@ const V2 = (() => {
     const _hookHExp = document.getElementById('modal-hook-handle'); if (_hookHExp) _hookHExp.style.display = 'none';
     try {
       const opts = getClipOpts(i);
-      const result = await exportSingleClip(_clips[i], opts, pct => {
-        if (status) status.textContent = `${pct}%`;
-        if (mobLabel) mobLabel.textContent = `${pct}%`;
-        if (mobProg) mobProg.style.width = `${pct}%`;
-      }, msg => {
-        if (status) status.textContent = msg;
-      });
+      // Message + % affichés ENSEMBLE (avant, l'un écrasait l'autre → barre qui semblait figée).
+      let _pMsg = 'Préparation…', _pPct = 0;
+      const _paint = () => {
+        if (status) status.textContent = `${_pMsg} · ${_pPct}%`;
+        _dlBtnProgress(_pPct);           // % lisible directement sur le bouton Export
+        if (mobLabel) mobLabel.textContent = `${_pPct}%`;
+        if (mobProg) mobProg.style.width = `${_pPct}%`;
+      };
+      const result = await exportSingleClip(_clips[i], opts,
+        pct => { _pPct = pct; _paint(); },
+        msg => { _pMsg = msg; _paint(); });
 
       const _resetMobBtn = () => {
         if (mobBtn) mobBtn.disabled = false;
         if (mobLabel) mobLabel.textContent = 'Export';
         if (mobProg) mobProg.style.width = '0%';
       };
-      if (_isIOS() && navigator.canShare) {
+      /* CHEMIN LIEN R2 — celui qui débloque le mobile. Le fichier n'a jamais transité par la
+         mémoire du navigateur : on ouvre simplement l'URL et le système prend le relais. Plus de
+         blob, plus de clic synthétique, plus d'obligation de rester au premier plan. Ce chemin
+         vaut pour iOS comme pour Android et l'ordinateur — un lien, tout le monde sait le gérer. */
+      if (result.url) {
+        if (_cropRaf) { cancelAnimationFrame(_cropRaf); _cropRaf = null; }
+        if (_subRaf) { cancelAnimationFrame(_subRaf); _subRaf = null; }
+        const cc3 = document.getElementById('crop-canvas'); if (cc3) cc3.style.display = 'none';
+        const subOv3 = document.getElementById('modal-sub-overlay'); if (subOv3) subOv3.style.display = 'none';
+        const hookOv3 = document.getElementById('modal-hook-overlay'); if (hookOv3) hookOv3.style.display = 'none';
+        const subH3 = document.getElementById('modal-sub-handle'); if (subH3) subH3.style.display = 'none';
+        const hookH3 = document.getElementById('modal-hook-handle'); if (hookH3) hookH3.style.display = 'none';
+
+        // L'aperçu du rendu final lit directement depuis R2 — aucune copie locale
+        const mv3 = document.getElementById('modal-video');
+        const mp3 = document.getElementById('modal-player-ph');
+        if (mv3) {
+          mv3.src = result.url;
+          mv3.style.objectFit = 'contain';
+          mv3.style.display = 'block';
+          if (mp3) mp3.style.display = 'none';
+          mv3.load();
+          mv3.play().catch(() => {});
+        }
+        const wrap3 = document.getElementById('modal-player-wrap');
+        if (wrap3 && !document.getElementById('preview-9-16-badge')) {
+          const b3 = document.createElement('div');
+          b3.id = 'preview-9-16-badge';
+          b3.style.cssText = 'position:absolute;top:8px;left:8px;background:#10b981;color:#fff;font-size:10px;font-weight:800;padding:3px 7px;border-radius:5px;z-index:10;letter-spacing:0.06em;pointer-events:none';
+          b3.textContent = 'APERÇU 9:16';
+          wrap3.appendChild(b3);
+        }
+
+        const _ouvrirLien = () => {
+          // `<a download>` sur une URL distante est ignoré par plusieurs navigateurs mobiles :
+          // le serveur envoie déjà Content-Disposition: attachment, c'est lui qui fait foi.
+          const a = document.createElement('a');
+          a.href = result.url; a.rel = 'noopener';
+          a.download = result.filename;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          if (status) status.textContent = '✅ Téléchargement lancé';
+          toast('✅ Clip téléchargé !', 'succes', 3000);
+          if (window.posthog) posthog.capture('download_completed', { clip_index: i, plan: _userPlan, voie: 'lien_r2' });
+          if (btn) { btn.disabled = false; btn.onclick = _ouvrirLien; _dlBtnReset('Télécharger'); }
+          if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = _ouvrirLien; }
+          if (mobLabel) mobLabel.textContent = '⬇';
+          if (mobProg) mobProg.style.width = '100%';
+        };
+        _ouvrirLien();
+        if (status) status.textContent = '✅ Prêt — le lien reste valable 7 jours';
+      } else if (_isIOS() && navigator.canShare) {
         _pendingDownload = { blob: result.blob, filename: result.filename };
         // Pas d'appel auto à navigator.share() ici : Safari le refuse après l'attente réseau de
         // l'export (le geste utilisateur d'origine n'est plus "frais"), ce qui affichait une erreur
         // technique alors que l'export avait pourtant réussi. On attend le tap sur le bouton.
         if (status) status.textContent = 'Prêt ! Appuie sur le bouton ↓';
-        if (btn) { btn.disabled = false; btn.innerHTML = '📲 Enregistrer dans Photos'; btn.onclick = () => V2._iosSharePending(); }
+        if (btn) { btn.disabled = false; _dlBtnReset('📲 Enregistrer', false); btn.onclick = () => V2._iosSharePending(); }
         if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = () => V2._iosSharePending(); }
         if (mobLabel) mobLabel.textContent = '📲';
         if (mobProg) mobProg.style.width = '100%';
@@ -4102,16 +5851,25 @@ const V2 = (() => {
           if (modalVideo) modalVideo.style.objectFit = 'cover';
         };
         _doDownload();
-        if (btn) { btn.disabled = false; btn.onclick = _doDownload; btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Télécharger ce clip'; }
+        if (btn) { btn.disabled = false; btn.onclick = _doDownload; _dlBtnReset('Télécharger'); }
         if (mobBtn) { mobBtn.disabled = false; mobBtn.onclick = _doDownload; }
         if (mobLabel) mobLabel.textContent = '⬇';
         if (mobProg) mobProg.style.width = '100%';
       }
     } catch(err) {
-      if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé.'; }
+      // REMBOURSEMENT DU CRÉDIT D'ESSAI. Le compteur est incrémenté AVANT l'export (anti-contournement
+      // du paywall), donc un export qui échoue consommait quand même l'unique clip gratuit : la
+      // personne se retrouvait murée derrière le paywall sans avoir jamais rien reçu, et repartait.
+      // C'était le premier motif d'abandon mesuré (9 exports lancés sur 14 ne se terminaient jamais).
+      if (_userPlan === 'gratuit') {
+        _repurposeCount = Math.max(0, _repurposeCount - 1);
+        logClipExport(-1).catch(() => {});
+        if (window.posthog) posthog.capture('free_credit_refunded', { clip_index: i, reason: err.name === 'AbortError' ? 'abort' : (err.message?.substring(0, 80) || 'inconnu') });
+      }
+      if (err.name === 'AbortError') { if (status) status.textContent = 'Annulé — ton clip gratuit t\'est rendu.'; }
       else {
         if (status) status.textContent = `❌ ${err.message.substring(0, 80)}`;
-        toast(`❌ ${err.message}`, 'erreur', 6000);
+        toast(`❌ ${err.message} — ton clip gratuit t'est rendu, réessaie`, 'erreur', 6000);
         if (window.posthog) posthog.capture('download_failed', { clip_index: i, plan: _userPlan, reason: err.message?.substring(0, 100) });
       }
       _resetModalBtn(btn);
@@ -4136,6 +5894,11 @@ const V2 = (() => {
         await navigator.share({ files: [file], title: filename });
         if (status) status.textContent = '✅ Enregistré dans Photos !';
         toast('✅ Enregistré dans Photos !', 'succes', 3000);
+        /* TROU DE MESURE CORRIGÉ : `download_completed` n'était déclenché QUE sur le chemin
+           blob (ordinateur / Android). Sur iOS, l'enregistrement dans Photos réussissait sans
+           jamais être compté — toutes ces réussites étaient invisibles et gonflaient le taux
+           d'abandon apparent. On marque `voie` pour distinguer les deux chemins à l'analyse. */
+        if (window.posthog) posthog.capture('download_completed', { plan: _userPlan, voie: 'ios_photos' });
         _pendingDownload = null;
         _resetModalBtn(btn);
       } else {
@@ -4144,6 +5907,9 @@ const V2 = (() => {
         window.open(objUrl, '_blank');
         setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
         if (status) status.textContent = 'Vidéo ouverte — maintiens appuyé → Enregistrer';
+        // Le fichier est livré (ouvert dans un onglet) même si l'enregistrement final dépend
+        // d'un appui long — sans ça, ce chemin comptait comme un abandon.
+        if (window.posthog) posthog.capture('download_completed', { plan: _userPlan, voie: 'ios_onglet' });
         _resetModalBtn(btn);
       }
     } catch(err) {
@@ -4367,8 +6133,8 @@ const V2 = (() => {
   // ── Export ──
   async function startExport() {
     if (_selectedIds.size === 0) return;
-    // Export groupé = Pro. Gratuit = 1 seul clip via le téléchargement unitaire (modale).
-    // On resynchronise le plan/compteur serveur avant de décider.
+    // Tout téléchargement est réservé aux plans payants — groupé comme unitaire.
+    // On resynchronise le plan serveur avant de décider (le plan a pu changer dans un autre onglet).
     if (_userPlan === 'gratuit') {
       try {
         const d = await Auth.getPlanDistant();
@@ -4475,9 +6241,27 @@ const V2 = (() => {
       .map(s => {
         const ss = s.start ?? s.offset ?? 0;
         const se = s.end ?? (ss + (s.duration ?? 2));
-        const key = `${ss.toFixed(2)}_${se.toFixed(2)}`;
+        // BUG CORRIGÉ : la clé était `${début}_${fin}` alors que l'éditeur de transcription et
+        // l'aperçu écrivent sous `String(début)`. Les deux ne se rencontraient jamais — toute
+        // correction manuelle d'un sous-titre s'affichait dans l'aperçu puis DISPARAISSAIT du
+        // fichier exporté. Même clé partout désormais.
+        const key = String(ss);
         const text = segEdits[key] ?? s.text ?? s.word ?? '';
-        return { text: text.trim(), t0: Math.max(0, ss - start), t1: Math.min(end - start, se - start) };
+        /* `words` porte les timings RÉELS de chaque mot renvoyés par Groq. Sans eux, le serveur
+           doit réinventer la cadence par division égale du segment — c'est ce qui désynchronise
+           le karaoké. On les rebase sur le début du clip comme t0/t1, et on les omet si le
+           sous-titre a été réécrit à la main (les timings ne correspondraient plus au texte). */
+        const modifie = segEdits[key] != null && segEdits[key] !== (s.text ?? '');
+        const words = (!modifie && Array.isArray(s.words))
+          ? s.words.map(w => ({
+              word: w.word,
+              start: Math.max(0, (w.start ?? ss) - start),
+              end: Math.min(end - start, (w.end ?? se) - start)
+            })).filter(w => w.word && w.end > w.start)
+          : undefined;
+        const out = { text: text.trim(), t0: Math.max(0, ss - start), t1: Math.min(end - start, se - start) };
+        if (words && words.length) out.words = words;
+        return out;
       })
       .filter(s => s.text && s.t1 > s.t0);
 
@@ -4574,7 +6358,7 @@ const V2 = (() => {
     form.append('color_text', opts.colorText || '#ffffff');
     form.append('color_bg',   opts.colorBg   || '#000000');
     form.append('sub_y',      String(opts.subY ?? 82));
-    form.append('sub_x',      String(opts.subX ?? 50));
+    form.append('sub_x',      String(opts.subX ?? 50)); // aperçu reflète maintenant subX → export fidèle
     form.append('hook_enabled', String(!!(opts.hookEnabled && opts.hookText)));
     form.append('hook_text',  opts.hookText || '');
     form.append('hook_color', opts.hookColor || '#ffffff');
@@ -4598,6 +6382,21 @@ const V2 = (() => {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         videoBlob = await new Promise((resolve, reject) => {
+          // Pendant l'encodage serveur (~60s), ni l'upload ni le download ne progressent → avant, la
+          // barre restait figée et l'user croyait que c'était planté (→ abandons). On anime une
+          // progression qui MONTE doucement vers 93% + message rassurant, tant que le serveur bosse.
+          let _encTick = null, _encP = 50;
+          const _startEnc = () => {
+            if (_encTick) return;
+            _encP = Math.max(_encP, 50);
+            if (onMsg) onMsg('🎬 Montage du clip… (~1 min, ne ferme pas)');
+            _encTick = setInterval(() => {
+              _encP += Math.max(0.5, (93 - _encP) * 0.05); // approche asymptotique de 93%
+              if (_encP > 93) _encP = 93;
+              if (onPct) onPct(Math.round(_encP));
+            }, 800);
+          };
+          const _stopEnc = () => { if (_encTick) { clearInterval(_encTick); _encTick = null; } };
           const xhr = new XMLHttpRequest();
           xhr.open('POST', `${tokData.railway_url}/process-clip?token=${encodeURIComponent(tokData.token)}`);
           xhr.responseType = 'blob';
@@ -4611,15 +6410,36 @@ const V2 = (() => {
               if (onMsg) onMsg(`Envoi ${Math.round(e.loaded / e.total * 100)}%…`);
             }
           };
+          xhr.upload.onload = () => { if (onPct) onPct(50); _startEnc(); }; // upload fini → l'encodage commence
           xhr.onprogress = e => {
+            _stopEnc(); // le serveur renvoie le fichier → fin de l'encodage
             if (e.lengthComputable) {
-              if (onPct) onPct(50 + Math.round(e.loaded / e.total * 45));
-              if (onMsg) onMsg(`Traitement ${Math.round(e.loaded / e.total * 100)}%…`);
+              if (onPct) onPct(93 + Math.round(e.loaded / e.total * 6));
+              if (onMsg) onMsg(`Récupération ${Math.round(e.loaded / e.total * 100)}%…`);
             }
           };
           xhr.onload = () => {
+            _stopEnc();
             if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(xhr.response); // blob vidéo directement
+              /* Railway renvoie désormais un LIEN R2 (petit JSON) au lieu des ~15 Mo du fichier.
+                 Le téléphone n'a plus rien à garder en mémoire ni de clic synthétique à simuler :
+                 c'est le gestionnaire de téléchargement du système qui prend le relais.
+                 On accepte encore le blob : si R2 est indisponible, Railway retombe sur l'envoi
+                 direct et ce chemin doit continuer de fonctionner. */
+              const rep = xhr.response;
+              if (rep && rep.type && rep.type.indexOf('application/json') === 0) {
+                const lecteur = new FileReader();
+                lecteur.onload = () => {
+                  try {
+                    const j = JSON.parse(lecteur.result);
+                    if (j.url) { resolve({ url: j.url, filename: j.filename || 'clip_9x16.mp4', size: j.size }); }
+                    else reject(new Error(j.error || 'Réponse serveur sans lien'));
+                  } catch { reject(new Error('Réponse serveur illisible')); }
+                };
+                lecteur.readAsText(rep);
+                return;
+              }
+              resolve(rep); // repli : blob vidéo direct
             } else {
               const reader = new FileReader();
               reader.onload = () => {
@@ -4631,8 +6451,8 @@ const V2 = (() => {
               reader.readAsText(xhr.response);
             }
           };
-          xhr.onerror   = () => reject(Object.assign(new Error('Erreur réseau Railway'), { retryable: true }));
-          xhr.ontimeout = () => reject(Object.assign(new Error('Timeout Railway (2 min)'), { retryable: true }));
+          xhr.onerror   = () => { _stopEnc(); reject(Object.assign(new Error('Erreur réseau Railway'), { retryable: true })); };
+          xhr.ontimeout = () => { _stopEnc(); reject(Object.assign(new Error('Timeout Railway (2 min)'), { retryable: true })); };
           xhr.send(form);
         });
         break;
@@ -4644,7 +6464,17 @@ const V2 = (() => {
       }
     }
 
-    // Watermark "Créatis" pour les gratuits
+    const filename = (clip.title || 'clip').replace(/[^\w\- ]/g,'').replace(/\s+/g,'_').substring(0,40) + '_9x16.mp4';
+
+    /* Railway a renvoyé un lien R2 : rien à traiter côté navigateur, on rend l'URL telle quelle.
+       C'est tout l'intérêt — le fichier ne transite plus par la mémoire du téléphone. */
+    if (videoBlob && videoBlob.url) {
+      if (onPct) onPct(100);
+      if (onMsg) onMsg('Prêt !');
+      return { url: videoBlob.url, filename, size: videoBlob.size };
+    }
+
+    // Watermark "Créatis" pour les gratuits (chemin blob uniquement — repli si R2 indisponible)
     if (_userPlan === 'gratuit' && videoBlob) {
       if (onMsg) onMsg('Ajout watermark…');
       try { videoBlob = await _burnOverlays(videoBlob, opts, true); } catch(e) { console.warn('Watermark failed:', e); }
@@ -4653,7 +6483,6 @@ const V2 = (() => {
     if (onPct) onPct(100);
     if (onMsg) onMsg('Prêt !');
 
-    const filename = (clip.title || 'clip').replace(/[^\w\- ]/g,'').replace(/\s+/g,'_').substring(0,40) + '_9x16.mp4';
     return { blob: videoBlob, filename };
   }
 
@@ -5298,6 +7127,8 @@ const V2 = (() => {
   }
 
   function restart() {
+    _viaVoix = false;
+    voixStatut('');   // le réarmement du micro se fait dans setState('upload')
     // Libère les blobs de segments YouTube en cache (mémoire)
     try { Object.values(_ytSegCache).forEach(u => URL.revokeObjectURL(u)); } catch {}
     _ytSegCache = {}; _ytSegInflight = {};
@@ -5344,12 +7175,45 @@ const V2 = (() => {
     updateClipOpt();
   }
 
-  return { init, onFileSelect, onDrop, onUrlInput, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, resetCadrage, addSplitKeyframe, removeSplitKeyframe, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
+  return { init, onFileSelect, onDrop, onUrlInput, voiceStart, voiceMainsLibres, voiceReponses, onWatermarkSelect, setYtUrl, toggleHook, toggleWatermark, selectStyle, toggleClip, selectAll, deselectAll, selectTop5, startAnalyze, startExport, download, restart, showModal, closeModal, togglePlay, setClipStyle, updateClipOpt, autoHook, toggleSelectFromModal, setStyleFromModal, hookFromModal, exportFromModal, _iosSharePending, _dlResult, _downloadClipDirect, switchTab, editSeg, saveSegEdit, seekToSeg, highlightSeg, toggleTranscript, setSubLang, mobPanel, setSzBtn, logClipExport, showUpgradeModal, closeUpgradeModal, _restoreAnalysis, _reattachFile, _reattachAndRestore, _ouvrirGeneration, _chargerHistorique, setHookStyle, toggleMoreStyles, selectStyleCat, toggleSplit, resetCadrage, cutHere, setSegMode, selectSeg, removeCut, removeSelCut, dragCut, seekCadrage, seekRel, zoomCad, deskTab, _preloadFFmpeg: () => loadFFmpeg().catch(() => {}), _extractClipLocally };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
   V2.init();
+
+  // Exemples de l'écran d'upload : preload="none" + lecture uniquement quand ils sont visibles,
+  // pour ne rien coûter au chargement (5 clips = 2 Mo qui ne partent que si on les regarde).
+  try {
+    const _exVids = document.querySelectorAll('#v2-ex-left video, #v2-ex-right video');
+    if (_exVids.length && 'IntersectionObserver' in window) {
+      const _ioEx = new IntersectionObserver(es => es.forEach(e => {
+        const v = e.target;
+        if (e.isIntersecting) { v.play && v.play().catch(() => {}); } else { v.pause && v.pause(); }
+      }), { threshold: 0.3 });
+      _exVids.forEach(v => _ioEx.observe(v));
+    }
+  } catch {}
   setTimeout(() => { try { V2._preloadFFmpeg && V2._preloadFFmpeg(); } catch {} }, 2000);
+
+  // Lien YouTube collé dans le champ d'accueil de la landing page. Il doit survivre au passage
+  // par l'inscription — d'où localStorage et non sessionStorage : la connexion Google sort du
+  // site et revient, ce qui peut faire perdre la session de l'onglet.
+  try {
+    const brut = localStorage.getItem('creatis_pending_yt');
+    if (brut) {
+      localStorage.removeItem('creatis_pending_yt'); // consommé une seule fois
+      const { url, ts } = JSON.parse(brut);
+      // Périmé au-delà d'une heure : s'il revient le lendemain, il ne s'attend plus à ce que
+      // sa vidéo de la veille se lance toute seule.
+      if (url && Date.now() - (ts || 0) < 3600e3) {
+        const champ = document.getElementById('yt-url-input');
+        if (champ) champ.value = url;
+        V2.setYtUrl(url);
+        // Il a cliqué « Générer » sur la LP : on enchaîne sans le lui redemander.
+        setTimeout(() => document.getElementById('btn-analyze')?.click(), 700);
+      }
+    }
+  } catch {}
 
   // Auto-upload depuis LP (?upload=1) — mode plein écran
   if (new URLSearchParams(window.location.search).get('upload') === '1') {

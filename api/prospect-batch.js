@@ -224,7 +224,7 @@ async function sendClipperOutreach(ch, appUrl) {
             💬 Captions burnées prêtes à publier<br>
             📲 TikTok · Instagram Reels · YouTube Shorts · Snapchat
           </p>
-          <p>Fini le clipping à la main. 1 essai gratuit :</p>
+          <p>Fini le clipping à la main. Analyse gratuite, vois tes clips avant de payer :</p>
           <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer gratuitement →</a>
           <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part. Pour ne plus être contacté : <a href="mailto:contact@creatis.app?subject=Désabonnement&body=Merci%20de%20me%20retirer%20de%20votre%20liste%20:%20${encodeURIComponent(ch.email)}" style="color:#aaa">se désabonner</a>.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
@@ -264,7 +264,7 @@ async function sendOutreach(ch, appUrl) {
             💬 Captions automatiques prêts à publier<br>
             📲 TikTok · Instagram Reels · YouTube Shorts · Snapchat
           </p>
-          <p>1 essai gratuit — sans carte bancaire :</p>
+          <p>Analyse gratuite — sans carte bancaire :</p>
           <a href="${appUrl}" style="display:inline-block;background:#10b981;color:#000;padding:14px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin:12px 0">Essayer Clips Viraux →</a>
           <p style="color:#888;font-size:13px;margin-top:24px">C'est le seul email que tu recevras de ma part. Pour ne plus être contacté : <a href="mailto:contact@creatis.app?subject=Désabonnement&body=Merci%20de%20me%20retirer%20de%20votre%20liste%20:%20${encodeURIComponent(ch.email)}" style="color:#aaa">se désabonner</a>.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">

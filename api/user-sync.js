@@ -40,7 +40,7 @@ async function envoyerEmailBienvenue(email) {
 <p style="color:#9ca3af;line-height:1.7;margin:0 0 24px;font-size:15px;">Il a uploadé sa vidéo YouTube sur Créatis. L'IA a trouvé le meilleur moment, coupé en 9:16, ajouté les sous-titres. 30 secondes de travail.</p>
 
 <div style="background:#0d1f14;border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:20px;margin-bottom:28px;">
-  <p style="color:#10b981;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">Ton essai gratuit — 3 étapes</p>
+  <p style="color:#10b981;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">Ton analyse gratuite — 3 étapes</p>
   <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;line-height:1.6;">① Va sur <strong style="color:#fff;">creatis.app</strong> → Clips Viraux</p>
   <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;line-height:1.6;">② Uploade n'importe quelle vidéo YouTube (même une vieille)</p>
   <p style="color:#d1d5db;font-size:14px;margin:0;line-height:1.6;">③ Reçois tes clips en 30 secondes</p>
@@ -48,7 +48,7 @@ async function envoyerEmailBienvenue(email) {
 
 <a href="https://creatis.app/generateur-clips-viraux.html" style="display:block;background:#10b981;color:#000;font-weight:800;font-size:16px;padding:16px 28px;border-radius:10px;text-decoration:none;text-align:center;margin-bottom:24px;">Générer mes clips maintenant →</a>
 
-<p style="color:#4b5563;font-size:13px;line-height:1.6;margin:0 0 8px;">Gratuit · Sans carte bancaire · 1 analyse offerte</p>
+<p style="color:#4b5563;font-size:13px;line-height:1.6;margin:0 0 8px;">Gratuit · Sans carte bancaire · Analyse et aperçu offerts</p>
 <p style="color:#374151;font-size:12px;margin:0;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;text-decoration:none;">contact@creatis.app</a></p>
 </div>`
       })
@@ -62,6 +62,40 @@ async function envoyerEmailBienvenue(email) {
     return emailData.messageId;
   } catch (e) {
     console.error('[Email] Bienvenue exception pour', email, ':', e.message);
+    return null;
+  }
+}
+
+/* Compte les événements PostHog d'une journée. Les affichages de paywall et les clics « Passer au
+   Pro » n'existent QUE dans PostHog — Supabase ne les voit pas. Sans clé configurée, on renvoie
+   null et le rapport affiche « — » plutôt que de mentir avec des zéros.
+   Nécessite POSTHOG_API_KEY (clé personnelle, lecture seule suffit) et POSTHOG_PROJECT_ID. */
+async function statsPostHog(debutISO, finISO) {
+  const cle = (process.env.POSTHOG_API_KEY || '').trim();
+  const projet = (process.env.POSTHOG_PROJECT_ID || '').trim();
+  const hote = (process.env.POSTHOG_HOST || 'https://eu.posthog.com').trim();
+  if (!cle || !projet) return null;
+  try {
+    const sql = `
+      SELECT event, count() AS n, count(DISTINCT person_id) AS pers
+      FROM events
+      WHERE timestamp >= '${debutISO}' AND timestamp <= '${finISO}'
+        AND event IN ('paywall_shown','upgrade_clicked','clips_generated','generation_failed',
+                      'export_clicked','download_completed','free_credit_refunded','paiement_erreur')
+      GROUP BY event`;
+    const r = await fetch(`${hote}/api/projects/${projet}/query/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: { kind: 'HogQLQuery', query: sql } }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!r.ok) { console.warn('[DailyReport] PostHog', r.status); return null; }
+    const d = await r.json();
+    const out = {};
+    for (const [event, n, pers] of (d.results || [])) out[event] = { n, pers };
+    return out;
+  } catch (e) {
+    console.warn('[DailyReport] PostHog indisponible:', e.message);
     return null;
   }
 }
@@ -101,10 +135,13 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
-  const { userId, email, plan, chaine, action, metadata } = req.body || {};
+  const { userId, email, plan, chaine, action, metadata, source } = req.body || {};
 
   const isCronAction = action === 'email_cron' || action === 'daily_report';
-  if (!isCronAction && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
+  // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
+  // il ne doit donc pas être recalé par ce contrôle.
+  const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer';
+  if (!sansIdentifiantCorps && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
     switch (action) {
@@ -131,7 +168,10 @@ module.exports = async (req, res) => {
           chaine_nom: chaine?.nom || null,
           chaine_abonnes: chaine?.abonnes || 0,
           chaine_id: chaine?.id || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Uniquement à la création : ne jamais écraser la vraie source d'un compte existant
+          // (upsert est aussi appelé à chaque connexion, pas seulement au signup)
+          ...(isNewUser && source && { source })
         };
         const result = await supabase('/users?on_conflict=email', 'POST', userData);
 
@@ -346,13 +386,18 @@ module.exports = async (req, res) => {
         const hierStart = hier + 'T00:00:00.000Z';
         const hierEnd   = hier + 'T23:59:59.999Z';
 
-        const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier] = await Promise.all([
+        const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier, tousPlans, echecsPaiement, ph] = await Promise.all([
           supabase(`/users?select=id,email,plan&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           supabase(`/users?select=id,email`, 'GET').catch(() => []),
           supabase(`/users?select=id,email&plan=neq.gratuit`, 'GET').catch(() => []),
           supabase(`/generations?select=agent_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           supabase(`/generations?select=id&agent_id=eq.clips-viraux&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
-          supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => [])
+          supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          // Répartition par plan — « Abonnés Pro/Studio » masquait qui est sur quoi
+          supabase(`/users?select=plan,email`, 'GET').catch(() => []),
+          // Paiements échoués de la veille (table créée le 25/07) — pour ne plus les découvrir dans Stripe
+          supabase(`/paiements_echoues?select=email,montant,devise,statut,raison&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          statsPostHog(hierStart, hierEnd)
         ]);
 
         const usersHierReels = (usersHier || []).filter(u => !TEST_EMAILS.includes(u.email));
@@ -362,6 +407,33 @@ module.exports = async (req, res) => {
         const nbGens     = gensHier?.length || 0;
         const nbClips    = clipsHier?.length || 0;
         const nbActifs   = new Set((actifsHier || []).map(g => g.user_id)).size;
+
+        // ── Répartition par plan (hors comptes de test) ──
+        const plans = { gratuit: 0, starter: 0, pro: 0, studio: 0 };
+        (tousPlans || []).filter(u => !TEST_EMAILS.includes(u.email))
+          .forEach(u => { const p = u.plan || 'gratuit'; plans[p] = (plans[p] || 0) + 1; });
+
+        // ── Tunnel PostHog (null si la clé n'est pas configurée) ──
+        const val = (e, champ = 'n') => ph && ph[e] ? ph[e][champ] : null;
+        const aff = (v) => (v === null || v === undefined) ? '—' : String(v);
+        const pwVus   = val('paywall_shown');
+        const pwPers  = val('paywall_shown', 'pers');
+        const upClics = val('upgrade_clicked');
+        const upPers  = val('upgrade_clicked', 'pers');
+        const genOk   = val('clips_generated');
+        const genKo   = val('generation_failed');
+        const dlFini  = val('download_completed');
+        const remb    = val('free_credit_refunded');
+        // Combien de ceux qui voient le paywall cliquent réellement — la métrique qui compte
+        const tauxClic = (pwPers && upPers !== null) ? Math.round(upPers / pwPers * 100) + ' %' : '—';
+        const tauxEchec = (genOk !== null && genKo !== null && (genOk + genKo) > 0)
+          ? Math.round(genKo / (genOk + genKo) * 100) + ' %' : '—';
+
+        // ── Paiements échoués ──
+        const echecs = echecsPaiement || [];
+        const echecsHtml = echecs.length
+          ? echecs.slice(0, 8).map(e => `• ${e.email || '?'} — ${e.montant || '?'} ${e.devise || ''} <span style="color:#f87171">${(e.raison || e.statut || '').slice(0, 60)}</span>`).join('<br>')
+          : '';
 
         const agentCount = {};
         (gensHier || []).forEach(g => { agentCount[g.agent_id] = (agentCount[g.agent_id] || 0) + 1; });
@@ -380,10 +452,34 @@ module.exports = async (req, res) => {
     <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">STATS GLOBALES</div>
     <table style="width:100%;font-size:13px;border-collapse:collapse">
       <tr><td style="color:#9ca3af;padding:3px 0">Total inscrits</td><td style="text-align:right;font-weight:700;color:#fff">${nbTotal}</td></tr>
-      <tr><td style="color:#9ca3af;padding:3px 0">Abonnés Pro/Studio</td><td style="text-align:right;font-weight:700;color:#10b981">${nbPro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Abonnés payants</td><td style="text-align:right;font-weight:700;color:#10b981">${nbPro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Starter 9,95€</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.starter}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Pro 14€ / annuel</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.pro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Gratuit</td><td style="text-align:right;font-weight:700;color:#6b7280">${plans.gratuit}</td></tr>
       <tr><td style="color:#9ca3af;padding:3px 0">Générations IA hier</td><td style="text-align:right;font-weight:700;color:#fff">${nbGens}</td></tr>
     </table>
   </div>
+
+  <div style="background:#111;border:1px solid ${upClics ? '#10b981' : '#1f2937'};border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">TUNNEL DE CONVERSION (hier)</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tr><td style="color:#9ca3af;padding:3px 0">Analyses réussies</td><td style="text-align:right;font-weight:700;color:#fff">${aff(genOk)}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Analyses échouées</td><td style="text-align:right;font-weight:700;color:${genKo ? '#f87171' : '#6b7280'}">${aff(genKo)}${tauxEchec !== '—' ? `  <span style="color:#6b7280;font-weight:400">(${tauxEchec})</span>` : ''}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Téléchargements terminés</td><td style="text-align:right;font-weight:700;color:#fff">${aff(dlFini)}</td></tr>
+      <tr><td colspan="2" style="border-top:1px solid #1f2937;padding-top:6px"></td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Paywalls affichés</td><td style="text-align:right;font-weight:700;color:#fff">${aff(pwVus)}${pwPers !== null ? `  <span style="color:#6b7280;font-weight:400">(${pwPers} pers.)</span>` : ''}</td></tr>
+      <tr><td style="color:#fff;padding:3px 0;font-weight:700">Clics « Passer au Pro »</td><td style="text-align:right;font-weight:900;font-size:15px;color:${upClics ? '#10b981' : '#6b7280'}">${aff(upClics)}${upPers !== null ? `  <span style="color:#6b7280;font-weight:400;font-size:12px">(${upPers} pers.)</span>` : ''}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Taux paywall → clic</td><td style="text-align:right;font-weight:700;color:#f0a500">${tauxClic}</td></tr>
+      ${remb ? `<tr><td style="color:#9ca3af;padding:3px 0">Crédits d'essai remboursés</td><td style="text-align:right;font-weight:700;color:#f0a500">${remb}</td></tr>` : ''}
+    </table>
+    ${ph === null ? '<div style="font-size:11px;color:#6b7280;margin-top:10px">⚠️ PostHog non configuré — ajoute POSTHOG_API_KEY et POSTHOG_PROJECT_ID dans Vercel pour ces chiffres.</div>' : ''}
+  </div>
+
+  ${echecs.length ? `<div style="background:#1a0f0f;border:1px solid #7f1d1d;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">💳 PAIEMENTS ÉCHOUÉS (${echecs.length})</div>
+    <div style="font-size:12px;color:#d1d5db;line-height:1.9">${echecsHtml}</div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:10px">Ces personnes ont sorti leur carte — à relancer dans la journée.</div>
+  </div>` : ''}
   <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
     <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">TOP AGENTS (hier)</div>
     <div style="font-size:13px;color:#d1d5db;line-height:2">${topAgents}</div>
@@ -398,26 +494,61 @@ module.exports = async (req, res) => {
           body: JSON.stringify({
             sender: { name: 'Créatis Analytics', email: 'contact@creatis.app' },
             to: [{ email: 'creatis.app.contact@gmail.com', name: 'Créatis' }],
-            subject: `📊 Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${nbActifs} actifs`,
+            subject: `📊 Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${aff(upClics)} clic(s) paywall${echecs.length ? ` · ⚠️ ${echecs.length} paiement(s) échoué(s)` : ''}`,
             htmlContent: html
           })
         });
         const emailData = await emailRes.json().catch(() => ({}));
         if (!emailRes.ok) console.error('[DailyReport] Brevo erreur:', JSON.stringify(emailData));
         console.log(`[DailyReport] ${hier} — ${nbInscrits} inscrits, ${nbClips} clips, ${nbActifs} actifs`);
-        return res.status(200).json({ ok: emailRes.ok, date: hier, inscrits: nbInscrits, clips: nbClips, actifs: nbActifs });
+        /* `posthog` dans la réponse sert au diagnostic : sans lui, une clé invalide ou un mauvais
+           projet ne se voit qu'en ouvrant l'email le lendemain et en le trouvant vide. */
+        return res.status(200).json({
+          ok: emailRes.ok, date: hier, inscrits: nbInscrits, clips: nbClips, actifs: nbActifs,
+          posthog: ph === null ? 'NON CONFIGURÉ ou requête refusée' : ph
+        });
       }
 
       case 'log_clip_export': {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
-        const users = await supabase(`/users?${identifier}&select=id,plan,repurpose_count`, 'GET');
+        const users = await supabase(`/users?${identifier}&select=id,plan,repurpose_count,repurpose_reset`, 'GET');
         const user = users?.[0];
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
-        const nb = Math.max(1, parseInt(metadata?.nb) || 1);
+        /* nb négatif = REMBOURSEMENT d'un crédit après un export échoué ou abandonné.
+           Le compteur est incrémenté avant l'export (pour empêcher de contourner le paywall en
+           lançant plusieurs exports en parallèle), donc sans ce remboursement un échec consommait
+           quand même le clip et murait l'utilisateur derrière le paywall sans rien lui livrer. */
+        const brut = parseInt(metadata?.nb);
+        const nb = Number.isFinite(brut) && brut !== 0 ? Math.max(-10, Math.min(10, brut)) : 1;
+        const estRemboursement = nb < 0;
+
+        /* Quota mensuel de clips exportés. Le compteur se périme tout seul : si `repurpose_reset`
+           n'est pas le mois courant, on repart de 0 — pas besoin de cron de remise à zéro.
+           DOIT rester aligné avec QUOTAS dans api/repurpose.js et CONFIG.PLANS dans js/config.js. */
+        const QUOTA_CLIPS = { gratuit: 0, starter: 20, pro: 150, studio: 150 };
+        const d = new Date();
+        const moisCourant = `${d.getFullYear()}-${d.getMonth()}`;
+        const dejaExportes = user.repurpose_reset === moisCourant ? (user.repurpose_count || 0) : 0;
+        const maxClips = QUOTA_CLIPS[user.plan || 'gratuit'] ?? QUOTA_CLIPS.gratuit;
+        // Un remboursement doit passer MÊME au quota plein — c'est justement là qu'il est utile.
+        if (!estRemboursement && dejaExportes >= maxClips) {
+          return res.status(429).json({
+            error: 'quota_atteint',
+            message: `Limite atteinte : ${maxClips} clips ce mois-ci. Le compteur repart le 1er du mois.`,
+            clips_used: dejaExportes, clips_max: maxClips, plan: user.plan
+          });
+        }
+
+        const nouveauCompteur = Math.max(0, dejaExportes + nb);
         await supabase(`/users?${identifier}`, 'PATCH', {
-          repurpose_count: (user.repurpose_count || 0) + nb,
-          last_generation_at: new Date().toISOString()
+          repurpose_count: nouveauCompteur,
+          repurpose_reset: moisCourant,
+          ...(estRemboursement ? {} : { last_generation_at: new Date().toISOString() })
         });
+        if (estRemboursement) {
+          console.log(`[user-sync] ↩️ Crédit remboursé — ${user.email || userId} : ${dejaExportes} → ${nouveauCompteur}`);
+          return res.status(200).json({ success: true, refunded: -nb, clips_used: nouveauCompteur });
+        }
         for (let i = 0; i < nb; i++) {
           await supabase('/generations', 'POST', {
             user_id: user.id,
@@ -427,6 +558,140 @@ module.exports = async (req, res) => {
           }).catch(() => {});
         }
         return res.status(200).json({ success: true, logged: nb });
+      }
+
+      /* ═══ Portail client Stripe — gestion et résiliation d'abonnement ═══
+         Logé ici et non dans son propre fichier : le plan Vercel Hobby plafonne à 12 fonctions
+         serverless et `api/` en comptait déjà 12. Une 13ᵉ fait échouer TOUT le déploiement.
+
+         CADRE LÉGAL — article L215-1-1 du Code de la consommation (1er juin 2023) : pour un
+         contrat souscrit en ligne, la résiliation doit être accessible « facilement, directement
+         et en permanence ». Un écran de rétention avant confirmation est licite ; rendre ce
+         chemin introuvable ne l'est pas. Le motif collecté est facultatif et ne conditionne
+         jamais l'accès au portail.
+
+         SÉCURITÉ — l'identité vient du JWT Supabase, JAMAIS d'un userId passé dans le corps :
+         sinon n'importe qui ouvrirait le portail de facturation d'autrui en devinant un id. */
+      case 'portail_abonnement': {
+        const jeton = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        const anon = (process.env.SUPABASE_ANON_KEY || '').trim();
+        if (!jeton || !anon) return res.status(401).json({ error: 'Connexion requise' });
+
+        let auth = null;
+        try {
+          const ra = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${jeton}`, apikey: anon }
+          });
+          if (ra.ok) { const u = await ra.json(); if (u?.id) auth = { id: u.id, email: u.email }; }
+        } catch {}
+        if (!auth) return res.status(401).json({ error: 'Session expirée — reconnecte-toi.' });
+
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const lignes = await supabase(`/users?id=eq.${auth.id}&select=email,plan,stripe_customer_id`, 'GET');
+        const ligne = lignes?.[0] || null;
+        let customerId = ligne?.stripe_customer_id || null;
+
+        /* Repli par email : un compte payé avant que le webhook n'ait enregistré le customer id
+           n'aurait aucun moyen de résilier — c'est exactement le cas qui finit en opposition
+           bancaire. On ne laisse pas ce trou. */
+        if (!customerId) {
+          const mail = ligne?.email || auth.email;
+          if (mail) {
+            const trouve = await stripeLib.customers.list({ email: mail, limit: 1 });
+            customerId = trouve?.data?.[0]?.id || null;
+          }
+        }
+        if (!customerId) {
+          return res.status(404).json({
+            error: "Aucun abonnement Stripe trouvé pour ce compte.",
+            aide: "Si c'est une erreur, écris à contact@creatis.app avec l'email utilisé au paiement."
+          });
+        }
+
+        if (metadata?.motif) {
+          try {
+            await stripeLib.customers.update(customerId, {
+              metadata: {
+                motif_resiliation: String(metadata.motif).slice(0, 200),
+                commentaire_resiliation: String(metadata.commentaire || '').slice(0, 500),
+                date_demande_resiliation: new Date().toISOString()
+              }
+            });
+          } catch (e) { console.warn('[Portail] motif non enregistré:', e.message); }
+        }
+
+        const sess = await stripeLib.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${appUrl}/app`
+        });
+        return res.status(200).json({ url: sess.url });
+      }
+
+      /* ═══ Offre de rétention — alternative à la résiliation ═══
+         Deux gestes seulement, choisis parce qu'ils répondent aux deux vrais motifs de départ :
+         le prix et le manque de temps. Une remise uniforme serait plus simple mais offrirait de
+         l'argent à des gens qui seraient restés de toute façon.
+
+         Ne remplace JAMAIS l'accès au portail : l'utilisateur peut refuser et continuer. */
+      case 'retention_appliquer': {
+        const jetonR = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        const anonR = (process.env.SUPABASE_ANON_KEY || '').trim();
+        if (!jetonR || !anonR) return res.status(401).json({ error: 'Connexion requise' });
+
+        let authR = null;
+        try {
+          const rr = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${jetonR}`, apikey: anonR }
+          });
+          if (rr.ok) { const u = await rr.json(); if (u?.id) authR = { id: u.id, email: u.email }; }
+        } catch {}
+        if (!authR) return res.status(401).json({ error: 'Session expirée — reconnecte-toi.' });
+
+        const st = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const ligneR = (await supabase(`/users?id=eq.${authR.id}&select=email,plan,stripe_customer_id,stripe_subscription_id`, 'GET'))?.[0];
+        const subId = ligneR?.stripe_subscription_id;
+        if (!subId) return res.status(404).json({ error: "Aucun abonnement actif trouvé." });
+
+        const geste = metadata?.geste;
+        const PRIX_STARTER = 'price_1Tx8TXAptK6HZtp5vB5clklV';   // 9,95 €/mois
+
+        try {
+          if (geste === 'pause') {
+            /* Pause d'un mois : `void` n'émet aucune facture pendant la pause, et Stripe reprend
+               tout seul à la date indiquée — rien à réactiver à la main de notre côté. */
+            const reprise = Math.floor(Date.now() / 1000) + 30 * 24 * 3600;
+            await st.subscriptions.update(subId, {
+              pause_collection: { behavior: 'void', resumes_at: reprise }
+            });
+            return res.status(200).json({
+              ok: true,
+              message: "Abonnement mis en pause 1 mois. Rien ne te sera facturé d'ici là, et tout redémarre automatiquement."
+            });
+          }
+
+          if (geste === 'starter') {
+            const sub = await st.subscriptions.retrieve(subId);
+            const itemId = sub?.items?.data?.[0]?.id;
+            if (!itemId) return res.status(500).json({ error: "Abonnement illisible — écris à contact@creatis.app." });
+            /* `proration_behavior: 'none'` : pas de facture immédiate ni d'avoir. Le client garde
+               ce qu'il a déjà payé et la prochaine échéance passe simplement à 9,95 €. C'est le
+               comportement le moins surprenant pour lui, donc le moins générateur de litige. */
+            await st.subscriptions.update(subId, {
+              items: [{ id: itemId, price: PRIX_STARTER }],
+              proration_behavior: 'none'
+            });
+            await supabase(`/users?id=eq.${authR.id}`, 'PATCH', { plan: 'starter', updated_at: new Date().toISOString() });
+            return res.status(200).json({
+              ok: true,
+              message: "Tu es passé au Starter à 9,95 €/mois. Ta période déjà payée reste acquise."
+            });
+          }
+
+          return res.status(400).json({ error: 'Geste de rétention inconnu.' });
+        } catch (e) {
+          console.error('[Rétention]', geste, e.message);
+          return res.status(500).json({ error: `Impossible d'appliquer : ${e.message}` });
+        }
       }
 
       default:

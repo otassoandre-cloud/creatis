@@ -1,0 +1,31 @@
+# Créatis
+
+> Créatis est une plateforme IA pour créateurs de contenu francophones qui transforme automatiquement une vidéo longue (YouTube, podcast, stream, webinaire) en clips courts viraux prêts à publier sur TikTok, Instagram Reels et YouTube Shorts.
+
+Créatis analyse l'audio d'une vidéo (transcription), détecte les moments à fort potentiel viral avec un modèle de langage, recadre automatiquement en format vertical 9:16 avec suivi du visage (face tracking), et incruste des sous-titres animés (style karaoke mot par mot). Le tout en moins de 60 secondes, sans compétence en montage vidéo requise.
+
+Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et infopreneurs, agences de clipping — francophones (France, Belgique, Suisse, Québec).
+
+## Produit
+
+- [Accueil](https://creatis.app/): présentation générale, tarifs, FAQ
+- [Clips Viraux (l'outil)](https://creatis.app/clips-v2.html): l'application de génération de clips
+- [Tarifs détaillés](https://creatis.app/pricing.md): fichier de tarification structuré pour agents IA
+
+## Guides et définitions
+
+- [Qu'est-ce qu'un clip viral ?](https://creatis.app/blog/qu-est-ce-qu-un-clip-viral.html): définition de l'entité centrale
+- [Qu'est-ce que le repurposing vidéo ?](https://creatis.app/blog/repurposing-video-definition.html)
+- [Qu'est-ce qu'un hook vidéo ?](https://creatis.app/blog/hook-video-definition.html)
+- [Comment découper une vidéo en Shorts automatiquement](https://creatis.app/blog/decouper-video-shorts-automatiquement.html)
+- [Blog complet](https://creatis.app/blog.html): tous les guides
+
+## Comparatifs
+
+- [Comparatifs avec les autres outils](https://creatis.app/alternatives/): Opus Clip, Klap, Submagic, Vizard, CapCut, Vidyo AI
+
+## Optional
+
+- [Programme d'affiliation](https://creatis.app/affiliation): 30% récurrent à vie
+- [CGU](https://creatis.app/cgu.html)
+- [Confidentialité](https://creatis.app/confidentialite.html)

@@ -48,6 +48,28 @@ async function supabaseUpsert(table, data) {
   return res.ok;
 }
 
+/* Insertion simple (log) — fail-open : si la table n'existe pas encore, on log et on continue */
+async function supabaseInsert(table, data) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) console.error(`[Webhook] Supabase INSERT ${table} erreur:`, res.status, await res.text());
+    return res.ok;
+  } catch (e) {
+    console.error(`[Webhook] Supabase INSERT ${table} exception:`, e.message);
+    return null;
+  }
+}
+
 async function supabaseGet(table, match, select = 'id,plan,email,referred_by') {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   const query = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
@@ -61,8 +83,11 @@ async function supabaseGet(table, match, select = 'id,plan,email,referred_by') {
 
 /* Map Stripe price ID → plan interne */
 const PRICE_TO_PLAN = {
-  'price_1TonvgAptK6HZtp5sG7ZG5TE': 'pro',     // pro mensuel 19,90€ (live, actuel)
-  'price_1Tonw3AptK6HZtp5f4UFBIa0': 'pro',     // pro annuel 149€ (live, actuel)
+  'price_1Tx8TXAptK6HZtp5vB5clklV': 'starter', // starter mensuel 9,95€ (live, actuel)
+  'price_1Tx8U8AptK6HZtp5DrLkfs5m': 'pro',     // pro mensuel 14€ (live, actuel)
+  'price_1TxaweAptK6HZtp5p0LjSDk5': 'pro',     // pro annuel 139€ (live, actuel)
+  'price_1Tonw3AptK6HZtp5f4UFBIa0': 'pro',     // pro annuel 149€ (legacy — abonnés existants)
+  'price_1TonvgAptK6HZtp5sG7ZG5TE': 'pro',     // pro mensuel 19,90€ (legacy — abonnés existants)
   'price_1TWISZAptK6HZtp5uBP0RHe8': 'pro',     // pro mensuel 19€ (legacy — abonnés existants)
   'price_1TWIU8AptK6HZtp5SbYvQ12d': 'pro',     // pro annuel 180€ (legacy)
   'price_1TWIV6AptK6HZtp5qlNhu47w': 'studio',  // studio mensuel 49€ (legacy)
@@ -258,7 +283,24 @@ module.exports = async (req, res) => {
           updated_at: new Date().toISOString()
         });
 
-        console.log(`[Webhook] Utilisateur ${user?.email || customerId} rétrogradé → gratuit`);
+        /* Alerte de résiliation. Sans elle, un départ passe totalement inaperçu : le compte est
+           rétrogradé en silence et on ne l'apprend qu'en consultant Stripe. Le motif a été déposé
+           dans les métadonnées du client au moment où l'utilisateur a cliqué « Continuer » dans
+           l'écran de rétention (api/user-sync.js → portail_abonnement). */
+        let motif = '', commentaire = '';
+        try {
+          const cli = await stripe.customers.retrieve(customerId);
+          motif = cli?.metadata?.motif_resiliation || '';
+          commentaire = cli?.metadata?.commentaire_resiliation || '';
+        } catch (e) {
+          console.warn('[Webhook] métadonnées client illisibles:', e.message);
+        }
+        await notifierResiliation({
+          email: user?.email, customerId, subscriptionId,
+          plan: user?.plan, motif, commentaire
+        });
+
+        console.log(`[Webhook] Utilisateur ${user?.email || customerId} rétrogradé → gratuit (motif: ${motif || 'non renseigné'})`);
         break;
       }
 
@@ -266,25 +308,59 @@ module.exports = async (req, res) => {
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         const customerId = invoice.customer;
-        const email = invoice.customer_email;
         const subscriptionId = invoice.subscription;
+        const billingReason = invoice.billing_reason; // 'subscription_create' = 1ère souscription, 'subscription_cycle' = renouvellement
+        const nouvelleSouscription = billingReason === 'subscription_create';
 
-        console.log(`[Webhook] ⚠️ Paiement échoué — customer: ${customerId}`);
+        const email = await resoudreEmail(invoice.customer_email, customerId);
+        const { raison, code } = await lireErreurPaiement(invoice.payment_intent);
+        const montant = (invoice.amount_due || 0) / 100;
+        const devise = (invoice.currency || 'eur').toUpperCase();
+        const plan = getPlanFromPriceId(invoice.lines?.data?.[0]?.price?.id);
 
-        await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
-          status: 'past_due',
-          updated_at: new Date().toISOString()
+        console.log(`[Webhook] ⚠️ Paiement échoué — ${email || customerId} — ${raison} (${code})`);
+
+        // Trace Supabase (fail-open)
+        await supabaseInsert('paiements_echoues', {
+          email,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+          stripe_invoice_id: invoice.id,
+          montant,
+          devise,
+          statut: nouvelleSouscription ? 'souscription_echouee' : 'renouvellement_echoue',
+          raison,
+          code_erreur: code,
+          billing_reason: billingReason,
+          plan
+        });
+
+        // Un renouvellement échoué → l'abonnement existant passe en past_due
+        if (!nouvelleSouscription) {
+          await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
+            status: 'past_due',
+            updated_at: new Date().toISOString()
+          });
+        }
+
+        // Alerte interne — on ne veut plus découvrir ça dans le dashboard Stripe
+        await notifierEchecPaiement({
+          email, customerId, subscriptionId, montant, devise, raison, code, plan,
+          contexte: nouvelleSouscription ? 'Nouvelle souscription' : 'Renouvellement'
         });
 
         // Notifier l'utilisateur par email (Brevo)
         if (process.env.BREVO_API_KEY && email) {
+          const corps = nouvelleSouscription
+            ? `<p>Bonjour,</p><p>Votre paiement Créatis n'a pas abouti — la validation par votre banque (3D Secure) a échoué.</p><p>Deux solutions : validez la notification dans votre application bancaire pendant le paiement, ou essayez une autre carte.</p><p><a href="${APP_URL}/paiement.html">Reprendre le paiement</a></p>`
+            : `<p>Bonjour,</p><p>Le renouvellement de votre abonnement Créatis a échoué. Mettez à jour votre moyen de paiement sur <a href="${APP_URL}/app.html">votre espace</a>.</p>`;
           await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
             body: JSON.stringify({
               to: [{ email }],
-              subject: '⚠️ Problème de paiement Créatis',
-              htmlContent: `<p>Bonjour,</p><p>Le renouvellement de votre abonnement Créatis a échoué. Mettez à jour votre moyen de paiement sur <a href="${APP_URL}/app.html">votre espace</a>.</p>`,
+              subject: nouvelleSouscription ? 'Votre paiement Créatis n\'a pas abouti' : '⚠️ Problème de paiement Créatis',
+              htmlContent: corps,
               sender: { email: 'contact@creatis.app', name: 'Créatis' }
             })
           }).catch(() => {});
@@ -306,6 +382,36 @@ module.exports = async (req, res) => {
             plan,
             updated_at: new Date().toISOString()
           });
+          break;
+        }
+
+        /* Souscription jamais confirmée → Stripe l'expire au bout de ~23h.
+           C'est une vente perdue : on la trace et on alerte. */
+        if (status === 'incomplete_expired') {
+          const email = await resoudreEmail(null, customerId);
+          console.log(`[Webhook] ❌ Souscription expirée sans paiement — ${email || customerId}`);
+
+          await supabaseInsert('paiements_echoues', {
+            email,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: sub.id,
+            montant: (sub.items?.data?.[0]?.price?.unit_amount || 0) / 100,
+            devise: (sub.currency || 'eur').toUpperCase(),
+            statut: 'incomplete_expired',
+            raison: 'Souscription jamais confirmée — expirée par Stripe',
+            code_erreur: 'incomplete_expired',
+            plan
+          });
+
+          await notifierEchecPaiement({
+            email, customerId, subscriptionId: sub.id,
+            montant: (sub.items?.data?.[0]?.price?.unit_amount || 0) / 100,
+            devise: (sub.currency || 'eur').toUpperCase(),
+            raison: 'Souscription jamais confirmée — expirée par Stripe (délai 23h dépassé)',
+            code: 'incomplete_expired',
+            plan,
+            contexte: 'Vente perdue'
+          });
         }
         break;
       }
@@ -317,6 +423,119 @@ module.exports = async (req, res) => {
 
   return res.status(200).json({ received: true });
 };
+
+/* Récupère l'email client, avec repli sur l'objet Customer Stripe */
+async function resoudreEmail(emailConnu, customerId) {
+  if (emailConnu) return emailConnu;
+  if (!customerId) return null;
+  try {
+    const c = await stripe.customers.retrieve(customerId);
+    return c?.deleted ? null : (c?.email || null);
+  } catch (e) {
+    console.warn('[Webhook] Impossible de récupérer le customer:', e.message);
+    return null;
+  }
+}
+
+/* Traduit l'erreur Stripe du PaymentIntent en message lisible */
+const CODES_ERREUR_FR = {
+  payment_intent_authentication_failure: 'Authentification 3D Secure échouée (le client n\'a pas validé auprès de sa banque)',
+  card_declined: 'Carte refusée par la banque',
+  insufficient_funds: 'Provision insuffisante',
+  expired_card: 'Carte expirée',
+  incorrect_cvc: 'Cryptogramme (CVC) incorrect',
+  processing_error: 'Erreur de traitement de la banque',
+  authentication_required: 'Authentification 3D Secure requise et non complétée'
+};
+
+async function lireErreurPaiement(paymentIntent) {
+  if (!paymentIntent) return { raison: 'Aucun PaymentIntent associé', code: 'unknown' };
+  try {
+    const pi = typeof paymentIntent === 'string'
+      ? await stripe.paymentIntents.retrieve(paymentIntent)
+      : paymentIntent;
+    const err = pi?.last_payment_error;
+    if (!err) return { raison: 'Paiement non confirmé (aucune erreur remontée)', code: pi?.status || 'unknown' };
+    const code = err.decline_code || err.code || 'unknown';
+    return { raison: CODES_ERREUR_FR[code] || err.message || 'Erreur inconnue', code };
+  } catch (e) {
+    console.warn('[Webhook] Lecture PaymentIntent impossible:', e.message);
+    return { raison: 'Erreur inconnue (PaymentIntent illisible)', code: 'unknown' };
+  }
+}
+
+/* Alerte interne — échec de paiement / vente perdue */
+async function notifierEchecPaiement({ email, customerId, subscriptionId, montant, devise, raison, code, plan, contexte }) {
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('[Webhook] BREVO_API_KEY absente — alerte échec non envoyée');
+    return;
+  }
+  const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const lien = `https://dashboard.stripe.com/customers/${customerId}`;
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: 'contact@creatis.app' }],
+      subject: `💳 Paiement échoué — ${email || customerId} (${montant} ${devise})`,
+      htmlContent: `<div style="font-family:Inter,sans-serif;padding:24px;background:#0a0f0a;color:#e5e7eb;border-radius:8px;max-width:520px">
+        <h2 style="color:#f59e0b;margin:0 0 12px">Paiement échoué — ${contexte}</h2>
+        <p style="margin:4px 0"><strong>Client :</strong> ${email || '(email inconnu)'}</p>
+        <p style="margin:4px 0"><strong>Montant :</strong> ${montant} ${devise}${plan ? ` — plan ${plan}` : ''}</p>
+        <p style="margin:4px 0"><strong>Raison :</strong> ${raison}</p>
+        <p style="margin:4px 0"><strong>Code Stripe :</strong> <code>${code}</code></p>
+        <p style="margin:4px 0"><strong>Abonnement :</strong> ${subscriptionId || '—'}</p>
+        <p style="margin:4px 0"><strong>Date :</strong> ${date}</p>
+        <p style="margin:20px 0 4px"><a href="${lien}" style="color:#10b981">Voir le client dans Stripe →</a></p>
+        <p style="margin-top:16px;color:#9ca3af;font-size:13px">Client chaud : il a tenté de payer. Relance-le rapidement avec un nouveau lien de paiement.</p>
+      </div>`
+    })
+  }).catch((e) => console.error('[Webhook] Alerte échec non envoyée:', e.message));
+}
+
+/* Alerte interne — résiliation confirmée.
+   Distincte de l'intention captée dans l'écran de rétention : on n'envoie ce mail que lorsque
+   Stripe confirme la fin réelle de l'abonnement. Le motif, lui, vient de l'écran de rétention et
+   peut être vide si l'utilisateur a résilié directement depuis le portail Stripe. */
+const MOTIFS_LISIBLES = {
+  trop_cher:    'Trop cher pour son usage',
+  qualite:      'Qualité des clips insuffisante',
+  pas_le_temps: "N'utilise pas assez l'outil",
+  bug:          'Trop de problèmes techniques',
+  concurrent:   'Passe sur un autre outil',
+  autre:        'Autre raison'
+};
+
+async function notifierResiliation({ email, customerId, subscriptionId, plan, motif, commentaire }) {
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('[Webhook] BREVO_API_KEY absente — alerte résiliation non envoyée');
+    return;
+  }
+  const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const lien = `https://dashboard.stripe.com/customers/${customerId}`;
+  const motifTexte = MOTIFS_LISIBLES[motif] || motif || 'Non renseigné (résiliation directe depuis Stripe)';
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: 'contact@creatis.app' }],
+      subject: `🔴 Résiliation — ${email || customerId}${motif ? ` (${motifTexte})` : ''}`,
+      htmlContent: `<div style="font-family:Inter,sans-serif;padding:24px;background:#0a0f0a;color:#e5e7eb;border-radius:8px;max-width:520px">
+        <h2 style="color:#ef4444;margin:0 0 12px">Abonnement résilié</h2>
+        <p style="margin:4px 0"><strong>Client :</strong> ${email || '(email inconnu)'}</p>
+        <p style="margin:4px 0"><strong>Plan quitté :</strong> ${plan || '—'}</p>
+        <p style="margin:4px 0"><strong>Motif :</strong> ${motifTexte}</p>
+        ${commentaire ? `<p style="margin:12px 0;padding:12px;background:#111827;border-left:3px solid #ef4444;border-radius:4px;font-style:italic">« ${commentaire} »</p>` : ''}
+        <p style="margin:4px 0"><strong>Abonnement :</strong> ${subscriptionId || '—'}</p>
+        <p style="margin:4px 0"><strong>Date :</strong> ${date}</p>
+        <p style="margin:20px 0 4px"><a href="${lien}" style="color:#10b981">Voir le client dans Stripe →</a></p>
+        <p style="margin-top:16px;color:#9ca3af;font-size:13px">Un départ pour raison technique se rattrape souvent : si le motif est un bug, un mail personnel dans les 24 h fonctionne mieux qu'une relance automatique.</p>
+      </div>`
+    })
+  }).catch((e) => console.error('[Webhook] Alerte résiliation non envoyée:', e.message));
+}
 
 /* Notification interne — nouveau client Studio */
 async function notifierAdmin(clientEmail, plan) {

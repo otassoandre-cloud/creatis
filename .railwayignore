@@ -1,0 +1,29 @@
+# Railway ne build que repurpose-service/ (Root Directory configuré côté dashboard).
+# Tout le reste du monorepo (site web, assets marketing, node_modules JS) est inutile
+# pour ce build et fait dépasser la limite d'upload Railway/Cloudflare (>200MB).
+node_modules
+.git
+.scratch-demo
+.agents
+.skills
+.claude
+.cursor
+.vercel
+images
+marketing
+data
+scripts
+css
+js
+api
+_backup
+drawing
+alternatives
+blog
+tests
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.psd
+*.zip

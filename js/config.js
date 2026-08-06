@@ -69,26 +69,49 @@ const CONFIG = {
   /* ======================================
    * PLANS TARIFAIRES — 3 plans
    * ====================================== */
+  /* Quotas : `videos` = analyses lancées, `clips` = clips téléchargés (exports), par mois.
+     Les deux comptent — une analyse coûte surtout du CPU de transcription, un export coûte du
+     téléchargement + de l'encodage. Plafonner seulement les clips laissait la porte ouverte à
+     quelqu'un qui analyse 200 vidéos sans rien exporter (le poste le plus cher). */
   PLANS: {
+    // Découverte — plus affiché dans la grille tarifaire, mais accordé à l'inscription : c'est le
+    // tunnel d'acquisition. 2 analyses (et non 1) pour qu'un échec ne condamne pas le compte —
+    // 6 analyses sur 24 échouaient sur 3 jours, une seule tentative aurait suffi à perdre la personne.
     gratuit: {
-      nom: 'Gratuit',
+      nom: 'Découverte',
       prix: 0,
-      generations: 1, // 1 génération gratuite pour découvrir
-      miniatures: 5,
+      videos: 2,
+      clips: 0,          // aucun téléchargement — l'analyse et l'aperçu restent gratuits
+      generations: 0,
+      miniatures: 0,
       agents: ['clips-viraux'],
-      description: '1 essai gratuit · Clips viraux IA',
+      description: 'Analyse et aperçu gratuits · téléchargement réservé aux plans payants',
+      masqueDansGrille: true,
       stripeId: null
+    },
+    starter: {
+      nom: 'Starter',
+      prix: 9.95,
+      videos: 5,
+      clips: 20,
+      generations: 20,
+      miniatures: 0,
+      agents: ['clips-viraux'],
+      description: '20 clips/mois · 5 vidéos analysées',
+      stripeId: 'price_1Tx8TXAptK6HZtp5vB5clklV'
     },
     pro: {
       nom: 'Pro',
-      prix: 19.90,
-      prixAnnuel: 149,
-      generations: Infinity,
+      prix: 14,
+      prixAnnuel: 139,
+      videos: 30,
+      clips: 150,
+      generations: 150,
       miniatures: 30,
       agents: 'tous',
-      description: 'Générations illimitées · 30 miniatures/mois',
-      stripeId: 'price_1TonvgAptK6HZtp5sG7ZG5TE',
-      stripeIdAnnuel: 'price_1Tonw3AptK6HZtp5f4UFBIa0'
+      description: '150 clips/mois · 30 vidéos · tous les outils IA',
+      stripeId: 'price_1Tx8U8AptK6HZtp5DrLkfs5m',
+      stripeIdAnnuel: 'price_1TxaweAptK6HZtp5p0LjSDk5'
     }
   },
 
