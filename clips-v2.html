@@ -776,6 +776,7 @@
 
         <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
           <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
+          <img id="video-preview-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
           <div style="position:absolute;bottom:10px;right:12px;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600" id="video-preview-dur"></div>
         </div>
 
@@ -1890,6 +1891,10 @@ const V2 = (() => {
     const prevVid = document.getElementById('video-preview');
     const prevDur = document.getElementById('video-preview-dur');
     if (prevVid && prevWrap) {
+      // Le même cadre sert à la miniature YouTube : on rend la main à la vidéo.
+      const prevImg = document.getElementById('video-preview-img');
+      if (prevImg) { prevImg.style.display = 'none'; prevImg.removeAttribute('src'); }
+      prevVid.style.display = '';
       if (prevVid._prevUrl) URL.revokeObjectURL(prevVid._prevUrl);
       prevVid._prevUrl = URL.createObjectURL(f);
       prevVid.src = prevVid._prevUrl;
@@ -2165,6 +2170,49 @@ const V2 = (() => {
     return _fullUploadPromise;
   }
 
+  /* Aperçu d'un lien YouTube : on montre la miniature comme on montre la vidéo d'un fichier
+     déposé — sans ça, coller une URL ne donnait aucun retour visuel et on ne savait pas si le
+     bon lien avait été pris. Les miniatures viennent de img.youtube.com : ni clé API, ni quota,
+     ni requête serveur. maxres n'existe pas pour toutes les vidéos, d'où le repli sur hq. */
+  function apercuYouTube(videoId) {
+    const wrap = document.getElementById('video-preview-wrap');
+    const vid = document.getElementById('video-preview');
+    const img = document.getElementById('video-preview-img');
+    const dur = document.getElementById('video-preview-dur');
+    if (!wrap || !img) return;
+    if (!videoId) {
+      img.style.display = 'none';
+      img.removeAttribute('src');
+      if (!_file) wrap.style.display = 'none';
+      return;
+    }
+    if (vid) { try { vid.pause(); } catch {} vid.removeAttribute('src'); vid.style.display = 'none'; }
+    if (dur) dur.textContent = '';
+    img.onerror = () => {
+      // hqdefault existe toujours ; si lui-même échoue, mieux vaut masquer que laisser un cadre vide
+      if (img.dataset.repli === '1') { img.style.display = 'none'; wrap.style.display = 'none'; return; }
+      img.dataset.repli = '1';
+      img.src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+    };
+    img.dataset.repli = '';
+    img.src = 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg';
+    img.style.display = 'block';
+    wrap.style.display = 'block';
+  }
+
+  /* Titre et durée quand on les connaît déjà (commande vocale) — aucun appel supplémentaire. */
+  function apercuYouTubeInfos(titre, secondes) {
+    const nameEl = document.getElementById('v1-upload-name');
+    if (nameEl && titre) { nameEl.textContent = titre; nameEl.style.color = 'var(--texte)'; }
+    const zone = document.getElementById('drop-zone');
+    if (zone && titre) zone.classList.add('has-file');
+    const dur = document.getElementById('video-preview-dur');
+    if (dur && secondes > 0) {
+      const s = Math.round(secondes);
+      dur.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+  }
+
   function onUrlInput(val) {
     val = (val || '').trim();
     const btn = document.getElementById('btn-analyze');
@@ -2172,19 +2220,20 @@ const V2 = (() => {
     const nameEl = document.getElementById('v1-upload-name');
     const hint = document.getElementById('yt-url-hint');
     // URL YouTube valide ? → active l'analyse, neutralise l'éventuel fichier sélectionné
-    const isYt = /(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(val);
+    const mYt = val.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const isYt = !!mYt;
     if (isYt) {
       _ytUrl = val;
       _file = null;
       _clipSegmentIds = {}; _fullFileVideoId = null; _thumbs = {}; _faceCache = {};
       if (zone) zone.classList.remove('has-file');
       if (nameEl) { nameEl.textContent = 'Cliquer ou déposer une vidéo ici'; nameEl.style.color = ''; }
-      const prevWrap = document.getElementById('video-preview-wrap');
-      if (prevWrap) prevWrap.style.display = 'none';
+      apercuYouTube(mYt[1]);
       if (hint) hint.style.display = 'none';
       if (btn) btn.disabled = false;
     } else {
       _ytUrl = '';
+      apercuYouTube(null);
       // Message clair si le champ contient qqch d'invalide (ex: email rempli par l'autofill du
       // navigateur) — sinon le bouton reste désactivé sans que l'utilisateur comprenne pourquoi.
       if (hint) {
@@ -2692,6 +2741,8 @@ const V2 = (() => {
     const input = document.getElementById('yt-url-input');
     if (input) input.value = data.url;
     onUrlInput(data.url);
+    // La recherche a déjà renvoyé titre et durée : on les affiche sans rien redemander.
+    apercuYouTubeInfos(data.title, data.duration_seconds);
     if (window.posthog) try { posthog.capture('commande_vocale', { chaine: data.channel_title, duree: data.duration_seconds, mains_libres: !!mainsLibres }); } catch {}
 
     _viaVoix = true;   // → la fin d'analyse sera annoncée à voix haute
@@ -7376,6 +7427,7 @@ const V2 = (() => {
     if (nameEl) { nameEl.textContent = 'Déposer une vidéo ici'; nameEl.style.color = ''; }
     const urlIn = document.getElementById('yt-url-input');
     if (urlIn) { urlIn.value = ''; urlIn.style.borderColor = ''; }
+    apercuYouTube(null);   // sinon la miniature de la vidéo précédente reste affichée
     document.getElementById('btn-analyze').disabled = true;
     setState('upload');
   }
