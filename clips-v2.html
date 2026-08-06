@@ -1222,6 +1222,15 @@ const V2 = (() => {
           .then(p => { if (p.state === 'granted') voiceMainsLibres(true); })
           .catch(() => {});
       }
+      // Safari ne connaît pas la permission « microphone » : la requête ci-dessus n'y aboutit
+      // jamais, donc le mains libres n'y était jamais réarmé et l'iPhone restait muet. Au
+      // premier contact avec la page on rattrape les deux : on débloque la synthèse vocale et
+      // on relance le mains libres s'il était actif. Un geste réel, donc aucune demande de
+      // permission surgie de nulle part au chargement.
+      document.addEventListener('pointerdown', () => {
+        amorcerTTS();
+        if (voulu && !_ml) voiceMainsLibres(true);
+      }, { once: true, passive: true });
       // Onglet masqué → on coupe l'écoute ; de retour → on relance si la case est cochée.
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) { try { _mlReco && _mlReco.abort(); } catch {} _mlReco = null; }
@@ -2230,6 +2239,7 @@ const V2 = (() => {
   function voiceStart() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast('❌ Ton navigateur ne gère pas la dictée — utilise Chrome, Edge ou Safari', 'erreur'); return; }
+    amorcerTTS();   // le clic sur le micro est le geste le plus direct pour débloquer iOS
     // En mains libres le micro tourne déjà : un 2ᵉ SpeechRecognition lèverait InvalidStateError.
     // Le clic vaut alors « je te parle maintenant » — on saute le mot de réveil.
     if (_ml) { _attenteCmd = Date.now(); voixStatut('🎙 Je t\'écoute — dis le nom du créateur'); return; }
@@ -2287,11 +2297,29 @@ const V2 = (() => {
     return _voixTTS;
   }
 
+  /* iOS refuse de parler tant que speechSynthesis n'a pas prononcé UN énoncé déclenché par un
+     vrai geste utilisateur. Or toutes nos phrases partent d'un callback de reconnaissance :
+     sans cette amorce, l'iPhone et l'iPad ignorent chaque speak() en silence — la page répond
+     « Oui ? » à l'écran sans qu'aucun son ne sorte. Un énoncé à volume nul suffit à débloquer
+     le moteur pour tout le reste de la session. */
+  let _ttsAmorce = false;
+  function amorcerTTS() {
+    if (_ttsAmorce || !window.speechSynthesis) return;
+    _ttsAmorce = true;
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0; u.lang = 'fr-FR';
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+
   function voixParler(texte, apres) {
     const fini = () => { _parle = false; if (_ml && !document.hidden) mlDemarrer(); if (apres) apres(); };
     if (!_tts || !window.speechSynthesis || !texte) { if (apres) apres(); return; }
     try {
-      speechSynthesis.cancel();
+      // cancel() immédiatement suivi de speak() fait tomber l'énoncé sur Safari : on ne coupe
+      // que s'il y a réellement quelque chose en cours.
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       _parle = true;
       try { _mlReco && _mlReco.abort(); } catch {}
       _mlReco = null;
@@ -2346,6 +2374,7 @@ const V2 = (() => {
   function voiceMainsLibres(actif) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (actif && !SR) { toast('❌ Ton navigateur ne gère pas la dictée', 'erreur'); return; }
+    if (actif) amorcerTTS();   // cocher la case est un geste : iOS accepte d'y débloquer la voix
     _ml = !!actif;
     try { localStorage.setItem(ML_PREF, _ml ? '1' : '0'); } catch {}
     const bloc = document.getElementById('voix-ml');
