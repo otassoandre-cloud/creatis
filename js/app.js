@@ -1079,6 +1079,7 @@ class AppCreatis {
     iframe.onload = () => { try { iframe.contentDocument.querySelector('.nav').style.display = 'none'; } catch(e) {} };
     panneau.appendChild(iframe);
     workspace.appendChild(panneau);
+    installerVoixPourIframe();
   }
 
   _onClipsFileSelect(agentId, input) {
@@ -3949,6 +3950,56 @@ class AppCreatis {
 
 /* ===== INITIALISATION ===== */
 let app;
+/* ─── VOIX POUR L'IFRAME CLIPS ──────────────────────────────────────────────────
+   Safari attribue speechSynthesis.speak() au contexte qui l'appelle. Appelé depuis
+   l'iframe /clips-v2.html, l'énoncé est jeté sur iOS : ni erreur, ni événement, ni son —
+   le moteur rapporte pause=false, attente=false, parle=false, comme si rien n'avait été
+   demandé. Appeler parent.speechSynthesis depuis l'enfant ne change rien : c'est toujours
+   l'enfant qui appelle.
+
+   La page parente parle donc à la place de l'iframe, sur demande via postMessage : le
+   speak() part alors réellement du contexte de plus haut niveau. Son moteur doit avoir été
+   débloqué par un geste dans SON contexte — le clic qui a ouvert le panneau Clips en est un,
+   et tout autre appui sur la page parente sert de rattrapage. */
+let _voixIframeInstallee = false;
+
+function installerVoixPourIframe() {
+  if (_voixIframeInstallee || !window.speechSynthesis) return;
+  _voixIframeInstallee = true;
+
+  const amorcer = () => {
+    try {
+      const u = new SpeechSynthesisUtterance('ok');
+      u.volume = 0; u.lang = 'fr-FR';
+      speechSynthesis.resume();
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  };
+  amorcer();   // on est dans la pile du clic qui vient d'ouvrir le panneau
+  document.addEventListener('pointerdown', amorcer, { once: true, passive: true });
+
+  window.addEventListener('message', (ev) => {
+    // L'iframe est de même origine : tout message venant d'ailleurs n'a rien à faire ici.
+    if (ev.origin !== window.location.origin) return;
+    const d = ev.data;
+    if (!d || d.type !== 'creatis-tts' || !d.texte) return;
+    const repondre = (etat) => {
+      try { ev.source.postMessage({ type: 'creatis-tts-etat', etat, id: d.id }, ev.origin); } catch (e) {}
+    };
+    try {
+      const u = new SpeechSynthesisUtterance(d.texte);
+      // Pas de u.voice : sur iOS, assigner un objet voix fait échouer l'énoncé en silence.
+      u.lang = 'fr-FR'; u.rate = 1.05;
+      u.addEventListener('start', () => repondre('debut'));
+      u.addEventListener('end', () => repondre('fin'));
+      u.addEventListener('error', () => repondre('erreur'));
+      speechSynthesis.resume();
+      speechSynthesis.speak(u);
+      speechSynthesis.resume();
+    } catch (e) { repondre('erreur'); }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   app = new AppCreatis();
   if(typeof window._appFlush==='function') window._appFlush(app);

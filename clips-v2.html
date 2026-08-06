@@ -2393,6 +2393,8 @@ const V2 = (() => {
     }, 1600);
   }
 
+  let _ttsSeq = 0;   // apparie chaque demande au parent avec sa réponse
+
   function voixParler(texte, apres) {
     const W = _synthWin();
     // Idempotent : entre le repli sur l'autre fenêtre, onend, onerror et le filet anti-blocage,
@@ -2416,37 +2418,57 @@ const V2 = (() => {
       try { if (_mlReco) { _mlReco.abort(); ecoutait = true; } } catch {}
       _mlReco = null;
       try { if (_reco && _ecoute) { _reco.abort(); ecoutait = true; } } catch {}
-      const dire = (fenetre) => {
-        const F = fenetre || W;
-        const u = new F.SpeechSynthesisUtterance(texte);
+      // Filet commun : si aucun événement de fin n'arrive (bug connu de Chrome sur les phrases
+      // longues, et de Safari en général), on ne laisse pas le micro éteint indéfiniment.
+      const filet = () => setTimeout(() => { if (_parle) fini(); },
+                                     Math.min(2000 + texte.length * 90, 15000));
+
+      const direLocal = () => {
+        const u = new SpeechSynthesisUtterance(texte);
         // Sur iOS on NE fixe PAS u.voice : assigner un objet SpeechSynthesisVoice y fait
         // échouer l'énoncé en silence — il n'est jamais prononcé et aucun événement ne part.
         // La langue suffit à faire choisir une voix française au système.
-        const v = ttsVoixFr(); if (v && F === W && !_isIOS()) u.voice = v;
+        const v = ttsVoixFr(); if (v && !_isIOS()) u.voice = v;
         u.lang = 'fr-FR'; u.rate = 1.05;
         u.onend = fini;
         u.onerror = fini;
-        let demarre = false;
-        u.addEventListener('start', () => { demarre = true; });
         // Safari laisse régulièrement le moteur en pause après un cancel() : speak() est alors
         // accepté sans rien jouer. resume() de part et d'autre est le contournement connu.
-        try { F.speechSynthesis.resume(); } catch {}
-        F.speechSynthesis.speak(u);
-        try { F.speechSynthesis.resume(); } catch {}
-        if (F !== window) {
-          // Parler depuis le parent est le chemin qui marche sur iOS, mais rien ne le garantit
-          // sur tous les navigateurs. S'il ne sort rien, on retente dans cette fenêtre-ci
-          // plutôt que de laisser la page muette.
-          setTimeout(() => {
-            if (!demarre && _parle) { try { F.speechSynthesis.cancel(); } catch {} dire(window); }
-          }, 700);
-        } else {
-          _ttsTrace(u, F);
-        }
-        // Filet : si onend ne part jamais (bug connu de Chrome sur les phrases longues), on ne
-        // laisse pas le micro éteint indéfiniment.
-        setTimeout(() => { if (_parle) fini(); }, Math.min(2000 + texte.length * 90, 15000));
+        try { speechSynthesis.resume(); } catch {}
+        speechSynthesis.speak(u);
+        try { speechSynthesis.resume(); } catch {}
+        _ttsTrace(u, window);
+        filet();
       };
+
+      // Dans une iframe, Safari attribue le speak() au contexte appelant et jette l'énoncé sur
+      // iOS — y compris quand on appelle parent.speechSynthesis, car c'est toujours l'enfant
+      // qui appelle. On demande donc à la page parente de parler pour nous : chez elle, le
+      // speak() part réellement du contexte de plus haut niveau.
+      const direParent = () => {
+        const id = ++_ttsSeq;
+        let ok = false;
+        const onMsg = (ev) => {
+          const d = ev.data;
+          if (!d || d.type !== 'creatis-tts-etat' || d.id !== id) return;
+          if (d.etat === 'debut') { ok = true; return; }
+          window.removeEventListener('message', onMsg);
+          if (d.etat === 'fin') fini();
+          else if (!ok) direLocal();
+        };
+        window.addEventListener('message', onMsg);
+        try { window.parent.postMessage({ type: 'creatis-tts', texte, id }, window.location.origin); }
+        catch { window.removeEventListener('message', onMsg); direLocal(); return; }
+        // Le parent n'a pas confirmé avoir commencé → il ne parlera pas, on prend le relais.
+        setTimeout(() => {
+          if (ok || !_parle) return;
+          window.removeEventListener('message', onMsg);
+          direLocal();
+        }, 700);
+        filet();
+      };
+
+      const dire = () => { if (_iframe()) direParent(); else direLocal(); };
       // iOS bascule la session audio en mode ENREGISTREMENT dès qu'une reconnaissance tourne :
       // la synthèse y devient inaudible, sans la moindre erreur pour le signaler. abort() ne
       // rend pas la session instantanément, il faut la laisser retomber avant de parler.
