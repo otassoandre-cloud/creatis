@@ -2696,11 +2696,29 @@ const V2 = (() => {
     }, 1000);
   }
 
+  /* Même motif que le mot de réveil, mais tolérant aux accents et SANS normalisation NFD :
+     appliqué tel quel sur la phrase d'origine, les indices de découpe restent valides.
+     (sansAccents() passe par NFD, qui change la longueur de la chaîne.) */
+  const RE_REVEIL_DECOUPE = /\b(?:hey|h[eé]|ok|okay|salut|bonjour|coucou)?\s*[ck]r[eé]a\s?ti(?:ss|s|ce|z|ve|f)?e?s?\b/i;
+
   async function voixTraiter(phrase, mainsLibres) {
-    const nom = voixExtraireNom(phrase);
+    // « Hey Créatis » prononcé APRÈS le bip n'est pas un nom de chaîne. Sans ce nettoyage on
+    // partait chercher une chaîne nommée « hey creatis » au lieu de redemander le créateur.
+    let net = phrase || '';
+    const mr = net.match(RE_REVEIL_DECOUPE);
+    if (mr) net = net.slice(mr.index + mr[0].length);
+    net = net.replace(/^[\s,.:!?]*(?:hey|h[eé]|ok|okay|salut|bonjour|coucou|dis|dis-moi)\b/i, '');
+
+    const nom = voixExtraireNom(net);
     if (!nom || nom.length < 2) {
-      voixStatut('Compris « ' + phrase.trim() +' » — dis plutôt « la dernière vidéo de <nom de la chaîne> »', true);
-      voixParler('Je n\'ai pas saisi le nom. Dis : la dernière vidéo de, puis le nom de la chaîne.');
+      // On relance l'écoute au lieu de rendre la main : l'utilisateur vient de s'adresser à
+      // nous, lui faire retoucher le micro pour rien casserait le dialogue.
+      voixStatut('🎙 Oui ? — dis-moi le nom du créateur');
+      voixParler('Oui, dis-moi de quel créateur tu veux des clips.', () => {
+        if (mainsLibres) { _attenteCmd = Date.now(); return; }
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) voixOuvrirDictee(SR, true);
+      });
       return;
     }
 
