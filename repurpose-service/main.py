@@ -2202,15 +2202,23 @@ async def _get_subtitles(video_id: str) -> Optional[Dict]:
         else:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
 
-        # Essaie fr/en d'abord, puis n'importe quelle langue dispo
+        # fr d'abord, puis en, puis n'importe quelle langue. Comparaison sur le PRÉFIXE :
+        # find_transcript(["fr"]) ne reconnaît ni « fr-FR » ni « fr-CA », et une vidéo
+        # française ainsi étiquetée repartait en anglais.
         transcript = None
-        try:
-            transcript = transcript_list.find_transcript(["fr", "en"])
-        except Exception:
-            all_transcripts = list(transcript_list)
-            if all_transcripts:
-                transcript = all_transcripts[0]
-                logger.info(f"Subtitles: langue fallback → {getattr(transcript, 'language_code', '?')}")
+        pistes = list(transcript_list)
+        for prefixe in ("fr", "en"):
+            for generee in (False, True):
+                for p in pistes:
+                    code = (getattr(p, "language_code", "") or "").lower()
+                    if code.startswith(prefixe) and bool(getattr(p, "is_generated", False)) is generee:
+                        transcript = p
+                        break
+                if transcript: break
+            if transcript: break
+        if transcript is None and pistes:
+            transcript = pistes[0]
+            logger.info(f"Subtitles: langue fallback → {getattr(transcript, 'language_code', '?')}")
 
         if transcript is None:
             raise RuntimeError("Aucune piste de sous-titres disponible")
@@ -2936,15 +2944,24 @@ async def get_transcript(video_id: str, _=Depends(auth)):
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        # YouTube n'étiquette pas toujours « fr » : « fr-FR » et « fr-CA » existent aussi, et
+        # find_transcript(["fr"]) ne les reconnaît PAS — une vidéo française sous-titrée fr-FR
+        # partait donc en anglais. On compare sur le préfixe, et on préfère une piste écrite à
+        # la main (meilleure ponctuation) à une piste générée automatiquement.
+        pistes = list(transcript_list)
         t = None
-        for lang in ['fr', 'en']:
-            try: t = transcript_list.find_transcript([lang]); break
-            except: pass
-        if not t:
-            try: t = transcript_list.find_generated_transcript(['fr', 'en'])
-            except:
-                all_codes = list(transcript_list._manually_created_transcripts) + list(transcript_list._generated_transcripts)
-                t = transcript_list.find_transcript(all_codes[:1]) if all_codes else None
+        for prefixe in ('fr', 'en'):
+            for generee in (False, True):
+                for p in pistes:
+                    code = (getattr(p, 'language_code', '') or '').lower()
+                    if code.startswith(prefixe) and bool(getattr(p, 'is_generated', False)) is generee:
+                        t = p
+                        break
+                if t: break
+            if t: break
+        if not t and pistes:
+            t = pistes[0]
+            logger.info(f"[transcript/api] {video_id} — aucune piste fr/en, repli sur {getattr(t, 'language_code', '?')}")
         if t:
             fetched = t.fetch()
             segments = [
@@ -2975,8 +2992,15 @@ async def get_transcript(video_id: str, _=Depends(auth)):
             url = f"https://www.youtube.com/watch?v={video_id}"
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
-            # Cherche le fichier .json3 téléchargé
-            sub_files = sorted(Path(td).glob("*.json3"))
+            # yt-dlp écrit une piste PAR langue demandée : subs.fr.json3 ET subs.en.json3.
+            # sorted() les classe alphabétiquement, donc « en » passait avant « fr » : on
+            # chargeait l'anglais alors que le français était là, sur le disque, juste à côté.
+            # On ordonne désormais par priorité de langue, pas par nom de fichier.
+            dispo = list(Path(td).glob("*.json3"))
+            sub_files = []
+            for code in ("fr", "en"):
+                sub_files += [p for p in dispo if f".{code}." in p.name or f".{code}-" in p.name]
+            sub_files += [p for p in dispo if p not in sub_files]
             if sub_files:
                 data = json.loads(sub_files[0].read_text(encoding="utf-8"))
                 segments = []
