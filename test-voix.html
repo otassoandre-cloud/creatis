@@ -51,6 +51,11 @@ et dis-moi ce que tu vois — et si tu entends quelque chose.</p>
 </div>
 
 <div class="bloc">
+  <h2>Voix françaises installées — clique pour écouter</h2>
+  <div id="liste-voix">chargement…</div>
+</div>
+
+<div class="bloc">
   <h2>Journal</h2>
   <div id="jrn">En attente d'un appui…</div>
 </div>
@@ -140,7 +145,51 @@ const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   || ((navigator.platform === 'MacIntel' || /Mac/.test(navigator.userAgent))
       && navigator.maxTouchPoints > 1);
 
+/* Le classement de qualité utilisé par Créatis. Si aucune voix ne dépasse la note 1, c'est
+   que l'appareil n'a que des voix synthétiques — aucun réglage logiciel n'y changera rien,
+   il faut en installer une meilleure dans le système. */
+function noteVoix(v) {
+  const n = v.name || '';
+  if (/premium|enhanced|neural|siri/i.test(n)) return 4;
+  if (/google/i.test(n)) return 3;
+  if (!v.localService) return 2;
+  return 1;
+}
+const ETIQUETTE = { 4: 'haute qualité', 3: 'Google', 2: 'distante', 1: 'synthétique (robotique)' };
+
+function listerVoix() {
+  const el = $('liste-voix');
+  const S = window.speechSynthesis;
+  if (!el || !S) return;
+  const fr = (S.getVoices() || []).filter(v => /^fr/i.test(v.lang))
+    .sort((a, b) => noteVoix(b) - noteVoix(a));
+  if (!fr.length) { el.textContent = 'Aucune voix française installée sur cet appareil.'; return; }
+  el.innerHTML = '';
+  fr.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.className = 'sec';
+    b.style.cssText = 'text-align:left;font-size:14px;padding:11px 13px;margin-bottom:7px';
+    b.textContent = (i === 0 ? '★ ' : '  ') + v.name + '  —  ' + ETIQUETTE[noteVoix(v)];
+    b.onclick = () => {
+      const u = new SpeechSynthesisUtterance('Bonjour, je suis Créatis. Je cherche la dernière vidéo.');
+      u.voice = v; u.lang = v.lang; u.rate = 1.05;
+      try { S.resume(); } catch (e) {}
+      S.speak(u);
+      jrn('essai voix : ' + v.name);
+    };
+    el.appendChild(b);
+  });
+  const etoile = document.createElement('div');
+  etoile.style.cssText = 'color:#7d8f80;font-size:12.5px;margin-top:6px';
+  etoile.textContent = '★ = celle que Créatis utilise. Si elle sonne mal, c\'est que rien de mieux n\'est installé.';
+  el.appendChild(etoile);
+}
+
 majVoix();
+listerVoix();
+if (window.speechSynthesis && speechSynthesis.addEventListener) {
+  speechSynthesis.addEventListener('voiceschanged', listerVoix);
+}
 majEtat();
 $('v-ios').textContent = estIOS ? 'oui' : 'NON';
 $('v-ios').className = estIOS ? 'ok' : 'ko';

@@ -2408,6 +2408,11 @@ const V2 = (() => {
     const W = _synthWin();
     if (_voixTTS || !W.speechSynthesis) return _voixTTS;
     const dispo = W.speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
+    // Voix choisie à l'oreille par l'utilisateur (07/08) : Paul. Elle prime sur le classement
+    // automatique — un jugement d'écoute vaut mieux qu'un barème sur les noms. Si elle n'est
+    // pas installée sur l'appareil, on retombe sur le classement par qualité juste en dessous.
+    const paul = dispo.find(v => /\bpaul\b/i.test(v.name || ''));
+    if (paul) { _voixTTS = paul; return _voixTTS; }
     // On choisissait la voix `localService` en premier, pour éviter la latence — mais ce sont
     // précisément les voix synthétiques, celles qui sonnent robotique. Les voix distantes
     // (Google) et les variantes Premium/Enhanced/Neural sont incomparablement plus naturelles,
