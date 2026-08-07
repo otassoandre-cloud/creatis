@@ -12,7 +12,7 @@ GET  /clip-export-status/{job_id}                     → { status, download_url
 GET  /clip-export-file/{job_id}/{filename}            → MP4
 GET  /health
 """
-import os, uuid, json, re, asyncio, subprocess, tempfile, logging, io
+import os, uuid, json, re, asyncio, subprocess, tempfile, logging, io, shutil
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -149,7 +149,11 @@ def _yt_extractor_args() -> dict:
     # Retirés au passage : `android_creator` et `android_testsuite`, qui n'existent plus dans
     # yt-dlp, et `android_vr` / `android` / `ios`, dont les formats sont désormais dépouillés
     # de leur URL sauf jeton GVS dédié que nous ne savons pas produire.
-    args = {"youtube": {"player_client": ["mweb", "web"]}}
+    # `tv` (TVHTML5) en dernier recours : sur certaines vidéos, `web` et `mweb` obtiennent bien
+    # les métadonnées mais reçoivent un 403 sur le MÉDIA depuis l'IP Railway. Mesuré sur
+    # HDlaCiEbHLE : WEB+PoToken 403, ANDROID_VR 403, TVHTML5 200. Contrairement à android/ios,
+    # `tv` accepte les cookies — il ne casse donc pas l'authentification comme eux.
+    args = {"youtube": {"player_client": ["mweb", "web", "tv"]}}
 
     # Toujours configurer le plugin avec l'URL publique (connue joignable depuis Railway)
     # Le plugin bgutil-ytdlp-pot-provider intercepte le fetch du web client et génère un PoToken
@@ -3106,8 +3110,14 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
 
 
 @app.get("/test-formats")
-def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False):
-    """Debug: teste l'extraction yt-dlp. use_proxy=false = chemin gratuit réel (cookies+bgutil, IP Railway)."""
+def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, download: bool = False):
+    """Debug: teste l'extraction yt-dlp. use_proxy=false = chemin gratuit réel (cookies+bgutil, IP Railway).
+
+    download=true télécharge RÉELLEMENT 5 secondes de média. Sans ça le test s'arrête aux
+    métadonnées, et il ment : sur certaines vidéos l'extraction renvoie 40+ formats alors que
+    le média répond 403 depuis cette IP. C'est exactement ce qui a fait croire pendant des
+    heures que la chaîne était saine alors que plus aucun clip ne se téléchargeait.
+    """
     import yt_dlp
     output = []
     class LogCollector:
@@ -3118,8 +3128,15 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False):
         "quiet": False, "no_warnings": False,
         "extractor_args": _yt_extractor_args(),
         "logger": LogCollector(),
-        "skip_download": True,
+        "skip_download": not download,
     }
+    _tmp_dl = None
+    if download:
+        _tmp_dl = Path(tempfile.mkdtemp(prefix="testdl_"))
+        opts["outtmpl"] = str(_tmp_dl / "essai.%(ext)s")
+        opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [(0, 5)])
+        opts["format"] = "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
+        opts["merge_output_format"] = "mp4"
     cookies_file = _get_cookies_file()
     if cookies_file:
         opts["cookiefile"] = cookies_file
@@ -3128,16 +3145,29 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False):
     result = {"video_id": video_id, "use_proxy": use_proxy, "has_cookies": bool(cookies_file)}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=download)
             fmts = [f for f in (info or {}).get("formats", []) if f.get("url")]
             audio = [f for f in fmts if f.get("acodec") not in (None, "none")]
             result["ok"] = len(fmts) > 0
             result["title"] = (info or {}).get("title", "")[:80]
             result["total_formats"] = len(fmts)
             result["audio_formats"] = len(audio)
+            result["client_utilise"] = _yt_extractor_args()["youtube"]["player_client"]
+        if download and _tmp_dl:
+            # La seule mesure qui compte : des octets sont-ils réellement arrivés ?
+            fichiers = [p for p in _tmp_dl.iterdir() if p.is_file() and p.stat().st_size > 0]
+            octets = max((p.stat().st_size for p in fichiers), default=0)
+            result["media_telecharge"] = octets > 20_000
+            result["octets"] = octets
+            result["ok"] = bool(result.get("ok")) and result["media_telecharge"]
     except Exception as e:
         result["ok"] = False
         result["error"] = str(e)[:300]
+        if download:
+            result["media_telecharge"] = False
+    finally:
+        if _tmp_dl:
+            shutil.rmtree(_tmp_dl, ignore_errors=True)
     result["logs"] = [l for l in output if any(k in l.lower() for k in ("error", "bot", "sign in", "proxy", "402", "forbidden", "unavailable", "po token", "potoken"))][:15]
     return result
 
