@@ -773,6 +773,7 @@
           </label>
         </div>
         <div id="voix-statut" class="voix-statut"></div>
+        <pre id="voix-journal" style="display:none;max-width:600px;margin:6px auto 0;padding:8px 10px;background:#0d140f;border:1px solid var(--bordure);border-radius:8px;font:11.5px/1.5 ui-monospace,Menlo,monospace;color:#7d8f80;white-space:pre-wrap;text-align:left"></pre>
 
         <div id="video-preview-wrap" style="display:none;max-width:480px;margin:12px 0 0;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#000;position:relative;">
           <video id="video-preview" style="width:100%;height:100%;object-fit:contain;" muted playsinline preload="metadata"></video>
@@ -2309,7 +2310,19 @@ const V2 = (() => {
 
   let _dicteeDirecte = false;   // vrai dès que l'annonce a empêché la dictée de démarrer
 
+  /* Journal des événements du micro, affiché sous le statut. La logique est vérifiée en
+     simulation, mais Chrome se comporte différemment sur une vraie machine : il coupe seul,
+     refuse un redémarrage trop rapproché, ou lève `no-speech` sans rien dire. Sans ce journal
+     on corrige à l'aveugle. */
+  const _evts = [];
+  function _evt(t) {
+    _evts.push(new Date().toLocaleTimeString('fr-FR').slice(3) + ' ' + t);
+    const el = document.getElementById('voix-journal');
+    if (el) { el.style.display = 'block'; el.textContent = _evts.slice(-6).join('\n'); }
+  }
+
   function voixOuvrirDictee(SR, differe, message) {
+    _evt('ouverture dictée');
     _reco = new SR();
     _reco.lang = 'fr-FR';
     // continuous=false laissait le navigateur clore la dictée au PREMIER silence — il coupait
@@ -2327,7 +2340,7 @@ const V2 = (() => {
     };
 
     _reco.onstart = () => {
-      demarre = true; voixEtat(true);
+      demarre = true; voixEtat(true); _evt('micro ouvert');
       voixStatut(message || '🎙 Je t\'écoute — prends ton temps');
       armerSilence();   // si rien n'est dit du tout, on ne laisse pas le micro ouvert sans fin
     };
@@ -2338,6 +2351,7 @@ const V2 = (() => {
     };
     _reco.onerror = (e) => {
       clearTimeout(minuteurSilence);
+      _evt('ERREUR ' + e.error);
       voixEtat(false);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         voixStatut('Micro refusé — autorise-le dans les réglages du navigateur, puis réessaie', true);
@@ -2351,6 +2365,7 @@ const V2 = (() => {
     };
     _reco.onend = () => {
       clearTimeout(minuteurSilence);
+      _evt('fin — entendu: ' + (phrase.trim() || '(rien)').slice(0, 40));
       voixEtat(false);
       if (phrase.trim()) { voixTraiter(phrase); return; }
       // Rien capté et aucune erreur levée : sans ce message la page redevenait simplement
@@ -2360,7 +2375,7 @@ const V2 = (() => {
     };
 
     try { _reco.start(); }
-    catch { voixStatut('Dictée déjà en cours', true); return; }
+    catch (e) { _evt('START REFUSÉ: ' + (e.name || e.message)); voixStatut('Dictée déjà en cours', true); return; }
 
     // Filet : si la dictée n'a pas démarré après l'annonce, c'est que le navigateur exigeait
     // un appui immédiat. On le retient pour toutes les fois suivantes plutôt que de laisser
@@ -2600,11 +2615,14 @@ const V2 = (() => {
   }
 
   // Chrome transcrit « Créatis » de plusieurs façons — on compare sans accents.
-  const RE_REVEIL = /\b[ck]rea\s?ti(?:s|ss|ce|z)e?\b/;
+  // [ckg] et le « e » facultatif : Chrome transcrit « Hey Créatis » en « et GRATIS » — mesuré
+  // en production. Un filtre qui n'accepte que l'orthographe correcte laisse donc passer le mot
+  // de réveil, qui devient alors un nom de créateur et lance une recherche absurde.
+  const RE_REVEIL = /\b[ckg]r[eé]?a\s?ti(?:s|ss|ce|z)e?\b/;
   // « créatif » / « créative » sont des transcriptions plausibles de Créatis, mais aussi des
   // mots français courants : on ne les accepte que suivis d'une vraie intention, sinon
   // « il faut être créatif dans la vie » lancerait une recherche.
-  const RE_REVEIL_FLOU = /\b[ck]reati(?:f|ve)s?\b/;
+  const RE_REVEIL_FLOU = /\b[ckg]r[eé]?ati(?:f|ve)s?\b/;
   const RE_INTENTION = /\b(?:videos?|clips?|shorts?|chaine|derni[eè]re?|dernier|nouvelles?|nouveau|cherche|trouve|analyse)\b/;
 
   function sansAccents(t) {
@@ -2737,7 +2755,7 @@ const V2 = (() => {
   /* Même motif que le mot de réveil, mais tolérant aux accents et SANS normalisation NFD :
      appliqué tel quel sur la phrase d'origine, les indices de découpe restent valides.
      (sansAccents() passe par NFD, qui change la longueur de la chaîne.) */
-  const RE_REVEIL_DECOUPE = /\b(?:hey|h[eé]|ok|okay|salut|bonjour|coucou)?\s*[ck]r[eé]a\s?ti(?:ss|s|ce|z|ve|f)?e?s?\b/i;
+  const RE_REVEIL_DECOUPE = /\b(?:hey|h[eé]|et|est|ok|okay|salut|bonjour|coucou)?\s*[ckg]r[eé]?a\s?ti(?:ss|s|ce|z|ve|f)?e?s?\b/i;
 
   /* Comprend une demande dite naturellement, comme on la formulerait à quelqu'un :
        « trouve-moi la dernière vidéo de Yomi Denzel »
