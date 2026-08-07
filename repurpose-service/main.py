@@ -943,11 +943,6 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
         (path, title, None) au succès, sinon (None, None, dernière_erreur)."""
         last = None
         for attempt in attempts:
-            # Le plafond se verifie UNE fois par strategie, pas a chaque format : sinon une
-            # seule tentative consommerait trois jetons sur les 24 de l'heure.
-            if attempt["proxy"] and not _proxy_quota_ok():
-                logger.warning("[proxy] plafond horaire atteint - audio non tente via Webshare")
-                continue
             for fmt in audio_formats:
                 try:
                     opts = {
@@ -1102,12 +1097,6 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     last_err = None
     for attempt in attempts:
         try:
-            if attempt["proxy"] and not _proxy_quota_ok():
-                # Le proxy residentiel se facture au gigaoctet et ce chemin telecharge de la
-                # VIDEO, pas des metadonnees : sans plafond, une panne du chemin gratuit y
-                # bascule toutes les analyses et la facture explose en silence.
-                logger.warning("[proxy] plafond horaire atteint - section non tentee via Webshare")
-                continue
             opts = {
                 "quiet": True, "no_warnings": True,
                 "outtmpl": str(out_dir / "source_%(id)s.%(ext)s"),
