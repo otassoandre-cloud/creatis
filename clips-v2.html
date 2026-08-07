@@ -2482,7 +2482,8 @@ const V2 = (() => {
     }, 1600);
   }
 
-  let _ttsSeq = 0;   // apparie chaque demande au parent avec sa réponse
+  let _ttsSeq = 0;            // apparie chaque demande au parent avec sa réponse
+  let _derniereReponse = '';  // ce qu'elle vient de dire — pour ne pas se prendre pour l'utilisateur
 
   function voixParler(texte, apres) {
     const W = _synthWin();
@@ -2497,6 +2498,7 @@ const V2 = (() => {
       if (_ml && !document.hidden) mlDemarrer();
       if (apres) apres();
     };
+    _derniereReponse = texte || '';
     if (!_tts || !W.speechSynthesis || !texte) { if (apres) apres(); return; }
     try {
       // cancel() immédiatement suivi de speak() fait tomber l'énoncé sur Safari : on ne coupe
@@ -2779,7 +2781,27 @@ const V2 = (() => {
   const ACCUEILS = ['Oui ?', 'Je t\'écoute.', 'Oui, dis-moi.', 'Vas-y, je t\'écoute.',
                     'Oui, je suis là.', 'Dis-moi tout.', 'Je t\'écoute, vas-y.'];
 
+  /* Rouvre l'écoute après qu'elle a parlé. Le délai n'est pas cosmétique : le micro rouvert
+     dans la foulée capte la fin de sa propre phrase, ou son écho dans les haut-parleurs. */
+  function voixReecouter(mainsLibres) {
+    if (mainsLibres) { _attenteCmd = Date.now(); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) setTimeout(() => voixOuvrirDictee(SR, true), 400);
+  }
+
   async function voixTraiter(phrase, mainsLibres) {
+    /* Elle ne doit jamais se prendre pour l'utilisateur. Le micro rouvert juste après sa
+       réponse capte parfois sa propre voix : « Oui, dis-moi » devenait alors une demande, et
+       elle partait chercher une chaîne nommée « oui dis-moi ». C'est ce qui faisait échouer
+       tous les échanges SAUF le premier — le seul où le micro s'ouvre dans le silence. */
+    const _norm = (s) => sansAccents(s || '').replace(/[^a-z0-9]/g, '');
+    const entendu = _norm(phrase);
+    if (entendu && _derniereReponse && _norm(_derniereReponse).includes(entendu)) {
+      voixStatut('🎙 Je t\'écoute — prends ton temps');
+      voixReecouter(mainsLibres);
+      return;
+    }
+
     // Tu ne fais que l'appeler, sans demande derrière : elle répond tout de suite et rouvre
     // l'écoute. On mesure ce qui reste APRÈS le mot de réveil — s'il reste des mots, c'est une
     // vraie demande et elle part au modèle, même si les motifs n'y comprennent rien.
@@ -2796,11 +2818,8 @@ const V2 = (() => {
       .replace(/[^0-9a-zà-öø-ÿ]/gi, '');
     if (reste.length < 3) {
       voixStatut('🎙 Je t\'écoute — prends ton temps');
-      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)], () => {
-        if (mainsLibres) { _attenteCmd = Date.now(); return; }
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) voixOuvrirDictee(SR, true);
-      });
+      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)],
+                 () => voixReecouter(mainsLibres));
       return;
     }
 
@@ -2814,11 +2833,8 @@ const V2 = (() => {
     const nomNorm = sansAccents(demande.nom || '').replace(/[^a-z0-9]/g, '');
     if (/^[ck]rea/.test(nomNorm)) {
       voixStatut('🎙 Je t\'écoute — prends ton temps');
-      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)], () => {
-        if (mainsLibres) { _attenteCmd = Date.now(); return; }
-        const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR2) voixOuvrirDictee(SR2, true);
-      });
+      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)],
+                 () => voixReecouter(mainsLibres));
       return;
     }
 
@@ -2849,11 +2865,8 @@ const V2 = (() => {
       // On relance l'écoute au lieu de rendre la main : l'utilisateur vient de s'adresser à
       // nous, lui faire retoucher le micro pour rien casserait le dialogue.
       voixStatut('🎙 Oui ? — dis-moi le nom du créateur');
-      voixParler(reponseIA || 'Oui, dis-moi de quel créateur tu veux des clips.', () => {
-        if (mainsLibres) { _attenteCmd = Date.now(); return; }
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SR) voixOuvrirDictee(SR, true);
-      });
+      voixParler(reponseIA || 'Oui, dis-moi de quel créateur tu veux des clips.',
+                 () => voixReecouter(mainsLibres));
       return;
     }
 
