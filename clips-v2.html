@@ -4143,7 +4143,58 @@ const V2 = (() => {
   }
 
   // Petit badge ✓ vert sur la vignette du clip quand son aperçu est prêt.
+  /* En mode YouTube, les 10 vignettes reçoivent la MÊME image statique de la vidéo : on ne
+     distingue pas les clips, il faut tous les ouvrir pour choisir. Dès qu'un segment est
+     téléchargé on en extrait une vraie image — le fichier est déjà là, donc aucun octet ni
+     crédit supplémentaire.
+
+     Deux garde-fous : bureau uniquement, et UN SEUL élément vidéo réutilisé en file d'attente.
+     Un <video> par clip épuise les décodeurs sur iOS et faisait recharger l'onglet. En cas
+     d'échec on ne touche à rien : l'image statique reste, on ne perd jamais l'existant. */
+  let _vigVideo = null, _vigFile = Promise.resolve();
+
+  function _vignetteDepuisSegment(i) {
+    if (_thumbs[i] || !_ytSegCache[i]) return;
+    if (_isIOS() || /Android/i.test(navigator.userAgent)) return;
+    _vigFile = _vigFile.then(() => new Promise((fini) => {
+      let rendu = false;
+      const terminer = () => { if (!rendu) { rendu = true; fini(); } };
+      try {
+        if (!_vigVideo) {
+          _vigVideo = document.createElement('video');
+          _vigVideo.muted = true; _vigVideo.playsInline = true; _vigVideo.preload = 'metadata';
+        }
+        const v = _vigVideo;
+        const secu = setTimeout(terminer, 5000);
+        const capturer = () => {
+          clearTimeout(secu);
+          try {
+            const c = document.createElement('canvas');
+            c.width = 320;
+            c.height = Math.round(320 * (v.videoHeight || 9) / (v.videoWidth || 16));
+            c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+            const url = c.toDataURL('image/jpeg', 0.72);
+            const el = document.getElementById(`clip-thumb-${i}`);
+            const img = el && el.querySelector('img');
+            if (img && url && url.length > 2000) { img.src = url; el.dataset.thumb = url; _thumbs[i] = url; }
+          } catch (e) { /* image inexploitable : on garde la statique */ }
+          terminer();
+        };
+        v.onerror = terminer;
+        v.addEventListener('seeked', capturer, { once: true });
+        v.addEventListener('loadeddata', () => {
+          // ~1 s après le début du segment : évite un fondu au noir en première image
+          const t = Math.min(1, (v.duration || 2) / 2);
+          if (v.currentTime === t) capturer(); else v.currentTime = t;
+        }, { once: true });
+        v.src = _ytSegCache[i];
+        v.load();
+      } catch (e) { terminer(); }
+    })).catch(() => {});
+  }
+
   function _markClipReady(i) {
+    _vignetteDepuisSegment(i);
     const card = document.getElementById(`clip-thumb-${i}`);
     card?.querySelectorAll('.clip-pending-badge, .clip-failed-badge').forEach(b => b.remove());
     if (card && !card.querySelector('.clip-ready-badge')) {
