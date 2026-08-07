@@ -2311,17 +2311,32 @@ const V2 = (() => {
   function voixOuvrirDictee(SR, differe) {
     _reco = new SR();
     _reco.lang = 'fr-FR';
-    _reco.continuous = false;
+    // continuous=false laissait le navigateur clore la dictée au PREMIER silence — il coupait
+    // donc au milieu d'une phrase dès qu'on hésitait. On garde le micro ouvert et c'est nous
+    // qui décidons de la fin, après un vrai blanc.
+    _reco.continuous = true;
     _reco.interimResults = true;
     _reco.maxAlternatives = 1;
 
-    let phrase = '', demarre = false;
-    _reco.onstart = () => { demarre = true; voixEtat(true); voixStatut('🎙 Je t\'écoute — « la dernière vidéo de… »'); };
+    const SILENCE_FIN = 1500;   // ms de blanc avant de considérer la phrase terminée
+    let phrase = '', demarre = false, minuteurSilence = null;
+    const armerSilence = () => {
+      clearTimeout(minuteurSilence);
+      minuteurSilence = setTimeout(() => { try { _reco.stop(); } catch {} }, SILENCE_FIN);
+    };
+
+    _reco.onstart = () => {
+      demarre = true; voixEtat(true);
+      voixStatut('🎙 Je t\'écoute — prends ton temps');
+      armerSilence();   // si rien n'est dit du tout, on ne laisse pas le micro ouvert sans fin
+    };
     _reco.onresult = (e) => {
       phrase = Array.from(e.results).map(r => r[0].transcript).join(' ');
+      armerSilence();   // tant que tu parles, on repousse la fin
       if (!e.results[e.results.length - 1].isFinal) voixStatut('🎙 ' + phrase);
     };
     _reco.onerror = (e) => {
+      clearTimeout(minuteurSilence);
       voixEtat(false);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         voixStatut('Micro refusé — autorise-le dans les réglages du navigateur, puis réessaie', true);
@@ -2334,6 +2349,7 @@ const V2 = (() => {
       }
     };
     _reco.onend = () => {
+      clearTimeout(minuteurSilence);
       voixEtat(false);
       if (phrase.trim()) { voixTraiter(phrase); return; }
       // Rien capté et aucune erreur levée : sans ce message la page redevenait simplement
@@ -2392,7 +2408,18 @@ const V2 = (() => {
     const W = _synthWin();
     if (_voixTTS || !W.speechSynthesis) return _voixTTS;
     const dispo = W.speechSynthesis.getVoices().filter(v => /^fr/i.test(v.lang));
-    _voixTTS = dispo.find(v => v.localService) || dispo[0] || null;   // locale = pas de latence
+    // On choisissait la voix `localService` en premier, pour éviter la latence — mais ce sont
+    // précisément les voix synthétiques, celles qui sonnent robotique. Les voix distantes
+    // (Google) et les variantes Premium/Enhanced/Neural sont incomparablement plus naturelles,
+    // pour un délai de quelques dizaines de millisecondes. Le confort d'écoute vaut ce prix.
+    const note = (v) => {
+      const n = (v.name || '');
+      if (/premium|enhanced|neural|siri/i.test(n)) return 4;   // macOS / iOS haute qualité
+      if (/google/i.test(n)) return 3;                         // Chrome, très naturelle
+      if (!v.localService) return 2;                           // distante = généralement mieux
+      return 1;
+    };
+    _voixTTS = dispo.slice().sort((a, b) => note(b) - note(a))[0] || null;
     return _voixTTS;
   }
 
@@ -2737,13 +2764,35 @@ const V2 = (() => {
   }
 
   async function voixTraiter(phrase, mainsLibres) {
-    const demande = voixAnalyserDemande(phrase);
+    let demande = voixAnalyserDemande(phrase);
+    let reponseIA = '';
+
+    /* Les motifs ne couvrent que les tournures prévues. Groq comprend le reste — « prends la
+       dernière de Squeezie mais fais-moi que des trucs punchy » — et formule une réponse
+       différente à chaque fois : répéter la même phrase sonne robotique, quelle que soit la
+       qualité de la voix. Purement complémentaire : si Groq tombe, les motifs suffisent et la
+       commande vocale continue de fonctionner. */
+    try {
+      voixStatut('🎧 Je réfléchis…');
+      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      const r = await fetch('/api/repurpose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(tok ? { 'Authorization': `Bearer ${tok}` } : {}) },
+        body: JSON.stringify({ mode: 'voix_intention', phrase }),
+      });
+      const d = await r.json();
+      if (r.ok && d?.ok) {
+        if (d.chaine) demande = { nom: d.chaine.toLowerCase(), titre: d.titre || demande.titre };
+        reponseIA = d.reponse || '';
+      }
+    } catch (e) { /* silencieux : on garde l'analyse par motifs */ }
+
     const nom = demande.nom;
     if (!nom || nom.length < 2) {
       // On relance l'écoute au lieu de rendre la main : l'utilisateur vient de s'adresser à
       // nous, lui faire retoucher le micro pour rien casserait le dialogue.
       voixStatut('🎙 Oui ? — dis-moi le nom du créateur');
-      voixParler('Oui, dis-moi de quel créateur tu veux des clips.', () => {
+      voixParler(reponseIA || 'Oui, dis-moi de quel créateur tu veux des clips.', () => {
         if (mainsLibres) { _attenteCmd = Date.now(); return; }
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SR) voixOuvrirDictee(SR, true);
@@ -2754,7 +2803,7 @@ const V2 = (() => {
     const quoi = demande.titre ? 'la vidéo ' + demande.titre + ' de ' + nom
                                : 'la dernière vidéo de ' + nom;
     voixStatut('🔎 Je cherche ' + quoi + '…');
-    voixParler('Je cherche ' + quoi + '.');
+    voixParler(reponseIA || ('Je cherche ' + quoi + '.'));
     let cache = {};
     try { cache = JSON.parse(localStorage.getItem(VOIX_CACHE) || '{}'); } catch {}
     const cle = nom.toLowerCase();

@@ -1035,6 +1035,62 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   }
 
+  /* Créatis vocal — comprend une demande dite librement, comme à un interlocuteur.
+     Les motifs figés ne couvraient que les tournures prévues d'avance : « prends la dernière
+     de Squeezie mais fais-moi que des trucs punchy » n'était pas compris. On confie donc
+     l'extraction au modèle, et on lui fait aussi formuler la réponse — la même phrase répétée
+     à chaque fois sonne robotique, quelle que soit la qualité de la voix.
+     Le client garde son analyse par motifs et n'appelle ceci qu'en complément : si Groq est
+     indisponible, la commande vocale continue de fonctionner. */
+  if (mode === 'voix_intention') {
+    const phrase = String(body.phrase || '').slice(0, 400).trim();
+    if (!phrase) return res.status(400).json({ error: 'phrase requise' });
+    if (!GROQ_KEY) return res.status(503).json({ error: 'GROQ_API_KEY non configurée' });
+    try {
+      const sys = `Tu es l'assistant vocal de Créatis, un outil qui découpe une longue vidéo YouTube en clips courts.
+L'utilisateur te parle à l'oral, en français, sans ponctuation et parfois en hésitant.
+Ta seule mission : identifier de QUELLE vidéo il veut des clips.
+
+Extrais :
+- "chaine" : le nom du créateur ou de la chaîne YouTube. Chaîne vide si absent.
+- "titre" : le titre de la vidéo précise, SEULEMENT s'il en nomme une. Vide s'il dit « la dernière », « la nouvelle » ou ne précise pas.
+- "reponse" : ce que tu réponds à voix haute, à la première personne, 12 mots maximum.
+
+Règles pour "reponse" :
+- Varie la formulation à chaque fois, comme le ferait une vraie personne. Ne répète jamais la même phrase.
+- Si "chaine" est trouvée : confirme naturellement que tu y vas.
+- Si "chaine" est vide : demande de quel créateur il s'agit, gentiment.
+- Jamais de liste, jamais d'emoji, jamais de guillemets. Une phrase parlée, c'est tout.
+
+Réponds UNIQUEMENT par un objet JSON : {"chaine":"...","titre":"...","reponse":"..."}
+Aucun texte avant ou après.`;
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: phrase }],
+          temperature: 0.8,
+          max_tokens: 200,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      if (!r.ok) return res.status(502).json({ error: `Groq ${r.status}` });
+      const d = await r.json();
+      const brut = d?.choices?.[0]?.message?.content || '{}';
+      let out = {};
+      try { out = JSON.parse(brut); } catch { return res.status(502).json({ error: 'Réponse illisible' }); }
+      return res.status(200).json({
+        ok: true,
+        chaine: String(out.chaine || '').trim().slice(0, 80),
+        titre: String(out.titre || '').trim().slice(0, 120),
+        reponse: String(out.reponse || '').trim().slice(0, 200),
+      });
+    } catch (e) {
+      return res.status(502).json({ error: e.message });
+    }
+  }
+
   // Upload token : credentials Railway pour upload direct
   if (mode === 'upload-token') {
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
