@@ -1,0 +1,87 @@
+# Surveillance horaire de la chaîne de téléchargement YouTube.
+#
+# Pourquoi : le 07/08, le chemin gratuit est resté cassé toute une journée sans que personne
+# ne le sache — Railway servait un code périmé, chaque analyse basculait sur le proxy payant
+# (2,5 Go brûlés) et les clients tombaient sur « Transcription impossible ». Il a fallu qu'un
+# utilisateur le signale. Ce test le détecte en moins d'une heure.
+#
+# GitHub envoie un mail au propriétaire du dépôt dès qu'un job échoue : pas d'alerting à
+# construire, et aucune fonction Vercel consommée (le projet est à 12/12, plafond Hobby).
+
+name: Santé YouTube
+
+on:
+  schedule:
+    - cron: '17 * * * *'   # à 17 min de chaque heure, hors des pics de redéploiement
+  workflow_dispatch:        # lançable à la main depuis l'onglet Actions
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier la chaîne de téléchargement
+        env:
+          SERVICE: https://lavish-warmth-production-5f49.up.railway.app
+          VIDEO: g87NR7j4wTM
+        run: |
+          set -u
+
+          controler() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$SERVICE/health" || echo 000)
+            if [ "$code" != "200" ]; then
+              echo "health=$code"
+              return 1
+            fi
+            reponse=$(curl -s --max-time 150 "$SERVICE/test-formats?video_id=$VIDEO&use_proxy=false")
+            echo "$reponse" > /tmp/reponse.json
+            python3 - <<'PY'
+          import json, sys
+          d = json.load(open('/tmp/reponse.json'))
+          logs = ' '.join(d.get('logs') or [])
+          erreurs = []
+
+          # Déploiement périmé : ce client n'existe plus dans yt-dlp. S'il apparaît, Railway
+          # sert un ancien commit — c'est la panne du 07/08, invisible autrement.
+          if 'android_creator' in logs:
+              erreurs.append("DEPLOIEMENT PERIME — Railway sert un vieux commit. Faire `git push`.")
+
+          if not d.get('ok'):
+              err = str(d.get('error') or '')[:200]
+              if 'not a bot' in err or 'Sign in' in err:
+                  erreurs.append("COOKIES REJETES — rafraichir YOUTUBE_COOKIES dans Railway. " + err)
+              elif 'Requested format' in err:
+                  erreurs.append("CLIENT/JETON DESALIGNE — verifier _yt_extractor_args(). " + err)
+              elif 'SABR' in err:
+                  erreurs.append("IP BLOQUEE par YouTube — seul le chemin payant passera. " + err)
+              else:
+                  erreurs.append("EXTRACTION KO — " + err)
+          elif not d.get('audio_formats'):
+              erreurs.append("AUCUN FORMAT AUDIO — la transcription echouera.")
+
+          if erreurs:
+              print('\n'.join('ECHEC: ' + e for e in erreurs))
+              sys.exit(1)
+          print("OK — formats=%s audio=%s cookies=%s" % (
+              d.get('total_formats'), d.get('audio_formats'), d.get('has_cookies')))
+          PY
+          }
+
+          # Une reconstruction Railway coupe le service ~90 s. Un seul echec ne prouve rien :
+          # on retente une fois avant d'alerter, sinon chaque deploiement declencherait un mail.
+          if controler; then
+            echo "Chaine de telechargement saine."
+            exit 0
+          fi
+
+          echo "Premier controle en echec — nouvelle tentative dans 120 s (fenetre de redeploiement)."
+          sleep 120
+
+          if controler; then
+            echo "Retabli a la seconde tentative — c'etait un redeploiement, pas une panne."
+            exit 0
+          fi
+
+          echo ""
+          echo "PANNE CONFIRMEE sur deux controles espaces de 2 minutes."
+          echo "Runbook : DIAGNOSTIC_YOUTUBE.md — lire la signature ci-dessus AVANT d'agir."
+          exit 1
