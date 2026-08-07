@@ -2301,14 +2301,15 @@ const V2 = (() => {
     // Si ce démarrage différé échoue (iOS peut exiger que start() parte de la pile du geste),
     // on retombe définitivement sur la dictée directe : le bouton reste utilisable quoi qu'il
     // arrive, on ne troque pas un micro qui marche contre une politesse.
-    if (_dicteeDirecte || !_tts) { voixOuvrirDictee(SR, false); return; }
-    voixStatut('🎙 Oui ?');
-    voixParler('Oui ?', () => voixOuvrirDictee(SR, true));
+    // Le micro s'ouvre EN SILENCE : c'est « Hey Créatis » qui déclenche sa réponse, pas le clic.
+    // Avant, elle disait « Oui ? » dès l'appui, sans qu'on l'ait appelée — et sur iOS elle
+    // parlait juste avant d'écouter, ce qui lui confisquait la session audio.
+    voixOuvrirDictee(SR, false, '🎙 Dis « Hey Créatis »');
   }
 
   let _dicteeDirecte = false;   // vrai dès que l'annonce a empêché la dictée de démarrer
 
-  function voixOuvrirDictee(SR, differe) {
+  function voixOuvrirDictee(SR, differe, message) {
     _reco = new SR();
     _reco.lang = 'fr-FR';
     // continuous=false laissait le navigateur clore la dictée au PREMIER silence — il coupait
@@ -2327,7 +2328,7 @@ const V2 = (() => {
 
     _reco.onstart = () => {
       demarre = true; voixEtat(true);
-      voixStatut('🎙 Je t\'écoute — prends ton temps');
+      voixStatut(message || '🎙 Je t\'écoute — prends ton temps');
       armerSilence();   // si rien n'est dit du tout, on ne laisse pas le micro ouvert sans fin
     };
     _reco.onresult = (e) => {
@@ -2768,7 +2769,29 @@ const V2 = (() => {
     return { nom: voixExtraireNom(t), titre: '' };
   }
 
+  /* Formulations d'accueil, tirées au sort. Une réponse identique à chaque fois sonne
+     mécanique, même avec une belle voix — et pour un simple « oui » un aller-retour vers le
+     modèle coûterait une seconde de silence, ce qui casse davantage le rythme que la
+     répétition qu'il éviterait. */
+  const ACCUEILS = ['Oui ?', 'Je t\'écoute.', 'Oui, dis-moi.', 'Vas-y, je t\'écoute.',
+                    'Oui, je suis là.', 'Dis-moi tout.', 'Je t\'écoute, vas-y.'];
+
   async function voixTraiter(phrase, mainsLibres) {
+    // Tu ne fais que l'appeler, sans demande derrière : elle répond tout de suite et rouvre
+    // l'écoute. On mesure ce qui reste APRÈS le mot de réveil — s'il reste des mots, c'est une
+    // vraie demande et elle part au modèle, même si les motifs n'y comprennent rien.
+    const reste = (phrase || '').replace(RE_REVEIL_DECOUPE, '')
+      .replace(/[^0-9a-zà-öø-ÿ]/gi, '');
+    if (reste.length < 3) {
+      voixStatut('🎙 Je t\'écoute — prends ton temps');
+      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)], () => {
+        if (mainsLibres) { _attenteCmd = Date.now(); return; }
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) voixOuvrirDictee(SR, true);
+      });
+      return;
+    }
+
     let demande = voixAnalyserDemande(phrase);
     let reponseIA = '';
 
