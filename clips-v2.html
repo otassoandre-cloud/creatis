@@ -2546,7 +2546,10 @@ const V2 = (() => {
           else if (!ok) direLocal();
         };
         window.addEventListener('message', onMsg);
-        try { window.parent.postMessage({ type: 'creatis-tts', texte, id }, window.location.origin); }
+        // On transmet le NOM de la voix, pas l'objet : un SpeechSynthesisVoice appartient à sa
+        // fenêtre et ne survit pas à postMessage. Le parent retrouve la sienne par ce nom.
+        const vChoisie = ttsVoixFr();
+        try { window.parent.postMessage({ type: 'creatis-tts', texte, id, voix: vChoisie && vChoisie.name }, window.location.origin); }
         catch { window.removeEventListener('message', onMsg); direLocal(); return; }
         // Le parent n'a pas confirmé avoir commencé → il ne parlera pas, on prend le relais.
         setTimeout(() => {

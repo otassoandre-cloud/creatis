@@ -3988,8 +3988,19 @@ function installerVoixPourIframe() {
     };
     try {
       const u = new SpeechSynthesisUtterance(d.texte);
-      // Pas de u.voice : sur iOS, assigner un objet voix fait échouer l'énoncé en silence.
       u.lang = 'fr-FR'; u.rate = 1.05;
+      // La voix choisie par l'iframe doit être appliquée ICI : c'est le parent qui prononce,
+      // et sans ça le système imposait sa voix par défaut — le réglage de l'utilisateur
+      // n'avait donc aucun effet dans l'application.
+      // On l'applique SAUF sur iOS, où assigner un objet SpeechSynthesisVoice fait échouer
+      // l'énoncé en silence : là-bas mieux vaut une voix par défaut qu'aucun son.
+      const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || ((navigator.platform === 'MacIntel' || /Mac/.test(navigator.userAgent))
+            && navigator.maxTouchPoints > 1);
+      if (d.voix && !estIOS) {
+        const v = (speechSynthesis.getVoices() || []).find(x => x.name === d.voix);
+        if (v) u.voice = v;
+      }
       u.addEventListener('start', () => repondre('debut'));
       u.addEventListener('end', () => repondre('fin'));
       u.addEventListener('error', () => repondre('erreur'));
