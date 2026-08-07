@@ -2315,8 +2315,10 @@ const V2 = (() => {
      refuse un redémarrage trop rapproché, ou lève `no-speech` sans rien dire. Sans ce journal
      on corrige à l'aveugle. */
   const _evts = [];
+  const _journalVoix = /[?&]debugvoix=1/.test(location.search);
   function _evt(t) {
     _evts.push(new Date().toLocaleTimeString('fr-FR').slice(3) + ' ' + t);
+    if (!_journalVoix) return;   // masqué en usage normal, sans être perdu pour autant
     const el = document.getElementById('voix-journal');
     if (el) { el.style.display = 'block'; el.textContent = _evts.slice(-6).join('\n'); }
   }
