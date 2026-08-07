@@ -2805,6 +2805,23 @@ const V2 = (() => {
     }
 
     let demande = voixAnalyserDemande(phrase);
+
+    /* Jamais chercher une chaîne appelée « Créatis » : c'est nous. La reconnaissance transcrit
+       le mot de réveil de travers une fois sur deux — « créative », « Créa TV », « Kréa Tisse »
+       — et cette variante survit au filtre, puis se retrouve prise pour un nom de créateur.
+       Ce garde-fou attrape TOUTES les variantes d'un coup, sans avoir à les deviner une par une :
+       tout nom qui commence par « créa » est un appel, pas une demande. */
+    const nomNorm = sansAccents(demande.nom || '').replace(/[^a-z0-9]/g, '');
+    if (/^[ck]rea/.test(nomNorm)) {
+      voixStatut('🎙 Je t\'écoute — prends ton temps');
+      voixParler(ACCUEILS[Math.floor(Math.random() * ACCUEILS.length)], () => {
+        if (mainsLibres) { _attenteCmd = Date.now(); return; }
+        const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR2) voixOuvrirDictee(SR2, true);
+      });
+      return;
+    }
+
     let reponseIA = '';
 
     /* Les motifs ne couvrent que les tournures prévues. Groq comprend le reste — « prends la
