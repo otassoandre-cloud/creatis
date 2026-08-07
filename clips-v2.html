@@ -2783,7 +2783,16 @@ const V2 = (() => {
     // Tu ne fais que l'appeler, sans demande derrière : elle répond tout de suite et rouvre
     // l'écoute. On mesure ce qui reste APRÈS le mot de réveil — s'il reste des mots, c'est une
     // vraie demande et elle part au modèle, même si les motifs n'y comprennent rien.
-    const reste = (phrase || '').replace(RE_REVEIL_DECOUPE, '')
+    // TOUTES les occurrences, pas seulement la première : l'écoute continue accumule les
+    // segments, et « Hey Créatis » peut revenir deux ou trois fois dans la même transcription.
+    // Sans le drapeau global, il en restait assez pour être pris pour une demande de vidéo.
+    // On retire aussi les mots de remplissage : « euh », « alors », « bon »…
+    const reste = (phrase || '')
+      .replace(new RegExp(RE_REVEIL_DECOUPE.source, 'gi'), ' ')
+      // Pas de `\b` en fin de motif : en JavaScript il ne considère pas les lettres accentuées
+      // comme des lettres, donc « voilà » n'était jamais reconnu. Une négation explicite règle
+      // le cas pour tous les mots à accent final.
+      .replace(/\b(?:hey|h[eé]|ok|okay|salut|bonjour|coucou|euh|heu|hum|alors|bon|ben|bah|donc|voil[aà])(?![0-9a-zà-öø-ÿ])/gi, ' ')
       .replace(/[^0-9a-zà-öø-ÿ]/gi, '');
     if (reste.length < 3) {
       voixStatut('🎙 Je t\'écoute — prends ton temps');
