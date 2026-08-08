@@ -32,7 +32,9 @@ jobs:
               echo "health=$code"
               return 1
             fi
-            reponse=$(curl -s --max-time 150 "$SERVICE/test-formats?video_id=$VIDEO&use_proxy=false")
+            # download=true : on verifie les OCTETS. Sans ca le test dit « sain » alors que
+            # l'extraction reussit et que plus aucun clip ne se telecharge — panne du 08/08.
+            reponse=$(curl -s --max-time 280 "$SERVICE/test-formats?video_id=$VIDEO&use_proxy=false&download=true")
             echo "$reponse" > /tmp/reponse.json
             python3 - <<'PY'
           import json, sys
@@ -51,18 +53,25 @@ jobs:
                   erreurs.append("COOKIES REJETES — rafraichir YOUTUBE_COOKIES dans Railway. " + err)
               elif 'Requested format' in err:
                   erreurs.append("CLIENT/JETON DESALIGNE — verifier _yt_extractor_args(). " + err)
-              elif 'SABR' in err:
-                  erreurs.append("IP BLOQUEE par YouTube — seul le chemin payant passera. " + err)
+              elif 'SABR' in err or 'ffmpeg exited with code 8' in err:
+                  # Panne du 08/08 : extraction OK, octets refuses. Elle s'est levee seule en
+                  # quelques heures — ne pas se precipiter sur un abonnement.
+                  erreurs.append("MEDIA REFUSE a cette IP (extraction OK, 0 octet). Blocage "
+                                 "souvent TEMPORAIRE : attendre avant de payer. " + err)
               else:
                   erreurs.append("EXTRACTION KO — " + err)
           elif not d.get('audio_formats'):
               erreurs.append("AUCUN FORMAT AUDIO — la transcription echouera.")
+          elif not d.get('media_telecharge'):
+              erreurs.append("MEDIA REFUSE (0 octet) — extraction OK mais YouTube ne sert pas "
+                             "les octets a cette IP. Blocage souvent temporaire : attendre avant "
+                             "de payer. proxy_actif=%s" % d.get('proxy_reellement_actif'))
 
           if erreurs:
               print('\n'.join('ECHEC: ' + e for e in erreurs))
               sys.exit(1)
-          print("OK — formats=%s audio=%s cookies=%s" % (
-              d.get('total_formats'), d.get('audio_formats'), d.get('has_cookies')))
+          print("OK — formats=%s audio=%s octets=%s" % (
+              d.get('total_formats'), d.get('audio_formats'), d.get('octets')))
           PY
           }
 
