@@ -2315,12 +2315,17 @@ const V2 = (() => {
      refuse un redémarrage trop rapproché, ou lève `no-speech` sans rien dire. Sans ce journal
      on corrige à l'aveugle. */
   const _evts = [];
-  const _journalVoix = /[?&]debugvoix=1/.test(location.search);
+  // Le journal s'ouvre aussi si l'URL de la PAGE PARENTE porte le drapeau : dans l'app, c'est
+  // elle qu'on voit dans la barre d'adresse, l'iframe n'a pas de paramètres.
+  const _journalVoix = (() => {
+    if (/[?&]debugvoix=1/.test(location.search)) return true;
+    try { return /[?&]debugvoix=1/.test(window.parent.location.search); } catch { return false; }
+  })();
   function _evt(t) {
     _evts.push(new Date().toLocaleTimeString('fr-FR').slice(3) + ' ' + t);
     if (!_journalVoix) return;   // masqué en usage normal, sans être perdu pour autant
     const el = document.getElementById('voix-journal');
-    if (el) { el.style.display = 'block'; el.textContent = _evts.slice(-6).join('\n'); }
+    if (el) { el.style.display = 'block'; el.textContent = _evts.slice(-16).join('\n'); }
   }
 
   function voixOuvrirDictee(SR, differe, message) {
@@ -2534,6 +2539,7 @@ const V2 = (() => {
           setTimeout(() => voixParler(texte, apres), 250);
           return;
         }
+        _evt('  attente dépassée → coupe la phrase en cours');
         W.speechSynthesis.cancel();
       }
       _attenteFin = 0;
@@ -2569,6 +2575,7 @@ const V2 = (() => {
       };
 
       const direLocal = () => {
+        _evt('dit ici: « ' + texte.slice(0, 30) + ' »');
         const u = new SpeechSynthesisUtterance(texte);
         // Sur iOS on NE fixe PAS u.voice : assigner un objet SpeechSynthesisVoice y fait
         // échouer l'énoncé en silence — il n'est jamais prononcé et aucun événement ne part.
@@ -2577,8 +2584,9 @@ const V2 = (() => {
         // 1,05 passait bien à l'écrit, moins à l'oreille : les liaisons et les noms propres
         // sont mangés. Un débit légèrement sous la normale se comprend nettement mieux.
         u.lang = 'fr-FR'; u.rate = 0.98;
-        u.onend = fini;
-        u.onerror = fini;
+        u.addEventListener('start', () => _evt('  → début'));
+        u.onend = () => { _evt('  → fin'); fini(); };
+        u.onerror = (e) => { _evt('  → ERREUR ' + (e.error || '?')); fini(); };
         // Safari laisse régulièrement le moteur en pause après un cancel() : speak() est alors
         // accepté sans rien jouer. resume() de part et d'autre est le contournement connu.
         try { speechSynthesis.resume(); } catch {}
@@ -2598,11 +2606,13 @@ const V2 = (() => {
         const onMsg = (ev) => {
           const d = ev.data;
           if (!d || d.type !== 'creatis-tts-etat' || d.id !== id) return;
-          if (d.etat === 'debut') { ok = true; return; }
+          if (d.etat === 'debut') { ok = true; _evt('  parent → début'); return; }
+          _evt('  parent → ' + d.etat);
           window.removeEventListener('message', onMsg);
           if (d.etat === 'fin') fini();
           else if (!ok) direLocal();
         };
+        _evt('demande au parent: « ' + texte.slice(0, 30) + ' »');
         window.addEventListener('message', onMsg);
         // On transmet le NOM de la voix, pas l'objet : un SpeechSynthesisVoice appartient à sa
         // fenêtre et ne survit pas à postMessage. Le parent retrouve la sienne par ce nom.
@@ -2618,6 +2628,7 @@ const V2 = (() => {
         setTimeout(() => {
           if (ok || !_parle) return;
           window.removeEventListener('message', onMsg);
+          _evt('  parent muet → repli local');
           try { window.parent.postMessage({ type: 'creatis-tts-stop' }, window.location.origin); } catch {}
           direLocal();
         }, 1200);
@@ -2749,9 +2760,22 @@ const V2 = (() => {
   function mlPhrase(brut) {
     const t = sansAccents(brut).trim();
     if (!t) return;
+
+    /* Elle ne doit jamais se prendre pour l'utilisateur. Son annonce contient littéralement
+       « Dis annuler pour arrêter » : le micro rouvert pendant le compte à rebours captait sa
+       propre voix, y entendait « annuler », et annulait le lancement. L'analyse ne partait
+       donc jamais en mains libres. Le filtre existait, mais seulement dans l'autre chemin. */
+    const _n = (s) => sansAccents(s || '').replace(/[^a-z0-9]/g, '');
+    const _entendu = _n(brut);
+    if (_entendu && _derniereReponse && _n(_derniereReponse).includes(_entendu)) {
+      _evt('ignore sa propre voix: « ' + brut.trim().slice(0, 28) + ' »');
+      return;
+    }
+
     // « annuler » pendant le compte à rebours : pas besoin du mot de réveil, on vient de lui
     // dire de le dire.
     if (_mlTimer && /\b(?:annule|annuler|annulation|stop|arrete|arreter|non)\b/.test(t)) {
+      _evt('ANNULATION entendue');
       voixAnnulerLancement(); return;
     }
     if (Date.now() - _dernierDeclench < 3000) return;   // anti-double déclenchement
@@ -3002,7 +3026,9 @@ const V2 = (() => {
     // démarre qu'à la fin de la phrase (sinon l'analyse partirait avant qu'il ait fini
     // d'annoncer qu'on peut l'annuler).
     if (mainsLibres) {
-      voixParler(annonce + 'Je lance l\'analyse. Dis annuler pour arrêter.',
+      // Ne JAMAIS prononcer un mot d'annulation dans l'annonce : le micro se rouvre juste après
+      // et l'entendrait. Le bouton « Annuler » du compte à rebours reste à l'écran, lui.
+      voixParler(annonce + 'Je lance l\'analyse dans quatre secondes.',
                  () => voixLancerDiffere(data));
       return;
     }
@@ -3016,7 +3042,7 @@ const V2 = (() => {
        Filet à 7 s : si la voix bloque ou se tait, l'analyse démarre quand même — on ne fait
        jamais attendre l'utilisateur à cause d'un problème de son. */
     let _lance = false;
-    const _lancer = () => { if (_lance) return; _lance = true; startAnalyze(); };
+    const _lancer = () => { if (_lance) return; _lance = true; _evt('LANCEMENT ANALYSE'); startAnalyze(); };
     voixParler(annonce + 'J\'analyse.', _lancer);
     // 12 s et non 7 : l'annonce doit pouvoir finir. En temps normal c'est la fin de la phrase
     // qui déclenche le lancement, ce filet ne sert que si la synthèse ne rend jamais la main.
