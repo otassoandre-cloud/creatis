@@ -1448,7 +1448,7 @@ const V2 = (() => {
     const tok = typeof Auth !== 'undefined' && Auth.getToken ? Auth.getToken() : '';
     if (!tok) {
       // Pas connecté : on passe par l'authentification en gardant l'identifiant dans le retour.
-      window.location.href = '/auth.html?returnUrl=' + encodeURIComponent('/clips-v2.html?g=' + id);
+      allerConnexion('/clips-v2.html?g=' + id);
       return;
     }
     try {
@@ -2212,6 +2212,17 @@ const V2 = (() => {
       const s = Math.round(secondes);
       dur.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
+  }
+
+  /* Rediriger vers la connexion depuis une IFRAME navigue l'iframe, pas la page : la page de
+     connexion s'affiche écrasée à l'intérieur du panneau Clips, ce qui donne l'impression que
+     l'analyse « s'arrête » sans rien dire. On sort donc au niveau le plus haut. */
+  function allerConnexion(retour) {
+    const cible = '/auth.html?returnUrl=' + encodeURIComponent(retour);
+    try {
+      if (window.top && window.top !== window) { window.top.location.href = cible; return; }
+    } catch (e) { /* parent d'une autre origine : on se rabat sur la navigation locale */ }
+    window.location.href = cible;
   }
 
   function onUrlInput(val) {
@@ -3026,10 +3037,13 @@ const V2 = (() => {
     // démarre qu'à la fin de la phrase (sinon l'analyse partirait avant qu'il ait fini
     // d'annoncer qu'on peut l'annuler).
     if (mainsLibres) {
-      // Ne JAMAIS prononcer un mot d'annulation dans l'annonce : le micro se rouvre juste après
-      // et l'entendrait. Le bouton « Annuler » du compte à rebours reste à l'écran, lui.
-      voixParler(annonce + 'Je lance l\'analyse dans quatre secondes.',
-                 () => voixLancerDiffere(data));
+      /* Le compte à rebours démarre TOUT DE SUITE, sans attendre la fin de la phrase. Il était
+         déclenché par le rappel de la synthèse : si celle-ci ne rendait pas la main — moteur
+         bloqué, énoncé écarté par iOS, fenêtre parente muette — l'analyse ne partait JAMAIS, et
+         ce chemin n'avait aucun filet. L'analyse ne doit dépendre d'aucun aléa de la voix.
+         Ne JAMAIS prononcer de mot d'annulation ici : le micro se rouvre juste après. */
+      voixParler(annonce + 'Je lance l\'analyse dans quatre secondes.');
+      voixLancerDiffere(data);
       return;
     }
 
@@ -3044,9 +3058,10 @@ const V2 = (() => {
     let _lance = false;
     const _lancer = () => { if (_lance) return; _lance = true; _evt('LANCEMENT ANALYSE'); startAnalyze(); };
     voixParler(annonce + 'J\'analyse.', _lancer);
-    // 12 s et non 7 : l'annonce doit pouvoir finir. En temps normal c'est la fin de la phrase
-    // qui déclenche le lancement, ce filet ne sert que si la synthèse ne rend jamais la main.
-    setTimeout(_lancer, 12000);
+    /* Filet ramené à 5 s. L'analyse prime sur la voix : mieux vaut couper la fin d'une phrase
+       que laisser l'utilisateur devant un écran figé. En temps normal c'est la fin de l'annonce
+       qui déclenche le lancement, et elle arrive avant. */
+    setTimeout(_lancer, 5000);
   }
 
   function onWatermarkSelect(input) {
@@ -3156,7 +3171,7 @@ const V2 = (() => {
         toast('❌ ' + e.message, 'erreur', 5000);
       }
     } else {
-      window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+      allerConnexion('/clips-v2.html');
     }
   };
 
@@ -3283,7 +3298,7 @@ const V2 = (() => {
       } catch {}
       // Pas de token → rediriger vers auth
       if (!token) {
-        window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+        allerConnexion('/clips-v2.html');
         return;
       }
       const headers = { 'Content-Type': 'application/json' };
