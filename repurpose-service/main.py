@@ -810,6 +810,9 @@ def _ytapi_fetch(youtube_url: str, fmt: str, dest_path: Path, poll_timeout: int 
     remontée — l'appelant retombe sur le chemin gratuit yt-dlp). Best-effort, non bloquant."""
     if not YT_DOWNLOAD_API_KEY:
         return None
+    # Un seul point de passage pour TOUT ce qui coûte : audio, vidéo, segments, export.
+    if not _ytapi_quota_ok():
+        return None
     headers = {"Authorization": f"Bearer {YT_DOWNLOAD_API_KEY}", "Content-Type": "application/json"}
     try:
         # timeout court pour submit/poll, mais long en lecture pour le download d'un gros fichier
@@ -869,6 +872,28 @@ def _ytapi_fetch(youtube_url: str, fmt: str, dest_path: Path, poll_timeout: int 
         try: dest_path.unlink(missing_ok=True)
         except Exception: pass
         return None
+
+
+# Plafond journalier de téléchargements payants. Le cache par vidéo évite normalement de payer
+# deux fois la même source, mais il vit dans le dossier temporaire du conteneur : un
+# redéploiement Railway l'efface, et les segments suivants repaient la vidéo entière. C'est ce
+# qui a consommé 70 crédits le 08/08 pendant une série de déploiements.
+# Le compteur est en mémoire : il repart à zéro au redémarrage, donc il borne un emballement
+# dans la durée de vie d'un conteneur, pas sur le mois. C'est un garde-fou, pas une comptabilité.
+_YTAPI_MAX_PAR_JOUR = int(os.environ.get("YTAPI_MAX_PAR_JOUR", "40") or 40)
+_ytapi_horodatages: list = []
+
+
+def _ytapi_quota_ok() -> bool:
+    global _ytapi_horodatages
+    maintenant = _time.time()
+    _ytapi_horodatages = [t for t in _ytapi_horodatages if maintenant - t < 86400]
+    if len(_ytapi_horodatages) >= _YTAPI_MAX_PAR_JOUR:
+        logger.error(f"[ytapi] PLAFOND ATTEINT ({_YTAPI_MAX_PAR_JOUR}/jour) — "
+                     f"téléchargement payant refusé pour protéger le forfait")
+        return False
+    _ytapi_horodatages.append(maintenant)
+    return True
 
 
 def _ytapi_cached_video(video_id: str, fmt: str = "480") -> Optional[Path]:
