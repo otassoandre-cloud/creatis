@@ -2598,12 +2598,18 @@ const V2 = (() => {
         const vChoisie = ttsVoixFr();
         try { window.parent.postMessage({ type: 'creatis-tts', texte, id, voix: vChoisie && vChoisie.name }, window.location.origin); }
         catch { window.removeEventListener('message', onMsg); direLocal(); return; }
-        // Le parent n'a pas confirmé avoir commencé → il ne parlera pas, on prend le relais.
+        /* Le parent n'a pas confirmé avoir commencé → on prend le relais. Deux précautions,
+           apprises d'un doublon à l'usage :
+           — on lui demande d'ARRÊTER avant de parler nous-mêmes, sinon sa confirmation
+             arrivait juste après notre repli et l'utilisateur entendait la phrase deux fois ;
+           — 1,2 s au lieu de 0,7 s : l'aller-retour postMessage plus l'amorçage du moteur
+             dépassent souvent 700 ms, et on se repliait alors qu'il allait parler. */
         setTimeout(() => {
           if (ok || !_parle) return;
           window.removeEventListener('message', onMsg);
+          try { window.parent.postMessage({ type: 'creatis-tts-stop' }, window.location.origin); } catch {}
           direLocal();
-        }, 700);
+        }, 1200);
         filet();
       };
 

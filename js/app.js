@@ -3995,6 +3995,11 @@ function installerVoixPourIframe() {
     // L'iframe est de même origine : tout message venant d'ailleurs n'a rien à faire ici.
     if (ev.origin !== window.location.origin) return;
     const d = ev.data;
+    // L'iframe a décidé de parler elle-même : on se tait, sinon la phrase sort en double.
+    if (d && d.type === 'creatis-tts-stop') {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      return;
+    }
     if (!d || d.type !== 'creatis-tts' || !d.texte) return;
     const repondre = (etat) => {
       try { ev.source.postMessage({ type: 'creatis-tts-etat', etat, id: d.id }, ev.origin); } catch (e) {}
