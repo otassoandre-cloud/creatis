@@ -3142,7 +3142,12 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
         opts["cookiefile"] = cookies_file
     if use_proxy and RESIDENTIAL_PROXY_URL:
         opts["proxy"] = RESIDENTIAL_PROXY_URL
-    result = {"video_id": video_id, "use_proxy": use_proxy, "has_cookies": bool(cookies_file)}
+    # Sans cette information, un test « avec proxy » sur un proxy non configuré donne exactement
+    # le même résultat qu'un test sans proxy — on croit avoir éliminé une piste alors qu'on ne
+    # l'a jamais essayée. C'est ce qui a fait conclure à tort que « l'IP dédiée ne marche pas ».
+    result = {"video_id": video_id, "use_proxy": use_proxy, "has_cookies": bool(cookies_file),
+              "proxy_configure": bool(RESIDENTIAL_PROXY_URL),
+              "proxy_reellement_actif": bool(use_proxy and RESIDENTIAL_PROXY_URL)}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=download)
