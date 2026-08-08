@@ -2533,8 +2533,29 @@ const V2 = (() => {
       try { if (_reco && _ecoute) { _reco.abort(); ecoutait = true; } } catch {}
       // Filet commun : si aucun événement de fin n'arrive (bug connu de Chrome sur les phrases
       // longues, et de Safari en général), on ne laisse pas le micro éteint indéfiniment.
-      const filet = () => setTimeout(() => { if (_parle) fini(); },
-                                     Math.min(2000 + texte.length * 90, 15000));
+      /* Le filet n'existe que pour le cas où l'événement de fin n'arrive jamais — il ne doit
+         JAMAIS couper la parole. Il coupait : le délai était estimé d'après la longueur du
+         texte, plafonné à 15 s, et déclenchait la réouverture du micro même en pleine phrase.
+         Sur iOS, activer le micro interrompt la lecture audio — d'où les phrases tranchées.
+         On interroge donc le moteur : tant qu'il déclare parler, on le laisse finir. */
+      const filet = () => {
+        const debut = Date.now();
+        const mini = Math.min(2500 + texte.length * 110, 30000);
+        const MAX = 45000;   // garde-fou absolu, si le moteur reste bloqué sur `speaking`
+        const veiller = () => {
+          if (!_parle) return;
+          let parleEncore = false;
+          try {
+            const S = _synthWin().speechSynthesis;
+            parleEncore = !!(S && (S.speaking || S.pending));
+          } catch {}
+          const ecoule = Date.now() - debut;
+          if (ecoule > MAX) { fini(); return; }
+          if (parleEncore || ecoule < mini) { setTimeout(veiller, 600); return; }
+          fini();
+        };
+        setTimeout(veiller, 600);
+      };
 
       const direLocal = () => {
         const u = new SpeechSynthesisUtterance(texte);
@@ -2542,7 +2563,9 @@ const V2 = (() => {
         // échouer l'énoncé en silence — il n'est jamais prononcé et aucun événement ne part.
         // La langue suffit à faire choisir une voix française au système.
         const v = ttsVoixFr(); if (v && !_isIOS()) u.voice = v;
-        u.lang = 'fr-FR'; u.rate = 1.05;
+        // 1,05 passait bien à l'écrit, moins à l'oreille : les liaisons et les noms propres
+        // sont mangés. Un débit légèrement sous la normale se comprend nettement mieux.
+        u.lang = 'fr-FR'; u.rate = 0.98;
         u.onend = fini;
         u.onerror = fini;
         // Safari laisse régulièrement le moteur en pause après un cancel() : speak() est alors
@@ -2943,8 +2966,17 @@ const V2 = (() => {
     const mn = Math.round(data.duration_seconds / 60);
     // Les titres YouTube sont pleins d'emojis, de hashtags et de « | chaîne » : lus à voix
     // haute ça donne du charabia. On ne garde que la partie prononçable.
-    const titreParle = (data.title || '').replace(/[#|].*$/, '')
-      .replace(/[^\p{L}\p{N}\s',.:!?-]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+    // Coupure sur un ESPACE, pas au caractère près : tronquer à 90 pouvait s'arrêter au milieu
+    // d'un mot, que la synthèse prononçait alors comme une syllabe absurde en fin de phrase.
+    // On raccourcit aussi (70) : un titre très long noie l'information utile — la chaîne et la
+    // durée — et allonge la phrase pour rien.
+    let titreParle = (data.title || '').replace(/[#|].*$/, '')
+      .replace(/[^\p{L}\p{N}\s',.:!?-]/gu, ' ').replace(/\s+/g, ' ').trim();
+    if (titreParle.length > 70) {
+      const coupe = titreParle.slice(0, 70);
+      const espace = coupe.lastIndexOf(' ');
+      titreParle = (espace > 30 ? coupe.slice(0, espace) : coupe).trim();
+    }
     const annonce = 'J\'ai trouvé : ' + titreParle + ', de ' + data.channel_title
       + ', ' + mn + ' minute' + (mn > 1 ? 's' : '') + '. ';
 

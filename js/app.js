@@ -4001,7 +4001,8 @@ function installerVoixPourIframe() {
     };
     try {
       const u = new SpeechSynthesisUtterance(d.texte);
-      u.lang = 'fr-FR'; u.rate = 1.05;
+      // Même débit que dans l'iframe : c'est le parent qui prononce, un écart s'entendrait.
+      u.lang = 'fr-FR'; u.rate = 0.98;
       // La voix choisie par l'iframe doit être appliquée ICI : c'est le parent qui prononce,
       // et sans ça le système imposait sa voix par défaut — le réglage de l'utilisateur
       // n'avait donc aucun effet dans l'application.
