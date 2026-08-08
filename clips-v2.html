@@ -2453,8 +2453,11 @@ const V2 = (() => {
      le moteur pour tout le reste de la session. */
   let _ttsAmorce = false;
   function amorcerTTS() {
+    // On ne marque l'amorce faite que si un énoncé DÉMARRE vraiment. Le drapeau était posé
+    // d'avance : si le premier essai tombait hors d'un geste — au chargement, ou après un
+    // callback — iOS l'ignorait et plus jamais rien ne retentait. Chaque geste doit pouvoir
+    // redonner sa chance au moteur.
     if (_ttsAmorce) return;
-    _ttsAmorce = true;
     // On amorce les DEUX fenêtres : le déblocage iOS n'est valable que dans la pile d'appels
     // du geste, et on ne saura qu'ensuite laquelle des deux parle réellement. L'amorce étant
     // inaudible, la jouer deux fois ne coûte rien — alors qu'amorcer la mauvaise coûte tout.
@@ -2467,7 +2470,9 @@ const V2 = (() => {
         // Texte réel, pas un espace : iOS ignore purement et simplement un énoncé vide, et
         // l'amorce ne débloquerait alors rien. Volume nul → inaudible mais bien prononcé.
         const u = new F.SpeechSynthesisUtterance('ok');
-        u.volume = 0; u.lang = 'fr-FR';
+        u.volume = 0.01;   // pas 0 : iOS peut traiter un énoncé muet comme inexistant
+        u.lang = 'fr-FR';
+        u.addEventListener('start', () => { _ttsAmorce = true; });
         F.speechSynthesis.resume();
         F.speechSynthesis.speak(u);
       } catch {}

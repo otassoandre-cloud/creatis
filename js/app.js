@@ -3963,20 +3963,33 @@ let app;
    et tout autre appui sur la page parente sert de rattrapage. */
 let _voixIframeInstallee = false;
 
-function installerVoixPourIframe() {
-  if (_voixIframeInstallee || !window.speechSynthesis) return;
-  _voixIframeInstallee = true;
+/* Amorce du moteur vocal du parent. iOS n'autorise la synthèse qu'après un énoncé prononcé
+   DANS la pile d'appels d'un vrai geste — un appel au chargement de page ne débloque rien.
+   On ne marque donc l'amorce réussie que si l'événement `start` arrive vraiment : sinon on
+   retente au geste suivant. C'est ce qui manquait — le drapeau était posé dès le chargement,
+   ce qui empêchait la seule amorce qui comptait, celle du clic ouvrant le panneau Clips. */
+let _voixParentAmorcee = false;
 
-  const amorcer = () => {
-    try {
-      const u = new SpeechSynthesisUtterance('ok');
-      u.volume = 0; u.lang = 'fr-FR';
-      speechSynthesis.resume();
-      speechSynthesis.speak(u);
-    } catch (e) {}
-  };
-  amorcer();   // on est dans la pile du clic qui vient d'ouvrir le panneau
-  document.addEventListener('pointerdown', amorcer, { once: true, passive: true });
+function amorcerVoixParent() {
+  if (_voixParentAmorcee || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance('ok');
+    u.volume = 0.01;   // pas 0 : iOS peut traiter un énoncé muet comme inexistant
+    u.lang = 'fr-FR';
+    u.addEventListener('start', () => { _voixParentAmorcee = true; });
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function installerVoixPourIframe() {
+  if (!window.speechSynthesis) return;
+  amorcerVoixParent();   // appelé depuis l'ouverture du panneau : on est dans la pile du clic
+  if (_voixIframeInstallee) return;
+  _voixIframeInstallee = true;
+  // Sans `once` : tant que l'amorce n'a pas réellement démarré, chaque geste sur la page
+  // parente lui donne une nouvelle chance.
+  document.addEventListener('pointerdown', amorcerVoixParent, { passive: true });
 
   window.addEventListener('message', (ev) => {
     // L'iframe est de même origine : tout message venant d'ailleurs n'a rien à faire ici.

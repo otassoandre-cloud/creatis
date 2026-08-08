@@ -120,7 +120,17 @@ async function supabase(path, method, body) {
 }
 
 module.exports = async (req, res) => {
-  const appUrl = process.env.APP_URL || 'https://creatis.app';
+  /* Stripe refuse un return_url sans schéma et répond « Not a valid URL ». Une APP_URL
+     renseignée « creatis.app » au lieu de « https://creatis.app » suffisait donc à bloquer la
+     RÉSILIATION : le client voyait une erreur rouge et ne pouvait pas partir — c'est
+     exactement ce qui finit en opposition bancaire, et c'est interdit par la loi française.
+     On normalise plutôt que de faire confiance à une variable d'environnement. */
+  const appUrl = (() => {
+    const brut = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
+    if (!brut) return 'https://creatis.app';
+    const avecSchema = /^https?:\/\//i.test(brut) ? brut : `https://${brut}`;
+    try { new URL(avecSchema); return avecSchema; } catch { return 'https://creatis.app'; }
+  })();
   res.setHeader('Access-Control-Allow-Origin', appUrl);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
