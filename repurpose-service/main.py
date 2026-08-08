@@ -3517,6 +3517,12 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             # restants — mais JAMAIS la tentative proxy (voir le bloc `except` plus bas).
             _abandon_gratuit = False
             for _att, _proxy in enumerate(_seg_attempts):
+                # Pause avant le 2ᵉ essai gratuit. Le blocage du 08/08 — extraction correcte,
+                # média refusé — s'est levé de lui-même en quelques heures, et beaucoup de
+                # bot-checks ne durent que quelques secondes. Réessayer immédiatement ne sert à
+                # rien ; attendre un peu évite de basculer sur le proxy puis sur les crédits.
+                if _att == 1 and not _proxy:
+                    await asyncio.sleep(6)
                 if _abandon_gratuit and not _proxy:
                     continue
                 # Le jeton de forfait n'est consommé qu'ici, au moment où le proxy va réellement
