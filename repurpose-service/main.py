@@ -51,7 +51,12 @@ RAPIDAPI_KEY          = os.environ.get("RAPIDAPI_KEY", "")
 # youtube-download-api.org — API tierce qui gère la bot-detection YouTube côté serveur (IP
 # résidentielles). Utilisée en priorité #0 quand la clé est présente ; fallback gratuit sinon.
 YT_DOWNLOAD_API_KEY   = os.environ.get("YT_DOWNLOAD_API_KEY", "")
-YT_DOWNLOAD_API_BASE  = os.environ.get("YT_DOWNLOAD_API_BASE", "https://youtube-download-api.org")
+# vidkraken depuis le 08/08 (abonnement Lite, 1500 crédits/mois). Contrat identique à
+# l'ancien fournisseur — POST /api/v2/download, Bearer, {url, format}, puis polling du jobId
+# jusqu'à COMPLETED et lecture de downloadUrl — donc aucun code à changer, seulement l'adresse.
+# Vérifié en conditions réelles : job COMPLETED, lien servant les octets en HTTP 206, format
+# mp3 accepté pour la transcription.
+YT_DOWNLOAD_API_BASE  = os.environ.get("YT_DOWNLOAD_API_BASE", "https://vidkraken.com")
 # ── Cache Cloudflare R2 (S3-compatible) : un segment téléchargé une seule fois, réutilisé par
 # tous les users/sessions (egress R2 gratuit → économise le proxy et le re-téléchargement). ──
 R2_ACCOUNT_ID         = os.environ.get("R2_ACCOUNT_ID", "")
