@@ -3110,7 +3110,8 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
 
 
 @app.get("/test-formats")
-def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, download: bool = False):
+def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, download: bool = False,
+                 plage: bool = True):
     """Debug: teste l'extraction yt-dlp. use_proxy=false = chemin gratuit réel (cookies+bgutil, IP Railway).
 
     download=true télécharge RÉELLEMENT 5 secondes de média. Sans ça le test s'arrête aux
@@ -3134,9 +3135,18 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
     if download:
         _tmp_dl = Path(tempfile.mkdtemp(prefix="testdl_"))
         opts["outtmpl"] = str(_tmp_dl / "essai.%(ext)s")
-        opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [(0, 5)])
-        opts["format"] = "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
-        opts["merge_output_format"] = "mp4"
+        # plage=false : télécharge sans découpe, donc SANS passer par ffmpeg. Sert à distinguer
+        # « YouTube refuse le média à cette IP » de « ffmpeg n'hérite pas du proxy de yt-dlp » —
+        # les deux produisent le même « ffmpeg exited with code 8 » et appellent des correctifs
+        # opposés.
+        if plage:
+            opts["download_ranges"] = yt_dlp.utils.download_range_func(None, [(0, 5)])
+            opts["merge_output_format"] = "mp4"
+            opts["format"] = "bestvideo[height<=480]+bestaudio/best[height<=480]/best"
+        else:
+            # Un format unique, déjà muxé : le téléchargeur natif de yt-dlp suffit, il utilise
+            # le proxy, et aucun ffmpeg n'intervient.
+            opts["format"] = "worst[ext=mp4]/worst"
     cookies_file = _get_cookies_file()
     if cookies_file:
         opts["cookiefile"] = cookies_file
