@@ -2506,6 +2506,7 @@ const V2 = (() => {
 
   let _ttsSeq = 0;            // apparie chaque demande au parent avec sa réponse
   let _derniereReponse = '';  // ce qu'elle vient de dire — pour ne pas se prendre pour l'utilisateur
+  let _attenteFin = 0;        // depuis quand on attend la fin d'une phrase avant d'en dire une autre
 
   function voixParler(texte, apres) {
     const W = _synthWin();
@@ -2523,9 +2524,19 @@ const V2 = (() => {
     _derniereReponse = texte || '';
     if (!_tts || !W.speechSynthesis || !texte) { if (apres) apres(); return; }
     try {
-      // cancel() immédiatement suivi de speak() fait tomber l'énoncé sur Safari : on ne coupe
-      // que s'il y a réellement quelque chose en cours.
-      if (W.speechSynthesis.speaking || W.speechSynthesis.pending) W.speechSynthesis.cancel();
+      /* On n'INTERROMPT plus une phrase en cours : on attend qu'elle finisse. Avant, l'arrivée
+         de la réponse de recherche annulait « Je cherche la dernière vidéo de… » au milieu d'un
+         mot — ça s'entend immédiatement et ça donne l'impression que tout plante.
+         Bornée à 8 s : passé ce délai on coupe quand même, pour ne jamais rester bloqué. */
+      if (W.speechSynthesis.speaking || W.speechSynthesis.pending) {
+        if (!_attenteFin) _attenteFin = Date.now();
+        if (Date.now() - _attenteFin < 8000) {
+          setTimeout(() => voixParler(texte, apres), 250);
+          return;
+        }
+        W.speechSynthesis.cancel();
+      }
+      _attenteFin = 0;
       _parle = true;
       let ecoutait = false;
       try { if (_mlReco) { _mlReco.abort(); ecoutait = true; } } catch {}
@@ -3000,8 +3011,16 @@ const V2 = (() => {
     voixStatut('▶ ' + data.channel_title + ' — « ' + data.title + ' » ('
       + Math.floor(data.duration_seconds / 60) + ' min ' + String(sc).padStart(2, '0') + ') — analyse lancée');
     voixCouperEcoute();
-    voixParler(annonce + 'J\'analyse.');
-    startAnalyze();
+    /* L'analyse partait PENDANT la phrase : startAnalyze change d'écran et déclenche des
+       traitements lourds qui coupent la synthèse net. On la lance à la fin de l'annonce.
+       Filet à 7 s : si la voix bloque ou se tait, l'analyse démarre quand même — on ne fait
+       jamais attendre l'utilisateur à cause d'un problème de son. */
+    let _lance = false;
+    const _lancer = () => { if (_lance) return; _lance = true; startAnalyze(); };
+    voixParler(annonce + 'J\'analyse.', _lancer);
+    // 12 s et non 7 : l'annonce doit pouvoir finir. En temps normal c'est la fin de la phrase
+    // qui déclenche le lancement, ce filet ne sert que si la synthèse ne rend jamais la main.
+    setTimeout(_lancer, 12000);
   }
 
   function onWatermarkSelect(input) {
