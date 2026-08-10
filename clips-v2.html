@@ -6102,6 +6102,13 @@ const V2 = (() => {
 
   async function setSubLang(lang) {
     if (_modalIdx === null) return;
+    /* Les réglages d'un clip ne sont créés qu'au premier changement. Cliquer « English » juste
+       après avoir ouvert un clip, sans avoir rien touché d'autre, tombait donc sur un objet
+       absent et la fonction sortait EN SILENCE : aucun message, aucune roue, rien.
+       L'utilisateur recliquait, refermait, rouvrait — mesuré à 7 clics de rage et 11 minutes
+       avant que ça marche. C'était le bouton le plus rage-cliqué du produit.
+       On crée l'objet comme le fait déjà tout le reste du code (taille, style, position). */
+    if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
     const s = _clipSettings[_modalIdx];
     if (!s) return;
     if ((s.subLang || 'fr') === lang) return;
