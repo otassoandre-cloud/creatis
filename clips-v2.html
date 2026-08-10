@@ -4519,7 +4519,17 @@ const V2 = (() => {
            sinon l'aperçu resterait figé alors que l'export, lui, bascule. */
         let _smCle = segKey;
         if (opts.style === 'submagic' && seg) {
-          opts._smWords = Array.isArray(seg.words) ? seg.words : null;
+          /* Un sous-titre traduit (ou réécrit à la main) ne correspond plus à ses timings mot
+             à mot : le rendu Punch dessinait alors les MOTS D'ORIGINE et ignorait le texte
+             traduit. Le bouton passait en anglais, les sous-titres restaient en français.
+             L'export applique déjà exactement cette règle — il omet `words` dès que le texte
+             a changé. L'aperçu s'aligne dessus, sinon les deux divergent.
+             On perd la synchro mot à mot sur un segment traduit : c'est inévitable, la
+             traduction n'a pas de timings par mot. */
+          const _modifie = segKey && opts.segEdits
+            && opts.segEdits[segKey] != null
+            && opts.segEdits[segKey] !== (seg.text ?? '');
+          opts._smWords = (!_modifie && Array.isArray(seg.words)) ? seg.words : null;
           opts._smIndex = _segments.indexOf(seg);
           const mots = opts._smWords;
           let ligne = 1;
