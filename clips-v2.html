@@ -3347,10 +3347,27 @@ const V2 = (() => {
         }, 700);
         let res;
         try {
-          res = await fetch('/api/repurpose', {
-            method: 'POST', headers,
-            body: JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true })
-          });
+          const _corps = JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true });
+          const _appel = () => fetch('/api/repurpose', { method: 'POST', headers, body: _corps });
+          try {
+            res = await _appel();
+          } catch (e) {
+            /* Cette requête dure 30 à 90 s. iOS coupe la connexion dès que l'écran se verrouille
+               ou que l'utilisateur change d'application : le navigateur rejette alors un
+               TypeError « Load failed ». Mesuré dans PostHog : 28 échecs en 4 jours, TOUS avec
+               reseau=true, très majoritairement sur Safari — c'était le premier motif d'échec
+               technique du produit.
+               On retente UNE fois. C'est sans danger pour l'utilisateur : le quota vidéo n'est
+               décompté qu'après confirmation d'affichage des clips (mode confirmer_analyse),
+               jamais à l'envoi. Et le travail serveur est largement mis en cache — transcription,
+               segments R2 — donc la seconde tentative aboutit souvent en quelques secondes.
+               Si elle échoue aussi, l'utilisateur voit exactement l'erreur d'avant. */
+            const _reseau = (e && (e.name === 'TypeError'
+              || /load failed|failed to fetch|network/i.test(e.message || '')));
+            if (!_reseau) throw e;
+            setMsg('Connexion interrompue — on reprend…');
+            res = await _appel();
+          }
         } finally { clearInterval(_tick); }
         const data = await _lireReponseJson(res, 'analyse YouTube');
         if (!data.ok) {
