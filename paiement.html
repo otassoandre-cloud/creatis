@@ -283,11 +283,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
-    const reponse = await fetch('/api/create-checkout-session', {
+    const _corps = JSON.stringify({ priceId, plan, annuel, userId, userEmail: userEmail || currentUser.email || null, embedded: true });
+    const _appel = () => fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priceId, plan, annuel, userId, userEmail: userEmail || currentUser.email || null, embedded: true })
+      body: _corps
     });
+
+    /* Deux personnes ont été perdues ici en trois jours, sur une simple coupure réseau : le
+       navigateur rejette « Load failed » (Safari) ou « Failed to fetch » (Chrome), et ce message
+       s'affichait tel quel — incompréhensible pour quelqu'un qui voulait juste payer.
+       On retente une fois. Sans risque : cet appel ne fait que créer une PAGE de paiement, le
+       prélèvement n'a lieu qu'à la validation de la carte. Deux sessions créées, une seule
+       aboutit — Stripe abandonne l'autre. */
+    let reponse;
+    try {
+      reponse = await _appel();
+    } catch (e) {
+      const _reseau = (e && (e.name === 'TypeError'
+        || /load failed|failed to fetch|network/i.test(e.message || '')));
+      if (!_reseau) throw e;
+      await new Promise(r => setTimeout(r, 800));
+      try {
+        reponse = await _appel();
+      } catch (e2) {
+        throw new Error('La connexion a été interrompue. Vérifie ta connexion internet et réessaie — rien n\'a été débité.');
+      }
+    }
 
     if (!reponse.ok) {
       const err = await reponse.json().catch(() => ({}));
