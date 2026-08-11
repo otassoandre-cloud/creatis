@@ -179,7 +179,45 @@
                         </div>`
                       : `<span class="aff-progress-txt">Tous les paliers atteints 🎉</span>`}
                   </td>
-                </tr>`;
+                </tr>
+                ${(a.filleuls && a.filleuls.length) ? `
+                <tr class="aff-detail-ligne">
+                  <td colspan="5" style="padding:0 14px 16px">
+                    <details>
+                      <summary style="cursor:pointer;color:var(--texte-muted);font-size:12px;padding:6px 0">
+                        Voir les ${a.filleuls.length} filleuls et leur statut
+                      </summary>
+                      <table style="width:100%;margin-top:10px;border-collapse:collapse;font-size:12.5px">
+                        <tr style="color:var(--texte-muted);text-align:left">
+                          <th style="padding:5px 8px;font-weight:600">Filleul</th>
+                          <th style="padding:5px 8px;font-weight:600">Inscrit le</th>
+                          <th style="padding:5px 8px;font-weight:600">Plan</th>
+                          <th style="padding:5px 8px;font-weight:600">Abonnement</th>
+                          <th style="padding:5px 8px;font-weight:600">Analyses</th>
+                        </tr>
+                        ${a.filleuls.map(f => {
+                          const paye = f.plan && f.plan !== 'gratuit';
+                          /* Payant SANS abonnement Stripe : résiliation en cours, ou accès offert
+                             à la main. C'est exactement ce qu'il faut voir avant de verser une
+                             commission — d'où la mention explicite plutôt qu'un simple « payant ». */
+                          const alerte = paye && !f.abonnementActif;
+                          const d = f.inscrit ? new Date(f.inscrit).toLocaleDateString('fr-FR') : '—';
+                          return `<tr style="border-top:1px solid rgba(255,255,255,.06)">
+                            <td style="padding:6px 8px;color:${paye ? '#10b981' : 'var(--texte-muted)'}">${f.email}</td>
+                            <td style="padding:6px 8px;color:var(--texte-muted)">${d}</td>
+                            <td style="padding:6px 8px;color:${paye ? '#10b981' : 'var(--texte-muted)'}">${f.plan}</td>
+                            <td style="padding:6px 8px">${
+                              !paye ? '<span style="color:var(--texte-muted)">—</span>'
+                              : alerte ? '<span style="color:#f97316">⚠ pas d\'abonnement actif</span>'
+                                       : '<span style="color:#10b981">✓ actif</span>'}</td>
+                            <td style="padding:6px 8px;color:${f.analyses > 0 ? 'var(--texte)' : '#f97316'}">${
+                              f.analyses > 0 ? f.analyses : 'jamais utilisé'}</td>
+                          </tr>`;
+                        }).join('')}
+                      </table>
+                    </details>
+                  </td>
+                </tr>` : ''}`;
               }).join('')}
             </tbody>
           </table>

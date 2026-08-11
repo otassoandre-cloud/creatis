@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
     if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(200).json({ affilies: [] });
 
     try {
-      const res1 = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,email,nom,plan,referred_by,affiliate_highest_tier&limit=5000`, {
+      const res1 = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,email,nom,plan,referred_by,affiliate_highest_tier,created_at,repurpose_count,stripe_subscription_id&limit=5000`, {
         headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
       });
       if (!res1.ok) {
@@ -101,7 +101,24 @@ module.exports = async (req, res) => {
           palierActuel: palier,
           recompenseActuelle: palier > 0 ? PALIERS[palier - 1].recompense : null,
           prochainPalier: palier < PALIERS.length ? PALIERS[palier] : null,
-          highestTierEnregistre: proprietaire?.affiliate_highest_tier || 0
+          highestTierEnregistre: proprietaire?.affiliate_highest_tier || 0,
+          /* La liste nominative était calculée puis JETÉE : on ne renvoyait que des compteurs.
+             Impossible de savoir QUI sont les filleuls, ni si l'abonné payant l'est encore.
+             `stripe_subscription_id` répond à la seule question qui compte avant de verser une
+             commission — un plan payant SANS abonnement Stripe signale une résiliation ou un
+             accès offert à la main. Le compteur d'analyses distingue un vrai utilisateur d'une
+             inscription morte. Les payants d'abord, puis les plus récents. */
+          filleuls: filleuls
+            .map(u => ({
+              email: u.email || '(sans email)',
+              nom: u.nom || '',
+              plan: u.plan || 'gratuit',
+              inscrit: u.created_at || null,
+              analyses: u.repurpose_count || 0,
+              abonnementActif: !!u.stripe_subscription_id
+            }))
+            .sort((x, y) => (x.plan === 'gratuit' ? 1 : 0) - (y.plan === 'gratuit' ? 1 : 0)
+                         || String(y.inscrit || '').localeCompare(String(x.inscrit || '')))
         };
       }).sort((a, b) => b.actifs - a.actifs);
 
