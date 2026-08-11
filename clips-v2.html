@@ -6383,8 +6383,29 @@ const V2 = (() => {
     if (mobProg) mobProg.style.width = '0%';
   }
 
+  let _exportEnCours = false;
+
   async function exportFromModal() {
     if (_modalIdx === null) return;
+
+    /* Le bouton restait ACTIF pendant la resynchronisation du plan — un appel réseau qui a pris
+       4 secondes sur un mobile mesuré. Sans le moindre retour visuel, l'utilisateur a cliqué DIX
+       fois de suite, et chaque clic relançait l'appel. On verrouille donc dès le clic, avant
+       tout travail. Le drapeau protège en plus des appels concurrents : désactiver le bouton ne
+       suffit pas, l'export se déclenche aussi depuis la barre mobile. */
+    if (_exportEnCours) return;
+    _exportEnCours = true;
+    const _btnEx = document.getElementById('modal-dl-btn');
+    const _mobEx = document.getElementById('mob-dl-btn');
+    const _libEx = _btnEx ? _btnEx.innerHTML : null;
+    if (_btnEx) { _btnEx.disabled = true; _btnEx.textContent = 'Vérification…'; }
+    if (_mobEx) _mobEx.disabled = true;
+    const _rendreBoutons = () => {
+      _exportEnCours = false;
+      if (_btnEx) { _btnEx.disabled = false; if (_libEx !== null) _btnEx.innerHTML = _libEx; }
+      if (_mobEx) _mobEx.disabled = false;
+    };
+
     // Gratuit : le SERVEUR est la source de vérité. On resynchronise le compteur AVANT d'autoriser
     // → empêche tout contournement (reload, nouvelle vidéo, plusieurs onglets, cache local).
     if (_userPlan === 'gratuit') {
@@ -6398,9 +6419,15 @@ const V2 = (() => {
     // attente infligée. La personne a déjà vu ses clips en aperçu, c'est le bon moment pour vendre.
     if (_userPlan === 'gratuit' && _repurposeCount >= FREE_CLIP_LIMIT) {
       if (window.posthog) posthog.capture('paywall_shown', { trigger: 'export_gratuit', repurpose_count: _repurposeCount });
+      // Sans ceci, fermer le paywall laissait un bouton Export mort : la personne ne pouvait
+      // plus jamais relancer l'export de cette session.
+      _rendreBoutons();
       showUpgradeModal(); return;
     }
     if (window.posthog) { posthog.capture('export_clicked', { clip_index: _modalIdx, plan: _userPlan }); posthog.capture('download_started', { clip_idx: _modalIdx, plan: _userPlan, free: _userPlan === 'gratuit' }); }
+    // Au-dela d'ici, l'export gere lui-meme l'etat des boutons (progression, fin, erreur) :
+    // on relache le verrou pour ne pas bloquer definitivement une prochaine tentative.
+    _exportEnCours = false;
     const i = _modalIdx;
     const btn = document.getElementById('modal-dl-btn');
     const mobBtn = document.getElementById('mob-dl-btn');
