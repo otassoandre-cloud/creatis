@@ -1267,8 +1267,20 @@ const V2 = (() => {
        est vide quand le mail est ouvert sur le téléphone ou dans le navigateur intégré de Gmail.
        Prioritaire sur _checkRecovery() : l'utilisateur a demandé une génération précise. */
     const _gid = new URLSearchParams(location.search).get('g');
+    /* Retour depuis la page de paiement : on rouvre exactement les clips qu'il regardait.
+       Le marqueur est consommé immédiatement — sans ça, chaque rechargement ultérieur de
+       l'onglet rouvrirait cette génération et l'utilisateur ne pourrait plus rien faire d'autre. */
+    let _retourPaiement = null;
+    try {
+      _retourPaiement = sessionStorage.getItem('creatis_retour_paiement');
+      if (_retourPaiement) sessionStorage.removeItem('creatis_retour_paiement');
+    } catch (e) { _retourPaiement = null; }
+
     if (_gid) {
       _ouvrirGeneration(_gid);
+    } else if (_retourPaiement) {
+      _ouvrirGeneration(_retourPaiement);
+      _chargerHistorique();
     } else {
       // Recovery : vérifier si une analyse récente est dans localStorage
       _checkRecovery();
@@ -1452,7 +1464,11 @@ const V2 = (() => {
       return;
     }
     try {
-      setState('analyse');
+      // 'analyze' et non 'analyse' : l'écran s'appelle `state-analyze`. Avec la coquille,
+      // setState retirait l'état actif de TOUS les écrans sans en activer aucun — l'utilisateur
+      // qui rouvrait une génération depuis l'historique ou le lien de l'email voyait une page
+      // BLANCHE pendant tout le chargement.
+      setState('analyze');
       // setBar/setStep sont locaux aux fonctions d'analyse — on pilote la barre directement.
       const _bar = document.getElementById('analyze-bar');
       if (_bar) _bar.style.width = '60%';
@@ -3892,6 +3908,20 @@ const V2 = (() => {
          3. Si CONFIG n'était pas encore chargé (script en `defer`), on partait sur auth.html —
             une impasse pour quelqu'un déjà connecté. */
     const url = `/paiement.html?plan=${encodeURIComponent(plan)}${annuel ? '&annuel=1' : ''}`;
+
+    /* On note OÙ l'utilisateur en était avant de l'envoyer payer. La navigation remplace la page
+       entière : au retour, l'application se recharge à zéro et ses clips — qui ne vivent qu'en
+       mémoire — ont disparu. Il retombait sur l'écran de dépôt comme s'il n'avait jamais rien
+       analysé, alors qu'il venait de passer plusieurs minutes dessus.
+       C'est le pire moment pour perdre quelqu'un : il hésitait devant le paiement, il revient
+       en arrière, et on efface la raison même pour laquelle il envisageait de payer.
+       sessionStorage plutôt que localStorage : la reprise ne doit valoir que pour cet aller-retour,
+       pas ressurgir demain. */
+    try {
+      const _etat = JSON.parse(localStorage.getItem('creatis_last_analysis') || '{}');
+      if (_etat.generationId) sessionStorage.setItem('creatis_retour_paiement', _etat.generationId);
+    } catch (e) { /* stockage indisponible : on perd la reprise, jamais la navigation */ }
+
     try {
       const planConfig = window.CONFIG?.PLANS?.[plan];
       const priceId = annuel ? (planConfig?.stripeIdAnnuel || planConfig?.stripeId) : planConfig?.stripeId;
