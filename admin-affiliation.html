@@ -194,6 +194,7 @@
                           <th style="padding:5px 8px;font-weight:600">Plan</th>
                           <th style="padding:5px 8px;font-weight:600">Abonnement</th>
                           <th style="padding:5px 8px;font-weight:600">Analyses</th>
+                          <th style="padding:5px 8px;font-weight:600">Exports</th>
                         </tr>
                         ${a.filleuls.map(f => {
                           const paye = f.plan && f.plan !== 'gratuit';
@@ -212,6 +213,7 @@
                                        : '<span style="color:#10b981">✓ actif</span>'}</td>
                             <td style="padding:6px 8px;color:${f.analyses > 0 ? 'var(--texte)' : '#f97316'}">${
                               f.analyses > 0 ? f.analyses : 'jamais utilisé'}</td>
+                            <td style="padding:6px 8px;color:${f.exports > 0 ? '#10b981' : 'var(--texte-muted)'}">${f.exports || 0}</td>
                           </tr>`;
                         }).join('')}
                       </table>
