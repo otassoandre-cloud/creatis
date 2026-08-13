@@ -101,6 +101,18 @@ drawing/
 *.mov
 *.avi
 
+# EXCEPTION — les vidéos de démonstration du SITE doivent être déployées.
+# La règle `*.mp4` ci-dessus les excluait sans distinction : elles n'ont donc jamais été
+# commitées, jamais poussées, jamais servies par Vercel. Symptôme mesuré le 13/08/2026 :
+# 8 showcase sur 8 en 404 sur la page d'accueil, 5 sur 5 dans le studio. Toutes les vignettes
+# du site restaient figées sur leur poster, et sur iOS elles viraient au noir.
+# Le `play()` de ces vidéos est enveloppé dans un `.catch(() => {})` : l'échec ne laissait
+# aucune trace, ni dans la console, ni dans les logs.
+# Poids réel de l'exception : ~5 Mo. Les 396 Mo de rushes (.scratch-*, drawing/, video/)
+# restent exclus — c'est bien eux que cette règle devait viser.
+!images/exemples/*.mp4
+!images/loop/*.mp4
+
 # Scripts de test locaux (contiennent des clés API)
 tests/
 
