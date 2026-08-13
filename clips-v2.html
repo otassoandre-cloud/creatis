@@ -729,9 +729,39 @@
              référencement (span sr-only) — sans lui, le titre perdrait son sens ET son SEO. -->
         <h1 class="v1-hero-title">Transforme tes vidéos<br>en
           <span class="hero-vid-chip" aria-hidden="true">
-            <video src="/images/exemples/exemple-hero.mp4" poster="/images/exemples/exemple-hero.webp" muted loop playsinline autoplay preload="metadata"></video>
+            <video id="hero-vid" src="/images/exemples/exemple-hero.mp4" poster="/images/exemples/exemple-hero.webp" muted loop playsinline autoplay preload="metadata"></video>
           </span><span class="sr-only">Shorts</span>
           <span class="vert">viraux</span>.</h1>
+        <script>
+        /* Vignette du titre — repli sur l'image fixe quand la lecture automatique est refusée.
+           Symptôme corrigé : sur iPhone et iPad, la vignette n'affichait plus qu'un rectangle NOIR.
+           Mécanisme : dès que les métadonnées arrivent (preload="metadata"), Safari retire le
+           poster pour montrer la première frame décodée. Si l'autoplay est refusé — mode économie
+           d'énergie, mode données limitées, politique d'iframe — aucune frame n'est jamais peinte,
+           et il ne reste que du noir. Les vignettes d'exemple plus bas échappent au problème parce
+           qu'elles sont en preload="none" sans autoplay : leur poster n'est jamais retiré.
+           On teste donc `paused` — et lui seul. Une vidéo en cours de mise en mémoire tampon a
+           `paused === false` : elle ne déclenche pas le repli, contrairement à un test sur
+           readyState ou currentTime qui basculerait à tort sur connexion lente.
+           La vignette est décorative (aria-hidden) : l'image fixe raconte la même chose pour
+           15 Ko au lieu de 400, et n'occupe aucun décodeur vidéo iOS. */
+        (function () {
+          var v = document.getElementById('hero-vid');
+          if (!v) return;
+          var repli = function () {
+            if (v.dataset.repli || !v.parentNode) return;
+            v.dataset.repli = '1';
+            var img = document.createElement('img');
+            img.src = v.getAttribute('poster');
+            img.alt = '';
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block';
+            v.parentNode.replaceChild(img, v);
+          };
+          var p = v.play();
+          if (p && typeof p.catch === 'function') p.catch(repli);
+          setTimeout(function () { if (v.paused) repli(); }, 1800);
+        })();
+        </script>
         <p class="v1-hero-sub">Dépose ta vidéo. L'IA découpe les meilleurs moments, recadre en 9:16 et brûle les sous-titres.</p>
 
         <div class="v1-bar" id="drop-zone" style="cursor:pointer"
