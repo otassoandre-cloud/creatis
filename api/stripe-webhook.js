@@ -173,6 +173,23 @@ module.exports = async (req, res) => {
             ? await supabaseGet('users', { id: matchId })
             : await supabaseGet('users', { email: matchEmail });
 
+          /* GARDE-FOU — le paiement encaissé qui n'upgrade personne.
+             `supabasePatch` envoie `Prefer: return=minimal` : PostgREST répond 204 même quand
+             AUCUNE ligne ne correspond. Un PATCH par email qui ne matche rien est donc
+             indiscernable d'une réussite. Le cas arrive pour de vrai : quand `paiement.html` ne
+             trouve pas `creatis_user` en localStorage, la session part avec `userId: 'anonymous'`
+             et l'identification retombe sur l'email saisi dans Stripe — un email qui peut ne
+             correspondre à aucun compte, ou différer d'un caractère de celui du compte.
+             Le garde-fou de la ligne 157 ne couvre pas ce cas : il ne se déclenche que si email
+             ET userId manquent tous les deux. Résultat sans ce bloc : le client est débité
+             9,95 €/mois, ne reçoit aucun plan, et rien ne le signale. */
+          if (!userRow) {
+            console.error(`[Webhook] 🚨 Paiement encaissé sans compte Créatis correspondant — ${matchEmail || matchId} — session ${session.id}`);
+            await notifierPaiementOrphelin({
+              email: matchEmail, identifiant: matchId, plan, customerId, subscriptionId, sessionId: session.id
+            }).catch(e => console.warn('[Webhook] Alerte paiement orphelin non envoyée:', e.message));
+          }
+
           // Attribution par code promo — fallback si pas de ?ref= au signup.
           // Ne s'exécute QUE si aucune attribution n'existe déjà (priorité au lien).
           if (userRow && !userRow.referred_by) {
@@ -492,6 +509,38 @@ async function notifierEchecPaiement({ email, customerId, subscriptionId, montan
       </div>`
     })
   }).catch((e) => console.error('[Webhook] Alerte échec non envoyée:', e.message));
+}
+
+/* Alerte interne — paiement réussi mais impossible à rattacher à un compte Créatis.
+   Le pire des cas silencieux : l'argent est encaissé, l'abonnement Stripe est actif, et
+   l'utilisateur n'a aucun accès. À traiter à la main dans l'heure (créer/corriger le compte),
+   sans quoi c'est un remboursement, un litige, et un avis public. */
+async function notifierPaiementOrphelin({ email, identifiant, plan, customerId, subscriptionId, sessionId }) {
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('[Webhook] BREVO_API_KEY absente — alerte paiement orphelin non envoyée');
+    return;
+  }
+  const date = new Date().toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const lien = `https://dashboard.stripe.com/customers/${customerId}`;
+  await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+    body: JSON.stringify({
+      sender: { email: 'contact@creatis.app', name: 'Créatis' },
+      to: [{ email: 'contact@creatis.app' }],
+      subject: `🚨 URGENT — paiement encaissé sans compte (${email || identifiant || 'inconnu'})`,
+      htmlContent: `<div style="font-family:Inter,sans-serif;padding:24px;background:#0a0f0a;color:#e5e7eb;border-radius:8px;max-width:520px">
+        <h2 style="color:#ef4444;margin:0 0 12px">Paiement encaissé — aucun compte correspondant</h2>
+        <p style="margin:4px 0"><strong>Email Stripe :</strong> ${email || '(aucun)'}</p>
+        <p style="margin:4px 0"><strong>Plan payé :</strong> ${plan || '—'}</p>
+        <p style="margin:4px 0"><strong>Abonnement :</strong> ${subscriptionId || '—'}</p>
+        <p style="margin:4px 0"><strong>Session :</strong> ${sessionId || '—'}</p>
+        <p style="margin:4px 0"><strong>Date :</strong> ${date}</p>
+        <p style="margin:20px 0 4px"><a href="${lien}" style="color:#10b981">Voir le client dans Stripe →</a></p>
+        <p style="margin-top:16px;color:#fca5a5;font-size:13px">Ce client paie et n'a AUCUN accès. Crée ou corrige son compte Supabase avec cet email, puis confirme-lui par mail.</p>
+      </div>`
+    })
+  }).catch((e) => console.error('[Webhook] Alerte orpheline non envoyée:', e.message));
 }
 
 /* Alerte interne — résiliation confirmée.
