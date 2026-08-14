@@ -51,6 +51,26 @@
   }
   </script>
 
+  <!-- ===== ORGANIZATION SCHEMA — désambiguïsation de marque =====
+       « Créatis » est un nom partagé (organisme de crédit, incubateur, staffing US).
+       alternateName déclare explicitement à Google les variantes qui nous désignent,
+       pour construire une entité distincte des homonymes. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://creatis.app/#organization",
+    "name": "Créatis",
+    "alternateName": ["creatis.app", "Créatis App", "Créatis Clips", "Creatis"],
+    "url": "https://creatis.app",
+    "logo": "https://creatis.app/favicon.svg",
+    "description": "Créatis (creatis.app) est un outil IA français qui transforme les vidéos longues — podcasts, lives, interviews — en clips verticaux prêts à publier sur TikTok, Reels et YouTube Shorts.",
+    "email": "contact@creatis.app",
+    "knowsAbout": ["clips viraux", "montage vidéo automatique", "sous-titres automatiques", "recadrage 9:16", "repurposing vidéo", "YouTube Shorts", "TikTok", "Instagram Reels"],
+    "areaServed": { "@type": "Place", "name": "France, Belgique, Suisse, Québec" }
+  }
+  </script>
+
   <!-- ===== FAQ SCHEMA ===== -->
   <script type="application/ld+json">
   {
@@ -1544,7 +1564,8 @@ vs.forEach(function(v){io.observe(v);});})();
       </div>
       <div><h4>Produit</h4><a href="#fonctionnalites">Fonctionnalités</a><a href="#tarifs">Tarifs</a><a href="#comment-ca-marche">Comment ça marche</a><a href="/blog.html">Blog</a><a href="affiliation">Affiliation</a></div>
       <div><h4>Agents IA</h4><a href="clips-v2.html">Clips Viraux</a><a href="auth.html">YouTube Complet</a><a href="auth.html">Miniature IA</a><a href="auth.html">Analyse Vidéo</a></div>
-      <div><h4>Ressources</h4><a href="/alternatives/">Comparatifs</a><a href="/clips-podcast.html">Clips de podcast</a><a href="/clips-twitch.html">Clips Twitch (VOD)</a></div>
+      <div><h4>Cas d'usage</h4><a href="/clips-podcast.html">Clips de podcast</a><a href="/clips-twitch.html">Clips Twitch (VOD)</a><a href="/blog/creer-reels-video-longue.html">Reels depuis une vidéo longue</a><a href="/blog/transformer-video-youtube-tiktok.html">Vidéo YouTube en TikTok</a><a href="/blog/meilleur-logiciel-clippeur.html">Logiciel pour clippeur</a></div>
+      <div><h4>Guides</h4><a href="/blog/decouper-video-shorts-automatiquement.html">Découper une vidéo en Shorts</a><a href="/blog/sous-titres-automatiques-shorts.html">Sous-titres automatiques</a><a href="/blog/recadrer-video-9-16-outil.html">Recadrer en 9:16</a><a href="/alternatives/">Comparatifs</a><a href="/alternatives/submagic.html">Créatis vs Submagic</a></div>
       <div><h4>Légal</h4><a href="mentions-legales.html">Mentions légales</a><a href="cgu.html">CGU</a><a href="confidentialite.html">Confidentialité</a><a href="mailto:contact@creatis.app">Contact</a></div>
     </div>
     <div class="foot-bottom">

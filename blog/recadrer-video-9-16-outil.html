@@ -104,6 +104,47 @@
     <li><strong>Intégré à la découpe</strong> — pas d'étape séparée, le recadrage se fait en même temps que la génération des clips</li>
   </ul>
 
+  <h2>Les dimensions exactes du format 9:16</h2>
+
+  <p>Le 9:16 est un ratio, pas une résolution. Les plateformes acceptent plusieurs définitions tant que la proportion est respectée :</p>
+
+  <table>
+    <thead>
+      <tr><th>Définition</th><th>Pixels</th><th>Usage</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Full HD vertical</td><td>1080 × 1920</td><td>Le standard, recommandé partout</td></tr>
+      <tr><td>HD vertical</td><td>720 × 1280</td><td>Fichiers plus légers, qualité correcte</td></tr>
+      <tr><td>4K vertical</td><td>2160 × 3840</td><td>Rarement utile, fichiers très lourds</td></tr>
+    </tbody>
+  </table>
+
+  <p>Reste en 1080 × 1920 dans la quasi-totalité des cas. Monter en 4K n'améliore pas la portée et alourdit l'export pour rien — les plateformes recompressent de toute façon. Le détail par réseau est dans <a href="/blog/specs-video-tiktok-reels-shorts.html">les specs vidéo TikTok, Reels et Shorts</a>.</p>
+
+  <h2>Recadrage manuel ou automatique : ce que ça change</h2>
+
+  <p>Recadrer à la main dans un logiciel de montage suppose de poser des images-clés à chaque déplacement du sujet. Sur une interview d'une heure découpée en dix clips, ça représente facilement une heure de travail supplémentaire — pour un résultat qui reste approximatif dès que quelqu'un bouge.</p>
+
+  <p>Le recadrage automatique par suivi de visage fait ce calcul en continu, image par image. La différence se voit surtout sur trois situations où le crop centré classique échoue :</p>
+
+  <ul>
+    <li><strong>Le sujet n'est pas au centre du cadre</strong> — cas très fréquent en interview, où l'invité est décalé sur un tiers de l'image. Un crop centré coupe la moitié du visage.</li>
+    <li><strong>Deux personnes se répondent</strong> — le cadrage doit basculer d'un locuteur à l'autre au bon moment, sinon on regarde quelqu'un qui se tait.</li>
+    <li><strong>Le sujet se déplace</strong> — en présentation debout ou face à un tableau, un cadre fixe perd le sujet en quelques secondes.</li>
+  </ul>
+
+  <h2>Quand le recadrage automatique ne suffit pas</h2>
+
+  <p>Aucun suivi automatique n'est parfait, et il vaut mieux savoir dans quels cas reprendre la main :</p>
+
+  <ul>
+    <li><strong>Partage d'écran ou slides</strong> — il n'y a pas de visage à suivre. Un cadrage centré sur la zone de contenu, voire un format en deux blocs, donne un meilleur résultat.</li>
+    <li><strong>Plus de trois intervenants à l'image</strong> — le suivi hésite. Un plan large recadré manuellement reste souvent plus lisible.</li>
+    <li><strong>Texte incrusté en bas de l'image</strong> — le recadrage vertical le coupe. Vérifie l'aperçu avant d'exporter.</li>
+  </ul>
+
+  <p>C'est pour ces cas que le repositionnement manuel reste disponible sur chaque clip : tu déplaces le cadre à la main quand le résultat automatique ne te convient pas, sans repasser par un logiciel de montage.</p>
+
   <div class="cta-box">
     <h3>Recadre ta vidéo en 9:16 maintenant</h3>
     <p>Upload, détection automatique, export — sans logiciel de montage.</p>
@@ -133,6 +174,18 @@
     <p>Analyse gratuite · Sans carte bancaire · Vois tes clips avant de payer</p>
     <a href="/clips-v2.html" class="btn">⚡ Essayer Créatis gratuitement</a>
   </div>
+
+  <!-- Cluster interne — maillage vers les pages sœurs -->
+  <nav class="cluster-box" aria-label="Sur le même sujet">
+    <h2>Sur le même sujet</h2>
+    <ul class="cluster-links">
+      <li><a href="/blog/decouper-video-shorts-automatiquement.html">Découper une vidéo en Shorts automatiquement<span>La méthode IA, pas à pas</span></a></li>
+      <li><a href="/blog/transformer-video-youtube-tiktok.html">Passer d’une vidéo YouTube à TikTok<span>Format, hooks et recadrage</span></a></li>
+      <li><a href="/blog/sous-titres-automatiques-shorts.html">Sous-titres automatiques pour Shorts<span>Style karaoké mot par mot</span></a></li>
+      <li><a href="/clips-podcast.html">Transformer un podcast en clips<span>10 shorts depuis un épisode</span></a></li>
+      <li><a href="/blog/creer-reels-video-longue.html">Créer des Reels depuis une vidéo longue<span>Workflow Instagram complet</span></a></li>
+    </ul>
+  </nav>
 </article>
 
 <footer class="blog-footer">

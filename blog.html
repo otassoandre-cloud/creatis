@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blog Créatis — Guides & Astuces pour créateurs de contenu</title>
-<meta name="description" content="Guides, tutoriels et astuces pour créateurs de contenu : clips viraux, Shorts, TikTok, sous-titres IA, recyclage de contenu. Par Créatis.">
+<title>Guides clips viraux, Shorts et sous-titres IA — Blog Créatis</title>
+<meta name="description" content="39 guides pratiques pour transformer tes vidéos longues en clips verticaux : découpage automatique par IA, sous-titres karaoké, recadrage 9:16, formats TikTok, Reels et Shorts.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://creatis.app/blog.html">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -25,6 +25,16 @@ a { color: inherit; text-decoration: none; }
 h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 8px; letter-spacing: -0.02em; }
 .blog-sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 48px; }
 .articles { display: flex; flex-direction: column; gap: 20px; }
+
+/* Bloc « Commence par ici » — remonte les pages à intention d'achat */
+.pinned { margin-bottom: 48px; }
+.pinned h2 { font-size: 1.15rem; font-weight: 700; color: var(--paper); margin-bottom: 6px; }
+.pinned > p { color: var(--muted); font-size: 0.92rem; margin-bottom: 16px; }
+.pinned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+.pinned-grid li { margin: 0; }
+.pinned-grid a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; font-weight: 600; color: var(--paper); text-decoration: none; transition: border-color .2s, transform .2s; }
+.pinned-grid a:hover { border-color: var(--green); transform: translateY(-1px); }
+.pinned-grid a span { display: block; font-weight: 400; font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
 .article-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; transition: border-color .2s, transform .2s; display: block; }
 .article-card:hover { border-color: rgba(16,185,129,0.3); transform: translateY(-2px); }
 .article-card h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: var(--paper); }
@@ -58,6 +68,24 @@ h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 8px
 <div class="wrap">
   <h1>Blog Créatis</h1>
   <p class="blog-sub">Guides et astuces pour créateurs de contenu qui veulent scaler avec l'IA.</p>
+
+  <!-- Pages à intention d'achat remontées en tête de hub -->
+  <section class="pinned" aria-label="Commence par ici">
+    <h2>Commence par ici</h2>
+    <p>Les guides les plus utiles si tu veux transformer tes vidéos longues en clips dès aujourd'hui.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/decouper-video-shorts-automatiquement.html">Découper une vidéo en Shorts automatiquement<span>La méthode IA, pas à pas</span></a></li>
+      <li><a href="/clips-podcast.html">Transformer un podcast en clips<span>10 shorts depuis un épisode</span></a></li>
+      <li><a href="/blog/transformer-video-youtube-tiktok.html">Passer d'une vidéo YouTube à TikTok<span>Format, hooks et recadrage</span></a></li>
+      <li><a href="/blog/sous-titres-automatiques-shorts.html">Sous-titres automatiques pour Shorts<span>Style karaoké mot par mot</span></a></li>
+      <li><a href="/blog/recadrer-video-9-16-outil.html">Recadrer une vidéo en 9:16<span>Suivi du visage, sans montage</span></a></li>
+      <li><a href="/blog/creer-reels-video-longue.html">Créer des Reels depuis une vidéo longue<span>Workflow Instagram complet</span></a></li>
+      <li><a href="/blog/meilleur-logiciel-clippeur.html">Meilleur logiciel pour clippeur<span>Les critères en usage pro</span></a></li>
+      <li><a href="/alternatives/submagic.html">Créatis vs Submagic<span>Comparatif honnête 2026</span></a></li>
+    </ul>
+  </section>
+
+  <h2 style="font-size:1.15rem;font-weight:700;color:var(--paper);margin-bottom:16px">Tous les articles</h2>
 
   <div class="articles">
     <a href="/blog/devenir-clippeur-tiktok.html" class="article-card">
