@@ -75,6 +75,15 @@ article strong { color: var(--paper); }
 .compare-table td { color: var(--muted); }
 .compare-table td:first-child { color: var(--paper); font-weight: 600; }
 .compare-table .winner { color: var(--green); font-weight: 600; }
+
+/* Cluster interne — pages à intention d'achat */
+.cluster-box { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 26px; }
+.cluster-box h2 { font-size: 1.15rem; margin-bottom: 14px; }
+.cluster-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+.cluster-links li { margin: 0; }
+.cluster-links a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px; font-size: 0.92rem; font-weight: 600; color: var(--paper); text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
+.cluster-links a:hover { border-color: var(--green); transform: translateY(-1px); }
+.cluster-links a span { display: block; font-weight: 400; font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
 </style>
   <script src="/js/ref-capture.js"></script>
   <!-- Microsoft Clarity -->
@@ -132,6 +141,8 @@ article strong { color: var(--paper); }
     <tr><td>Prix</td><td>≈ 20$/mois</td><td class="winner">9,95€ ou 14€/mois</td></tr>
   </table>
 
+  <p><em>Voir le détail complet des plans : <a href="/alternatives/submagic-tarif.html">Submagic tarif 2026</a>.</em></p>
+
   <div class="cta-box">
     <h3>Teste Créatis gratuitement</h3>
     <p>Transforme ta vidéo longue en 10 clips en 60 secondes. Sans carte bancaire.</p>
@@ -155,6 +166,18 @@ article strong { color: var(--paper); }
     <p>Analyse gratuite · Sans carte bancaire · 10 clips en aperçu</p>
     <a href="/clips-v2.html" class="btn">Découper ma vidéo maintenant</a>
   </div>
+
+  <!-- Cluster interne — maillage vers les pages sœurs -->
+  <nav class="cluster-box" aria-label="Sur le même sujet">
+    <h2>Sur le même sujet</h2>
+    <ul class="cluster-links">
+      <li><a href="/blog/meilleur-logiciel-clippeur.html">Meilleur logiciel pour clippeur<span>Les critères en usage pro</span></a></li>
+      <li><a href="/blog/decouper-video-shorts-automatiquement.html">Découper une vidéo en Shorts automatiquement<span>La méthode IA, pas à pas</span></a></li>
+      <li><a href="/blog/sous-titres-automatiques-shorts.html">Sous-titres automatiques pour Shorts<span>Style karaoké mot par mot</span></a></li>
+      <li><a href="/blog/transformer-video-youtube-tiktok.html">Passer d’une vidéo YouTube à TikTok<span>Format, hooks et recadrage</span></a></li>
+      <li><a href="/clips-podcast.html">Transformer un podcast en clips<span>10 shorts depuis un épisode</span></a></li>
+    </ul>
+  </nav>
 </article>
 
 <footer class="blog-footer">
