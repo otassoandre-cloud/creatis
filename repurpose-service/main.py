@@ -1143,6 +1143,20 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
                 opts["cookiefile"] = cookies_file
             if attempt["proxy"]:
                 opts["proxy"] = attempt["proxy"]
+                # yt-dlp ne transmet PAS son proxy à ffmpeg — or `download_ranges` délègue
+                # justement le téléchargement à ffmpeg. Sans cette ligne, l'extraction passait
+                # par Webshare pendant que ffmpeg, lui, sortait par l'IP datacenter de Railway :
+                # YouTube refusait le média et ffmpeg rendait le code 8.
+                # Mesuré le 15/08/2026 sur /test-formats, même vidéo, même proxy :
+                #   extrait seul (ffmpeg)      -> ffmpeg exited with code 8
+                #   vidéo entière (yt-dlp seul) -> 401 698 180 octets téléchargés
+                # L'extraction n'était donc jamais en cause : seul le téléchargeur l'était.
+                # Conséquence de la panne : chaque vidéo consommait 400 Mo de proxy au lieu de
+                # quelques Mo, épuisant les 10 Go mensuels en ~25 vidéos et renvoyant tout le
+                # reste vers l'API payante.
+                # Ce passage du proxy à ffmpeg est déjà fait ailleurs dans ce fichier, pour le
+                # chemin par URL signée (voir download_from_direct_url, argument -http_proxy).
+                opts["external_downloader_args"] = {"ffmpeg_i": ["-http_proxy", attempt["proxy"]]}
             logger.info(f"yt-dlp section {start:.0f}s-{end:.0f}s [{attempt['label']}]")
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(youtube_url, download=True)
@@ -3182,6 +3196,11 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
         opts["cookiefile"] = cookies_file
     if use_proxy and RESIDENTIAL_PROXY_URL:
         opts["proxy"] = RESIDENTIAL_PROXY_URL
+        # Même passage du proxy à ffmpeg que dans download_video_section : sans lui, ce test
+        # mesurerait l'ancien défaut au lieu du correctif, et conclurait à tort qu'il ne sert
+        # à rien. Le doute soulevé lignes 3182-3185 est tranché : mesuré le 15/08/2026, le
+        # téléchargement complet via proxy réussit (401 Mo) là où l'extrait échoue en code 8.
+        opts["external_downloader_args"] = {"ffmpeg_i": ["-http_proxy", RESIDENTIAL_PROXY_URL]}
     # Sans cette information, un test « avec proxy » sur un proxy non configuré donne exactement
     # le même résultat qu'un test sans proxy — on croit avoir éliminé une piste alors qu'on ne
     # l'a jamais essayée. C'est ce qui a fait conclure à tort que « l'IP dédiée ne marche pas ».
