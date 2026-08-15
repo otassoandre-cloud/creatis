@@ -5910,10 +5910,35 @@ const V2 = (() => {
       return Math.max(0, Math.min(vw - cropW, Math.floor(c - cropW / 2)));
     }
 
+    /* GEL DE L'APERÇU — la boucle se replanifiait en DERNIÈRE instruction, sans filet.
+       Une seule exception n'importe où dans le dessin et plus aucune frame n'était jamais
+       demandée : le canvas restait figé sur sa dernière image pendant que le son, la barre
+       de progression et les sous-titres continuaient d'avancer (eux lisent video.currentTime,
+       une autre boucle). Symptôme constaté : « l'image ne bouge pas mais les sous-titres oui »,
+       en recadrage auto, quelques secondes après l'ouverture.
+       Le `finally` garantit désormais la frame suivante quoi qu'il arrive : une exception ne
+       coûte plus qu'une image sautée au lieu d'un gel définitif. Et on la journalise — une
+       seule fois par ouverture, sinon elle partirait 60 fois par seconde — au lieu de la
+       laisser invisible. */
+    let _errSignalee = false;
+
     function drawFrame() {
+      try {
+        _dessinerRecadrage();
+      } catch (e) {
+        if (!_errSignalee) {
+          _errSignalee = true;
+          console.error('[Aperçu] boucle de recadrage interrompue :', e);
+        }
+      } finally {
+        _cropRaf = requestAnimationFrame(drawFrame);
+      }
+    }
+
+    function _dessinerRecadrage() {
       const vw = video.videoWidth, vh = video.videoHeight;
       const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
-      if (!vw || !vh || !cw || !ch) { _cropRaf = requestAnimationFrame(drawFrame); return; }
+      if (!vw || !vh || !cw || !ch) return;   // la replanification est dans le `finally`
       if (canvas.width !== cw) canvas.width = cw;
       if (canvas.height !== ch) canvas.height = ch;
       // Remplit tout le canvas (son conteneur est déjà en 9:16 via CSS) — pas de rect
@@ -5925,7 +5950,22 @@ const V2 = (() => {
       const now = performance.now();
       if (_blazeModel && now - _liveDetectTs > 500) {
         _liveDetectTs = now;
-        _blazeModel.estimateFaces(video, false).then(p => { _livePreds = p; }).catch(() => {});
+        /* Le `.catch()` ne protège que d'un rejet de promesse. Si estimateFaces lève de
+           façon SYNCHRONE — modèle en mauvais état, tenseur libéré, WebGL perdu — l'appel
+           n'a jamais renvoyé de promesse et le catch n'existe pas encore. C'est le candidat
+           le plus probable au gel : BlazeFace finit de charger ~500 ms après l'ouverture,
+           exactement quand l'image se fige. */
+        try {
+          const _p = _blazeModel.estimateFaces(video, false);
+          if (_p && typeof _p.then === 'function') {
+            _p.then(p => { _livePreds = p; }).catch(() => {});
+          }
+        } catch (e) {
+          if (!_errSignalee) {
+            _errSignalee = true;
+            console.error('[Aperçu] estimateFaces a levé de façon synchrone :', e);
+          }
+        }
       }
 
       const cropW = Math.floor(vh * 9 / 16);
@@ -6005,8 +6045,6 @@ const V2 = (() => {
           ctx.drawImage(video, clampX(rightCx), clampY(rightCy), cropWh, cropHh, dx, dy + halfH, dw, halfH);
         }
       }
-
-      _cropRaf = requestAnimationFrame(drawFrame);
     }
     drawFrame();
   }
