@@ -3212,6 +3212,11 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
         "extractor_args": _yt_extractor_args(),
         "logger": LogCollector(),
         "skip_download": not download,
+        # `verbose` fait écrire à yt-dlp la LIGNE DE COMMANDE ffmpeg qu'il construit.
+        # Sans elle, « ffmpeg exited with code 8 » est un cul-de-sac : impossible de savoir si
+        # -http_proxy atteint ffmpeg ou non, et deux correctifs déployés à l'aveugle ont déjà
+        # échoué faute de cette information. Endpoint de diagnostic uniquement.
+        "verbose": True,
     }
     _tmp_dl = None
     if download:
