@@ -46,6 +46,44 @@ WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
 TRANSCRIBE_LANG       = os.environ.get("TRANSCRIBE_LANG", "fr").strip()
 YOUTUBE_COOKIES       = os.environ.get("YOUTUBE_COOKIES", "")
 RESIDENTIAL_PROXY_URL = os.environ.get("RESIDENTIAL_PROXY_URL", "")
+
+
+def _proxy_session(base: str = "") -> str:
+    """URL du proxy avec un identifiant de SESSION unique — une IP stable par téléchargement.
+
+    Webshare rotatif change d'IP à CHAQUE connexion. Mesuré le 15/08/2026, trois appels
+    successifs sur le même compte sont sortis par 87.238.130.200, 82.232.219.129 puis
+    41.250.102.174 — trois pays différents.
+
+    Or YouTube signe ses URLs de média POUR L'IP qui les a demandées. yt-dlp extrayait donc
+    depuis une IP, ffmpeg allait chercher le média depuis une autre, et YouTube refusait :
+    c'est l'origine du « ffmpeg exited with code 8 ». Le repli était alors le téléchargement
+    de la vidéo ENTIÈRE (401 Mo mesurés), qui épuisait les 10 Go mensuels en ~25 vidéos et
+    renvoyait tout le reste vers l'API payante.
+
+    Le mode « Sticky » de Webshare s'active en suffixant le nom d'utilisateur d'un numéro de
+    session. Vérifié : `xnnwqwcg-37769` a rendu trois fois 88.98.97.48, tandis qu'un autre
+    numéro rendait 2.84.125.118.
+
+    On tire ce numéro AU HASARD À CHAQUE APPEL, plutôt que de le figer dans la variable
+    d'environnement : l'IP reste constante le temps d'un téléchargement (ce dont on a besoin)
+    et change d'une vidéo à l'autre (ce qui évite de concentrer tout le trafic sur une seule
+    adresse pendant les 8 h de durée de session). Un numéro déjà présent est remplacé.
+    """
+    base = base or RESIDENTIAL_PROXY_URL
+    if not base:
+        return base
+    m = re.match(r"^([a-z0-9+.-]+://)([^:@/]+):([^@]+)@(.+)$", base, re.I)
+    if not m:
+        # Format inattendu : on renvoie l'URL telle quelle plutôt que d'en fabriquer une fausse.
+        logger.warning("[proxy] format non reconnu, session collante non appliquée")
+        return base
+    schema, user, mdp, hote = m.groups()
+    user = re.sub(r"-\d+$", "", user)
+    session = uuid.uuid4().int % 900000 + 100000
+    return f"{schema}{user}-{session}:{mdp}@{hote}"
+
+
 BGUTIL_URL            = os.environ.get("BGUTIL_URL", "")
 RAPIDAPI_KEY          = os.environ.get("RAPIDAPI_KEY", "")
 # youtube-download-api.org — API tierce qui gère la bot-detection YouTube côté serveur (IP
@@ -954,7 +992,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil"},
         # 2. Webshare IP + android/ios (pas de PoToken nécessaire, IP résidentielle)
         *(
-            [{"proxy": RESIDENTIAL_PROXY_URL,
+            [{"proxy": _proxy_session(),
               # Meme alignement client/jeton que la strategie 1 : bgutil ne produit un jeton
               # valide que pour web/mweb. Avec android/ios le jeton ne correspond plus au
               # visitor_data, la liste de formats revient vide et yt-dlp annonce
@@ -1120,7 +1158,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     attempts = [
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+bgutil+section"},
         *(
-            [{"proxy": RESIDENTIAL_PROXY_URL,
+            [{"proxy": _proxy_session(),
               "extractor_args": _yt_extractor_args(),
               "label": "webshare+android+section"}]
             if RESIDENTIAL_PROXY_URL else []
@@ -3195,12 +3233,13 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
     if cookies_file:
         opts["cookiefile"] = cookies_file
     if use_proxy and RESIDENTIAL_PROXY_URL:
-        opts["proxy"] = RESIDENTIAL_PROXY_URL
-        # Même passage du proxy à ffmpeg que dans download_video_section : sans lui, ce test
-        # mesurerait l'ancien défaut au lieu du correctif, et conclurait à tort qu'il ne sert
-        # à rien. Le doute soulevé lignes 3182-3185 est tranché : mesuré le 15/08/2026, le
-        # téléchargement complet via proxy réussit (401 Mo) là où l'extrait échoue en code 8.
-        opts["external_downloader_args"] = {"ffmpeg_i": ["-http_proxy", RESIDENTIAL_PROXY_URL]}
+        # UNE seule session, partagée par yt-dlp ET ffmpeg — c'est tout l'enjeu : les deux
+        # doivent sortir par la même IP, sinon l'URL signée par YouTube pour la première est
+        # rejetée pour le second. Appeler _proxy_session() deux fois donnerait deux sessions
+        # différentes, donc deux IP, et reproduirait exactement le défaut qu'on corrige.
+        _px = _proxy_session()
+        opts["proxy"] = _px
+        opts["external_downloader_args"] = {"ffmpeg_i": ["-http_proxy", _px]}
     # Sans cette information, un test « avec proxy » sur un proxy non configuré donne exactement
     # le même résultat qu'un test sans proxy — on croit avoir éliminé une piste alors qu'on ne
     # l'a jamais essayée. C'est ce qui a fait conclure à tort que « l'IP dédiée ne marche pas ».
