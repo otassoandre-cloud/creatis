@@ -70,6 +70,17 @@ COPY main.py .
 # démarre pas du tout. Le contexte de build est repurpose-service/, donc tout module
 # importé par main.py doit y être copié explicitement.
 COPY caption_geometry.py .
+# Oubli constaté en production le 16/08/2026 : le style « Focus » était bien demandé par le
+# client et bien reçu par le serveur — `[subs] style=highlight has_subs=True segs=62` — mais
+# le module n'étant pas dans l'image, main.py partait dans son repli silencieux :
+#   [subs] style 'highlight' indisponible — import impossible : No module named 'caption_highlight'
+# L'export sortait donc avec l'ancien rendu, sans un mot d'erreur pour l'utilisateur. Mesuré sur
+# le fichier livré : zéro pixel #10ACF9, alors que ce style colore le mot actif en bleu.
+COPY caption_highlight.py .
+# Sert à vérifier DANS le conteneur que le coefficient libass vaut encore celui codé en dur.
+# Sans cette copie, le script n'est exécutable que sur un poste de développement — donc jamais
+# là où le rendu se fait réellement, ce qui lui retire tout intérêt.
+COPY verifier_geometrie.py .
 COPY watermark_base.png .
 
 # yt-dlp est le seul composant qui doit suivre YouTube au jour le jour. Placé APRÈS les COPY,
