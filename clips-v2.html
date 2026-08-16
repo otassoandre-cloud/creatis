@@ -4928,6 +4928,10 @@ const V2 = (() => {
     el.style.webkitBackgroundClip = '';
     el.style.backgroundClip = '';
     el.style.webkitTextFillColor = '';
+    // Le style Focus lève le rognage du conteneur (voir plus bas) : il faut le rétablir quand on
+    // repasse sur un autre style, sinon un texte trop long déborderait de l'aperçu.
+    el.style.overflow = '';
+    el.style.maxHeight = '';
     // Tronque au max 5 mots (le CSS max-height: 2.6em assure les 2 lignes dans le preview)
     { const wArr = text.split(' ').filter(Boolean); if (wArr.length > 5) text = wArr.slice(0, 5).join(' '); }
 
@@ -4955,6 +4959,19 @@ const V2 = (() => {
         el.style.lineHeight = Math.round(HL_GAP * HL_H * sc2) + 'px';
         el.style.background = 'transparent';
         el.style.padding = '0';
+        /* TEXTE ROGNÉ EN HAUT ET EN BAS — corrigé le 16/08/2026.
+           `.modal-sub-overlay` porte `overflow: hidden` et un `max-height`. Or ce style pose une
+           hauteur de ligne FIXE, égale à l'interligne voulu (0,0412 x 1280 = 53 px), pour coller
+           à la géométrie de l'export. Le mot actif, lui, est agrandi de 35 % : son corps atteint
+           80 x 0,6177 x 1,35 ≈ 67 px, et ses glyphes réclament ~70 px avec ascendantes et
+           jambages. Il manquait donc une quinzaine de pixels, rognés moitié en haut, moitié en bas.
+           C'est aussi pourquoi l'EXPORT était correct et l'aperçu non : libass ne coupe pas les
+           glyphes qui dépassent la boîte de ligne, le navigateur si.
+           On lève le rognage pour ce style uniquement — sa géométrie est entièrement pilotée par
+           les constantes ci-dessus, il n'a pas besoin du garde-fou. Le bloc de remise à zéro avant
+           le switch rétablit les deux propriétés dès qu'on repasse sur un autre style. */
+        el.style.overflow = 'visible';
+        el.style.maxHeight = 'none';
 
         if (opts._hlBandeau) {
           // Bandeau : fond bleu plein, texte blanc plus petit, aucun mot mis en avant —
