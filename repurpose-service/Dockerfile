@@ -19,7 +19,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # failed: Ensure you have a supported JavaScript runtime") et YouTube throttle volontairement le
 # débit à ~280-350 Ko/s : un segment de 20 Mo mettait ~75 s à descendre. Avec le challenge résolu,
 # YouTube sert à pleine vitesse. C'est LA cause de l'attente "Téléchargement du clip…".
-RUN wget -q https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip -O /tmp/deno.zip \
+#
+# VERSION FIGÉE, À BUMPER À LA MAIN. L'URL était `releases/latest` : n'importe quel redéploiement,
+# même sans rapport, pouvait changer de version de Deno et casser la résolution du "n challenge"
+# sans un seul changement de code — panne invisible au diff et impossible à reproduire en local.
+# Pour monter de version : changer ce numéro, redéployer, et vérifier dans le log de build que le
+# `deno --version` ci-dessous affiche bien la nouvelle. Ne PAS repasser sur `latest`.
+ARG DENO_VERSION=2.9.5
+RUN wget -q https://github.com/denoland/deno/releases/download/v${DENO_VERSION}/deno-x86_64-unknown-linux-gnu.zip -O /tmp/deno.zip \
     && unzip -q /tmp/deno.zip -d /usr/local/bin \
     && chmod +x /usr/local/bin/deno \
     && rm /tmp/deno.zip \
@@ -38,11 +45,23 @@ RUN playwright install chromium
 # DejaVu Sans et le rendu n'a plus rien à voir avec l'aperçu.
 # Poppins SemiBold est la police déclarée par caption_geometry.py (source de vérité).
 # Montserrat est conservée : d'anciens exports y font encore référence.
+#
+# COMMITS FIGÉS, À BUMPER À LA MAIN. Les URL pointaient sur les branches `main` / `master` : le
+# fichier de police pouvait donc changer entre deux builds. Ce n'est pas cosmétique — le placement
+# des sous-titres est calculé à partir des métriques de la police (caption_geometry.py), donc un
+# binaire différent décale le rendu et l'aperçu ne correspond plus à l'export.
+# Les deux commits ci-dessous servent des fichiers identiques au bit près à ce que servaient
+# `main` / `master` le 15/08/2026 (sha256 vérifiés) : aucun changement de rendu.
+#   Poppins-SemiBold.ttf    sha256 d3bf1bda…0286  (157 312 o)
+#   Montserrat-ExtraBold.ttf sha256 d3ac6a84…2c1b  (455 468 o)
+# PIÈGE : le tag `v9.000` de JulietaUla/Montserrat sert un fichier DIFFÉRENT de `master` (même
+# taille, hash différent). Ne pas « moderniser » vers ce tag en croyant que c'est équivalent.
+# Pour bumper : remplacer le SHA, redéployer, et revalider un export sous-titré avant de garder.
 RUN mkdir -p /usr/share/fonts/truetype/creatis \
     && wget -q -O /usr/share/fonts/truetype/creatis/Poppins-SemiBold.ttf \
-       https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-SemiBold.ttf \
+       https://raw.githubusercontent.com/google/fonts/7dc16b7de42db624b902f2292b68ed9e489e5053/ofl/poppins/Poppins-SemiBold.ttf \
     && wget -q -O /usr/share/fonts/truetype/creatis/Montserrat-ExtraBold.ttf \
-       https://raw.githubusercontent.com/JulietaUla/Montserrat/master/fonts/ttf/Montserrat-ExtraBold.ttf \
+       https://raw.githubusercontent.com/JulietaUla/Montserrat/679ead9bcd0d6cef6d3712369dc49fe72e8bd8d7/fonts/ttf/Montserrat-ExtraBold.ttf \
     && fc-cache -f \
     && fc-list | grep -iE "poppins|montserrat"
 
