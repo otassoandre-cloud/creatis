@@ -24,6 +24,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
+# Style de sous-titres « highlight » (mot actif bleu + bandeau). Isolé dans son module :
+# sa géométrie vient de mesures au pixel qu'on ne veut pas voir se diluer ici.
+# Import tolérant AU DÉMARRAGE seulement : un module absent ne doit pas empêcher le service
+# de tourner ni casser les styles existants — seul « highlight » devient indisponible, et
+# ça se voit dans les logs. Une exception ici mettrait tout l'export à terre.
+try:
+    import caption_highlight
+except Exception as _ch_err:  # pragma: no cover
+    caption_highlight = None
+    logging.getLogger("uvicorn").error(
+        f"[subs] style 'highlight' indisponible — import impossible : {_ch_err}")
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("creatis")
 
@@ -2564,7 +2576,19 @@ def health():
     import shutil as _shu
     disk = _shu.disk_usage(WORK_DIR)
     free_gb = round(disk.free / 1_073_741_824, 1)
-    return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL, "disk_free_gb": free_gb}
+    # yt-dlp est volontairement installé avec --upgrade (voir Dockerfile) : sa version change à
+    # chaque build sans le moindre changement de code. Elle n'était visible que dans le log de
+    # démarrage, donc perdue dès que Railway fait tourner ses logs — impossible, en pleine panne,
+    # de dire quelle version tourne sans redéployer. L'exposer ici la rend lisible à tout moment
+    # (`curl $SERVICE/health`) et corrélable avec une signature d'erreur (cf. DIAGNOSTIC_YOUTUBE.md).
+    # Le module est déjà importé par startup(), donc c'est une lecture de sys.modules, pas un coût.
+    try:
+        import yt_dlp as _ydl_v
+        _ytdlp_version = _ydl_v.version.__version__
+    except Exception:
+        _ytdlp_version = "inconnue"
+    return {"status": "ok", "gemini": bool(GEMINI_API_KEY), "whisper": WHISPER_MODEL,
+            "disk_free_gb": free_gb, "ytdlp": _ytdlp_version}
 
 
 class VideoMetaRequest(BaseModel):
@@ -4228,6 +4252,9 @@ async def process_clip_endpoint(
             # l'export atteigne la taille de l'apercu (la reference), on agrandit le corps
             # de 0.70/0.63 = 1.112. Mesure sur cinq tailles, Poppins comme Montserrat.
             "submagic":  f"Style: Default,{FSM},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{max(2, int(font_size * 0.06))},0,8,44,44,{margin_v},1",
+            # "highlight" définit ses propres styles (Hl et HlB, ajoutés plus bas). Ce
+            # Style Default ne sert que de repli si les timings mot par mot manquent.
+            "highlight": f"Style: Default,{caption_highlight.FONT_FAMILY if caption_highlight else F},{font_size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{max(2, int(font_size * 0.06))},0,8,44,44,{margin_v},1",
         }
         style_line = style_map.get(style, style_map["bold"])
         hc = hex_to_ass(hook_color)
@@ -4252,7 +4279,14 @@ async def process_clip_endpoint(
                 "[Script Info]","ScriptType: v4.00+","PlayResX: 720","PlayResY: 1280","WrapStyle: 1","",
                 "[V4+ Styles]",
                 "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-                style_line, hook_style_line, "",
+                style_line, hook_style_line,
+            ]
+            if style == "highlight" and caption_highlight:
+                # Deux styles supplémentaires : texte normal (Hl) et bandeau bleu (HlB).
+                # Ils restent dans le bloc [V4+ Styles], avant la ligne vide.
+                ass_lines.extend(caption_highlight.style_lines(720, 1280, margin_v))
+            ass_lines += [
+                "",
                 "[Events]",
                 "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
             ]
@@ -4291,6 +4325,31 @@ async def process_clip_endpoint(
                 if float(_segs_clean[_i].get("t1", 0)) > _nt0 > float(_segs_clean[_i].get("t0", 0)):
                     _segs_clean[_i]["t1"] = _nt0
             segs = _segs_clean
+
+            # Style "highlight" : le module regroupe lui-même TOUS les mots en cues de 4,
+            # par-dessus le découpage en segments. Il ne passe donc pas par la boucle
+            # segment par segment qui suit. S'il ne rend rien, c'est qu'aucun timing mot
+            # par mot n'est disponible : on laisse alors la boucle produire un affichage
+            # simple plutôt que pas de sous-titres du tout.
+            if style == "highlight" and caption_highlight:
+                # Position : on suit le curseur du studio dès qu'il a été bougé, pour que
+                # l'export corresponde à ce que l'utilisateur voit. Mais tant qu'il vaut son
+                # défaut (82 %, hérité des styles posés en bas d'image), on prend la position
+                # de référence du style — 58,4 %, celle sur laquelle il a été calibré. Sans
+                # ça, un appel qui ne précise rien sortirait des sous-titres bien plus bas
+                # que le rendu validé.
+                _hl_y = None if abs(sub_y - 82.0) < 0.01 else _y_px
+                try:
+                    _hl_lines = caption_highlight.dialogues(segs, 720, 1280, to_ass_time, y_px=_hl_y)
+                except Exception as _hl_err:
+                    logger.error(f"[subs] highlight a échoué ({_hl_err}) — repli sur l'affichage simple")
+                    _hl_lines = []
+                if _hl_lines:
+                    logger.info(f"[subs] highlight: {len(_hl_lines)} evenements sur {len(segs)} segments")
+                    ass_lines.extend(_hl_lines)
+                    segs = []
+                else:
+                    logger.warning("[subs] highlight sans timings mot par mot — repli sur l'affichage simple")
 
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert

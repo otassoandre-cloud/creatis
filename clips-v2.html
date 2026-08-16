@@ -16,6 +16,9 @@
        la largeur des lignes, donc l'endroit où le texte se coupe : l'aperçu et l'export ne
        montreraient plus le même découpage. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <!-- Poppins 600 : police du style "Focus", pour la même raison que Montserrat ci-dessus.
+       C'est exactement le fichier installé dans le conteneur de rendu (Poppins-SemiBold). -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1043,6 +1046,7 @@
             <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Wow</span></div><span>Bold</span></button>
             <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
             <button class="ms-pill active" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt" style="font-weight:900">W<span style="color:#3BFF2F">ow</span></span></div><span>Punch</span></button>
+            <button class="ms-pill" data-style="highlight" onclick="V2.setClipStyle('highlight')"><div class="mp"><span class="mt" style="font-family:'Poppins',sans-serif;font-weight:600">W<span style="color:#10ACF9">ow</span></span></div><span>Focus</span></button>
             <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
             <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Wow</span></div><span>Typewriter</span></button>
             <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Word Pop</span></button>
@@ -4632,6 +4636,26 @@ const V2 = (() => {
           // passage d'une page à la suivante quand la ligne active reste la 1.
           _smCle = segKey + '|' + page + '|' + ligne;
         }
+        /* Style "Focus" : le serveur découpe déjà la transcription en paquets de 4 mots, donc
+           un segment EST une cue. Il ne reste qu'à désigner le mot actif — celui dont le
+           timing réel est en cours — et à savoir si cette cue porte le bandeau. */
+        if (opts.style === 'highlight' && seg) {
+          const _modifieHl = segKey && opts.segEdits
+            && opts.segEdits[segKey] != null
+            && opts.segEdits[segKey] !== (seg.text ?? '');
+          opts._hlWords = (!_modifieHl && Array.isArray(seg.words)) ? seg.words : null;
+          opts._hlBandeau = _hlBandeaux(_segments).has(_segments.indexOf(seg));
+          let actif = -1;
+          if (opts._hlWords && opts._hlWords.length) {
+            for (let i = 0; i < opts._hlWords.length; i++) {
+              if (t >= (opts._hlWords[i].start ?? Infinity)) actif = i;
+            }
+          }
+          opts._hlActif = actif;
+          // Le mot actif DOIT figurer dans la clé, sinon l'aperçu reste figé sur le premier
+          // mot alors que l'export, lui, avance mot à mot.
+          _smCle = segKey + '|hl' + actif + '|' + (opts._hlBandeau ? 'b' : '');
+        }
         if (_smCle !== _lastSegKey) {
           _lastSegKey = _smCle;
           _renderSubText(subEl, rawText, opts);
@@ -4767,6 +4791,72 @@ const V2 = (() => {
     return _smCtx.measureText(txt).width;
   }
 
+  /* ---- Style "Focus" (highlight) : mêmes constantes que repurpose-service/caption_highlight.py.
+     Elles sont exprimées en fraction de la hauteur du canvas d'export (720x1280), comme côté
+     serveur, pour que l'aperçu et le fichier rendu ne puissent pas diverger.
+
+     Le corps ne se lit pas tel quel dans le navigateur : à taille nominale égale, libass
+     dessine une capitale à 0.408 du corps, le navigateur à 0.700 (mesuré, cf. le module
+     Python). L'aperçu applique donc HL_CORR pour retomber sur la même hauteur à l'écran.
+     Ce rapport est propre à Poppins ET à cette version de libass — ne pas le recopier
+     depuis le style Punch, qui utilise une autre police et annonce une autre valeur. */
+  const HL_H = 1280, HL_W = 720;
+  const HL_ASC = 0.0269;           // hauteur d'ascendante voulue, fraction de la hauteur
+  const HL_COEF_LIBASS = 0.4324;   // ce que libass rend par unité de corps
+  const HL_COEF_NAV = 0.700;       // ce que le navigateur rend par unité de corps
+  const HL_CORR = HL_COEF_LIBASS / HL_COEF_NAV;
+  const HL_ACTIVE_SCALE = 1.35;
+  const HL_BLUE = '#10ACF9';
+  const HL_TOP = 58.4;             // % — haut des ascendantes de la ligne 1
+  const HL_GAP = 0.0412;           // interligne, fraction de la hauteur
+  const HL_POS_OFFSET = 53 / 1920; // écart mesuré entre le haut de boîte et les ascendantes
+  // subY se compte au haut de la BOÎTE, comme partout ailleurs : c'est la valeur à poser
+  // pour que les ascendantes tombent à HL_TOP.
+  // Deux décimales : arrondir au dixième décalerait déjà le rendu de 2 px sur 1280.
+  const HL_SUBY_REF = Math.round((HL_TOP - HL_POS_OFFSET * 100) * 100) / 100;
+  const HL_BANNER_CADENCE = 12.0;  // s — une fenêtre, un bandeau
+  const HL_BANNER_MIN_DUR = 0.6;
+  const HL_BANNER_MAX_W = 0.70;
+
+  function _hlCorps() { return Math.round(HL_ASC * HL_H / HL_COEF_LIBASS); }
+
+  let _hlCtx = null;
+  function _hlLargeur(txt, fontSize) {
+    if (!_hlCtx) _hlCtx = document.createElement('canvas').getContext('2d');
+    _hlCtx.font = `600 ${fontSize}px Poppins, sans-serif`;
+    return _hlCtx.measureText(txt).width;
+  }
+
+  /* Quels segments passent en bandeau bleu. Même règle que le serveur : le clip est découpé
+     en fenêtres, et dans chaque fenêtre c'est la cue la PLUS ÉTROITE qui l'emporte. Un simple
+     seuil de largeur rendait la fréquence otage du débit de parole — zéro bandeau sur un
+     locuteur aux mots longs. Calculé une fois par liste de segments, puis mis en cache. */
+  let _hlCache = { cle: null, set: null };
+  function _hlBandeaux(segments) {
+    const cle = segments.length + '|' + (segments[0]?.start ?? 0) + '|' + (segments[segments.length-1]?.end ?? 0);
+    if (_hlCache.cle === cle) return _hlCache.set;
+    const corps = _hlCorps();
+    const largeurMax = HL_BANNER_MAX_W * HL_W;
+    const parFenetre = new Map();
+    segments.forEach((s, i) => {
+      const t0 = s.start ?? 0, t1 = s.end ?? t0;
+      if ((t1 - t0) < HL_BANNER_MIN_DUR) return;
+      const txt = String(s.text || '').trim();
+      if (!txt) return;
+      // Largeur au pire cas : le mot le plus large sera agrandi quand il deviendra actif.
+      const mots = txt.split(' ').filter(Boolean);
+      const plusLarge = mots.reduce((m, w) => Math.max(m, _hlLargeur(w, corps * HL_ACTIVE_SCALE) - _hlLargeur(w, corps)), 0);
+      const largeur = _hlLargeur(txt, corps) + plusLarge;
+      if (largeur > largeurMax) return;
+      const f = Math.floor(t0 / HL_BANNER_CADENCE);
+      const best = parFenetre.get(f);
+      if (!best || largeur < best.largeur) parFenetre.set(f, { largeur, i });
+    });
+    const set = new Set([...parFenetre.values()].map(v => v.i));
+    _hlCache = { cle, set };
+    return set;
+  }
+
   /* Découpe une cue en PAGES de 2 lignes — copie exacte de la logique serveur.
      Une page dont le reste ne tient pas engendre une page suivante, affichée après elle :
      jamais de 3e ligne, jamais de ligne qui dépasse du cadre.
@@ -4848,6 +4938,62 @@ const V2 = (() => {
          Le mot actif n'est pas surligné : c'est la LIGNE en cours qui se colore.
          La ligne affichée est choisie par _submagicLigneActive() à partir des timings
          réels de chaque mot — la même donnée que celle envoyée au serveur. */
+      /* Style "Focus" — doit correspondre TRAIT POUR TRAIT à caption_highlight.py :
+         même police (Poppins SemiBold, chargée dans <head>), même bleu, même agrandissement
+         du mot actif, même bandeau. La casse de la transcription est conservée, la
+         ponctuation aussi : ce style n'est PAS en capitales, contrairement à Punch.
+         Le corps passe par HL_CORR — sans quoi l'aperçu paraîtrait ~70 % plus grand que
+         l'export, libass écrasant les glyphes pour les faire tenir dans le corps demandé. */
+      case 'highlight': {
+        const sc2 = _previewScale();
+        const corps = _hlCorps();
+        const fsHl = Math.round(corps * HL_CORR * sc2);
+        el.style.fontFamily = "'Poppins', sans-serif";
+        el.style.fontWeight = '600';
+        // Interligne posé en pixels, pas en multiple du corps : c'est l'écart entre les deux
+        // lignes qui doit valoir 4,12 % de la hauteur, indépendamment de la taille du texte.
+        el.style.lineHeight = Math.round(HL_GAP * HL_H * sc2) + 'px';
+        el.style.background = 'transparent';
+        el.style.padding = '0';
+
+        if (opts._hlBandeau) {
+          // Bandeau : fond bleu plein, texte blanc plus petit, aucun mot mis en avant —
+          // sur ce fond, un mot bleu serait invisible.
+          const fsB = Math.round((0.0215 * HL_H - 8) * HL_CORR * sc2);
+          el.style.fontSize = Math.max(6, fsB) + 'px';
+          el.style.textShadow = 'none';
+          const d = document.createElement('span');
+          d.textContent = text;
+          d.style.background = HL_BLUE;
+          d.style.color = '#ffffff';
+          d.style.padding = `${Math.round(4 * sc2)}px ${Math.round(10 * sc2)}px`;
+          d.style.display = 'inline-block';
+          el.appendChild(d);
+          break;
+        }
+
+        el.style.fontSize = fsHl + 'px';
+        el.style.color = '#ffffff';
+        el.style.textShadow = _ol('#000', Math.max(2, corps * 0.075));
+        const motsHl = (opts._hlWords && opts._hlWords.length)
+          ? opts._hlWords.map(w => String(w.word || ''))
+          : text.split(' ').filter(Boolean);
+        const iActif = (opts._hlActif == null) ? -1 : opts._hlActif;
+        motsHl.forEach((m, i) => {
+          const sp = document.createElement('span');
+          sp.textContent = m;
+          if (i === iActif) {
+            sp.style.color = HL_BLUE;
+            // Agrandissement du mot actif : c'est lui, et non un mouvement, qui donne le
+            // rythme. Aucune transition — la référence change d'état sur une seule image.
+            sp.style.fontSize = Math.round(fsHl * HL_ACTIVE_SCALE) + 'px';
+          }
+          el.appendChild(sp);
+          if (i < motsHl.length - 1) el.appendChild(document.createTextNode(' '));
+        });
+        break;
+      }
+
       case 'submagic': {
         const mots = (opts._smWords && opts._smWords.length)
           ? opts._smWords.map(w => String(w.word || '').toUpperCase())
@@ -5282,6 +5428,18 @@ const V2 = (() => {
     document.querySelectorAll('#modal-style-btns .ms-pill').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.style === style);
     });
+    /* "Focus" est calibré pour un haut d'ASCENDANTES à 58,4 % de la hauteur. Mais subY, ici
+       comme dans l'export, désigne le haut de la BOÎTE de ligne, qui est 35 px plus haut sur
+       un canvas de 1280 (écart mesuré sur libass). D'où 55,7 % et non 58,4 : poser 58,4
+       descendrait tout le bloc de 2,7 % par rapport au rendu validé.
+       On la pose au choix du style pour que l'export, qui suit subY, montre bien l'aperçu.
+       L'utilisateur reste libre de déplacer ensuite. */
+    if (style === 'highlight') {
+      // Il n'y a pas de champ de saisie pour la position : elle vit dans _clipSettings et
+      // se règle en glissant les sous-titres. C'est donc la seule valeur à poser.
+      _clipSettings[_modalIdx].subY = HL_SUBY_REF;
+      _lastSegKey = null;   // force le redessin à la nouvelle position
+    }
     const defaults = { bold:'#ffffff', karaoke:'#FFE000', typewriter:'#ffffff', wordpop:'#ffffff', slide:'#ffffff', shake:'#ffffff', wave:'#ffffff' };
     const ct = document.getElementById('modal-color-text');
     if (ct) { ct.value = defaults[style] || '#ffffff'; _clipSettings[_modalIdx].colorText = ct.value; }
