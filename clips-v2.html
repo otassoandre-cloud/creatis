@@ -5767,11 +5767,32 @@ const V2 = (() => {
   }
 
   // ── Barre timeline visuelle (type CapCut) ──
+  /* TIMELINE À 60 s POUR UN CLIP DE 15 s — corrigé le 16/08/2026.
+     Deux défauts produisaient le même symptôme : un rail bien plus long que le clip, donc une
+     lecture qui s'arrête au quart du parcours et donne l'impression d'une coupure en plein
+     milieu, alors que le clip est simplement plus court.
+
+     1. `end` absent : l'ancien repli posait `st + 60`, une constante arbitraire.
+     2. `end` présent mais le segment réellement téléchargé plus court que demandé — la fin de
+        la vidéo source est atteinte avant. Le rail annonçait alors la durée DEMANDÉE, pas
+        celle obtenue.
+
+     La durée du MÉDIA CHARGÉ fait donc foi dès qu'elle est disponible. Pour un segment
+     0-based (`_rawOffset` défini, cas des clips YouTube), `video.duration` EST la durée du
+     clip : aucune soustraction à faire. */
   function _cadDur() {
     const clip = _clips[_modalIdx];
     const st = clip?.start_time ?? clip?.start ?? 0;
-    const en = clip?.end_time ?? clip?.end ?? (st + 60);
-    return Math.max(1, en - st);
+    const en = clip?.end_time ?? clip?.end;
+    const video = document.getElementById('modal-video');
+    const dm = video?.duration;
+    // `duration` vaut NaN tant que les métadonnées ne sont pas chargées, et Infinity sur un
+    // flux : les deux donneraient une timeline absurde, on ne s'y fie que si elle est finie.
+    const mediaOk = typeof dm === 'number' && isFinite(dm) && dm > 0;
+    if (clip?._rawOffset != null && mediaOk) return Math.max(1, dm);
+    if (en != null) return Math.max(1, en - st);
+    if (mediaOk) return Math.max(1, dm - st);
+    return 60;
   }
   // Place la vidéo à l'instant RELATIF (gère segment YouTube 0-based vs fichier local décalé)
   function _seekToRel(relT) {
