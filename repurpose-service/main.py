@@ -2953,7 +2953,15 @@ async def _transcribe_audio_core(audio_path: Path) -> Dict:
                 t1 = float(chunk[-1].get("end", t0 + 1))
                 text = " ".join((w.get("word") or w.get("text") or "").strip() for w in chunk)
                 if text.strip():
-                    segments.append({"start": t0, "end": t1, "text": text})
+                    # `words` conserve les timings RÉELS de chaque mot. Ce chemin les jetait :
+                    # il ne gardait que le début du 1er mot et la fin du 4e, alors que l'autre
+                    # chemin de transcription (voir plus haut, même construction) les conserve.
+                    # Conséquence mesurée le 16/08/2026 : le style « Focus » ne s'appliquait NI
+                    # à l'export NI dans l'aperçu, sans message d'erreur pour l'utilisateur.
+                    #   serveur : [subs] highlight sans timings mot par mot — repli sur l'affichage simple
+                    #   client  : seg.words absent -> aucun mot actif -> rien ne passe au bleu
+                    # Une seule cause, deux symptômes, et un export mesuré à zéro pixel #10ACF9.
+                    segments.append({"start": t0, "end": t1, "text": text, "words": chunk})
             logger.info(f"[transcribe-audio] word-level: {len(raw_words)} mots → {len(segments)} lignes")
         else:
             # Fallback : timestamps par segment
