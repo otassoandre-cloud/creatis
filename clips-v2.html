@@ -4559,9 +4559,12 @@ const V2 = (() => {
     const progHandle = document.getElementById('modal-prog-handle');
     const progWrap = document.getElementById('modal-prog-wrap');
     const timeEl = document.getElementById('modal-time');
-    const clipStart = clip.start_time ?? clip.start;
+    const clipStart = clip.start_time ?? clip.start ?? 0;
     const clipEnd = clip.end_time ?? clip.end;
-    const clipDur = Math.max(clipEnd - clipStart, 1);
+    // Même source de durée que la barre de lecture et la timeline de découpe : sans fin de clip,
+    // `clipEnd - clipStart` donnait NaN, et la barre de progression comme le compteur de temps
+    // affichaient NaN pendant toute la lecture.
+    const clipDur = _cadDur();
     // rawOffset : le segment a été découpé, la vidéo commence à t=0 mais les sous-titres sont en temps absolu
     const rawOffset = clip._rawOffset ?? null;
     const t = rawOffset != null ? video.currentTime + rawOffset : video.currentTime;
@@ -5401,13 +5404,24 @@ const V2 = (() => {
       const video = document.getElementById('modal-video');
       const clip = _modalIdx !== null ? _clips[_modalIdx] : null;
       if (!video || !clip) return;
-      const clipStart = clip.start_time ?? clip.start;
-      const clipEnd = clip.end_time ?? clip.end;
-      const clipDur = Math.max(clipEnd - clipStart, 0.1);
+      const clipStart = clip.start_time ?? clip.start ?? 0;
+      /* BARRE DE LECTURE MORTE AU DOIGT — corrigé le 16/08/2026.
+         L'ancien calcul faisait `Math.max(clipEnd - clipStart, 0.1)`. Quand la fin du clip est
+         absente, la soustraction vaut NaN — et `Math.max(NaN, 0.1)` vaut NaN, pas 0.1. On
+         écrivait donc `video.currentTime = NaN` : la vidéo ne bougeait pas, et la boucle
+         d'affichage remettait aussitôt le curseur à sa position réelle. Vu de l'utilisateur,
+         ni le tap ni le glissement ne faisaient quoi que ce soit.
+         La grosse barre de découpe, elle, passait par _cadDur() qui renvoyait un nombre
+         valide : elle répondait — mais à la mauvaise échelle, ce qui était l'autre symptôme.
+         Une seule cause pour les deux. On partage donc la même source de durée, désormais
+         fondée sur la durée réelle du média. */
+      const clipDur = _cadDur();
+      if (!isFinite(clipDur) || clipDur <= 0) return;
       // Segment YouTube (_rawOffset défini → vidéo découpée qui commence à 0) : seek dans [0, durée].
       // Fichier local (vidéo complète) : seek dans [clipStart, clipEnd].
       const rawOffset = clip._rawOffset ?? null;
-      video.currentTime = rawOffset != null ? pct * clipDur : clipStart + pct * clipDur;
+      const cible = rawOffset != null ? pct * clipDur : clipStart + pct * clipDur;
+      if (isFinite(cible)) { try { video.currentTime = cible; } catch {} }
     }
 
     wrap.addEventListener('pointerdown', (e) => {
