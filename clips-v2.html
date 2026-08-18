@@ -5820,8 +5820,20 @@ const V2 = (() => {
     // `duration` vaut NaN tant que les métadonnées ne sont pas chargées, et Infinity sur un
     // flux : les deux donneraient une timeline absurde, on ne s'y fie que si elle est finie.
     const mediaOk = typeof dm === 'number' && isFinite(dm) && dm > 0;
-    if (clip?._rawOffset != null && mediaOk) return Math.max(1, dm);
-    if (en != null) return Math.max(1, en - st);
+    const demande = (en != null) ? (en - st) : null;
+    /* On prend le PLUS COURT des deux quand on connait les deux.
+       Faire confiance au media SEUL etait trop permissif : un segment decoupe par ffmpeg peut
+       demarrer avant l instant demande (alignement sur l image-cle) et durer plus longtemps que
+       le clip. La timeline couvrait alors cette amorce, et les premieres secondes semblaient
+       figees puisqu elles ne font pas partie du clip.
+       Faire confiance a la demande SEULE etait trop optimiste : quand la fin de la video source
+       est atteinte, le segment obtenu est plus court et le rail annoncait une duree jamais
+       atteinte — la lecture s arretait avant le bout.
+       Le minimum des deux est vrai dans les deux cas. */
+    if (clip?._rawOffset != null && mediaOk) {
+      return Math.max(1, demande != null ? Math.min(demande, dm) : dm);
+    }
+    if (demande != null) return Math.max(1, demande);
     if (mediaOk) return Math.max(1, dm - st);
     return 60;
   }
