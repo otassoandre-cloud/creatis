@@ -310,6 +310,17 @@
     .ms-pill[data-style="karaoke"] .mp { background: linear-gradient(135deg, #0a1f15, #0f0f0f); }
     .ms-pill[data-style="karaoke"] .mt { color: #fff; }
     .ms-pill[data-style="karaoke"] .mt .hl { color: #10b981; }
+    /* Punch : capitales et Montserrat ExtraBold, sa signature reelle. Sans ces regles la
+       pastille empruntait la police de l'interface et ne ressemblait pas au rendu. */
+    .ms-pill[data-style="submagic"] .mt { font-family: 'Montserrat', sans-serif; font-weight: 900;
+                                          letter-spacing: -0.2px; color: #fff;
+                                          text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+    .ms-pill[data-style="submagic"] .mt .hl { color: #3BFF2F; }
+    /* Focus : Poppins SemiBold, casse normale, et le mot actif AGRANDI en plus d'etre bleu —
+       c'est l'agrandissement qui fait sa mecanique, pas seulement la couleur. */
+    .ms-pill[data-style="highlight"] .mt { font-family: 'Poppins', sans-serif; font-weight: 600; color: #fff;
+                                           text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+    .ms-pill[data-style="highlight"] .mt .hl { color: #10ACF9; display: inline-block; transform: scale(1.3); margin: 0 1px; }
     .ms-pill[data-style="typewriter"] .mp { background: #0a0f0a; }
     .ms-pill[data-style="typewriter"] .mt { color: #fff; font-family: 'Courier New', monospace; font-weight: 700; font-size: 11px; border-right: 2px solid #10b981; padding-right: 3px; }
     .ms-pill[data-style="wordpop"] .mp { background: linear-gradient(135deg, #1a1505, #0f0f0f); }
@@ -1043,16 +1054,16 @@
           <div class="modal-styles-wrap">
           <div class="modal-styles" id="modal-style-btns">
             <button class="ms-pill" data-style="none" onclick="V2.setClipStyle('none')"><div class="mp"><span class="mt">—</span></div><span>Aucun</span></button>
-            <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Wow</span></div><span>Bold</span></button>
-            <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Karaoke</span></button>
-            <button class="ms-pill active" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt" style="font-weight:900">W<span style="color:#3BFF2F">ow</span></span></div><span>Punch</span></button>
-            <button class="ms-pill" data-style="highlight" onclick="V2.setClipStyle('highlight')"><div class="mp"><span class="mt" style="font-family:'Poppins',sans-serif;font-weight:600">W<span style="color:#10ACF9">ow</span></span></div><span>Focus</span></button>
+            <button class="ms-pill" data-style="bold" onclick="V2.setClipStyle('bold')"><div class="mp"><span class="mt">Clip</span></div><span>Bold</span></button>
+            <button class="ms-pill" data-style="karaoke" onclick="V2.setClipStyle('karaoke')"><div class="mp"><span class="mt">Cl<span class="hl">ip</span></span></div><span>Karaoke</span></button>
+            <button class="ms-pill active" data-style="submagic" onclick="V2.setClipStyle('submagic')"><div class="mp"><span class="mt">CL<span class="hl">IP</span></span></div><span>Punch</span></button>
+            <button class="ms-pill" data-style="highlight" onclick="V2.setClipStyle('highlight')"><div class="mp"><span class="mt">Cl<span class="hl">ip</span></span></div><span>Focus</span></button>
             <button class="ms-pill ms-more-btn" onclick="V2.toggleMoreStyles()"><div class="mp"><span class="mt" style="font-size:18px;color:#888">+</span></div><span>Plus</span></button>
-            <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Wow</span></div><span>Typewriter</span></button>
-            <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">W<span class="hl">ow</span></span></div><span>Word Pop</span></button>
-            <button class="ms-pill ms-extra" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Wow</span></div><span>Slide</span></button>
-            <button class="ms-pill ms-extra" data-style="shake" onclick="V2.setClipStyle('shake')"><div class="mp"><span class="mt">Wow</span></div><span>Shake</span></button>
-            <button class="ms-pill ms-extra" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Wow</span></div><span>Color Wave</span></button>
+            <button class="ms-pill ms-extra" data-style="typewriter" onclick="V2.setClipStyle('typewriter')"><div class="mp"><span class="mt">Clip</span></div><span>Typewriter</span></button>
+            <button class="ms-pill ms-extra" data-style="wordpop" onclick="V2.setClipStyle('wordpop')"><div class="mp"><span class="mt">Cl<span class="hl">ip</span></span></div><span>Word Pop</span></button>
+            <button class="ms-pill ms-extra" data-style="slide" onclick="V2.setClipStyle('slide')"><div class="mp"><span class="mt">Clip</span></div><span>Slide</span></button>
+            <button class="ms-pill ms-extra" data-style="shake" onclick="V2.setClipStyle('shake')"><div class="mp"><span class="mt">Clip</span></div><span>Shake</span></button>
+            <button class="ms-pill ms-extra" data-style="wave" onclick="V2.setClipStyle('wave')"><div class="mp"><span class="mt">Clip</span></div><span>Color Wave</span></button>
           </div>
           </div>
           <div style="font-size:11px;color:var(--texte-muted);margin-top:8px;margin-bottom:12px">💡 <strong style="color:var(--texte-doux)">Glisse l'image</strong> pour cadrer sur la personne · <strong style="color:var(--texte-doux)">Glisse</strong> les sous-titres pour les déplacer</div>
