@@ -4357,7 +4357,7 @@ async def process_clip_endpoint(
                     ass_lines.extend(_hl_lines)
                     segs = []
                 else:
-                    logger.warning("[subs] highlight sans timings mot par mot — repli sur l'affichage simple")
+                    logger.warning("[subs] highlight n'a produit aucun evenement (segments sans texte ?) — repli sur l'affichage simple")
 
             # Couleurs karaoke alternées par segment (jaune/vert — identique preview)
             _karo_colors = ["&H0000E0FF&", "&H0081B910&"]  # #FFE000 jaune, #10b981 vert

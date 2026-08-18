@@ -190,7 +190,30 @@ def _mots_du_segment(seg):
             debut = precedent
         sortie.append({"mot": mot, "start": debut, "end": float(w.get("end", debut))})
         precedent = debut
-    return sortie
+    if sortie:
+        return sortie
+
+    # REPLI — meme regle que le style Punch (voir _sm_t dans main.py) : quand les timings mot
+    # par mot manquent, on repartit les mots egalement sur la duree du segment plutot que de
+    # renoncer au style.
+    #
+    # Ils manquent pour de vrai, et pas rarement : sur un lien YouTube, la transcription vient
+    # des sous-titres publics de la plateforme, qui n'ont AUCUN timing par mot. Sans ce repli,
+    # « Focus » etait purement inerte sur le chemin le plus utilise du produit, et le serveur
+    # comme le client abandonnaient en silence.
+    #
+    # La synchronisation est alors approximative — c'est le prix, et il est assume : le SPEC
+    # demandait des timings reels, mais un style qui ne s'affiche jamais vaut moins qu'un style
+    # legerement decale. Des que la transcription passe par Whisper, la branche ci-dessus reprend
+    # la main et la synchronisation redevient exacte.
+    t0 = float(seg.get("t0", 0.0))
+    t1 = float(seg.get("t1", t0))
+    brut = [m for m in str(seg.get("text", "")).split() if m.strip()]
+    if not brut or t1 <= t0:
+        return []
+    pas = (t1 - t0) / len(brut)
+    return [{"mot": m, "start": t0 + i * pas, "end": t0 + (i + 1) * pas}
+            for i, m in enumerate(brut)]
 
 
 def _cues(mots, p):

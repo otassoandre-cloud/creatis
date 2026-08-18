@@ -4646,7 +4646,24 @@ const V2 = (() => {
           const _modifieHl = segKey && opts.segEdits
             && opts.segEdits[segKey] != null
             && opts.segEdits[segKey] !== (seg.text ?? '');
-          opts._hlWords = (!_modifieHl && Array.isArray(seg.words)) ? seg.words : null;
+          opts._hlWords = (!_modifieHl && Array.isArray(seg.words) && seg.words.length)
+            ? seg.words
+            /* REPLI — même règle que le serveur (voir caption_highlight.py) et que le style
+               Punch : sans timings mot par mot, on répartit les mots également sur la durée du
+               segment au lieu de renoncer au style.
+               Ils manquent pour de vrai : sur un lien YouTube la transcription vient des
+               sous-titres publics de la plateforme, qui n'en contiennent aucun. Sans ce repli,
+               `actif` restait à -1 et AUCUN mot ne passait au bleu — l'aperçu semblait mort.
+               La synchronisation est approximative ; elle redevient exacte dès que la
+               transcription passe par Whisper, la branche ci-dessus reprenant la main. */
+            : (() => {
+                const _t = String(rawText || '').trim();
+                const _ms = _t ? _t.split(/\s+/).filter(Boolean) : [];
+                const _a = seg.start ?? 0, _b = seg.end ?? _a;
+                if (!_ms.length || !(_b > _a)) return null;
+                const _pas = (_b - _a) / _ms.length;
+                return _ms.map((m, i) => ({ word: m, start: _a + i * _pas, end: _a + (i + 1) * _pas }));
+              })();
           opts._hlBandeau = _hlBandeaux(_segments).has(_segments.indexOf(seg));
           let actif = -1;
           if (opts._hlWords && opts._hlWords.length) {
