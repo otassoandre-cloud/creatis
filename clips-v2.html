@@ -5005,7 +5005,17 @@ const V2 = (() => {
         el.style.fontWeight = '600';
         // Interligne posé en pixels, pas en multiple du corps : c'est l'écart entre les deux
         // lignes qui doit valoir 4,12 % de la hauteur, indépendamment de la taille du texte.
-        el.style.lineHeight = Math.round(HL_GAP * HL_H * sc2) + 'px';
+        /* Interligne : l'ecart voulu, MAIS jamais plus petit que le mot actif.
+           L'ecart de 4,12 % vient de la geometrie de l'export et doit etre respecte. Pose seul,
+           il donnait une boite de 53 px pour un mot actif de ~67 px : le glyphe debordait sur la
+           ligne voisine, ce qui se lit comme un texte coupe en haut et en bas.
+           Le serveur n'a pas ce probleme, il positionne chaque ligne en absolu et libass ne
+           rogne rien ; le navigateur, lui, empile selon la hauteur de ligne.
+           Punch s'en sort avec un interligne RELATIF (1.1) qui suit le corps. On garde ici
+           l'ecart mesure tant qu'il suffit, et on l'ouvre juste ce qu'il faut au-dela. */
+        el.style.lineHeight =
+          Math.max(Math.round(HL_GAP * HL_H * sc2),
+                   Math.round(fsHl * HL_ACTIVE_SCALE * 1.1)) + 'px';
         el.style.background = 'transparent';
         el.style.padding = '0';
         /* TEXTE ROGNÉ EN HAUT ET EN BAS — corrigé le 16/08/2026.
