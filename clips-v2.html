@@ -4829,6 +4829,10 @@ const V2 = (() => {
   const HL_BLUE = '#10ACF9';
   const HL_TOP = 58.4;             // % — haut des ascendantes de la ligne 1
   const HL_GAP = 0.0412;           // interligne, fraction de la hauteur
+  // Largeur utile d'une ligne, MEME valeur que MAX_LINE_W dans caption_highlight.py.
+  // Le conteneur, lui, fait 92 % de large : sans cette contrainte le navigateur repliait
+  // le texte bien plus tard que le serveur, et l'apercu ne ressemblait pas a l'export.
+  const HL_MAX_LINE_W = 0.77;
   const HL_POS_OFFSET = 53 / 1920; // écart mesuré entre le haut de boîte et les ascendantes
   // subY se compte au haut de la BOÎTE, comme partout ailleurs : c'est la valeur à poser
   // pour que les ascendantes tombent à HL_TOP.
@@ -4852,6 +4856,31 @@ const V2 = (() => {
      seuil de largeur rendait la fréquence otage du débit de parole — zéro bandeau sur un
      locuteur aux mots longs. Calculé une fois par liste de segments, puis mis en cache. */
   let _hlCache = { cle: null, set: null };
+  /* Decoupage en pages de DEUX lignes, calque sur _smPages (style Punch) et sur le
+     serveur (caption_highlight.MAX_LINES = 2, MAX_LINE_W = 0.77). On mesure la chaine
+     reelle, jamais un budget de caracteres : c'est la lecon deja payee sur Punch, ou un
+     coefficient unique s'etait revele impossible a trouver. */
+  function _hlPages(mots, corps) {
+    const ZONE = Math.round(HL_MAX_LINE_W * HL_W);
+    const pages = [];
+    let i = 0;
+    while (i < mots.length) {
+      const debut = i;
+      const lignes = [];
+      for (let k = 0; k < 2; k++) {
+        const cur = [];
+        while (i < mots.length) {
+          if (cur.length && _hlLargeur(cur.concat(mots[i]).join(' '), corps) > ZONE) break;
+          cur.push(mots[i]); i++;
+        }
+        if (cur.length) lignes.push(cur); else break;
+      }
+      if (!lignes.length) break;
+      pages.push({ l1: lignes[0], l2: lignes[1] || [], debut });
+    }
+    return pages;
+  }
+
   function _hlBandeaux(segments) {
     const cle = segments.length + '|' + (segments[0]?.start ?? 0) + '|' + (segments[segments.length-1]?.end ?? 0);
     if (_hlCache.cle === cle) return _hlCache.set;
@@ -5016,18 +5045,39 @@ const V2 = (() => {
           ? opts._hlWords.map(w => String(w.word || ''))
           : text.split(' ').filter(Boolean);
         const iActif = (opts._hlActif == null) ? -1 : opts._hlActif;
-        motsHl.forEach((m, i) => {
-          const sp = document.createElement('span');
-          sp.textContent = m;
-          if (i === iActif) {
-            sp.style.color = HL_BLUE;
-            // Agrandissement du mot actif : c'est lui, et non un mouvement, qui donne le
-            // rythme. Aucune transition — la référence change d'état sur une seule image.
-            sp.style.fontSize = Math.round(fsHl * HL_ACTIVE_SCALE) + 'px';
-          }
-          el.appendChild(sp);
-          if (i < motsHl.length - 1) el.appendChild(document.createTextNode(' '));
-        });
+
+        /* DEUX LIGNES AU PLUS, decoupees comme le serveur — et non par repli du navigateur.
+           Avant, tous les mots etaient poses dans le conteneur et le navigateur repliait sur
+           SA largeur (92 %), alors que le serveur coupe a 77 % : l'apercu produisait plus de
+           lignes que l'export et ne lui ressemblait pas. C'est exactement le probleme deja
+           resolu sur Punch avec _smPages, dont ce bloc reprend la mecanique.
+           On n'affiche que la page qui contient le mot actif : au-dela de deux lignes, la
+           suite devient une page suivante, jamais une troisieme ligne. */
+        const _pagesHl = _hlPages(motsHl, corps);
+        let _pg = _pagesHl[0] || { l1: motsHl, l2: [], debut: 0 };
+        for (const _p of _pagesHl) {
+          const _fin = _p.debut + _p.l1.length + _p.l2.length;
+          if (iActif >= _p.debut && iActif < _fin) { _pg = _p; break; }
+        }
+
+        const _poserLigne = (mots, indexDepart, avecSaut) => {
+          if (!mots.length) return;
+          if (avecSaut) el.appendChild(document.createElement('br'));
+          mots.forEach((m, k) => {
+            const sp = document.createElement('span');
+            sp.textContent = m;
+            if (indexDepart + k === iActif) {
+              sp.style.color = HL_BLUE;
+              // Agrandissement du mot actif : c'est lui, et non un mouvement, qui donne le
+              // rythme. Aucune transition — la référence change d'état sur une seule image.
+              sp.style.fontSize = Math.round(fsHl * HL_ACTIVE_SCALE) + 'px';
+            }
+            el.appendChild(sp);
+            if (k < mots.length - 1) el.appendChild(document.createTextNode(' '));
+          });
+        };
+        _poserLigne(_pg.l1, _pg.debut, false);
+        _poserLigne(_pg.l2, _pg.debut + _pg.l1.length, true);
         break;
       }
 
