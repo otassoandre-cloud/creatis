@@ -90,7 +90,17 @@ COPY watermark_base.png .
 # cassé depuis un changement YouTube du 02/08, ce qui faisait tout basculer sur le proxy payant.
 # bgutil-ytdlp-pot-provider n'est volontairement PAS mis à jour ici : le plugin doit rester
 # compatible avec le service bgutil déployé à côté, qui a son propre cycle de version.
-RUN pip install --no-cache-dir --upgrade yt-dlp yt-dlp-ejs
+# yt-dlp stable date du 04/07/2026 et n a pas bouge depuis : c est bien la derniere version
+# STABLE publiee, pas un build fige par erreur. Mais YouTube a durci sa detection debut aout,
+# et les correctifs partent en pre-versions (2026.8.4, 2026.8.16, 2026.8.17) avant d etre
+# promus. Symptomes mesures le 19/08 : « Sign in to confirm you re not a bot » sur les videos
+# longues et peu vues, et LOGIN_REQUIRED sur les six clients InnerTube — exactement ce que ces
+# correctifs visent. On prend donc la pre-version pour yt-dlp UNIQUEMENT.
+# yt-dlp-ejs reste en stable : il doit rester compatible avec le service bgutil deploye a cote,
+# qui a son propre cycle de version.
+# La version installee est exposee par /health : la verifier apres chaque deploiement.
+# Pour revenir en arriere : retirer --pre, redeployer, /health doit reafficher 2026.07.04.
+RUN pip install --no-cache-dir --upgrade yt-dlp-ejs && pip install --no-cache-dir --upgrade --pre yt-dlp
 
 ENV PORT=8080
 EXPOSE 8080
