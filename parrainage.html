@@ -278,7 +278,14 @@
     }
 
     function initialiserParrainage() {
-      const code = (user.id || user.email || '').replace(/-/g, '').substring(0, 8).toUpperCase();
+      /* Le code affilié est le préfixe de 12 caractères de l'uuid, EN MINUSCULES, tirets
+         compris — c'est le seul format que le reste du système sait relire : /api/parrainage
+         stocke `referred_by` tel quel puis le compare en égalité stricte, et admin-affiliation
+         résout le propriétaire via `id.slice(0, 12)`. La page affichait un code de 8 caractères
+         en MAJUSCULES sans tirets : les filleuls arrivés par ce lien auraient été attribués à un
+         parrain « (inconnu) » côté admin, et n'auraient jamais compté pour les paliers. */
+      const code = String(user.id || '').slice(0, 12).toLowerCase();
+      if (!code) return;
       const lien = `https://creatis.app/?ref=${code}`;
       document.getElementById('lien-parrainage').value = lien;
       chargerStats(code);
