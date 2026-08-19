@@ -1159,6 +1159,65 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     raise RuntimeError(f"Téléchargement YouTube échoué: {last_err}")
 
 
+def _section_via_proxy_direct(youtube_url: str, out_dir: Path, start: float, end: float,
+                              proxy: str, cookies_file: Optional[str]) -> str:
+    """Telecharge la section en pilotant ffmpeg NOUS-MEMES, via le proxy.
+
+    Pourquoi ne pas laisser yt-dlp le faire : `download_ranges` delegue le decoupage a ffmpeg,
+    mais yt-dlp ne lui transmet pas son proxy de facon fiable ET il avale la sortie d'erreur de
+    ffmpeg. On obtenait « ffmpeg exited with code 8 » sans jamais savoir pourquoi, et le seul
+    chemin qui aboutissait telechargeait la video ENTIERE (352 Mo mesures pour un stream de
+    67 min), ce qui epuise le forfait proxy en une trentaine de videos.
+
+    Ici l'extraction ET le telechargement passent par la MEME session proxy. C'est indispensable :
+    YouTube signe ses URLs de media POUR l'IP qui les demande, et le proxy Webshare change d'IP a
+    chaque connexion — mesure du 15/08/2026, trois appels successifs sortis par trois pays.
+
+    `-copyts` preserve les timestamps d'origine : c'est le contrat que `crop_clip` attend en
+    aval, et le meme que celui de `download_ranges`. Sans lui le fichier repartirait a zero et le
+    decoupage suivant taperait a cote.
+    """
+    import yt_dlp
+    opts = {
+        "quiet": True, "no_warnings": True, "skip_download": True,
+        "extractor_args": _yt_extractor_args(),
+        "proxy": proxy,
+        "format": "bv*[height<=720]+ba/b[height<=720]/best",
+    }
+    if cookies_file:
+        opts["cookiefile"] = cookies_file
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(youtube_url, download=False)
+
+    parts = info.get("requested_formats") or ([info] if info.get("url") else [])
+    urls = [f.get("url") for f in parts if f.get("url")]
+    if not urls:
+        raise RuntimeError("aucune URL de media extraite")
+
+    out_path = str(out_dir / "source_section.mp4")
+    duree = max(0.5, end - start)
+    cmd = ["ffmpeg", "-y", "-loglevel", "error"]
+    for u in urls[:2]:
+        cmd += ["-http_proxy", proxy, "-ss", f"{start:.3f}", "-copyts", "-i", u]
+    cmd += ["-t", f"{duree:.3f}"]
+    if len(urls) >= 2:
+        cmd += ["-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k"]
+    else:
+        cmd += ["-c", "copy"]
+    cmd += ["-avoid_negative_ts", "disabled", out_path]
+
+    r = subprocess.run(cmd, capture_output=True, timeout=600)
+    if r.returncode != 0:
+        # La stderr de ffmpeg, justement celle que yt-dlp masquait.
+        detail = (r.stdout + r.stderr).decode(errors="replace").strip()[:400]
+        raise RuntimeError(f"ffmpeg (code {r.returncode}) : {detail}")
+    if not os.path.exists(out_path) or os.path.getsize(out_path) < 10_000:
+        raise RuntimeError("section vide ou manquante")
+    mo = os.path.getsize(out_path) / 1_048_576
+    logger.info(f"[section-directe] OK {mo:.1f} Mo via proxy ({len(urls)} flux)")
+    return out_path
+
+
 def download_video_section(youtube_url: str, out_dir: Path, start: float, end: float) -> str:
     """Télécharge uniquement la section [start, end] — ~50x plus rapide qu'un téléchargement complet.
     Les timestamps du fichier résultant sont les timestamps originaux de la vidéo.
@@ -1179,6 +1238,23 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     ]
 
     last_err = None
+
+    # Chemin LEGER via proxy, tente EN PREMIER quand un proxy est configure.
+    # Place devant la cascade historique et non a sa place : s'il echoue, la suite se deroule
+    # exactement comme avant, donc le pire cas est le comportement actuel plus une ligne de log.
+    # Il repond au probleme central du 19/08 : sans cookies valides, l'IP datacenter est
+    # bot-bloquee sur presque tout, et le seul secours qui aboutissait telechargeait la video
+    # entiere — 352 Mo pour un stream de 67 min, soit une trentaine de videos par forfait proxy.
+    if RESIDENTIAL_PROXY_URL:
+        _px = _proxy_session()
+        try:
+            logger.info(f"section directe {start:.0f}s-{end:.0f}s via proxy")
+            return _section_via_proxy_direct(youtube_url, out_dir, start, end, _px, cookies_file)
+        except Exception as e:
+            # On journalise en clair : c'est precisement l'information que yt-dlp masquait.
+            logger.warning(f"[section-directe] echec, on repasse par la cascade : {str(e)[:300]}")
+            last_err = e
+
     for attempt in attempts:
         try:
             opts = {
