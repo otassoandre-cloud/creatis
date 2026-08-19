@@ -257,7 +257,7 @@ module.exports = async (req, res) => {
         const invoice = event.data.object;
         if (invoice.billing_reason === 'subscription_create') break; // Déjà géré par checkout.session.completed
 
-        const subscriptionId = invoice.subscription;
+        const { subscriptionId } = await extraireInfosFacture(invoice);
         const customerId = invoice.customer;
         const email = invoice.customer_email;
 
@@ -268,6 +268,10 @@ module.exports = async (req, res) => {
             plan_expires_at: null, // Toujours actif
             updated_at: new Date().toISOString()
           });
+        }
+        // Le PATCH est indexé sur l'abonnement, pas sur l'email : sans id, il matcherait
+        // `stripe_subscription_id=eq.null` et repasserait n'importe quelle ligne orpheline en actif.
+        if (subscriptionId) {
           await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
             status: 'active',
             updated_at: new Date().toISOString()
@@ -325,15 +329,15 @@ module.exports = async (req, res) => {
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         const customerId = invoice.customer;
-        const subscriptionId = invoice.subscription;
         const billingReason = invoice.billing_reason; // 'subscription_create' = 1ère souscription, 'subscription_cycle' = renouvellement
         const nouvelleSouscription = billingReason === 'subscription_create';
 
+        const { subscriptionId, paymentIntentId, priceId } = await extraireInfosFacture(invoice);
         const email = await resoudreEmail(invoice.customer_email, customerId);
-        const { raison, code } = await lireErreurPaiement(invoice.payment_intent);
+        const { raison, code } = await lireErreurPaiement(paymentIntentId);
         const montant = (invoice.amount_due || 0) / 100;
         const devise = (invoice.currency || 'eur').toUpperCase();
-        const plan = getPlanFromPriceId(invoice.lines?.data?.[0]?.price?.id);
+        const plan = getPlanFromPriceId(priceId);
 
         console.log(`[Webhook] ⚠️ Paiement échoué — ${email || customerId} — ${raison} (${code})`);
 
@@ -353,7 +357,7 @@ module.exports = async (req, res) => {
         });
 
         // Un renouvellement échoué → l'abonnement existant passe en past_due
-        if (!nouvelleSouscription) {
+        if (!nouvelleSouscription && subscriptionId) {
           await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
             status: 'past_due',
             updated_at: new Date().toISOString()
@@ -451,6 +455,43 @@ async function resoudreEmail(emailConnu, customerId) {
   } catch (e) {
     console.warn('[Webhook] Impossible de récupérer le customer:', e.message);
     return null;
+  }
+}
+
+/* Stripe a retiré `payment_intent`, `subscription` et `lines[].price` de l'objet Invoice à partir
+   de l'API 2025-06-30.basil. Le compte reçoit désormais les webhooks dans cette version-là, alors
+   que ce fichier lisait encore l'ancien format : résultat, TOUTES les lignes `paiements_echoues`
+   étaient enregistrées avec subscription_id null, plan null et code_erreur « unknown » — on ne
+   savait plus pourquoi un paiement échouait, et le passage en `past_due` ne matchait plus rien.
+
+   On lit donc les deux formats. Si le payload ne suffit pas, on relit la facture via le SDK : il
+   est épinglé sur l'API 2023-10-16, qui renvoie encore les champs à plat. */
+async function extraireInfosFacture(invoice) {
+  const depuisPayload = {
+    subscriptionId: invoice.subscription
+      || invoice.parent?.subscription_details?.subscription
+      || null,
+    paymentIntentId: invoice.payment_intent
+      || invoice.payments?.data?.[0]?.payment?.payment_intent
+      || null,
+    priceId: invoice.lines?.data?.[0]?.price?.id
+      || invoice.lines?.data?.[0]?.pricing?.price_details?.price
+      || null
+  };
+
+  const complet = depuisPayload.subscriptionId && depuisPayload.paymentIntentId && depuisPayload.priceId;
+  if (complet || !invoice.id) return depuisPayload;
+
+  try {
+    const f = await stripe.invoices.retrieve(invoice.id);
+    return {
+      subscriptionId: depuisPayload.subscriptionId || f.subscription || null,
+      paymentIntentId: depuisPayload.paymentIntentId || f.payment_intent || null,
+      priceId: depuisPayload.priceId || f.lines?.data?.[0]?.price?.id || null
+    };
+  } catch (e) {
+    console.warn('[Webhook] Relecture facture impossible:', e.message);
+    return depuisPayload;
   }
 }
 
