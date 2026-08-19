@@ -7747,14 +7747,30 @@ const V2 = (() => {
     return new Blob([await result.arrayBuffer()], { type: 'video/mp4' });
   }
 
+  /* Definition de sortie. 1080x1920 est le format natif de TikTok, Reels et Shorts ; on
+     exportait jusqu'ici en 720x1280, donc systematiquement sous le standard des plateformes,
+     qui recompressent par-dessus. Sur mobile on reste a 720x1280 : MediaRecorder a 1080p fait
+     sauter l'onglet sur iOS et Android — meme cause que les crashs corriges le 02/07.
+
+     Le rendu continue d'etre ecrit en coordonnees 720x1280 et c'est ctx.scale() qui agrandit
+     tout uniformement. Aucune geometrie de sous-titre, de hook ou de marge ne change : c'est
+     la seule facon de monter en definition sans avoir a re-mesurer chaque style. */
+  const _EXPORT_MOBILE  = _isIOS() || /Android/i.test(navigator.userAgent);
+  const _EXPORT_SCALE   = _EXPORT_MOBILE ? 1 : 1.5;
+  const _EXPORT_W       = Math.round(720  * _EXPORT_SCALE);
+  const _EXPORT_H       = Math.round(1280 * _EXPORT_SCALE);
+  /* 4 Mbps suffisaient en 720p ; a 1080p ils produiraient des blocs dans les mouvements. */
+  const _EXPORT_BITRATE = _EXPORT_MOBILE ? 4_000_000 : 9_000_000;
+
   function renderSubsOnCanvas(videoBlob, segments, clipStart, clipEnd, opts, onPct) {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       video.playsInline = true;
       video.muted = true;
       const canvas = document.createElement('canvas');
-      canvas.width = 720; canvas.height = 1280;
+      canvas.width = _EXPORT_W; canvas.height = _EXPORT_H;
       const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.scale(_EXPORT_SCALE, _EXPORT_SCALE); // apres width : la fixer reinitialise le contexte
       const url = URL.createObjectURL(videoBlob);
 
       video.onloadedmetadata = () => {
@@ -7773,7 +7789,7 @@ const V2 = (() => {
 
         const mimeType = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
           .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-        const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_000_000 });
+        const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: _EXPORT_BITRATE });
         const chunks = [];
         rec.ondataavailable = e => { if (e.data?.size > 0) chunks.push(e.data); };
         rec.onstop = async () => {
@@ -7847,8 +7863,9 @@ const V2 = (() => {
       const video = document.createElement('video');
       video.muted = true; video.playsInline = true;
       const canvas = document.createElement('canvas');
-      canvas.width = 720; canvas.height = 1280;
+      canvas.width = _EXPORT_W; canvas.height = _EXPORT_H;
       const ctx = canvas.getContext('2d');
+      ctx.scale(_EXPORT_SCALE, _EXPORT_SCALE); // apres width : la fixer reinitialise le contexte
 
       video.onloadedmetadata = () => {
         const stream = canvas.captureStream(30);
@@ -7864,7 +7881,7 @@ const V2 = (() => {
 
         const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
           .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: _EXPORT_BITRATE });
         const chunks = [];
         rec.ondataavailable = e => { if (e.data?.size > 0) chunks.push(e.data); };
         rec.onstop = () => {

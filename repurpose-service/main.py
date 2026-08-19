@@ -981,12 +981,15 @@ def _ytapi_quota_ok() -> bool:
     return True
 
 
-def _ytapi_cached_video(video_id: str, fmt: str = "480") -> Optional[Path]:
+def _ytapi_cached_video(video_id: str, fmt: str = "720") -> Optional[Path]:
     """Télécharge la vidéo complète via l'API tierce UNE FOIS et la met en cache par video_id —
-    réutilisée par tous les segments/previews/exports (économise le quota API). None si indispo."""
+    réutilisée par tous les segments/previews/exports (économise le quota API). None si indispo.
+    720p et non 480p : un crop 9:16 dans du 480p ne fait que ~270x480 vrais pixels, agrandis
+    ensuite a 1080x1920 a l'export — le flou etait visible. Le format fait partie de la cle de
+    cache, sinon un fichier 480p deja sur le disque serait resservi malgre ce changement."""
     if not YT_DOWNLOAD_API_KEY:
         return None
-    cache = WORK_DIR / f"ytapi_{video_id}.mp4"
+    cache = WORK_DIR / f"ytapi_{video_id}_{fmt}.mp4"
     if cache.exists() and cache.stat().st_size > 10_000:
         return cache
     title = _ytapi_fetch(f"https://www.youtube.com/watch?v={video_id}", fmt, cache)
@@ -1341,7 +1344,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     _mv = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
     _vid = _mv.group(1) if _mv else None
     if _vid and YT_DOWNLOAD_API_KEY:
-        cached = _ytapi_cached_video(_vid, "480")
+        cached = _ytapi_cached_video(_vid, "720")
         if cached and cached.exists():
             api_seg = out_dir / "source_apiseg.mp4"
             r = subprocess.run(
@@ -3843,7 +3846,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
                 RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
                 cached = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _ytapi_cached_video(video_id, "480"))
+                    None, lambda: _ytapi_cached_video(video_id, "720"))
                 if not cached or not cached.exists():
                     raise RuntimeError("yt-dlp et API de secours ont tous deux échoué")
                 RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
@@ -4280,7 +4283,7 @@ async def process_clip_endpoint(
             elif YT_DOWNLOAD_API_KEY and re.fullmatch(r"[a-zA-Z0-9_-]{11}", video_id):
                 # Source YouTube (pas d'upload) → récupère la vidéo complète via l'API (cache partagé)
                 api_video = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _ytapi_cached_video(video_id, "480"))
+                    None, lambda: _ytapi_cached_video(video_id, "720"))
                 if not api_video or not api_video.exists():
                     raise HTTPException(400, f"Téléchargement API échoué pour {video_id}")
                 shutil.copy2(str(api_video), str(in_path))
