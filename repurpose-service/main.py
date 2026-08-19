@@ -400,8 +400,43 @@ class TranscribeRequest(BaseModel):
 
 _COOKIES_FILE: Optional[str] = None
 
+# Cookies constates INVALIDES par YouTube lui-meme. Tant que ce drapeau est leve, on cesse de
+# les envoyer pour le reste de la vie du processus.
+#
+# Pourquoi c est vital : des cookies perimes ne sont pas seulement inutiles, ils sont NUISIBLES.
+# yt-dlp les transmet, YouTube rejette alors la SESSION ENTIERE, et tous les clients tombent —
+# y compris ceux qui auraient tres bien fonctionne en anonyme. Mesure du 19/08/2026 : cinq
+# videos qui passaient la veille sont devenues inaccessibles en 24 h, avec ce message repete
+# six fois dans les logs :
+#   « The provided YouTube account cookies are no longer valid. They have likely been rotated
+#     in the browser as a security measure. »
+# Sans ce garde-fou, chaque tentative de chaque chemin repart avec le meme poison.
+_COOKIES_MORTS = False
+
+
+def _detecter_cookies_morts(texte: str) -> bool:
+    """Leve le drapeau si YouTube annonce que les cookies ne sont plus valides.
+
+    On se fie au message de YouTube, pas a une heuristique : c est lui qui sait. Un simple
+    bot-check passager ne doit PAS declencher l abandon, sinon on se priverait des cookies
+    valides au premier hoquet.
+    """
+    global _COOKIES_MORTS
+    if _COOKIES_MORTS or not texte:
+        return _COOKIES_MORTS
+    t = str(texte).lower()
+    if "cookies are no longer valid" in t or "cookies are no longer working" in t:
+        _COOKIES_MORTS = True
+        logger.error("[cookies] YouTube les declare invalides — abandon pour ce processus, "
+                     "les tentatives suivantes repartiront en anonyme")
+    return _COOKIES_MORTS
+
+
 def _get_cookies_file() -> Optional[str]:
     global _COOKIES_FILE
+    # Des cookies morts empoisonnent la session : mieux vaut aucun cookie.
+    if _COOKIES_MORTS:
+        return None
     if _COOKIES_FILE and os.path.exists(_COOKIES_FILE):
         return _COOKIES_FILE
     if not YOUTUBE_COOKIES:
@@ -1151,6 +1186,7 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
                     return path
             except Exception as e:
                 err_str = str(e)
+                _detecter_cookies_morts(err_str)
                 logger.warning(f"yt-dlp video [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
                 last_err = e
                 if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
@@ -1251,6 +1287,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
             logger.info(f"section directe {start:.0f}s-{end:.0f}s via proxy")
             return _section_via_proxy_direct(youtube_url, out_dir, start, end, _px, cookies_file)
         except Exception as e:
+            _detecter_cookies_morts(str(e))
             # On journalise en clair : c'est precisement l'information que yt-dlp masquait.
             logger.warning(f"[section-directe] echec, on repasse par la cascade : {str(e)[:300]}")
             last_err = e
@@ -1293,6 +1330,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
                 return path
         except Exception as e:
             err_str = str(e)
+            _detecter_cookies_morts(err_str)
             logger.warning(f"yt-dlp section [{attempt['label']}] failed: {err_str[:200]}")
             last_err = e
             if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
@@ -3782,6 +3820,9 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                         break
                 except Exception as e:
                     _err = str(e)
+                    # Chemin de l'APERCU, distinct de celui de l'export : c'est ici que l'echec
+                    # du 19/08 s'est produit, il doit donc voir les cookies morts lui aussi.
+                    _detecter_cookies_morts(_err)
                     logger.warning(f"[raw-segment] tentative {_att + 1}/{len(_seg_attempts)} ({'proxy' if _proxy else 'gratuit'}) échouée ({_err[:120]})")
                     if not _proxy and "not a bot" not in _err.lower() and "sign in" not in _err.lower():
                         # Refaire un essai gratuit identique ne sert à rien, mais le proxy doit
