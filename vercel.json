@@ -71,6 +71,8 @@
     { "src": "/studio", "dest": "/clips-v2.html" },
     { "src": "/outil-ia-createurs-contenu", "dest": "/outil-ia-createurs-contenu.html" },
     { "src": "/programme-affiliation-youtuber", "dest": "/programme-affiliation-youtuber.html" },
+    { "src": "/blog", "dest": "/blog.html" },
+    { "src": "/blog/geo-shorts-video", "dest": "/blog/geo-shorts-video.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "headers": [
