@@ -1229,17 +1229,33 @@ def _section_via_proxy_direct(youtube_url: str, out_dir: Path, start: float, end
         info = ydl.extract_info(youtube_url, download=False)
 
     parts = info.get("requested_formats") or ([info] if info.get("url") else [])
-    urls = [f.get("url") for f in parts if f.get("url")]
-    if not urls:
+    flux = [f for f in parts if f.get("url")]
+    if not flux:
         raise RuntimeError("aucune URL de media extraite")
 
     out_path = str(out_dir / "source_section.mp4")
     duree = max(0.5, end - start)
     cmd = ["ffmpeg", "-y", "-loglevel", "error"]
-    for u in urls[:2]:
-        cmd += ["-http_proxy", proxy, "-ss", f"{start:.3f}", "-copyts", "-i", u]
+    for f in flux[:2]:
+        # EN-TETES HTTP — c'etait la piece manquante. YouTube refuse de servir ses URLs de
+        # media a un client qui n'envoie pas le meme User-Agent et le meme Origin que celui
+        # ayant demande l'extraction ; ffmpeg, appele nu, n'en envoie aucun et recolte un 403,
+        # que ffmpeg rapporte en « exited with code 8 ».
+        # Mesure du 19/08/2026, chemin gratuit SANS proxy : 4 videos sur 6 en code 8. L'absence
+        # de proxy ecarte l'hypothese d'une IP differente — il ne restait que les en-tetes.
+        # yt-dlp les expose par format ; on les repasse tels quels.
+        entetes = f.get("http_headers") or info.get("http_headers") or {}
+        if entetes:
+            _crlf = chr(13) + chr(10)
+            cmd += ["-headers", "".join(k + ": " + str(v) + _crlf
+                                        for k, v in entetes.items())]
+        # Le proxy n'est ajoute QUE s'il existe : cette fonction sert aussi le chemin gratuit,
+        # ou passer "-http_proxy None" ferait echouer ffmpeg avant meme la requete.
+        if proxy:
+            cmd += ["-http_proxy", proxy]
+        cmd += ["-ss", f"{start:.3f}", "-copyts", "-i", f["url"]]
     cmd += ["-t", f"{duree:.3f}"]
-    if len(urls) >= 2:
+    if len(flux) >= 2:
         cmd += ["-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k"]
     else:
         cmd += ["-c", "copy"]
@@ -1253,7 +1269,7 @@ def _section_via_proxy_direct(youtube_url: str, out_dir: Path, start: float, end
     if not os.path.exists(out_path) or os.path.getsize(out_path) < 10_000:
         raise RuntimeError("section vide ou manquante")
     mo = os.path.getsize(out_path) / 1_048_576
-    logger.info(f"[section-directe] OK {mo:.1f} Mo via proxy ({len(urls)} flux)")
+    logger.info(f"[section-directe] OK {mo:.1f} Mo ({len(flux)} flux, proxy={'oui' if proxy else 'non'})")
     return out_path
 
 
@@ -1284,15 +1300,19 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     # Il repond au probleme central du 19/08 : sans cookies valides, l'IP datacenter est
     # bot-bloquee sur presque tout, et le seul secours qui aboutissait telechargeait la video
     # entiere — 352 Mo pour un stream de 67 min, soit une trentaine de videos par forfait proxy.
+    # GRATUIT d'abord, PROXY ensuite : le chemin direct vaut pour les deux depuis qu'il
+    # transmet les en-tetes HTTP. Le gratuit ne coute rien, on l'essaie donc en premier.
+    _essais_directs = [(None, "gratuit")]
     if RESIDENTIAL_PROXY_URL:
-        _px = _proxy_session()
+        _essais_directs.append((_proxy_session(), "proxy"))
+    for _px, _quoi in _essais_directs:
         try:
-            logger.info(f"section directe {start:.0f}s-{end:.0f}s via proxy")
+            logger.info(f"section directe {start:.0f}s-{end:.0f}s ({_quoi})")
             return _section_via_proxy_direct(youtube_url, out_dir, start, end, _px, cookies_file)
         except Exception as e:
             _detecter_cookies_morts(str(e))
             # On journalise en clair : c'est precisement l'information que yt-dlp masquait.
-            logger.warning(f"[section-directe] echec, on repasse par la cascade : {str(e)[:300]}")
+            logger.warning(f"[section-directe/{_quoi}] echec : {str(e)[:300]}")
             last_err = e
 
     for attempt in attempts:
