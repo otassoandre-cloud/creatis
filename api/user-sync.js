@@ -11,6 +11,31 @@ const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 const META_PIXEL_ID = (process.env.META_PIXEL_ID || '953153460847578').trim();
 const META_CAPI_TOKEN = (process.env.META_ACCESS_TOKEN || process.env.META_CAPI_TOKEN || '').trim();
 
+/* ── Programme « publie une video, 1 mois offert » ──────────────────────────
+   Fusionne ici plutot que dans un fichier api/ dedie : Vercel Hobby plafonne a 12 Fonctions
+   Serverless (un fichier = une fonction) et le projet en avait deja 12 — un 13e fichier fait
+   echouer le deploiement en silence (le build reussit, seule l'etape "Deploying outputs" tombe
+   en erreur, sans message exploitable). Constate le 21/08/2026 en deployant ugc-croissance.js
+   seul. user-sync.js multiplexe deja des dizaines d'actions par un seul fichier, c'est le patron
+   du projet pour ce cas exact. */
+const UGC_PLATEFORMES_VALIDES = ['tiktok', 'instagram', 'youtube', 'autre'];
+const UGC_DUREE_RECOMPENSE_JOURS = 30;
+const UGC_PLAN_RECOMPENSE = 'pro'; // aligne sur la recompense du palier 5 filleuls (api/parrainage.js)
+
+function ugcDetecterPlateforme(url) {
+  const u = String(url || '').toLowerCase();
+  if (u.includes('tiktok.com')) return 'tiktok';
+  if (u.includes('instagram.com')) return 'instagram';
+  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'youtube';
+  return 'autre';
+}
+
+function ugcVerifierAdmin(req) {
+  const adminToken = (process.env.ADMIN_TOKEN || '').trim();
+  const auth = (req.headers['authorization'] || '').replace('Bearer ', '');
+  return !!adminToken && auth === adminToken;
+}
+
 async function envoyerEmailBienvenue(email) {
   if (!process.env.BREVO_API_KEY) {
     console.warn('[Email] BREVO_API_KEY manquante — bienvenue non envoyé à', email);
@@ -150,11 +175,95 @@ module.exports = async (req, res) => {
   const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires';
   // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
   // il ne doit donc pas être recalé par ce contrôle.
-  const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer';
+  const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer'
+    || action === 'ugc_soumettre' || action === 'ugc_lister' || action === 'ugc_decider';
   if (!sansIdentifiantCorps && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
     switch (action) {
+
+      // ── Soumission publique : lien de la video ──────────────────────────────
+      case 'ugc_soumettre': {
+        const url = String(req.body?.videoUrl || '').trim();
+        const mail = String(req.body?.email || '').trim();
+        if (!mail || !url) return res.status(400).json({ error: 'email et videoUrl requis' });
+        if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Lien invalide — colle l'URL complète (https://...)" });
+        const plateforme = ugcDetecterPlateforme(url);
+        if (!UGC_PLATEFORMES_VALIDES.includes(plateforme)) return res.status(400).json({ error: 'Plateforme non reconnue' });
+        try {
+          const [ligne] = await supabase('/ugc_soumissions', 'POST', {
+            user_id: req.body?.userId || null,
+            email: mail.toLowerCase(),
+            video_url: url,
+            plateforme,
+          }) || [];
+          return res.status(200).json({ ok: true, soumission: ligne });
+        } catch (e) {
+          if (/duplicate key|unique constraint/i.test(e.message)) {
+            return res.status(409).json({ error: 'Ce lien a déjà été soumis.' });
+          }
+          throw e;
+        }
+      }
+
+      // ── Liste admin (revue manuelle) ─────────────────────────────────────────
+      case 'ugc_lister': {
+        if (!ugcVerifierAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+        const statutFiltre = req.body?.statut;
+        const filtre = statutFiltre ? `&statut=eq.${encodeURIComponent(statutFiltre)}` : '';
+        const lignes = await supabase(`/ugc_soumissions?select=*&order=cree_le.desc&limit=500${filtre}`, 'GET');
+        return res.status(200).json({ soumissions: lignes || [] });
+      }
+
+      // ── Décision admin (approuver/rejeter) ───────────────────────────────────
+      case 'ugc_decider': {
+        if (!ugcVerifierAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+        const { id, decision, vues_constatees, note } = req.body || {};
+        if (!id || !['approuve', 'rejete'].includes(decision)) {
+          return res.status(400).json({ error: 'id et decision (approuve|rejete) requis' });
+        }
+        const [soumission] = await supabase(`/ugc_soumissions?id=eq.${encodeURIComponent(id)}&select=*`, 'GET') || [];
+        if (!soumission) return res.status(404).json({ error: 'Soumission introuvable' });
+        if (soumission.statut !== 'en_attente') return res.status(409).json({ error: `Déjà traitée (${soumission.statut})` });
+
+        await supabase(`/ugc_soumissions?id=eq.${encodeURIComponent(id)}`, 'PATCH', {
+          statut: decision,
+          vues_constatees: vues_constatees != null ? Number(vues_constatees) : null,
+          note_admin: note || null,
+          traite_le: new Date().toISOString(),
+        });
+
+        if (decision === 'approuve') {
+          if (soumission.user_id) {
+            const expire = new Date(Date.now() + UGC_DUREE_RECOMPENSE_JOURS * 86400000).toISOString();
+            // On ne touche QUE plan + plan_expires_at — jamais stripe_customer_id ni
+            // stripe_subscription_id : le webhook Stripe reste seul maître de ces deux champs,
+            // au cas où la personne aurait par ailleurs un vrai abonnement en cours.
+            await supabase(`/users?id=eq.${encodeURIComponent(soumission.user_id)}`, 'PATCH', {
+              plan: UGC_PLAN_RECOMPENSE,
+              plan_expires_at: expire,
+              updated_at: new Date().toISOString(),
+            });
+          }
+          // Le formulaire promet explicitement « tu recevras un email ». Non bloquant : une
+          // panne d'envoi ne doit jamais faire échouer l'approbation, le mois gratuit est déjà
+          // posé au moment où ce bloc s'exécute.
+          if (process.env.BREVO_API_KEY) {
+            fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+              body: JSON.stringify({
+                sender: { name: 'Créatis', email: 'contact@creatis.app' },
+                to: [{ email: soumission.email }],
+                subject: 'Ta vidéo est validée — 1 mois Pro offert 🎬',
+                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Bien joué !</h2><p style="line-height:1.7;margin:0 0 16px">Ta vidéo a été validée — ton compte Créatis passe en <strong>Pro pendant un mois</strong>, sans rien payer.</p><p style="line-height:1.7;margin:0 0 20px">Tu as accès à 150 clips par mois et tous les outils IA jusqu'au <strong>${new Date(Date.now() + UGC_DUREE_RECOMPENSE_JOURS * 86400000).toLocaleDateString('fr-FR')}</strong>.</p><a href="https://creatis.app/studio" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px;margin:0 0 24px">Aller sur mes clips →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`,
+              }),
+            }).catch(e => console.error('[ugc_decider] email approbation échoué:', e.message));
+          }
+        }
+
+        return res.status(200).json({ ok: true });
+      }
 
       case 'get': {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
@@ -385,7 +494,7 @@ module.exports = async (req, res) => {
       }
 
       /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'était
-         écrit par AUCUN chemin actif avant le programme UGC (api/ugc-croissance.js) : un
+         écrit par AUCUN chemin actif avant le programme UGC (case 'ugc_decider' ci-dessus) : un
          abonnement Stripe réel pose toujours plan_expires_at à null (« toujours actif », voir
          api/stripe-webhook.js) et se désactive par l'événement customer.subscription.deleted, pas
          par une date. Cette action ne peut donc JAMAIS toucher un abonnement payant en cours —

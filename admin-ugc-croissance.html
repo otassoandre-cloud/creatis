@@ -108,7 +108,11 @@
       const token = getToken(forcerPrompt);
 
       try {
-        const res = await fetch('/api/ugc-croissance?admin=1', { headers: { Authorization: 'Bearer ' + token } });
+        const res = await fetch('/api/user-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ action: 'ugc_lister' }),
+        });
 
         if (res.status === 401) {
           sessionStorage.removeItem('creatis_admin_token');
@@ -212,10 +216,10 @@
       if (carte) carte.innerHTML = '<span class="ugc-note">Traitement…</span>';
 
       try {
-        const res = await fetch('/api/ugc-croissance?admin=1', {
+        const res = await fetch('/api/user-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({ id, decision, vues_constatees, note }),
+          body: JSON.stringify({ action: 'ugc_decider', id, decision, vues_constatees, note }),
         });
         const data = await res.json();
         if (!res.ok) { alert('Erreur : ' + (data.error || res.status)); return charger(); }
