@@ -120,9 +120,9 @@
     <div class="success-plan">
       <div>
         <div class="success-plan-nom" id="plan-nom">Pro</div>
-        <div class="success-plan-prix" id="plan-desc">Générations illimitées · 30 miniatures/mois</div>
+        <div class="success-plan-prix" id="plan-desc">Activation en cours…</div>
       </div>
-      <span id="plan-prix" style="font-size:18px;font-weight:800;color:var(--texte);">19€/mois</span>
+      <span id="plan-prix" style="font-size:18px;font-weight:800;color:var(--texte);"></span>
     </div>
 
     <div class="promo-box" id="promo-box">
@@ -135,23 +135,26 @@
     </div>
 
     <div class="next-steps">
-      <div class="next-steps-titre">3 choses à faire maintenant</div>
+      <div class="next-steps-titre">La suite, maintenant</div>
       <div class="next-step">
         <span class="step-num">1</span>
-        <span class="step-text"><strong>Renseigne ta chaîne</strong> dans le dashboard — les agents s'adaptent à ton contenu</span>
+        <span class="step-text"><strong>Télécharge les clips que tu viens de préparer</strong> — ils t'attendent, réglages compris</span>
       </div>
       <div class="next-step">
         <span class="step-num">2</span>
-        <span class="step-text"><strong>Lance ton premier agent Pro</strong> — essaie "Prospection Sponsors" avec tes vraies stats</span>
+        <span class="step-text"><strong>Publie le meilleur en premier</strong> — le score de chaque clip te dit lequel a le plus de chances de percer</span>
       </div>
       <div class="next-step">
         <span class="step-num">3</span>
-        <span class="step-text" id="step-miniatures"><strong>Génère tes miniatures</strong> ce mois avec l'agent Miniature Pro</span>
+        <span class="step-text" id="step-miniatures"><strong>Analyse ta prochaine vidéo</strong> — colle une URL YouTube, les clips arrivent en quelques minutes</span>
       </div>
     </div>
 
-    <a href="app.html" class="btn-cta">
-      ✨ Accéder à l'application →
+    <a href="/studio" class="btn-cta" id="cta-principal">
+      ⬇️ Télécharger mes clips →
+    </a>
+    <a href="app.html" id="cta-secondaire" style="display:block;text-align:center;font-size:13px;color:var(--texte-muted);text-decoration:none;margin-top:12px;">
+      Ou ouvrir le tableau de bord et les agents IA
     </a>
 
     <!-- Bloc affiliation post-paiement -->
@@ -256,22 +259,27 @@
       if (planConfig && plan !== 'gratuit') {
         document.getElementById('plan-nom').textContent = planConfig.nom;
         document.getElementById('plan-desc').textContent = planConfig.description;
-        document.getElementById('plan-prix').textContent = `${planConfig.prix}€/mois`;
+        let _annuel = false;
+        try { _annuel = !!(JSON.parse(sessionStorage.getItem('creatis_paiement') || '{}')?.annuel); } catch {}
+        const _prix = _annuel ? (planConfig.prixAnnuel || planConfig.prix) : planConfig.prix;
+        document.getElementById('plan-prix').textContent =
+          `${String(_prix).replace('.', ',')}€${_annuel ? '/an' : '/mois'}`;
         document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Plan activé — accès complet débloqué</span>';
 
         /* Meta Pixel — Purchase (une seule fois par session) */
         if (typeof fbq !== 'undefined' && !sessionStorage.getItem('purchase_tracked')) {
           fbq('track', 'Purchase', {
-            value: planConfig.prix,
+            value: _prix,
             currency: 'EUR',
             content_name: plan,
             content_type: 'subscription'
           });
           sessionStorage.setItem('purchase_tracked', '1');
         }
-        const miniQ = planConfig.miniatures > 0 ? planConfig.miniatures : null;
-        if (miniQ && document.getElementById('step-miniatures')) {
-          document.getElementById('step-miniatures').innerHTML = `<strong>Génère ${miniQ} miniatures</strong> ce mois avec l'agent Miniature Pro`;
+        const _v = planConfig.videos;
+        if (_v && document.getElementById('step-miniatures')) {
+          document.getElementById('step-miniatures').innerHTML =
+            `<strong>Analyse ta prochaine vidéo</strong> — ${_v} par mois incluses, colle une URL YouTube et les clips arrivent`;
         }
       } else {
         document.getElementById('sync-status').innerHTML = '<span style="color:var(--vert);">✅ Activation confirmée</span>';

@@ -84,6 +84,7 @@
       margin-bottom: 32px; transition: color .15s;
     }
     .paiement-back:hover { color: var(--texte); }
+    .paiement-back-mobile { display: none; }
 
     /* Colonne droite — formulaire Stripe */
     .paiement-form {
@@ -127,15 +128,66 @@
       font-size: 14px; color: #f87171; display: none;
     }
 
+    /* Continuite avec l'ecran d'ou vient la personne : elle a clique sur « telecharger mes
+       clips », pas sur « souscrire un abonnement ». Le rappel se fait ici, en haut du recap. */
+    .recap-continuite {
+      display: flex; gap: 10px; align-items: flex-start;
+      background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.22);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 20px;
+      font-size: 13px; color: var(--texte-doux); line-height: 1.45;
+    }
+    .recap-continuite strong { color: var(--texte); font-weight: 700; }
+
+    /* Changer d'offre sans quitter la page : quelqu'un que le prix arrete repartait, alors
+       qu'il lui suffisait de voir le palier en dessous. */
+    .autres-plans {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--bordure);
+      font-size: 12.5px; color: var(--texte-muted); line-height: 1.7;
+    }
+    .autres-plans a {
+      display: inline-block; color: var(--vert); font-weight: 600; text-decoration: none;
+      border-bottom: 1px solid rgba(16,185,129,0.35); padding-bottom: 1px;
+    }
+    .autres-plans a:hover { border-bottom-color: var(--vert); }
+    .autres-plans-titre { display: block; color: var(--texte-muted); margin-bottom: 6px; font-weight: 600; }
+
+    /* Rappel du prix au-dessus du formulaire, visible seulement quand le recap passe SOUS le
+       formulaire (mobile) : personne ne doit saisir sa carte sans voir ce qu'il paie. */
+    .resume-mobile { display: none; }
+    .resume-mobile-ligne {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      background: var(--bg-card); border: 1px solid var(--bordure);
+      border-radius: 12px; padding: 12px 16px; margin-bottom: 20px;
+    }
+    .resume-mobile-nom { font-size: 14px; font-weight: 700; color: var(--texte); }
+    .resume-mobile-prix { font-size: 18px; font-weight: 800; color: var(--texte); }
+    .resume-mobile-prix small { font-size: 11px; color: var(--texte-muted); font-weight: 500; }
+
+    /* Reassurance a l'endroit ou l'hesitation se produit : sous les champs de carte. */
+    .paiement-garanties {
+      display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center;
+      margin-top: 22px; font-size: 12px; color: var(--texte-muted);
+    }
+    .paiement-garantie { display: inline-flex; align-items: center; gap: 6px; }
+
     /* Responsive */
     @media (max-width: 900px) {
       .paiement-layout { grid-template-columns: 1fr; }
-      .paiement-recap { border-right: none; border-bottom: 1px solid var(--bordure); padding: 32px 24px; }
-      .paiement-form { padding: 32px 24px; }
+      /* Le formulaire passe EN PREMIER. Avec le recap au-dessus, les champs de carte
+         tombaient sous la ligne de flottaison : il fallait scroller pour comprendre qu'il y
+         avait quelque chose a remplir. */
+      .paiement-form  { order: 1; padding: 28px 24px; }
+      .paiement-recap { order: 2; border-right: none; border-top: 1px solid var(--bordure); padding: 28px 24px; }
+      .paiement-form-inner { max-width: none; }
+      .resume-mobile { display: block; }
+      .paiement-back-mobile { display: inline-flex; }
+      .paiement-recap .paiement-back { display: none; }
+      .paiement-logo { display: none; }
       .recap-securite { display: none; }
+      .paiement-back { margin-bottom: 20px; }
     }
     @media (max-width: 480px) {
-      .paiement-recap, .paiement-form { padding: 24px 16px; }
+      .paiement-recap, .paiement-form { padding: 22px 16px; }
       .recap-prix-final { font-size: 26px; }
     }
   </style>
@@ -166,6 +218,11 @@
 
     <div class="paiement-logo">Créatis<span>.</span></div>
 
+    <div class="recap-continuite" id="recap-continuite">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" style="flex-shrink:0;margin-top:1px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span><strong>Tes clips t'attendent.</strong> Le téléchargement se débloque dès que le paiement est validé — tu reviens directement dessus.</span>
+    </div>
+
     <div class="recap-plan">
       <div class="recap-plan-badge">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -186,28 +243,13 @@
       <div class="recap-promo" style="display:none"></div>
     </div>
 
-    <div class="recap-features">
-      <div class="recap-feature">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        10 agents IA spécialisés YouTube
-      </div>
-      <div class="recap-feature">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        30 miniatures HD avec gpt-image-1
-      </div>
-      <div class="recap-feature">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Générations illimitées
-      </div>
-      <div class="recap-feature">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Agents adaptés à ta chaîne YouTube
-      </div>
-      <div class="recap-feature">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Résiliable à tout moment
-      </div>
-    </div>
+    <!-- Rempli par le script : la liste depend du plan choisi et sort de CONFIG.PLANS.
+         Elle etait codee en dur et decrivait l'ancien produit (« 10 agents » — il y en a huit,
+         « generations illimitees » — contredit par le quota affiche juste au-dessus), et elle
+         etait IDENTIQUE pour le Starter et le Pro. -->
+    <div class="recap-features" id="recap-features"></div>
+
+    <div class="autres-plans" id="autres-plans" style="display:none"></div>
 
     <div class="recap-securite">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -218,8 +260,21 @@
   <!-- Colonne droite -->
   <div class="paiement-form">
     <div class="paiement-form-inner">
-      <div class="paiement-form-titre">Finaliser votre abonnement</div>
-      <div class="paiement-form-sous">Vos informations de paiement sont chiffrées et sécurisées.</div>
+      <a href="index.html" class="paiement-back paiement-back-mobile">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Retour
+      </a>
+      <!-- Tutoiement : c'est celui de tout le reste du produit. Le vouvoiement n'apparaissait
+           qu'ici, et cette rupture de ton se lit comme un changement de site au moment de payer. -->
+      <div class="paiement-form-titre">Débloque le téléchargement</div>
+      <div class="paiement-form-sous">Paiement sécurisé par Stripe. Tes clips restent exactement comme tu les as réglés.</div>
+
+      <div class="resume-mobile">
+        <div class="resume-mobile-ligne">
+          <span class="resume-mobile-nom" id="resume-mobile-nom">Créatis Pro</span>
+          <span class="resume-mobile-prix" id="resume-mobile-prix">14€<small>/mois</small></span>
+        </div>
+      </div>
 
       <div class="paiement-error" id="paiement-error"></div>
 
@@ -228,6 +283,21 @@
           <div class="paiement-spinner"></div>
           Chargement du formulaire…
         </div>
+      </div>
+
+      <div class="paiement-garanties">
+        <span class="paiement-garantie">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Paiement chiffré Stripe
+        </span>
+        <span class="paiement-garantie">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><polyline points="3 3 3 8 8 8"/></svg>
+          Résiliable en un clic
+        </span>
+        <span class="paiement-garantie">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Sans engagement
+        </span>
       </div>
     </div>
   </div>
@@ -242,48 +312,116 @@ document.addEventListener('DOMContentLoaded', async () => {
      grille tarifaire — donc quelqu'un dont le navigateur bloque le stockage (Safari en navigation
      privée, ITP, extension de confidentialité) ne pouvait TOUT SIMPLEMENT PAS payer, en boucle et
      sans message. Le plan étant aussi dans l'URL, ce chemin ne dépend plus du stockage. */
-  let infos = null;
+  /* Le plan de l'URL fait FOI, le sessionStorage ne sert plus qu'à récupérer l'identité.
+     Avant, c'était l'inverse : le stockage gagnait, donc changer d'offre depuis cette page
+     (les liens « autre plan » plus bas) rechargeait la page… avec l'ancien plan. Et l'URL
+     porte tout ce qu'il faut, ce qui garde le paiement possible quand le navigateur bloque
+     le stockage — Safari en navigation privée, ITP, extension de confidentialité. */
+  const q = new URLSearchParams(window.location.search);
+  let stock = null;
   try {
     const raw = sessionStorage.getItem('creatis_paiement');
-    if (raw) infos = JSON.parse(raw);
+    if (raw) stock = JSON.parse(raw);
   } catch (e) { console.warn('[paiement] sessionStorage illisible :', e?.message); }
 
-  if (!infos?.priceId) {
-    const p = new URLSearchParams(window.location.search);
-    const planUrl = p.get('plan') || 'pro';
-    const annuelUrl = p.get('annuel') === '1';
-    const conf = CONFIG.PLANS?.[planUrl];
-    const pid = annuelUrl ? (conf?.stripeIdAnnuel || conf?.stripeId) : conf?.stripeId;
-    if (!pid) { window.location.href = 'index.html#tarifs'; return; }
-    let u = {};
-    try { u = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch {}
-    infos = { priceId: pid, plan: planUrl, annuel: annuelUrl,
-              userId: u.id || u.email || null, userEmail: u.email || null };
-    console.log('[paiement] reconstruit depuis l\'URL — plan', planUrl, annuelUrl ? '(annuel)' : '(mensuel)');
-  }
+  const planUrl = q.get('plan');
+  let plan, annuel;
+  if (planUrl)            { plan = planUrl;            annuel = q.get('annuel') === '1'; }
+  else if (stock?.priceId){ plan = stock.plan || 'pro'; annuel = !!stock.annuel; }
+  else                    { plan = 'pro';               annuel = false; }
 
-  const { priceId, plan, annuel, userId, userEmail } = infos;
-
-  // Récap piloté par CONFIG.PLANS — un seul endroit à modifier quand les prix bougent.
   const planConf = (CONFIG.PLANS && CONFIG.PLANS[plan]) || CONFIG.PLANS.pro;
+  let priceId = annuel ? (planConf?.stripeIdAnnuel || planConf?.stripeId) : planConf?.stripeId;
+  if (!priceId && stock?.priceId) priceId = stock.priceId;
+  if (!priceId) { window.location.href = 'index.html#tarifs'; return; }
+
+  let u = {};
+  try { u = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch {}
+  const userId    = stock?.userId    || u.id || u.email || null;
+  const userEmail = stock?.userEmail || u.email || null;
+
   const fmtPrix = (n) => `${String(n).replace('.', ',')}€`;
+
+  // ── Récapitulatif, entièrement piloté par CONFIG.PLANS ────────────────────
+  document.title = `Paiement — Créatis ${planConf.nom}`;
   document.querySelector('.recap-plan-badge').innerHTML =
     '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Plan ' + planConf.nom;
   document.querySelector('.recap-plan-nom').textContent = `Créatis ${planConf.nom}`;
   document.querySelector('.recap-plan-desc').textContent = planConf.description;
+
+  const prixAffiche = annuel ? (planConf.prixAnnuel || 139) : planConf.prix;
   if (annuel) {
-    document.querySelector('.recap-prix-final').textContent = fmtPrix(planConf.prixAnnuel || 139);
+    const parMois = ((planConf.prixAnnuel || 139) / 12).toFixed(2);
+    document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
     document.querySelector('.recap-prix-period').textContent = '/an';
-    document.querySelector('.recap-prix-suite').textContent = 'Renouvellement annuel automatique';
+    document.querySelector('.recap-prix-suite').textContent =
+      `Soit ${fmtPrix(parMois)} par mois — deux mois offerts · renouvellement annuel`;
   } else {
-    document.querySelector('.recap-prix-final').textContent = fmtPrix(planConf.prix);
+    document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
     document.querySelector('.recap-prix-period').textContent = '/mois';
     document.querySelector('.recap-prix-suite').textContent = 'Renouvellement mensuel · résiliable à tout moment';
   }
 
+  const rmNom = document.getElementById('resume-mobile-nom');
+  const rmPrix = document.getElementById('resume-mobile-prix');
+  if (rmNom)  rmNom.textContent = `Créatis ${planConf.nom}`;
+  if (rmPrix) rmPrix.innerHTML = `${fmtPrix(prixAffiche)}<small>${annuel ? '/an' : '/mois'}</small>`;
+
+  /* Ce que le plan donne VRAIMENT, déduit des quotas de CONFIG.PLANS. Rien n'est écrit en dur :
+     c'est ce qui avait laissé « 10 agents IA » (il y en a huit), « 30 miniatures » et
+     « générations illimitées » sur la facture d'un Starter qui n'a droit à aucune des trois. */
+  const atouts = [];
+  if (planConf.clips)  atouts.push(`<strong>${planConf.clips} clips</strong> téléchargeables par mois`);
+  if (planConf.videos) atouts.push(`${planConf.videos} vidéos analysées par mois`);
+  atouts.push('Sous-titres animés incrustés et recadrage 9:16 automatique');
+  atouts.push('Export vertical prêt à publier, <strong>sans filigrane</strong>');
+  if (planConf.agents === 'tous') {
+    atouts.push('Les 8 agents IA en plus des clips : titres, miniatures, idées de vidéos…');
+    if (planConf.miniatures > 0) atouts.push(`${planConf.miniatures} miniatures HD par mois`);
+  }
+  atouts.push('Résiliable en un clic, sans engagement');
+
+  const coche = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  document.getElementById('recap-features').innerHTML =
+    atouts.map(a => `<div class="recap-feature">${coche}<span>${a}</span></div>`).join('');
+
+  /* Bascule d'offre sans quitter le tunnel. Le palier du dessous rattrape ceux que le prix
+     arrête, celui du dessus vaut mieux qu'un mensuel pour la trésorerie — dans les deux cas
+     c'est préférable à une fermeture d'onglet. */
+  const alternatives = [];
+  const cStarter = CONFIG.PLANS?.starter, cPro = CONFIG.PLANS?.pro;
+  if (plan === 'pro' && !annuel) {
+    if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — ${fmtPrix(cPro.prixAnnuel)}/an, deux mois offerts</a>`);
+    if (cStarter) alternatives.push(`<a href="?plan=starter">Il te faut moins de clips ? Starter — ${fmtPrix(cStarter.prix)}/mois, ${cStarter.clips} clips</a>`);
+  } else if (plan === 'pro' && annuel) {
+    alternatives.push(`<a href="?plan=pro">Préférer le mensuel — ${fmtPrix(cPro.prix)}/mois</a>`);
+  } else if (plan === 'starter' && cPro) {
+    alternatives.push(`<a href="?plan=pro">Passer au Pro — ${fmtPrix(cPro.prix)}/mois, ${cPro.clips} clips</a>`);
+  }
+  if (alternatives.length) {
+    const bloc = document.getElementById('autres-plans');
+    bloc.innerHTML = '<span class="autres-plans-titre">Une autre formule&nbsp;?</span>'
+                   + alternatives.map(a => a + ' →').join('<br>');
+    bloc.style.display = 'block';
+  }
+
+  /* « Retour » renvoyait sur la page d'accueil marketing. Quelqu'un qui hésite deux secondes
+     et revient en arrière y perdait les clips qu'il venait de passer plusieurs minutes à
+     préparer — et donc la raison même pour laquelle il envisageait de payer. Le marqueur posé
+     par le studio avant la redirection dit exactement où le ramener ; on se contente de le
+     LIRE, c'est clips-v2 qui le consomme en rouvrant la bonne génération. */
   try {
-    const currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}');
-    const _corps = JSON.stringify({ priceId, plan, annuel, userId, userEmail: userEmail || currentUser.email || null, embedded: true });
+    const depuisStudio = !!sessionStorage.getItem('creatis_retour_paiement') || !!u.id || !!u.email;
+    if (depuisStudio) {
+      document.querySelectorAll('.paiement-back').forEach(lien => {
+        lien.setAttribute('href', '/studio');
+        lien.lastChild.textContent = ' Retour à mes clips';
+      });
+    }
+  } catch (e) { /* stockage indisponible : le lien d'origine reste, jamais de lien mort */ }
+
+  try {
+    const _corps = JSON.stringify({ priceId, plan, annuel, userId, userEmail, embedded: true });
     const _appel = () => fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
