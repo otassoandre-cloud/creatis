@@ -157,7 +157,7 @@ module.exports = async (req, res) => {
       : 'https://api.together.xyz/v1/chat/completions';
     const key    = isGroq ? groqKey : togetherKey;
     const mdl    = isGroq
-      ? (model || 'llama-3.3-70b-versatile')
+      ? (model || 'openai/gpt-oss-120b')
       : 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
 
     const res = await fetch(url, {
@@ -171,6 +171,7 @@ module.exports = async (req, res) => {
   const MAX_RETRIES = 3;
   let lastErr = null;
   let groqRateLimited = false;
+  let groqIndisponible = false;   // modèle retiré, clé refusée, panne côté Groq…
 
   /* ── Tentatives Groq ── */
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -189,7 +190,13 @@ module.exports = async (req, res) => {
       if (!groqRes.ok) {
         const errData = await groqRes.json().catch(() => ({}));
         console.error('[Groq] Erreur API:', groqRes.status, errData);
-        return res.status(groqRes.status).json({ error: errData.error?.message || 'Erreur Groq API' });
+        /* Le filet Together ne se déclenchait QUE sur un 429 ou une coupure réseau. Toute autre
+           erreur repartait telle quelle vers le navigateur. Quand Groq a retiré
+           `llama-3.3-70b-versatile` de son catalogue, chaque appel a répondu 404 et les huit
+           agents ont cessé de fonctionner d'un coup — alors que Together, lui, répondait.
+           Un modèle retiré est exactement le cas où un filet doit servir. */
+        groqIndisponible = true;
+        break;
       }
 
       return res.status(200).json(await groqRes.json());
@@ -201,8 +208,8 @@ module.exports = async (req, res) => {
   }
 
   /* ── Fallback Together AI ── */
-  if (groqRateLimited && togetherKey) {
-    console.warn('[Together] Fallback activé (Groq rate-limité)');
+  if ((groqRateLimited || groqIndisponible) && togetherKey) {
+    console.warn(`[Together] Fallback activé (${groqRateLimited ? 'Groq rate-limité' : 'Groq indisponible'})`);
     try {
       const togetherRes = await callLLM('together');
       if (togetherRes.ok) return res.status(200).json(await togetherRes.json());

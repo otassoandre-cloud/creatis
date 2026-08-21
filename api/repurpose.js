@@ -7,6 +7,20 @@
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
+/* NOMS DES MODÈLES — un seul endroit, parce qu'ils meurent.
+   Vérifié en production le 21/08/2026, sur l'endpoint lui-même : `groq_status: 404`,
+   `gemini_status: 404`. Les deux premiers étages de la cascade étaient hors service et
+   l'intégralité des clips sortait du troisième filet (Together), sans que rien ne le signale.
+     - Groq a retiré `llama-3.3-70b-versatile` de son catalogue.
+     - Google répond « This model models/gemini-2.0-flash is no longer available.
+       Please update your code to use models/gemini-3.6-flash ».
+   Deux fonctions n'avaient PAS de filet et sont donc restées mortes en silence : la
+   classification du type de contenu (Groq uniquement) et le reclassement visuel des clips
+   (Gemini uniquement) — celui-là même qui devait choisir les meilleurs candidats en regardant
+   les images. Une panne de modèle doit se voir : voir `_dbg.provider`. */
+const GROQ_MODEL   = process.env.GROQ_MODEL   || 'openai/gpt-oss-120b';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
@@ -530,21 +544,46 @@ async function _mapWithConcurrency(items, limit, fn) {
 }
 
 function _buildClipsPrompt(transcript, title, n, isChunk, extraHint = '') {
-  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et sélectionne les ${n} MEILLEURS moments qui feront le plus de vues.
+  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et retiens AU MAXIMUM ${n} moments — uniquement ceux qui méritent vraiment d'être publiés.
 
-CRITÈRES DE SÉLECTION (par ordre de priorité) :
-1. HOOK fort dès les 3 premières secondes — phrase qui accroche immédiatement ("j'ai failli mourir", "personne ne le sait mais...", chiffre choc, question rhétorique)
-2. ÉMOTION intense — surprise, rire, choc, admiration, révélation
-3. AUTONOME — le clip se comprend sans contexte, commence et finit proprement sur une idée complète
-4. TENSION ou CURIOSITÉ — l'audience veut savoir la suite
-5. RÉPARTITION — couvre différentes parties de la vidéo, pas tous au même endroit
+RÈGLE LA PLUS IMPORTANTE : tu n'as AUCUN quota à remplir. Un extrait ordinaire ne contient
+souvent aucun moment fort, et c'est normal. Dans ce cas, réponds {"clips":[]} — une liste vide
+est une réponse valide et c'est souvent la bonne. Rendre trois moments plats est une FAUTE
+plus grave que n'en rendre aucun : la personne qui lit ta réponse va publier ces clips.
 
-ÉVITER : moments trop longs sans action, transitions, intros/outros, passages plats sans émotion.${extraHint}
+NOTE CHAQUE CANDIDAT SUR 4 CRITÈRES, de 0 à 5 :
+
+- "hook" — les 3 premières secondes accrochent-elles ?
+  5 = phrase qui arrête le scroll net (chiffre choc, aveu, contradiction, question qui pique)
+  3 = début intéressant mais qui demande quelques secondes de patience
+  1 = commence au milieu d'une explication, ou par une banalité
+  0 = aucune accroche
+
+- "emotion" — intensité ressentie (surprise, rire, choc, colère, admiration, révélation)
+  5 = réaction physique du spectateur   3 = intéressant sans être marquant   0 = plat, informatif
+
+- "autonomie" — se comprend-il SANS la vidéo d'origine ?
+  5 = complet en soi, commence et finit proprement sur une idée entière
+  3 = compréhensible mais un détail manque   0 = incompréhensible hors contexte
+
+- "tension" — donne-t-il envie de connaître la suite ?
+  5 = on ne peut pas décrocher   3 = curiosité légère   0 = aucune attente créée
+
+CALIBRAGE : la note 5 doit rester rare — au plus un ou deux critères à 5 sur l'ensemble de ta
+réponse. La moyenne d'un bon moment se situe autour de 3. Si tu mets 4 ou 5 partout, ta réponse
+est inutilisable : elle ne permet plus de classer quoi que ce soit.
+
+SEUIL D'ADMISSION : ne propose un moment QUE si "hook" >= 3 ET "emotion" >= 3. En dessous,
+écarte-le, même s'il te reste de la place.
+
+ÉCARTER SYSTÉMATIQUEMENT : intros, outros, remerciements, transitions, annonces de sponsor,
+passages purement explicatifs sans relief, moments qui dépendent d'un visuel qu'on ne verra pas.${extraHint}
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
-{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"phrase d'accroche courte et percutante (max 8-10 mots) que TU rédiges pour donner envie de regarder — pas besoin d'être une citation exacte du transcript, reformule/résume l'idée choc du clip (ex: \"Il a perdu 50 000€ en 3 minutes\")","score":88}]}
+{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"phrase d'accroche courte et percutante (max 8-10 mots) que TU rédiges pour donner envie de regarder — pas besoin d'être une citation exacte du transcript, reformule/résume l'idée choc du clip (ex: \"Il a perdu 50 000€ en 3 minutes\")","notes":{"hook":4,"emotion":3,"autonomie":5,"tension":3},"pourquoi":"en une phrase, ce qui rend ce moment fort"}]}
 
-Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral), ne coupe pas au milieu d'une phrase.
+Règles : durée 30-90s, ne coupe jamais au milieu d'une phrase, démarre le clip SUR l'accroche
+(pas 10 secondes avant), et couvre différentes parties de la vidéo plutôt que trois extraits voisins.
 
 Transcription "${title}"${isChunk ? ' (extrait)' : ''} :
 ${transcript}`;
@@ -560,16 +599,33 @@ async function _classifyContentType(sampleText) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages: [{ role: 'user', content: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }],
         temperature: 0.3, max_tokens: 200, response_format: { type: 'json_object' },
       }),
       signal: AbortSignal.timeout(10000), // indice optionnel : ne doit pas retarder le vrai travail
     });
-    if (!r.ok) return null;
-    const d = await r.json();
-    const raw = d.choices?.[0]?.message?.content?.trim() || '';
-    return JSON.parse(raw);
+    if (r.ok) {
+      const d = await r.json();
+      return JSON.parse(d.choices?.[0]?.message?.content?.trim() || '');
+    }
+    /* Filet Gemini. Cette fonction n'en avait aucun : elle appelait Groq et rendait `null` au
+       moindre pépin. Quand le modèle Groq a été retiré, elle a donc rendu `null` à CHAQUE
+       analyse, et l'adaptation du prompt au type de contenu — un extrait de tutoriel ne se juge
+       pas comme un extrait de débat — a disparu sans que rien ne l'indique. */
+    if (!GEMINI_KEY) return null;
+    const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 200, responseMimeType: 'application/json' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!g.ok) return null;
+    const gd = await g.json();
+    return JSON.parse(gd.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '');
   } catch { return null; }
 }
 
@@ -590,14 +646,14 @@ async function _callClipLLM(prompt, _dbg) {
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
+    body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
     signal: AbortSignal.timeout(30000),
   });
   _dbg.groq_status = r.status;
   if (r.ok) _dbg.provider = 'groq';
 
   if (!r.ok && GEMINI_KEY) {
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
@@ -639,6 +695,36 @@ async function _callClipLLM(prompt, _dbg) {
   return raw;
 }
 
+/* Le score est CALCULÉ à partir de notes par critère, il n'est plus demandé au modèle.
+   Mesuré sur 60 jours de production : quand on demandait un score 0-100 en lui disant « sois
+   exigeant, 90+ = vraiment viral », le modèle répondait 90+ sur la quasi-totalité des clips —
+   98 sur 791 ouvertures, 96 sur 447, 95 sur 537, et presque rien en dessous de 90. Un score qui
+   ne varie pas ne classe rien : trier dessus revenait à tirer au sort, et l'utilisateur recevait
+   dix clips tous annoncés « excellents » dont il en gardait un.
+   Quatre notes de 0 à 5, avec des ancrages décrits dans le prompt, se calibrent beaucoup mieux
+   qu'un chiffre global sorti d'un coup. La pondération donne le poids au hook, qui est ce qui
+   décide de la rétention sur les trois premières secondes. */
+const _POIDS_NOTES = { hook: 0.35, emotion: 0.25, autonomie: 0.20, tension: 0.20 };
+
+function _scoreDepuisNotes(c) {
+  const n = c.notes || c.criteres || c.scores || null;
+  if (n && typeof n === 'object') {
+    let total = 0, poidsUtilises = 0;
+    for (const [cle, poids] of Object.entries(_POIDS_NOTES)) {
+      const brut = n[cle] ?? n[cle === 'autonomie' ? 'autonomy' : cle] ?? n[cle === 'emotion' ? 'émotion' : cle];
+      const note = parseFloat(brut);
+      if (!isNaN(note)) { total += Math.max(0, Math.min(5, note)) * poids; poidsUtilises += poids; }
+    }
+    // Au moins la moitié des critères doivent être notés pour que le calcul veuille dire quelque chose.
+    if (poidsUtilises >= 0.5) return Math.round((total / poidsUtilises) * 20);
+  }
+  // Repli : ancien format (score global déclaré). On le conserve pour ne pas casser une réponse
+  // d'un modèle de secours qui suivrait l'ancien schéma, mais il est volontairement rabaissé —
+  // un score déclaré ne vaut pas un score calculé et ne doit pas passer devant.
+  const declare = parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral);
+  return isNaN(declare) ? 55 : Math.min(declare, 75);
+}
+
 function _parseClipsFromRaw(raw, videoId) {
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
@@ -659,7 +745,8 @@ function _parseClipsFromRaw(raw, videoId) {
       end: parseFloat(c.end_time ?? c.end ?? c.fin ?? c.temps_fin ?? c.finish ?? c.timestamp_end ?? c.heure_fin),
       title: c.title || c.titre || c.name || c.nom || '',
       hook: c.hook || c.accroche || c.description || c.extrait || '',
-      score: parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral) || 80
+      score: _scoreDepuisNotes(c),
+      pourquoi: c.pourquoi || c.justification || c.reason || ''
     }))
     .filter(c => !isNaN(c.start) && !isNaN(c.end) && c.end > c.start)
     .map(c => {
@@ -705,7 +792,14 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
   const chunks = _chunkSegmentsForClips(segments);
   _dbg.chunks = chunks.length;
   const isChunked = chunks.length > 1;
-  const perChunkN = isChunked ? Math.max(2, Math.min(nClips, 4)) : nClips;
+  /* Un PLAFOND par morceau, plus un plancher. L'ancien `Math.max(2, ...)` demandait au moins deux
+     clips à CHAQUE morceau : sur une vidéo d'une heure découpée en huit, le modèle devait trouver
+     seize « meilleurs moments » même dans les passages où il ne se passe rien. D'où les clips
+     plats. Le prompt autorise désormais explicitement une liste vide.
+     Sur une vidéo courte (un seul morceau) on demande plus de candidats qu'on n'en affichera :
+     sans cela on demandait exactement dix clips et on gardait les dix — il n'y avait aucune
+     sélection, juste une production. */
+  const perChunkN = isChunked ? 3 : Math.min(nClips + 6, 16);
   console.log(`[clips] ${chunks.length} morceau(x) (${_dbg.segments} segments)`);
 
   let contentHint = '';
@@ -754,7 +848,23 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
     return _uniformFallbackClips(segments, videoId, nClips, _dbg);
   }
 
-  return clips.slice(0, nClips).map(c => ({ ...c, _dbg }));
+  /* PLANCHER DE QUALITÉ. Sans lui, `slice(0, nClips)` rendait les dix premiers quel que soit leur
+     niveau. Mesuré sur 60 jours : un abonné Pro — sans paywall, avec un quota de 150 clips par
+     mois, donc aucune raison de se retenir — ouvrait 42 % des clips livrés et n'en exportait que
+     6,1 %. Le produit livrait dix clips pour en faire garder moins d'un.
+     Mieux vaut en rendre quatre solides que dix dont huit finiront à la corbeille : le nombre
+     affiché n'a de valeur que si l'utilisateur les garde. On garde tout de même un minimum, pour
+     ne jamais renvoyer un studio vide à quelqu'un qui vient d'attendre son analyse. */
+  const SEUIL_QUALITE = 60;   // sur l'échelle calculée : moyenne pondérée des notes × 20
+  const MIN_CLIPS = 3;
+  const retenus = clips.filter(c => (c.score || 0) >= SEUIL_QUALITE);
+  const final = (retenus.length >= MIN_CLIPS ? retenus : clips.slice(0, MIN_CLIPS)).slice(0, nClips);
+  _dbg.candidats = clips.length;
+  _dbg.ecartes_sous_seuil = clips.length - retenus.length;
+  _dbg.score_max = clips.length ? Math.max(...clips.map(c => c.score || 0)) : null;
+  console.log(`[clips] ${clips.length} candidats → ${final.length} retenus (seuil ${SEUIL_QUALITE}, ${_dbg.ecartes_sous_seuil} écartés)`);
+
+  return final.map(c => ({ ...c, _dbg }));
 }
 
 // Reclassement visuel des clips candidats via Gemini Vision — combine le score texte (transcript)
@@ -774,7 +884,7 @@ async function rankClipsVisual(candidates, frames, nFinal) {
     parts.push({ text: `Candidat ${c.i} — titre: "${c.title}", hook: "${c.hook}", score texte: ${c.text_score ?? 'N/A'}` });
     parts.push({ inline_data: { mime_type: 'image/jpeg', data } });
   }
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json' } }),
@@ -899,11 +1009,11 @@ Réponds directement sans introduction. Tout en français.`;
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 })
+    body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 })
   });
   if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
     console.warn(`[content] Groq ${r.status}, fallback Gemini Flash`);
-    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 4096 } })
@@ -1068,7 +1178,7 @@ Aucun texte avant ou après.`;
         method: 'POST',
         headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: GROQ_MODEL,
           messages: [{ role: 'system', content: sys }, { role: 'user', content: phrase }],
           temperature: 0.8,
           max_tokens: 200,
@@ -1240,7 +1350,7 @@ ${JSON.stringify(textes, null, 0)}`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: GROQ_MODEL,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.2,           // traduction : on veut de la fidélité, pas de la créativité
           max_tokens: 4096,
@@ -1252,7 +1362,7 @@ ${JSON.stringify(textes, null, 0)}`;
 
       if (GEMINI_KEY) {
         console.warn(`[translate] Groq ${r.status} → repli Gemini Flash`);
-        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } }),
           signal: AbortSignal.timeout(45000)

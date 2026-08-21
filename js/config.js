@@ -21,8 +21,10 @@ const CONFIG = {
   /* ======================================
    * MODÈLES IA
    * ====================================== */
-  GROQ_MODEL: 'llama-3.3-70b-versatile',
-  GEMINI_IMAGE_MODEL: 'gemini-2.0-flash-exp-image-generation', // non utilisé (Together AI actif)
+  GROQ_MODEL: 'openai/gpt-oss-120b',
+  // Hors service chez Google depuis 2026, et de toute facon jamais branche (Together AI actif).
+  // Laisse tel quel volontairement : ne pas inventer un nom de remplacement sans l'avoir teste.
+  GEMINI_IMAGE_MODEL: null,
   TOGETHER_IMAGE_MODEL: 'black-forest-labs/FLUX.1-schnell-Free',
   TOGETHER_URL: 'https://api.together.xyz/v1/images/generations',
   HF_URL: 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',

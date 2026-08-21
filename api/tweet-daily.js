@@ -168,7 +168,7 @@ async function generateTweet(forcedDay = null) {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       messages: [
         { role: 'system', content: 'Tu es un copywriter. Tu reformules uniquement le message fourni en tweet court et percutant. Tu ne changes pas les chiffres. Tu n\'ajoutes rien d\'inventé. Tu réponds UNIQUEMENT avec le texte du tweet, sans guillemets ni introduction.' },
         { role: 'user', content: theme.prompt }

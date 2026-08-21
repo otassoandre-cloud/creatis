@@ -1682,7 +1682,7 @@ async def _gemini(prompt: str) -> str:
         raise RuntimeError("GEMINI_API_KEY manquant")
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}",
             json={
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
@@ -2583,7 +2583,7 @@ async def _classify_content_type_groq(sample_text: str) -> Dict:
             r = await c.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.3-70b-versatile",
+                json={"model": "openai/gpt-oss-120b",
                       "messages": [{"role": "user", "content": f"{_GROQ_CONTENT_TYPE_PROMPT}\n\nExtrait :\n{sample_text[:2000]}"}],
                       "temperature": 0.3, "max_tokens": 200},
             )
@@ -2667,7 +2667,7 @@ Transcription (extrait) :
                     r = await c.post(
                         "https://api.groq.com/openai/v1/chat/completions",
                         headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                        json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                        json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}],
                               "temperature": 0.7, "max_tokens": 2048},
                     )
                     r.raise_for_status()
@@ -2972,7 +2972,7 @@ Comment la vidéo est construite ? Y a-t-il une montée en tension, une révéla
 Les 3-5 raisons concrètes pour lesquelles cette vidéo performe sur {platform_name}. Ce qu'un créateur doit retenir et reproduire."""
 
             gr = await c.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}",
                 json={
                     "contents": [{"parts": [
                         {"fileData": {"mimeType": "video/mp4", "fileUri": file_uri}},

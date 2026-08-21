@@ -2,7 +2,7 @@
 /* POST /api/youtube  Body: { type: 'channel', input } | { type: 'video', videoUrl } | { type: 'video-meta', url } */
 
 const YT_API = 'https://www.googleapis.com/youtube/v3';
-const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 

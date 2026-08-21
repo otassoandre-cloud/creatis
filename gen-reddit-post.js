@@ -143,7 +143,7 @@ async function generateRedditImage(theme, title) {
 // ── Génération du texte via Groq ──────────────────────────────────
 function groqPost(prompt) {
   const body = JSON.stringify({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.85, max_tokens: 800
   });
