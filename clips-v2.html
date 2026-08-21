@@ -3936,11 +3936,113 @@ const V2 = (() => {
           </button>
 
         </div>
+
+        <!-- 4e carte, visuellement distincte (bordure en pointilles) des 3 offres payantes au-dessus :
+             ce n'est pas un palier tarifaire de plus, c'est une alternative gratuite. La confondre
+             visuellement avec Starter/Pro aurait brouille la grille que ces trois-la existent pour
+             clarifier. -->
+        <button onclick="window._ouvrirSoumissionUGC()" class="pw-plan" style="border:1.5px dashed rgba(16,185,129,0.45);background:rgba(16,185,129,0.03);margin-bottom:16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+            <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">🎬 Publie une vidéo sur Créatis</span>
+            <span style="font-size:1rem;font-weight:800;color:#10b981">1 mois offert</span>
+          </div>
+          <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">TikTok, Instagram ou YouTube · 300 vues minimum · validé sous 48h</div>
+        </button>
+
         <p style="font-size:11px;color:#8A93A3;margin-top:4px;line-height:1.6">Téléchargement immédiat après paiement · Résiliable en un clic<br>Paiement sécurisé par Stripe · Sans engagement</p>
       </div>
     `;
     document.body.appendChild(m);
   }
+
+  /* ── Programme « publie une vidéo, 1 mois offert » ────────────────────────────────────
+     Formulaire dans une SECONDE modale (pas une redirection comme _goToPro) : contrairement au
+     paiement, rien n'oblige à quitter clips-v2 pour ça, et rester sur place évite tout le
+     mécanisme de reprise post-paiement (marqueur sessionStorage, réouverture de génération) pour
+     un flux qui n'en a pas besoin. */
+  function _fermerSoumissionUGC() {
+    document.getElementById('ugc-submit-modal')?.remove();
+  }
+
+  window._ouvrirSoumissionUGC = function () {
+    if (window.posthog) posthog.capture('ugc_offer_clicked', { plan: _userPlan });
+    if (document.getElementById('ugc-submit-modal')) return;
+
+    const m = document.createElement('div');
+    m.id = 'ugc-submit-modal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;';
+    m.innerHTML = `
+      <div style="background:#10141C;border:1px solid rgba(16,185,129,0.2);border-radius:24px;padding:32px 28px;max-width:420px;width:90%;text-align:left;position:relative;">
+        <button onclick="window._fermerSoumissionUGC0()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
+        <div style="font-size:32px;margin-bottom:10px">🎬</div>
+        <h2 style="font-size:1.25rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">Publie, obtiens 1 mois offert</h2>
+        <p style="color:#8A93A3;font-size:0.85rem;margin-bottom:18px;line-height:1.5">Fais une vidéo qui présente Créatis (démo, avis, avant/après) et poste-la sur TikTok, Instagram ou YouTube. Passé 300 vues, colle le lien ici — on vérifie sous 48h et ton compte passe en Pro pour un mois.</p>
+
+        <div id="ugc-form-zone">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8A93A3;margin-bottom:6px">Lien de ta vidéo</label>
+          <input id="ugc-url-input" type="url" placeholder="https://www.tiktok.com/@toi/video/..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;color:#f2f4f7;font-size:0.85rem;margin-bottom:12px">
+          <div id="ugc-form-erreur" style="display:none;color:#f87171;font-size:0.78rem;margin-bottom:10px"></div>
+          <button id="ugc-form-envoyer" onclick="window._envoyerSoumissionUGC0()" style="width:100%;background:#10b981;color:#04120b;border:none;border-radius:10px;padding:12px;font-weight:800;font-size:0.9rem;cursor:pointer">Soumettre ma vidéo</button>
+          <p style="font-size:10.5px;color:#6b7280;margin-top:10px;line-height:1.5">Une seule vidéo par lien. La revue est manuelle — sois patient, on ne fait pas ça avec un robot.</p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(m);
+  };
+
+  // Wrapper sans underscore double pour rester lisible dans l'attribut onclick au-dessus.
+  window._fermerSoumissionUGC0 = _fermerSoumissionUGC;
+
+  window._envoyerSoumissionUGC0 = async function () {
+    const input = document.getElementById('ugc-url-input');
+    const erreurZone = document.getElementById('ugc-form-erreur');
+    const btn = document.getElementById('ugc-form-envoyer');
+    const url = (input?.value || '').trim();
+    erreurZone.style.display = 'none';
+
+    if (!/^https?:\/\//i.test(url)) {
+      erreurZone.textContent = 'Colle le lien complet de ta vidéo (commence par https://).';
+      erreurZone.style.display = 'block';
+      return;
+    }
+
+    let currentUser = {};
+    try { currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch {}
+    if (!currentUser.email) {
+      erreurZone.textContent = 'Connecte-toi d\'abord pour qu\'on sache à quel compte créditer le mois offert.';
+      erreurZone.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Envoi…';
+    try {
+      const r = await fetch('/api/ugc-croissance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id || null, email: currentUser.email, videoUrl: url }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+
+      if (window.posthog) posthog.capture('ugc_soumission_envoyee', { plan: _userPlan });
+      const zone = document.getElementById('ugc-form-zone');
+      if (zone) {
+        zone.innerHTML = `
+          <div style="text-align:center;padding:8px 0 4px">
+            <div style="font-size:32px;margin-bottom:8px">✅</div>
+            <p style="color:#f2f4f7;font-weight:700;font-size:0.95rem;margin-bottom:6px">C'est envoyé !</p>
+            <p style="color:#8A93A3;font-size:0.82rem;line-height:1.5">On vérifie ta vidéo sous 48h. Si elle est validée, ton compte passe automatiquement en Pro pour un mois — tu recevras un email.</p>
+          </div>`;
+      }
+    } catch (e) {
+      if (window.posthog) posthog.capture('ugc_soumission_erreur', { message: String(e.message || '').slice(0, 150) });
+      erreurZone.textContent = e.message || 'Erreur — réessaie dans un instant.';
+      erreurZone.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Soumettre ma vidéo';
+    }
+  };
 
   window._goToPro = function(plan = 'pro', annuel = false) {
     if (window.posthog) posthog.capture('upgrade_clicked', { trigger: 'paywall', plan_from: _userPlan, plan_to: plan, annuel });

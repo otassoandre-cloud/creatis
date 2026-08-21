@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Publications UGC — Créatis Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: var(--bg); min-height: 100vh; }
+
+    .admin-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--bordure);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-header h1 { font-size: 16px; font-weight: 700; color: var(--texte); margin: 0; }
+    .admin-header .badge-admin { background: rgba(239,68,68,0.15); color: var(--rouge); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-left: 10px; }
+
+    .admin-body { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+    .ugc-stats-barre { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .ugc-stat { background: var(--bg-card); border: 1px solid var(--bordure); border-radius: var(--radius); padding: 14px 20px; }
+    .ugc-stat .val { font-size: 22px; font-weight: 800; color: var(--vert); }
+    .ugc-stat .lbl { font-size: 12px; color: var(--texte-muted); }
+
+    .ugc-onglets { display: flex; gap: 6px; margin-bottom: 20px; }
+    .ugc-onglet {
+      background: var(--bg-card); border: 1px solid var(--bordure); color: var(--texte-doux);
+      font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 20px; cursor: pointer;
+    }
+    .ugc-onglet.active { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4); color: var(--vert); }
+
+    .ugc-carte {
+      background: var(--bg-card); border: 1px solid var(--bordure); border-radius: var(--radius);
+      padding: 16px 20px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .ugc-carte-haut { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .ugc-email { font-weight: 700; color: var(--texte); font-size: 13.5px; }
+    .ugc-meta { font-size: 11.5px; color: var(--texte-muted); margin-top: 2px; }
+    .ugc-lien { color: var(--vert); font-size: 13px; word-break: break-all; text-decoration: none; }
+    .ugc-lien:hover { text-decoration: underline; }
+
+    .ugc-plateforme-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,0.06); color: var(--texte-doux);
+      text-transform: capitalize;
+    }
+    .ugc-statut-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+    .ugc-statut-badge.en_attente { background: rgba(249,115,22,0.12); color: #f97316; }
+    .ugc-statut-badge.approuve { background: rgba(16,185,129,0.14); color: var(--vert); }
+    .ugc-statut-badge.rejete { background: rgba(239,68,68,0.12); color: var(--rouge); }
+
+    .ugc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ugc-btn { font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--bordure); cursor: pointer; background: transparent; color: var(--texte); }
+    .ugc-btn.approuver { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.4); color: var(--vert); }
+    .ugc-btn.rejeter { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--rouge); }
+    .ugc-btn:disabled { opacity: 0.5; cursor: default; }
+
+    .ugc-note { font-size: 12px; color: var(--texte-muted); font-style: italic; }
+    .ugc-vide, .ugc-loading { text-align: center; padding: 60px 20px; color: var(--texte-muted); }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <h1>Publications UGC <span class="badge-admin">ADMIN</span></h1>
+    <span style="font-size:12px;color:var(--texte-muted)">Programme « publie une vidéo, 1 mois offert »</span>
+  </header>
+
+  <div class="admin-body">
+    <!-- Le décompte par statut se lit dans les onglets ci-dessous, pas dans une barre à part :
+         une seule liste à recompter, jamais deux qui se désynchronisent. -->
+    <div class="ugc-stats-barre" id="ugc-stats-barre"></div>
+    <div class="ugc-onglets" id="ugc-onglets"></div>
+    <div id="ugc-contenu"><div class="ugc-loading">Chargement…</div></div>
+  </div>
+
+  <script>
+    let _onglet = 'en_attente';
+    let _toutes = [];
+
+    function getToken(forcerPrompt) {
+      let token = sessionStorage.getItem('creatis_admin_token');
+      if (!token || forcerPrompt) {
+        token = prompt('Token admin (variable Vercel ADMIN_TOKEN) :') || '';
+        sessionStorage.setItem('creatis_admin_token', token);
+      }
+      return token;
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function charger(forcerPrompt) {
+      const contenu = document.getElementById('ugc-contenu');
+      const token = getToken(forcerPrompt);
+
+      try {
+        const res = await fetch('/api/ugc-croissance?admin=1', { headers: { Authorization: 'Bearer ' + token } });
+
+        if (res.status === 401) {
+          sessionStorage.removeItem('creatis_admin_token');
+          contenu.innerHTML = `<div class="ugc-vide">Token incorrect. <button class="ugc-btn approuver" onclick="charger(true)">Réessayer</button></div>`;
+          document.getElementById('ugc-stats-barre').innerHTML = '';
+          document.getElementById('ugc-onglets').innerHTML = '';
+          return;
+        }
+
+        const data = await res.json();
+        if (data.error) {
+          contenu.innerHTML = `<div class="ugc-vide">Erreur serveur : ${data.error}</div>`;
+          return;
+        }
+
+        _toutes = data.soumissions || [];
+        rendreStats();
+        rendreOnglets();
+        rendreListe();
+      } catch (e) {
+        contenu.innerHTML = `<div class="ugc-vide">Impossible de charger : ${e.message}</div>`;
+      }
+    }
+
+    function rendreStats() {
+      const nb = s => _toutes.filter(x => x.statut === s).length;
+      document.getElementById('ugc-stats-barre').innerHTML = `
+        <div class="ugc-stat"><div class="val">${nb('en_attente')}</div><div class="lbl">en attente</div></div>
+        <div class="ugc-stat"><div class="val">${nb('approuve')}</div><div class="lbl">approuvées</div></div>
+        <div class="ugc-stat"><div class="val">${nb('rejete')}</div><div class="lbl">rejetées</div></div>
+        <div class="ugc-stat"><div class="val">${_toutes.length}</div><div class="lbl">total</div></div>
+      `;
+    }
+
+    function rendreOnglets() {
+      const onglets = [
+        { id: 'en_attente', label: 'En attente' },
+        { id: 'approuve', label: 'Approuvées' },
+        { id: 'rejete', label: 'Rejetées' },
+        { id: 'toutes', label: 'Toutes' },
+      ];
+      document.getElementById('ugc-onglets').innerHTML = onglets.map(o =>
+        `<button class="ugc-onglet ${_onglet === o.id ? 'active' : ''}" onclick="_onglet='${o.id}';rendreOnglets();rendreListe()">${o.label}</button>`
+      ).join('');
+    }
+
+    function rendreListe() {
+      const contenu = document.getElementById('ugc-contenu');
+      const liste = _onglet === 'toutes' ? _toutes : _toutes.filter(s => s.statut === _onglet);
+
+      if (!liste.length) {
+        contenu.innerHTML = '<div class="ugc-vide">Rien ici pour l\\'instant.</div>';
+        return;
+      }
+
+      const labelsPlateforme = { tiktok: '🎵 TikTok', instagram: '📸 Instagram', youtube: '▶️ YouTube', autre: '🔗 Autre' };
+      const labelsStatut = { en_attente: '⏳ En attente', approuve: '✅ Approuvé', rejete: '✗ Rejeté' };
+
+      contenu.innerHTML = liste.map(s => `
+        <div class="ugc-carte" data-id="${s.id}">
+          <div class="ugc-carte-haut">
+            <div>
+              <div class="ugc-email">${s.email}</div>
+              <div class="ugc-meta">Soumis le ${fmtDate(s.cree_le)}${s.traite_le ? ' · traité le ' + fmtDate(s.traite_le) : ''}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="ugc-plateforme-badge">${labelsPlateforme[s.plateforme] || s.plateforme}</span>
+              <span class="ugc-statut-badge ${s.statut}">${labelsStatut[s.statut] || s.statut}</span>
+            </div>
+          </div>
+          <a class="ugc-lien" href="${s.video_url}" target="_blank" rel="noopener">${s.video_url} →</a>
+          ${s.vues_constatees != null ? `<div class="ugc-meta">Vues constatées : <strong>${s.vues_constatees}</strong></div>` : ''}
+          ${s.note_admin ? `<div class="ugc-note">« ${s.note_admin} »</div>` : ''}
+          ${s.statut === 'en_attente' ? `
+            <div class="ugc-actions">
+              <button class="ugc-btn approuver" onclick="decider('${s.id}', 'approuve')">✅ Approuver — 1 mois Pro offert</button>
+              <button class="ugc-btn rejeter" onclick="decider('${s.id}', 'rejete')">✗ Rejeter</button>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function decider(id, decision) {
+      const token = getToken(false);
+      let vues_constatees = null, note = null;
+
+      if (decision === 'approuve') {
+        const v = prompt('Nombre de vues constatées (300 minimum requis) :', '300');
+        if (v === null) return; // annulé
+        vues_constatees = parseInt(v, 10);
+        if (isNaN(vues_constatees)) return alert('Nombre invalide.');
+        if (vues_constatees < 300) {
+          if (!confirm(`${vues_constatees} vues, en dessous du seuil de 300. Approuver quand même ?`)) return;
+        }
+      } else {
+        note = prompt('Motif du rejet (optionnel, visible dans l\\'historique) :', '') || null;
+      }
+
+      const carte = document.querySelector(`.ugc-carte[data-id="${id}"] .ugc-actions`);
+      if (carte) carte.innerHTML = '<span class="ugc-note">Traitement…</span>';
+
+      try {
+        const res = await fetch('/api/ugc-croissance?admin=1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ id, decision, vues_constatees, note }),
+        });
+        const data = await res.json();
+        if (!res.ok) { alert('Erreur : ' + (data.error || res.status)); return charger(); }
+        await charger();
+      } catch (e) {
+        alert('Erreur réseau : ' + e.message);
+        charger();
+      }
+    }
+
+    charger();
+  </script>
+</body>
+</html>

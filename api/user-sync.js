@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
 
   // Crons Vercel envoient GET — autoriser GET pour les actions cron
   const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
-  if (req.method === 'GET' && (actionFromQuery === 'email_cron' || actionFromQuery === 'daily_report')) {
+  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires'].includes(actionFromQuery)) {
     req.body = { action: actionFromQuery };
   } else if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -147,7 +147,7 @@ module.exports = async (req, res) => {
 
   const { userId, email, plan, chaine, action, metadata, source } = req.body || {};
 
-  const isCronAction = action === 'email_cron' || action === 'daily_report';
+  const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires';
   // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
   // il ne doit donc pas être recalé par ce contrôle.
   const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer';
@@ -382,6 +382,36 @@ module.exports = async (req, res) => {
         }
         console.log('[EmailCron]', cronLog);
         return res.status(200).json({ ok: true, sent: totalSent, log: cronLog });
+      }
+
+      /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'était
+         écrit par AUCUN chemin actif avant le programme UGC (api/ugc-croissance.js) : un
+         abonnement Stripe réel pose toujours plan_expires_at à null (« toujours actif », voir
+         api/stripe-webhook.js) et se désactive par l'événement customer.subscription.deleted, pas
+         par une date. Cette action ne peut donc JAMAIS toucher un abonnement payant en cours —
+         elle ne voit que les octrois temporaires (UGC aujourd'hui, d'autres cas possibles demain).
+         Générique par construction : n'importe quel futur mécanisme qui pose plan_expires_at sera
+         expiré par le même cron, sans code supplémentaire. */
+      case 'expirer_plans_temporaires': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const maintenant = new Date().toISOString();
+        const expires = await supabase(
+          `/users?plan_expires_at=lt.${maintenant}&plan=neq.gratuit&select=id,email,plan,plan_expires_at`
+        ).catch(() => []);
+        let downgrades = 0;
+        for (const u of (expires || [])) {
+          try {
+            await supabase(`/users?id=eq.${u.id}`, 'PATCH', {
+              plan: 'gratuit', plan_expires_at: null, updated_at: maintenant,
+            });
+            downgrades++;
+          } catch (e) { console.error('[expirer_plans_temporaires]', u.email, e.message); }
+        }
+        console.log(`[expirer_plans_temporaires] ${downgrades} compte(s) redescendu(s) en gratuit`);
+        return res.status(200).json({ ok: true, downgrades });
       }
 
       case 'daily_report': {
