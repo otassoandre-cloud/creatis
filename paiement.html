@@ -220,7 +220,7 @@
 
     <div class="recap-continuite" id="recap-continuite">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" style="flex-shrink:0;margin-top:1px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span><strong>Tes clips t'attendent.</strong> Le téléchargement se débloque dès que le paiement est validé — tu reviens directement dessus.</span>
+      <span id="recap-continuite-texte"><strong>Tes clips t'attendent.</strong> Le téléchargement se débloque dès que le paiement est validé — tu reviens directement dessus.</span>
     </div>
 
     <div class="recap-plan">
@@ -324,9 +324,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (raw) stock = JSON.parse(raw);
   } catch (e) { console.warn('[paiement] sessionStorage illisible :', e?.message); }
 
+  // Lien du programme « publie une vidéo, 1 mois offert » (voir api/user-sync.js, action
+  // ugc_decider). Le jeton fige le plan côté serveur (Pro mensuel, jamais l'annuel) — on
+  // n'affiche donc jamais les alternatives de plan ni le mensuel/annuel choisi par l'URL ici,
+  // pour ne pas promettre à l'écran une offre que le serveur refusera d'honorer.
+  const essaiToken = q.get('essai');
+
   const planUrl = q.get('plan');
   let plan, annuel;
-  if (planUrl)            { plan = planUrl;            annuel = q.get('annuel') === '1'; }
+  if (essaiToken)         { plan = 'pro';               annuel = false; }
+  else if (planUrl)       { plan = planUrl;              annuel = q.get('annuel') === '1'; }
   else if (stock?.priceId){ plan = stock.plan || 'pro'; annuel = !!stock.annuel; }
   else                    { plan = 'pro';               annuel = false; }
 
@@ -342,6 +349,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const fmtPrix = (n) => `${String(n).replace('.', ',')}€`;
 
+  if (essaiToken) {
+    const banniere = document.getElementById('recap-continuite-texte');
+    if (banniere) banniere.innerHTML = "<strong>Vidéo validée !</strong> Renseigne une carte pour activer ton mois offert — rien n'est prélevé aujourd'hui.";
+    document.querySelector('.paiement-form-titre').textContent = 'Débloque ton mois offert';
+    document.querySelector('.paiement-form-sous').textContent = "Carte requise pour activer l'essai. Aucun prélèvement avant la fin du mois offert.";
+  }
+
   // ── Récapitulatif, entièrement piloté par CONFIG.PLANS ────────────────────
   document.title = `Paiement — Créatis ${planConf.nom}`;
   document.querySelector('.recap-plan-badge').innerHTML =
@@ -350,7 +364,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelector('.recap-plan-desc').textContent = planConf.description;
 
   const prixAffiche = annuel ? (planConf.prixAnnuel || 139) : planConf.prix;
-  if (annuel) {
+  if (essaiToken) {
+    // Le prix barré rend visible ce qui va se passer ensuite — jamais de charge surprise :
+    // la personne voit MAINTENANT ce qu'elle paiera dans 30 jours, pas seulement à l'échéance.
+    const dansUnMois = new Date(Date.now() + 30 * 86400000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    document.querySelector('.recap-prix-barre').textContent = fmtPrix(planConf.prix) + '/mois';
+    document.querySelector('.recap-prix-barre').style.display = 'inline';
+    document.querySelector('.recap-prix-final').textContent = 'Offert';
+    document.querySelector('.recap-prix-period').textContent = 'ce mois-ci';
+    document.querySelector('.recap-prix-suite').textContent =
+      `Puis ${fmtPrix(planConf.prix)}/mois à partir du ${dansUnMois} · résiliable avant sans rien payer`;
+  } else if (annuel) {
     const parMois = ((planConf.prixAnnuel || 139) / 12).toFixed(2);
     document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
     document.querySelector('.recap-prix-period').textContent = '/an';
@@ -365,7 +389,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const rmNom = document.getElementById('resume-mobile-nom');
   const rmPrix = document.getElementById('resume-mobile-prix');
   if (rmNom)  rmNom.textContent = `Créatis ${planConf.nom}`;
-  if (rmPrix) rmPrix.innerHTML = `${fmtPrix(prixAffiche)}<small>${annuel ? '/an' : '/mois'}</small>`;
+  if (rmPrix) rmPrix.innerHTML = essaiToken
+    ? `Offert<small>ce mois-ci</small>`
+    : `${fmtPrix(prixAffiche)}<small>${annuel ? '/an' : '/mois'}</small>`;
 
   /* Ce que le plan donne VRAIMENT, déduit des quotas de CONFIG.PLANS. Rien n'est écrit en dur :
      c'est ce qui avait laissé « 10 agents IA » (il y en a huit), « 30 miniatures » et
@@ -390,7 +416,9 @@ document.addEventListener('DOMContentLoaded', async () => {
      c'est préférable à une fermeture d'onglet. */
   const alternatives = [];
   const cStarter = CONFIG.PLANS?.starter, cPro = CONFIG.PLANS?.pro;
-  if (plan === 'pro' && !annuel) {
+  if (essaiToken) {
+    // rien : le jeton ne vaut que pour le Pro mensuel, changer d'offre ici casserait l'essai.
+  } else if (plan === 'pro' && !annuel) {
     if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — ${fmtPrix(cPro.prixAnnuel)}/an, deux mois offerts</a>`);
     if (cStarter) alternatives.push(`<a href="?plan=starter">Il te faut moins de clips ? Starter — ${fmtPrix(cStarter.prix)}/mois, ${cStarter.clips} clips</a>`);
   } else if (plan === 'pro' && annuel) {
@@ -421,7 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (e) { /* stockage indisponible : le lien d'origine reste, jamais de lien mort */ }
 
   try {
-    const _corps = JSON.stringify({ priceId, plan, annuel, userId, userEmail, embedded: true });
+    const _corps = JSON.stringify({ priceId, plan, annuel, userId, userEmail, embedded: true, essaiToken });
     const _appel = () => fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

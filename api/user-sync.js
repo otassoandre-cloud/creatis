@@ -19,8 +19,8 @@ const META_CAPI_TOKEN = (process.env.META_ACCESS_TOKEN || process.env.META_CAPI_
    seul. user-sync.js multiplexe deja des dizaines d'actions par un seul fichier, c'est le patron
    du projet pour ce cas exact. */
 const UGC_PLATEFORMES_VALIDES = ['tiktok', 'instagram', 'youtube', 'autre'];
-const UGC_DUREE_RECOMPENSE_JOURS = 30;
-const UGC_PLAN_RECOMPENSE = 'pro'; // aligne sur la recompense du palier 5 filleuls (api/parrainage.js)
+// La duree d'essai et le plan recompense vivent desormais dans api/create-checkout-session.js,
+// seul endroit qui accorde vraiment le mois offert (via un essai Stripe, carte requise).
 
 function ugcDetecterPlateforme(url) {
   const u = String(url || '').toLowerCase();
@@ -234,29 +234,21 @@ module.exports = async (req, res) => {
         });
 
         if (decision === 'approuve') {
-          if (soumission.user_id) {
-            const expire = new Date(Date.now() + UGC_DUREE_RECOMPENSE_JOURS * 86400000).toISOString();
-            // On ne touche QUE plan + plan_expires_at — jamais stripe_customer_id ni
-            // stripe_subscription_id : le webhook Stripe reste seul maître de ces deux champs,
-            // au cas où la personne aurait par ailleurs un vrai abonnement en cours.
-            await supabase(`/users?id=eq.${encodeURIComponent(soumission.user_id)}`, 'PATCH', {
-              plan: UGC_PLAN_RECOMPENSE,
-              plan_expires_at: expire,
-              updated_at: new Date().toISOString(),
-            });
-          }
-          // Le formulaire promet explicitement « tu recevras un email ». Non bloquant : une
-          // panne d'envoi ne doit jamais faire échouer l'approbation, le mois gratuit est déjà
-          // posé au moment où ce bloc s'exécute.
+          /* Le mois offert n'est PAS accordé ici en direct : la carte est requise pour que le
+             2e mois se prélève tout seul, donc l'approbation ne fait qu'envoyer un lien de
+             paiement en mode essai (voir api/create-checkout-session.js, paramètre essaiToken).
+             `essai_token` existe déjà sur la ligne depuis la soumission — un jeton à part de
+             `id`, pour qu'il ne soit pas devinable ni exposé ailleurs dans l'admin. */
           if (process.env.BREVO_API_KEY) {
+            const lienEssai = `https://creatis.app/paiement.html?plan=pro&essai=${soumission.essai_token}`;
             fetch('https://api.brevo.com/v3/smtp/email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
               body: JSON.stringify({
                 sender: { name: 'Créatis', email: 'contact@creatis.app' },
                 to: [{ email: soumission.email }],
-                subject: 'Ta vidéo est validée — 1 mois Pro offert 🎬',
-                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Bien joué !</h2><p style="line-height:1.7;margin:0 0 16px">Ta vidéo a été validée — ton compte Créatis passe en <strong>Pro pendant un mois</strong>, sans rien payer.</p><p style="line-height:1.7;margin:0 0 20px">Tu as accès à 150 clips par mois et tous les outils IA jusqu'au <strong>${new Date(Date.now() + UGC_DUREE_RECOMPENSE_JOURS * 86400000).toLocaleDateString('fr-FR')}</strong>.</p><a href="https://creatis.app/studio" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px;margin:0 0 24px">Aller sur mes clips →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`,
+                subject: 'Ta vidéo est validée — active ton mois Pro offert 🎬',
+                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Bien joué !</h2><p style="line-height:1.7;margin:0 0 16px">Ta vidéo a été validée. Il reste une étape pour activer ton <strong>mois Pro offert</strong> : renseigne une carte (aucun prélèvement maintenant).</p><a href="${lienEssai}" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px;margin:0 0 20px">Activer mon mois offert →</a><p style="line-height:1.7;margin:0 0 8px;color:#444;font-size:14px">Le mois est à 0€. Passé ce délai, l'abonnement Pro continue automatiquement à 14€/mois — résiliable à tout moment avant, sans rien devoir.</p><p style="color:#999;font-size:12px;margin:16px 0 0">Ce lien est personnel, ne le partage pas. Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`,
               }),
             }).catch(e => console.error('[ugc_decider] email approbation échoué:', e.message));
           }
@@ -493,14 +485,16 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, sent: totalSent, log: cronLog });
       }
 
-      /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'était
-         écrit par AUCUN chemin actif avant le programme UGC (case 'ugc_decider' ci-dessus) : un
-         abonnement Stripe réel pose toujours plan_expires_at à null (« toujours actif », voir
-         api/stripe-webhook.js) et se désactive par l'événement customer.subscription.deleted, pas
-         par une date. Cette action ne peut donc JAMAIS toucher un abonnement payant en cours —
-         elle ne voit que les octrois temporaires (UGC aujourd'hui, d'autres cas possibles demain).
-         Générique par construction : n'importe quel futur mécanisme qui pose plan_expires_at sera
-         expiré par le même cron, sans code supplémentaire. */
+      /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'a
+         jamais été écrit par un chemin actif : un abonnement Stripe réel pose toujours
+         plan_expires_at à null (« toujours actif », voir api/stripe-webhook.js) et se désactive
+         par l'événement customer.subscription.deleted, pas par une date. Le programme UGC
+         (case 'ugc_decider' ci-dessus) n'en écrit pas non plus — le mois offert y passe
+         désormais par un vrai essai Stripe (carte requise, voir api/create-checkout-session.js),
+         donc par le webhook, pas par ce champ. Cette action reste posée en filet générique : si
+         un futur mécanisme pose un jour plan_expires_at pour un octroi temporaire, il sera
+         expiré par ce même cron sans code supplémentaire — et elle ne peut structurellement
+         jamais toucher un abonnement payant réel, qui ne pose jamais cette date. */
       case 'expirer_plans_temporaires': {
         const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
         if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
