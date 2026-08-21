@@ -857,6 +857,21 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
 .plan-soon-tag { text-align: center; font-size: 0.7rem; background: var(--orange-soft); color: var(--orange); padding: 6px; border-radius: 9px; margin-top: auto; font-weight: 700; }
 @media (max-width: 860px) { .price-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; } }
 
+/* Offre UGC — deliberement HORS de la grille 3 colonnes : ce n'est pas un palier tarifaire de
+   plus, c'est une alternative gratuite. L'y integrer aurait brouille la comparaison que Starter/
+   Pro/Pro Annuel existent pour clarifier (meme raisonnement que la modale paywall du produit). */
+.ugc-offer { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  background: rgba(16,185,129,0.05); border: 1.5px dashed rgba(16,185,129,0.4); border-radius: 22px;
+  padding: 26px 30px; margin-top: 20px; }
+.ugc-offer-txt { flex: 1; min-width: 260px; }
+.ugc-offer-badge { display: inline-block; font-size: 0.7rem; font-weight: 800; color: var(--green);
+  background: rgba(16,185,129,0.12); padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; letter-spacing: .02em; }
+.ugc-offer-txt h3 { font-size: 1.15rem; font-weight: 800; margin: 0 0 6px; color: var(--paper); }
+.ugc-offer-txt p { font-size: 0.9rem; color: var(--muted); margin: 0; line-height: 1.6; }
+.ugc-offer .btn-outline { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 620px) { .ugc-offer { flex-direction: column; align-items: stretch; text-align: center; padding: 24px 20px; }
+  .ugc-offer .btn-outline { justify-content: center; } }
+
 /* ===== FAQ ===== */
 .faq-list { max-width: 760px; margin: 0 auto; }
 .faq-list details { border: 1px solid var(--line); border-radius: 15px; padding: 20px 22px; margin-bottom: 12px; background: var(--card); }
@@ -1491,6 +1506,15 @@ vs.forEach(function(v){io.observe(v);});})();
         </ul>
         <a href="auth.html?plan=pro&annuel=1" class="btn-grad" style="justify-content:center">🔥 Prendre l'annuel</a>
       </div>
+    </div>
+
+    <div class="ugc-offer reveal">
+      <div class="ugc-offer-txt">
+        <span class="ugc-offer-badge">🎬 OFFRE CRÉATEUR</span>
+        <h3>Publie une vidéo qui parle de Créatis → 1 mois Pro offert</h3>
+        <p>TikTok, Instagram ou YouTube · 300 vues minimum · revue sous 48h. Le mois est à 0€ ; l'abonnement continue ensuite normalement, résiliable avant si tu changes d'avis.</p>
+      </div>
+      <a href="auth.html" class="btn-outline" style="justify-content:center">Commencer gratuitement →</a>
     </div>
   </div>
 </section>
