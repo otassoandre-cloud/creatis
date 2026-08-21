@@ -12,7 +12,7 @@ GET  /clip-export-status/{job_id}                     → { status, download_url
 GET  /clip-export-file/{job_id}/{filename}            → MP4
 GET  /health
 """
-import os, uuid, json, re, asyncio, subprocess, tempfile, logging, io, shutil
+import os, uuid, json, re, asyncio, subprocess, tempfile, logging, io, shutil, threading
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -83,8 +83,8 @@ def _proxy_session(base: str = "") -> str:
     adresse pendant les 8 h de durée de session). Un numéro déjà présent est remplacé.
     """
     base = base or RESIDENTIAL_PROXY_URL
-    if not base:
-        return base
+    if not base or _PROXY_MORT:
+        return ""
     m = re.match(r"^([a-z0-9+.-]+://)([^:@/]+):([^@]+)@(.+)$", base, re.I)
     if not m:
         # Format inattendu : on renvoie l'URL telle quelle plutôt que d'en fabriquer une fausse.
@@ -412,6 +412,29 @@ _COOKIES_FILE: Optional[str] = None
 #     in the browser as a security measure. »
 # Sans ce garde-fou, chaque tentative de chaque chemin repart avec le meme poison.
 _COOKIES_MORTS = False
+
+
+# Meme logique que pour les cookies, appliquee au proxy residentiel. Webshare renvoie
+# « Tunnel connection failed: 402 Payment Required » quand le forfait de bande passante est
+# epuise — mesure a nouveau le 20/08/2026. Chaque tentative qui repasse par ce proxy mort coute
+# plusieurs secondes de connexion pour rien, et l echec masque le vrai diagnostic (on croit a un
+# blocage YouTube). Une fois le 402 constate, on cesse de l essayer pour la vie du conteneur.
+_PROXY_MORT = False
+
+
+def _detecter_proxy_mort(texte: str) -> bool:
+    global _PROXY_MORT
+    if _PROXY_MORT or not texte:
+        return _PROXY_MORT
+    t = str(texte).lower()
+    if "payment required" in t or "bandwidthlimit" in t or "unable to connect to proxy" in t:
+        _PROXY_MORT = True
+        logger.error("[proxy] forfait epuise ou injoignable — proxy abandonne pour ce processus")
+    return _PROXY_MORT
+
+
+def _proxy_utilisable() -> bool:
+    return bool(RESIDENTIAL_PROXY_URL) and not _PROXY_MORT
 
 
 def _detecter_cookies_morts(texte: str) -> bool:
@@ -981,6 +1004,20 @@ def _ytapi_quota_ok() -> bool:
     return True
 
 
+# Un verrou par (video_id, format). Sans lui, deux requetes concurrentes sur la meme video
+# (l apercu d un clip pendant l export d un autre, deux clips ouverts coup sur coup) constatent
+# toutes les deux l absence de cache et lancent DEUX telechargements payants du meme fichier.
+# Second effet, plus vicieux : les deux ecrivaient dans le meme fichier, et un troisieme
+# appelant pouvait le trouver « assez gros » et servir une video tronquee.
+_ytapi_verrous: Dict[str, threading.Lock] = {}
+_ytapi_verrous_gate = threading.Lock()
+
+
+def _ytapi_verrou(cle: str) -> threading.Lock:
+    with _ytapi_verrous_gate:
+        return _ytapi_verrous.setdefault(cle, threading.Lock())
+
+
 def _ytapi_cached_video(video_id: str, fmt: str = "720") -> Optional[Path]:
     """Télécharge la vidéo complète via l'API tierce UNE FOIS et la met en cache par video_id —
     réutilisée par tous les segments/previews/exports (économise le quota API). None si indispo.
@@ -989,11 +1026,39 @@ def _ytapi_cached_video(video_id: str, fmt: str = "720") -> Optional[Path]:
     cache, sinon un fichier 480p deja sur le disque serait resservi malgre ce changement."""
     if not YT_DOWNLOAD_API_KEY:
         return None
-    cache = WORK_DIR / f"ytapi_{video_id}_{fmt}.mp4"
+    cle   = f"{video_id}_{fmt}"
+    cache = WORK_DIR / f"ytapi_{cle}.mp4"
     if cache.exists() and cache.stat().st_size > 10_000:
         return cache
-    title = _ytapi_fetch(f"https://www.youtube.com/watch?v={video_id}", fmt, cache)
-    return cache if title else None
+    with _ytapi_verrou(cle):
+        # Re-test sous verrou : le concurrent qui vient de finir a peut-etre rempli le cache.
+        if cache.exists() and cache.stat().st_size > 10_000:
+            logger.info(f"[ytapi] telechargement evite (cache rempli par une requete concurrente): {cache.name}")
+            return cache
+        # Ecriture dans un fichier temporaire puis renommage atomique : tant que le
+        # telechargement n est pas fini, personne ne peut lire un fichier partiel.
+        partiel = WORK_DIR / f"ytapi_{cle}.part"
+        title = _ytapi_fetch(f"https://www.youtube.com/watch?v={video_id}", fmt, partiel)
+        if not title:
+            partiel.unlink(missing_ok=True)
+            return None
+        partiel.replace(cache)
+        try:
+            (WORK_DIR / f"ytapi_{cle}.titre").write_text(title, encoding="utf-8")
+        except Exception:
+            pass
+        return cache
+
+
+def _ytapi_titre_cache(video_id: str, fmt: str = "720") -> str:
+    """Titre memorise a cote de la video mise en cache (survit a un cache hit)."""
+    try:
+        f = WORK_DIR / f"ytapi_{video_id}_{fmt}.titre"
+        if f.exists():
+            return f.read_text(encoding="utf-8").strip() or "video"
+    except Exception:
+        pass
+    return "video"
 
 
 def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
@@ -1049,7 +1114,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
               # "Requested format is not available" — message trompeur, c'est l'auth qui tombe.
               "extractor_args": _yt_extractor_args(),
               "label": "webshare+web"}]
-            if RESIDENTIAL_PROXY_URL else []
+            if _proxy_utilisable() else []
         ),
         # 3. Railway IP clients alternatifs (android_creator, mweb — moins bloqués)
         {"proxy": None, "extractor_args": {"youtube": {"player_client": ["mweb", "web"]}},
@@ -1065,6 +1130,10 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
         (path, title, None) au succès, sinon (None, None, dernière_erreur)."""
         last = None
         for attempt in attempts:
+            # La liste est construite avant la premiere erreur : si le proxy s'est revele mort
+            # entre-temps, il ne faut pas lui redonner trois formats a rater.
+            if attempt["proxy"] and _PROXY_MORT:
+                continue
             for fmt in audio_formats:
                 try:
                     opts = {
@@ -1087,6 +1156,11 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                             return str(p), title, None
                 except Exception as e:
                     err_str = str(e)
+                    # La boucle audio est celle qui tourne le plus : c'est ici que le 402 du
+                    # proxy et le rejet des cookies apparaissent en premier, et c'est donc ici
+                    # qu'il faut les capter pour ne pas repayer chaque tentative suivante.
+                    _detecter_cookies_morts(err_str)
+                    _detecter_proxy_mort(err_str)
                     logger.warning(f"yt-dlp [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
                     last = e
                     for p in out_dir.glob("audio.*"):
@@ -1126,9 +1200,32 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                 logger.info("[audio] ✓ débloqué avec cookies frais (Playwright)")
                 return path, title
 
-    # 3) DERNIER RECOURS : API tierce mp3 (rare, ~0 crédit) — seulement si tout le gratuit a échoué.
+    # 3) DERNIER RECOURS : API tierce — seulement si tout le gratuit a échoué.
+    #
+    # Pourquoi on ne demande PAS un mp3 ici alors que c est le plus petit fichier : l API facture
+    # au telechargement, pas a l octet. Un mp3 pour la transcription puis, quelques minutes plus
+    # tard, la video 720p pour l apercu et l export, c est DEUX telechargements factures pour une
+    # seule video — le doublon visible dans le journal de vidkraken (chaque URL y apparait deux
+    # fois, meme minute, meme duree). On prend donc la video une seule fois, on en extrait
+    # l audio localement (ffmpeg, gratuit), et le cache sert ensuite aux segments et a l export.
+    # Bonus UX : l attente du telechargement se produit pendant l analyse, qui affiche deja une
+    # barre de progression, au lieu de tomber sur le premier apercu de clip.
     if YT_DOWNLOAD_API_KEY:
         api_out = out_dir / "audio_api.mp3"
+        if video_id:
+            cached = _ytapi_cached_video(video_id, "720")
+            if cached and cached.exists():
+                r = subprocess.run(
+                    ["ffmpeg", "-y", "-loglevel", "error", "-i", str(cached),
+                     "-vn", "-ac", "1", "-ar", "16000", "-c:a", "libmp3lame", "-b:a", "64k",
+                     str(api_out)],
+                    capture_output=True)
+                if r.returncode == 0 and api_out.exists() and api_out.stat().st_size > 10_000:
+                    logger.info("[audio] extrait de la video API deja payee (0 credit supplementaire)")
+                    return str(api_out), _ytapi_titre_cache(video_id, "720")
+                logger.warning(f"[audio] extraction ffmpeg depuis le cache API echouee: {r.stderr.decode()[-200:]}")
+        # Filet : video indisponible via l API (au-dela de la limite de taille du forfait, par
+        # exemple) — on retombe sur le mp3, qui reste mieux que rien.
         title = _ytapi_fetch(youtube_url, "mp3", api_out)
         if title:
             logger.info("[audio] secours API mp3 utilisé (chemins gratuits épuisés)")
@@ -1190,6 +1287,7 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
             except Exception as e:
                 err_str = str(e)
                 _detecter_cookies_morts(err_str)
+                _detecter_proxy_mort(err_str)
                 logger.warning(f"yt-dlp video [{attempt['label']}] fmt={fmt} failed: {err_str[:200]}")
                 last_err = e
                 if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
@@ -1287,7 +1385,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
             [{"proxy": _proxy_session(),
               "extractor_args": _yt_extractor_args(),
               "label": "webshare+android+section"}]
-            if RESIDENTIAL_PROXY_URL else []
+            if _proxy_utilisable() else []
         ),
         {"proxy": None, "extractor_args": _yt_extractor_args(), "label": "railway+android+section"},
     ]
@@ -1303,7 +1401,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     # GRATUIT d'abord, PROXY ensuite : le chemin direct vaut pour les deux depuis qu'il
     # transmet les en-tetes HTTP. Le gratuit ne coute rien, on l'essaie donc en premier.
     _essais_directs = [(None, "gratuit")]
-    if RESIDENTIAL_PROXY_URL:
+    if _proxy_utilisable():
         _essais_directs.append((_proxy_session(), "proxy"))
     for _px, _quoi in _essais_directs:
         try:
@@ -1311,6 +1409,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
             return _section_via_proxy_direct(youtube_url, out_dir, start, end, _px, cookies_file)
         except Exception as e:
             _detecter_cookies_morts(str(e))
+            _detecter_proxy_mort(str(e))
             # On journalise en clair : c'est precisement l'information que yt-dlp masquait.
             logger.warning(f"[section-directe/{_quoi}] echec : {str(e)[:300]}")
             last_err = e
@@ -1354,6 +1453,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
         except Exception as e:
             err_str = str(e)
             _detecter_cookies_morts(err_str)
+            _detecter_proxy_mort(err_str)
             logger.warning(f"yt-dlp section [{attempt['label']}] failed: {err_str[:200]}")
             last_err = e
             if attempt["proxy"] and ("proxy" in err_str.lower() or "502" in err_str or "tunnel" in err_str.lower()):
@@ -3768,7 +3868,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             # borné par un plafond horaire côté serveur. Même si le client se remettait à demander
             # le proxy en rafale, la casse est bornée à une heure au lieu d'un forfait entier.
             _seg_attempts = [None, None]
-            if RESIDENTIAL_PROXY_URL and allow_api_fallback:
+            if _proxy_utilisable() and allow_api_fallback:
                 _seg_attempts.append(RESIDENTIAL_PROXY_URL)
             # Quand le gratuit échoue pour une raison non transitoire, on saute les essais gratuits
             # restants — mais JAMAIS la tentative proxy (voir le bloc `except` plus bas).
@@ -3846,6 +3946,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     # Chemin de l'APERCU, distinct de celui de l'export : c'est ici que l'echec
                     # du 19/08 s'est produit, il doit donc voir les cookies morts lui aussi.
                     _detecter_cookies_morts(_err)
+                    _detecter_proxy_mort(_err)
                     logger.warning(f"[raw-segment] tentative {_att + 1}/{len(_seg_attempts)} ({'proxy' if _proxy else 'gratuit'}) échouée ({_err[:120]})")
                     if not _proxy and "not a bot" not in _err.lower() and "sign in" not in _err.lower():
                         # Refaire un essai gratuit identique ne sert à rien, mais le proxy doit
