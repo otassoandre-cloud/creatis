@@ -501,6 +501,16 @@
       afficherErreur('La connexion Google a échoué. Réessaie ou inscris-toi avec email/mot de passe.');
     }
 
+    /* Arrivée depuis le programme « publie une vidéo, 1 mois offert » (offre-createur.html).
+       Sans ce badge, la personne cliquait une offre précise et atterrissait sur un formulaire
+       d'inscription générique, sans aucune trace de ce qu'elle venait de choisir. */
+    if (urlParams.get('ugc') === '1') {
+      const badgeUgc = document.getElementById('badge-plan');
+      badgeUgc.style.display = 'block';
+      badgeUgc.querySelector('.badge-plan-inner').textContent =
+        'Offre créateur — crée ton compte, publie ta vidéo, 1 mois Pro offert';
+    }
+
     // Badge plan
     if (planCible && CONFIG.PLANS[planCible] && planCible !== 'gratuit') {
       const planConfig = CONFIG.PLANS[planCible];
@@ -525,7 +535,7 @@
       // replace (pas href) : évite qu'auth.html reste une page "retour" dans l'historique —
       // sinon le bouton retour du navigateur y ramène systématiquement et affiche un flash de
       // l'écran de connexion avant la redirection, qui ressemble à une déconnexion.
-      window.location.replace(returnUrl || 'app.html');
+      window.location.replace(returnUrl || (urlParams.get('ugc') === '1' ? '/offre-createur' : 'app.html'));
     }
   });
 
@@ -679,7 +689,7 @@
       }
     }
     const returnUrl = urlParams.get('returnUrl');
-    window.location.replace(returnUrl || 'app.html');
+    window.location.replace(returnUrl || (urlParams.get('ugc') === '1' ? '/offre-createur' : 'app.html'));
   }
 
   function afficherErreur(msg) {

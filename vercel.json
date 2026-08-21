@@ -69,6 +69,7 @@
     { "src": "/parrainage", "dest": "/parrainage.html" },
     { "src": "/test-chat", "dest": "/test-chat.html" },
     { "src": "/lp", "dest": "/lp.html" },
+    { "src": "/offre-createur", "dest": "/offre-createur.html" },
     { "src": "/outils", "dest": "/outils.html" },
     { "src": "/generateur-clips-viraux", "dest": "/generateur-clips-viraux.html" },
     { "src": "/clips-v2", "dest": "/clips-v2.html" },

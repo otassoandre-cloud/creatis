@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1 mois Pro offert — publie une vidéo sur Créatis</title>
+  <meta name="description" content="Publie une vidéo qui présente Créatis sur TikTok, Instagram ou YouTube. Passé 300 vues, on t'offre un mois de Créatis Pro.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080A0F; --card: #10141C; --paper: #F2F4F7; --muted: #8A93A3;
+      --line: rgba(255,255,255,0.08); --green: #10b981; --green-2: #059669;
+      --radius: 12px; --font: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--paper); font-family: var(--font); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 22px; }
+    .topbar { padding: 22px 0; border-bottom: 1px solid var(--line); margin-bottom: 48px; }
+    .logo { font-size: 21px; font-weight: 800; }
+    .logo span { color: var(--green); }
+
+    .hero { text-align: center; margin-bottom: 44px; }
+    .hero-badge {
+      display: inline-block; font-size: 0.72rem; font-weight: 800; color: var(--green);
+      background: rgba(16,185,129,0.12); padding: 5px 14px; border-radius: 20px; margin-bottom: 18px;
+    }
+    .hero h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; }
+    .hero h1 em { color: var(--green); font-style: normal; }
+    .hero p { color: var(--muted); font-size: 1.02rem; max-width: 540px; margin: 0 auto; }
+
+    .etapes { display: flex; flex-direction: column; gap: 2px; margin-bottom: 40px; }
+    .etape { display: flex; gap: 16px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); padding: 20px 22px; }
+    .etape:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .etape:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+    .etape-num {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(16,185,129,0.14);
+      color: var(--green); font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+    }
+    .etape h3 { font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+    .etape p { font-size: 0.88rem; color: var(--muted); }
+
+    .zone { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 24px; margin-bottom: 24px; }
+    .zone h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
+    .zone > p { font-size: 0.9rem; color: var(--muted); margin-bottom: 18px; }
+
+    label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+    input[type=url] {
+      width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 14px; color: var(--paper); font-size: 0.92rem; font-family: var(--font); margin-bottom: 12px;
+    }
+    input[type=url]:focus { outline: none; border-color: rgba(16,185,129,0.5); }
+
+    .btn {
+      display: block; width: 100%; text-align: center; background: var(--green); color: #04120b;
+      border: none; border-radius: 10px; padding: 13px; font-weight: 800; font-size: 0.95rem;
+      font-family: var(--font); cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+    .btn-ghost { background: transparent; border: 1px solid rgba(16,185,129,0.45); color: var(--green); }
+
+    .erreur { display: none; color: #f87171; font-size: 0.82rem; margin-bottom: 10px; }
+    .fine { font-size: 0.72rem; color: #6b7280; margin-top: 11px; line-height: 1.55; }
+
+    .statut { display: flex; align-items: center; gap: 9px; font-size: 0.85rem; padding: 11px 14px; border-radius: 9px; margin-bottom: 9px; }
+    .statut.en_attente { background: rgba(249,115,22,0.1); color: #f97316; }
+    .statut.approuve { background: rgba(16,185,129,0.12); color: var(--green); }
+    .statut.rejete { background: rgba(239,68,68,0.1); color: #f87171; }
+    .statut-url { color: var(--muted); font-size: 0.76rem; word-break: break-all; }
+
+    footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 26px 0 40px; text-align: center; font-size: 0.8rem; color: var(--muted); }
+    footer a { color: var(--green); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap"><a href="/" class="logo">Créatis<span>.</span></a></div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <span class="hero-badge">🎬 OFFRE CRÉATEUR</span>
+    <h1>Parle de Créatis dans une vidéo,<br>on t'offre <em>1 mois Pro</em></h1>
+    <p>Pas de code promo, pas de parrainage à recruter. Tu publies une vidéo qui montre l'outil, elle dépasse 300 vues, et ton mois est offert.</p>
+  </div>
+
+  <div class="etapes">
+    <div class="etape">
+      <div class="etape-num">1</div>
+      <div>
+        <h3>Crée ton compte et teste l'outil</h3>
+        <p>C'est gratuit et sans carte. Analyse une vidéo, regarde les clips que Créatis en sort — c'est ça que tu vas montrer.</p>
+      </div>
+    </div>
+    <div class="etape">
+      <div class="etape-num">2</div>
+      <div>
+        <h3>Publie une vidéo qui présente Créatis</h3>
+        <p>TikTok, Instagram ou YouTube. Démo, avis, avant/après — libre à toi, du moment qu'on voit et qu'on entend de quoi il s'agit.</p>
+      </div>
+    </div>
+    <div class="etape">
+      <div class="etape-num">3</div>
+      <div>
+        <h3>Passe les 300 vues, envoie le lien</h3>
+        <p>On regarde la vidéo à la main sous 48h — pas un robot. Tu reçois un email dès que c'est validé.</p>
+      </div>
+    </div>
+    <div class="etape">
+      <div class="etape-num">4</div>
+      <div>
+        <h3>Active ton mois offert</h3>
+        <p>Le lien reçu te demande une carte pour ouvrir l'abonnement — <strong>rien n'est prélevé pendant 30 jours</strong>. Ensuite c'est 14€/mois, résiliable en un clic avant l'échéance si tu ne veux pas continuer.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rempli par le script selon l'état de connexion : formulaire si connecté, invitation à
+       créer un compte sinon. Le serveur exige de toute façon un email — sans compte, on ne
+       saurait pas à qui créditer le mois offert. -->
+  <div id="zone-action">
+    <div class="zone"><p style="margin:0">Chargement…</p></div>
+  </div>
+
+  <div id="mes-soumissions"></div>
+
+  <footer>
+    Une question ? <a href="mailto:contact@creatis.app">contact@creatis.app</a><br>
+    <a href="/" style="color:var(--muted)">← Retour au site</a>
+  </footer>
+
+</div>
+
+<script src="js/config.js"></script>
+<script>
+  function utilisateurCourant() {
+    try { return JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch { return {}; }
+  }
+
+  function rendreZoneAction() {
+    const u = utilisateurCourant();
+    const zone = document.getElementById('zone-action');
+
+    if (!u.email) {
+      zone.innerHTML = `
+        <div class="zone">
+          <h2>Commence par créer ton compte</h2>
+          <p>Gratuit, sans carte bancaire. C'est aussi ce qui nous permet de savoir à qui créditer le mois offert quand ta vidéo sera validée.</p>
+          <a href="/auth.html?ugc=1" class="btn" style="text-decoration:none">Créer mon compte gratuit →</a>
+          <p class="fine">Déjà un compte ? <a href="/auth.html?ugc=1" style="color:var(--green)">Connecte-toi</a> puis reviens sur cette page pour envoyer ton lien.</p>
+        </div>`;
+      return;
+    }
+
+    zone.innerHTML = `
+      <div class="zone">
+        <h2>Envoie le lien de ta vidéo</h2>
+        <p>Connecté en tant que <strong style="color:var(--paper)">${u.email}</strong>. Le mois offert sera crédité sur ce compte.</p>
+        <label for="url">Lien de ta vidéo</label>
+        <input id="url" type="url" placeholder="https://www.tiktok.com/@toi/video/...">
+        <div class="erreur" id="erreur"></div>
+        <button class="btn" id="envoyer" onclick="envoyer()">Soumettre ma vidéo</button>
+        <p class="fine">Une seule soumission par lien. La revue est manuelle — compte jusqu'à 48h. Tu peux envoyer plusieurs vidéos différentes si la première n'atteint pas les 300 vues.</p>
+      </div>`;
+  }
+
+  async function envoyer() {
+    const u = utilisateurCourant();
+    const input = document.getElementById('url');
+    const erreur = document.getElementById('erreur');
+    const btn = document.getElementById('envoyer');
+    const url = (input.value || '').trim();
+    erreur.style.display = 'none';
+
+    if (!/^https?:\/\//i.test(url)) {
+      erreur.textContent = "Colle le lien complet de ta vidéo (il commence par https://).";
+      erreur.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Envoi…';
+    try {
+      const r = await fetch('/api/user-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ugc_soumettre', userId: u.id || null, email: u.email, videoUrl: url }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+
+      document.getElementById('zone-action').innerHTML = `
+        <div class="zone" style="text-align:center">
+          <div style="font-size:34px;margin-bottom:10px">✅</div>
+          <h2>C'est envoyé</h2>
+          <p style="margin-bottom:0">On regarde ta vidéo sous 48h. Si elle est validée, tu reçois un email avec le lien pour activer ton mois offert.</p>
+        </div>`;
+      chargerMesSoumissions();
+    } catch (e) {
+      erreur.textContent = e.message || 'Erreur — réessaie dans un instant.';
+      erreur.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Soumettre ma vidéo';
+    }
+  }
+
+  /* Historique personnel : sans ça, quelqu'un qui a déjà envoyé un lien n'a aucun moyen de
+     savoir où en est sa demande, et renvoie le même lien (refusé en doublon) en croyant que
+     rien n'est parti. */
+  async function chargerMesSoumissions() {
+    const u = utilisateurCourant();
+    if (!u.id) return;
+    try {
+      const r = await fetch(`/api/user-sync?userId=${encodeURIComponent(u.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ugc_mes_soumissions', userId: u.id }),
+      });
+      if (!r.ok) return;
+      const { soumissions } = await r.json();
+      if (!soumissions?.length) return;
+
+      const libelles = {
+        en_attente: '⏳ En cours de vérification',
+        approuve: '✅ Validée — regarde tes emails pour activer le mois offert',
+        rejete: '✗ Non retenue',
+      };
+      document.getElementById('mes-soumissions').innerHTML = `
+        <div class="zone">
+          <h2 style="margin-bottom:14px">Tes envois</h2>
+          ${soumissions.map(s => `
+            <div class="statut ${s.statut}">
+              <div>
+                <div>${libelles[s.statut] || s.statut}</div>
+                <div class="statut-url">${s.video_url}</div>
+                ${s.note_admin ? `<div class="statut-url">Note : ${s.note_admin}</div>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>`;
+    } catch { /* historique indisponible : jamais bloquant pour l'envoi lui-même */ }
+  }
+
+  rendreZoneAction();
+  chargerMesSoumissions();
+</script>
+
+</body>
+</html>

@@ -206,6 +206,18 @@ module.exports = async (req, res) => {
         }
       }
 
+      /* Historique personnel. Distinct de `ugc_lister` (admin) : filtre sur le userId du corps
+         et ne renvoie que les colonnes utiles a l'interesse — jamais essai_token, qui vaut un
+         mois gratuit et n'a rien a faire dans une reponse lisible depuis le navigateur. */
+      case 'ugc_mes_soumissions': {
+        if (!userId) return res.status(400).json({ error: 'userId requis' });
+        const lignes = await supabase(
+          `/ugc_soumissions?user_id=eq.${encodeURIComponent(userId)}&select=id,video_url,plateforme,statut,note_admin,cree_le,traite_le&order=cree_le.desc`,
+          'GET'
+        );
+        return res.status(200).json({ soumissions: lignes || [] });
+      }
+
       // ── Liste admin (revue manuelle) ─────────────────────────────────────────
       case 'ugc_lister': {
         if (!ugcVerifierAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
