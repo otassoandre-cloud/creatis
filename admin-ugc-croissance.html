@@ -122,7 +122,16 @@
           return;
         }
 
-        const data = await res.json();
+        /* La réponse n'est pas toujours du JSON : une page d'erreur de l'hébergeur ou une
+           coupure réseau renvoie du HTML, et `res.json()` lançait alors un « Unexpected
+           non-whitespace character after JSON at position 4 » affiché tel quel à l'écran. */
+        const brut = await res.text();
+        let data;
+        try { data = JSON.parse(brut); }
+        catch {
+          contenu.innerHTML = `<div class="ugc-vide">Réponse inattendue du serveur (HTTP ${res.status}). Recharge la page ; si ça persiste, le service est momentanément indisponible.</div>`;
+          return;
+        }
         if (data.error) {
           contenu.innerHTML = `<div class="ugc-vide">Erreur serveur : ${data.error}</div>`;
           return;
@@ -164,7 +173,7 @@
       const liste = _onglet === 'toutes' ? _toutes : _toutes.filter(s => s.statut === _onglet);
 
       if (!liste.length) {
-        contenu.innerHTML = '<div class="ugc-vide">Rien ici pour l\\'instant.</div>';
+        contenu.innerHTML = '<div class="ugc-vide">Rien ici pour l&rsquo;instant.</div>';
         return;
       }
 
@@ -209,7 +218,7 @@
           if (!confirm(`${vues_constatees} vues, en dessous du seuil de 300. Approuver quand même ?`)) return;
         }
       } else {
-        note = prompt('Motif du rejet (optionnel, visible dans l\\'historique) :', '') || null;
+        note = prompt("Motif du rejet (optionnel, visible dans l'historique) :", '') || null;
       }
 
       const carte = document.querySelector(`.ugc-carte[data-id="${id}"] .ugc-actions`);
