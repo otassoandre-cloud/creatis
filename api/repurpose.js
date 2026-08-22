@@ -544,12 +544,14 @@ async function _mapWithConcurrency(items, limit, fn) {
 }
 
 function _buildClipsPrompt(transcript, title, n, isChunk, extraHint = '') {
-  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et retiens AU MAXIMUM ${n} moments — uniquement ceux qui méritent vraiment d'être publiés.
+  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et sélectionne les ${n} MEILLEURS moments à en tirer.
 
-RÈGLE LA PLUS IMPORTANTE : tu n'as AUCUN quota à remplir. Un extrait ordinaire ne contient
-souvent aucun moment fort, et c'est normal. Dans ce cas, réponds {"clips":[]} — une liste vide
-est une réponse valide et c'est souvent la bonne. Rendre trois moments plats est une FAUTE
-plus grave que n'en rendre aucun : la personne qui lit ta réponse va publier ces clips.
+TON RÔLE EST DE CLASSER, PAS DE FILTRER. Propose les ${n} meilleurs moments de ce passage même
+si certains sont moyens — tu les noteras honnêtement plus bas, et c'est la note qui fera le tri,
+pas ton silence. Un moment moyen bien noté 45 est utile : il donne du choix. Un moment moyen
+gonflé à 90 est nuisible : il fait perdre confiance dans toutes les notes.
+Seule exception : s'il n'y a vraiment RIEN d'exploitable (pur silence, comptage, bruit), n'invente
+pas — rends-en moins.
 
 NOTE CHAQUE CANDIDAT SUR 4 CRITÈRES, de 0 à 5 :
 
@@ -569,15 +571,17 @@ NOTE CHAQUE CANDIDAT SUR 4 CRITÈRES, de 0 à 5 :
 - "tension" — donne-t-il envie de connaître la suite ?
   5 = on ne peut pas décrocher   3 = curiosité légère   0 = aucune attente créée
 
-CALIBRAGE : la note 5 doit rester rare — au plus un ou deux critères à 5 sur l'ensemble de ta
-réponse. La moyenne d'un bon moment se situe autour de 3. Si tu mets 4 ou 5 partout, ta réponse
-est inutilisable : elle ne permet plus de classer quoi que ce soit.
+CALIBRAGE — utilise TOUTE l'échelle, c'est ce qui rend le classement utile :
+  5 = exceptionnel, doit rester rare (un ou deux sur l'ensemble de ta réponse)
+  4 = fort, clairement au-dessus du lot
+  3 = correct, publiable sans être marquant
+  2 = faible mais montrable
+  0-1 = à éviter
+Si tu mets 4 ou 5 partout, ta réponse ne classe plus rien et devient inutilisable.
 
-SEUIL D'ADMISSION : ne propose un moment QUE si "hook" >= 3 ET "emotion" >= 3. En dessous,
-écarte-le, même s'il te reste de la place.
-
-ÉCARTER SYSTÉMATIQUEMENT : intros, outros, remerciements, transitions, annonces de sponsor,
-passages purement explicatifs sans relief, moments qui dépendent d'un visuel qu'on ne verra pas.${extraHint}
+À NOTER BAS plutôt qu'à écarter : intros, outros, remerciements, transitions, annonces de
+sponsor, passages purement explicatifs, moments qui dépendent d'un visuel qu'on ne verra pas.
+Ils descendront d'eux-mêmes en bas du classement.${extraHint}
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
 {"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"phrase d'accroche courte et percutante (max 8-10 mots) que TU rédiges pour donner envie de regarder — pas besoin d'être une citation exacte du transcript, reformule/résume l'idée choc du clip (ex: \"Il a perdu 50 000€ en 3 minutes\")","notes":{"hook":4,"emotion":3,"autonomie":5,"tension":3},"pourquoi":"en une phrase, ce qui rend ce moment fort"}]}
@@ -799,7 +803,11 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
      Sur une vidéo courte (un seul morceau) on demande plus de candidats qu'on n'en affichera :
      sans cela on demandait exactement dix clips et on gardait les dix — il n'y avait aucune
      sélection, juste une production. */
-  const perChunkN = isChunked ? 3 : Math.min(nClips + 6, 16);
+  const perChunkN = isChunked
+    // Assez de candidats pour qu'il reste un vrai choix apres dedoublonnage, sans exploser le
+    // temps de reponse : de quoi couvrir nClips en piochant dans chaque morceau, plus une marge.
+    ? Math.max(3, Math.min(6, Math.ceil(nClips / chunks.length) + 2))
+    : Math.min(nClips + 6, 16);
   console.log(`[clips] ${chunks.length} morceau(x) (${_dbg.segments} segments)`);
 
   let contentHint = '';
@@ -855,10 +863,16 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
      Mieux vaut en rendre quatre solides que dix dont huit finiront à la corbeille : le nombre
      affiché n'a de valeur que si l'utilisateur les garde. On garde tout de même un minimum, pour
      ne jamais renvoyer un studio vide à quelqu'un qui vient d'attendre son analyse. */
-  const SEUIL_QUALITE = 60;   // sur l'échelle calculée : moyenne pondérée des notes × 20
-  const MIN_CLIPS = 3;
-  const retenus = clips.filter(c => (c.score || 0) >= SEUIL_QUALITE);
-  const final = (retenus.length >= MIN_CLIPS ? retenus : clips.slice(0, MIN_CLIPS)).slice(0, nClips);
+  /* Seuil abaisse a 40 (et non 60) apres mesure : avec le calibrage du prompt, un moment
+     « correct, publiable » note 3 partout tombe exactement a 60 — le seuil coupait donc la
+     moitie des moments corrects. On ne coupe plus que le vraiment mauvais, et on TRIE : les
+     meilleurs remontent, les faibles restent disponibles en bas de liste avec leur vraie note.
+     Donner du choix classe vaut mieux que decider a la place de l'utilisateur. */
+  const SEUIL_QUALITE = 40;
+  const MIN_CLIPS = 5;
+  const tries = [...clips].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const retenus = tries.filter(c => (c.score || 0) >= SEUIL_QUALITE);
+  const final = (retenus.length >= MIN_CLIPS ? retenus : tries.slice(0, MIN_CLIPS)).slice(0, nClips);
   _dbg.candidats = clips.length;
   _dbg.ecartes_sous_seuil = clips.length - retenus.length;
   _dbg.score_max = clips.length ? Math.max(...clips.map(c => c.score || 0)) : null;
