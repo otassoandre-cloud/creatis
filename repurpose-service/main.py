@@ -4533,7 +4533,9 @@ async def process_clip_endpoint(
             if style == "highlight" and caption_highlight:
                 # Deux styles supplémentaires : texte normal (Hl) et bandeau bleu (HlB).
                 # Ils restent dans le bloc [V4+ Styles], avant la ligne vide.
-                ass_lines.extend(caption_highlight.style_lines(720, 1280, margin_v))
+                # Le curseur de taille du studio pilote enfin ce style, comme tous les autres.
+                _hl_ech = caption_highlight.echelle_depuis_taille(font_size)
+                ass_lines.extend(caption_highlight.style_lines(720, 1280, margin_v, _hl_ech))
             ass_lines += [
                 "",
                 "[Events]",
@@ -4589,7 +4591,9 @@ async def process_clip_endpoint(
                 # que le rendu validé.
                 _hl_y = None if abs(sub_y - 82.0) < 0.01 else _y_px
                 try:
-                    _hl_lines = caption_highlight.dialogues(segs, 720, 1280, to_ass_time, y_px=_hl_y)
+                    _hl_lines = caption_highlight.dialogues(
+                        segs, 720, 1280, to_ass_time, y_px=_hl_y,
+                        echelle=caption_highlight.echelle_depuis_taille(font_size))
                 except Exception as _hl_err:
                     logger.error(f"[subs] highlight a échoué ({_hl_err}) — repli sur l'affichage simple")
                     _hl_lines = []

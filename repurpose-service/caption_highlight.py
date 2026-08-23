@@ -81,18 +81,44 @@ BANNER_CADENCE_S = 12.0      # une fenêtre = un bandeau, sur la cue la plus ét
 _FONTS = {}
 
 
-def px(video_w: int, video_h: int) -> dict:
-    """Convertit le style en pixels pour une résolution donnée."""
-    corps = round(ASCENDER_H * video_h / COEF_ASCENDANTE_LIBASS)
+#: Taille de reference du studio. TOUTE la geometrie ci-dessus (ascendantes a 58,4 %,
+#: interligne 4,12 %, largeur utile 77 %) a ete calibree au pixel pour cette taille-la, qui est
+#: aussi la valeur par defaut du curseur cote client. On n'y touche donc pas : `echelle` vaut
+#: exactement 1,0 au reglage par defaut et le rendu calibre reste rigoureusement identique.
+#: Sans ce facteur, le curseur de taille du studio n'avait AUCUN effet sur ce style — ni a
+#: l'apercu ni a l'export — alors qu'il en avait sur tous les autres.
+TAILLE_REF = 55
+
+
+def echelle_depuis_taille(font_size) -> float:
+    """Rapport a appliquer a la geometrie pour la taille demandee par l'utilisateur."""
+    try:
+        t = float(font_size)
+    except (TypeError, ValueError):
+        return 1.0
+    if t <= 0:
+        return 1.0
+    # Bornes alignees sur la poignee du studio (30 a 110) : au-dela, la geometrie calibree
+    # (interligne, largeur de ligne) ne tient plus et le texte deborderait du cadre.
+    return max(30.0, min(110.0, t)) / TAILLE_REF
+
+
+def px(video_w: int, video_h: int, echelle: float = 1.0) -> dict:
+    """Convertit le style en pixels pour une résolution donnée.
+
+    `echelle` : rapport taille demandée / TAILLE_REF (1,0 = rendu calibré d'origine).
+    """
+    corps = round(ASCENDER_H * video_h / COEF_ASCENDANTE_LIBASS * echelle)
     corps_actif = round(corps * ACTIVE_SCALE)
     corps_bandeau = round(
-        (BANNER_HEIGHT_H * video_h - 2 * BANNER_PAD_H * video_h) / COEF_HAUTEUR_BOITE_LIBASS)
+        (BANNER_HEIGHT_H * video_h - 2 * BANNER_PAD_H * video_h) / COEF_HAUTEUR_BOITE_LIBASS
+        * echelle)
     return {
         "font_px": corps,
         "font_active_px": corps_actif,
         "outline_px": max(1, round(OUTLINE_H * video_h)),
         "line1_top_px": round(LINE1_TOP_H * video_h),
-        "line_gap_px": round(LINE_GAP_H * video_h),
+        "line_gap_px": round(LINE_GAP_H * video_h * echelle),
         "pos_offset_px": round(POS_TO_ASCENDER_H * video_h),
         "max_line_w_px": round(MAX_LINE_W * video_w),
         "margin_px": round(video_w * (1 - MAX_LINE_W) / 2),
@@ -103,13 +129,13 @@ def px(video_w: int, video_h: int) -> dict:
     }
 
 
-def style_lines(video_w: int, video_h: int, margin_v: int = 0) -> list:
+def style_lines(video_w: int, video_h: int, margin_v: int = 0, echelle: float = 1.0) -> list:
     """Les DEUX lignes `Style:` du style — texte normal, puis bandeau.
 
     Le bandeau est obtenu avec BorderStyle=3 : le « contour » devient une boîte opaque
     remplie avec la couleur de contour. Pas de rectangle dessiné à la main.
     """
-    p = px(video_w, video_h)
+    p = px(video_w, video_h, echelle)
     return [
         f"Style: Hl,{FONT_FAMILY},{p['font_active_px']},{COLOR_IDLE},{COLOR_IDLE},"
         f"{COLOR_OUTLINE},{COLOR_OUTLINE},0,0,0,0,100,100,0,0,1,{p['outline_px']},0,8,"
@@ -283,7 +309,7 @@ def _echapper(texte):
     return texte.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
 
-def dialogues(segments, video_w, video_h, to_ass_time, y_px=None):
+def dialogues(segments, video_w, video_h, to_ass_time, y_px=None, echelle: float = 1.0):
     """Construit les lignes `Dialogue:` du style.
 
     `segments` : les segments du service, chacun avec `t0`, `t1`, `text` et `words`.
@@ -293,7 +319,7 @@ def dialogues(segments, video_w, video_h, to_ass_time, y_px=None):
     Renvoie [] si aucun timing mot par mot n'est disponible — le style repose entièrement
     dessus, mieux vaut ne rien produire que de réinventer les durées.
     """
-    p = px(video_w, video_h)
+    p = px(video_w, video_h, echelle)
     y_boite = (p["line1_top_px"] - p["pos_offset_px"]) if y_px is None else int(y_px)
 
     # Regroupement SEGMENT PAR SEGMENT : jamais de cue à cheval sur deux segments. Le

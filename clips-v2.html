@@ -4972,7 +4972,24 @@ const V2 = (() => {
   const HL_BANNER_MIN_DUR = 0.6;
   const HL_BANNER_MAX_W = 0.70;
 
-  function _hlCorps() { return Math.round(HL_ASC * HL_H / HL_COEF_LIBASS); }
+  /* TAILLE DE REFERENCE du style Focus. Toute la geometrie du module (ascendantes a 58,4 %,
+     interligne 4,12 %, largeur utile 77 %) a ete calibree au pixel pour CE corps-la, avec la
+     taille 55 — la valeur par defaut. On ne touche donc pas aux constantes : on applique un
+     simple rapport taille/55, qui vaut exactement 1 au reglage par defaut et laisse le rendu
+     calibre rigoureusement inchange. Sans ce rapport, le curseur de taille ne faisait RIEN sur
+     Focus (corps fige a 80) alors qu'il redimensionnait la boite autour — le texte se faisait
+     donc rogner au lieu d'etre mis a l'echelle. */
+  const HL_TAILLE_REF = 55;
+  function _hlEchelle(opts) {
+    const t = _taille(opts);
+    if (!t || t <= 0) return 1;
+    // MEMES bornes que `echelle_depuis_taille` dans caption_highlight.py — sinon un reglage
+    // hors plage (clip ancien, valeur bricolee) donnerait un apercu et un export differents.
+    return Math.max(30, Math.min(110, t)) / HL_TAILLE_REF;
+  }
+  function _hlCorps(opts) {
+    return Math.round(HL_ASC * HL_H / HL_COEF_LIBASS * _hlEchelle(opts));
+  }
 
   let _hlCtx = null;
   function _hlLargeur(txt, fontSize) {
@@ -5129,7 +5146,7 @@ const V2 = (() => {
          l'export, libass écrasant les glyphes pour les faire tenir dans le corps demandé. */
       case 'highlight': {
         const sc2 = _previewScale();
-        const corps = _hlCorps();
+        const corps = _hlCorps(opts);
         const fsHl = Math.round(corps * HL_CORR * sc2);
         el.style.fontFamily = "'Poppins', sans-serif";
         el.style.fontWeight = '600';
@@ -5144,7 +5161,7 @@ const V2 = (() => {
            Punch s'en sort avec un interligne RELATIF (1.1) qui suit le corps. On garde ici
            l'ecart mesure tant qu'il suffit, et on l'ouvre juste ce qu'il faut au-dela. */
         el.style.lineHeight =
-          Math.max(Math.round(HL_GAP * HL_H * sc2),
+          Math.max(Math.round(HL_GAP * HL_H * sc2 * _hlEchelle(opts)),
                    Math.round(fsHl * HL_ACTIVE_SCALE * 1.1)) + 'px';
         el.style.background = 'transparent';
         el.style.padding = '0';
@@ -5165,7 +5182,7 @@ const V2 = (() => {
         if (opts._hlBandeau) {
           // Bandeau : fond bleu plein, texte blanc plus petit, aucun mot mis en avant —
           // sur ce fond, un mot bleu serait invisible.
-          const fsB = Math.round((0.0215 * HL_H - 8) * HL_CORR * sc2);
+          const fsB = Math.round((0.0215 * HL_H - 8) * HL_CORR * sc2 * _hlEchelle(opts));
           el.style.fontSize = Math.max(6, fsB) + 'px';
           el.style.textShadow = 'none';
           const d = document.createElement('span');
@@ -5411,9 +5428,19 @@ const V2 = (() => {
     el.style.zIndex = '5';
     el.style.wordWrap = 'break-word';
     el.style.maxWidth = 'none';
-    // Max 2 lignes — calculé en px sur la font-size réelle (scale-proof)
-    el.style.maxHeight = `${Math.round(fs * 1.25 * 2 + 4)}px`;
-    el.style.overflow = 'hidden';
+    /* Max 2 lignes — calcule en px sur la font-size reelle (scale-proof).
+       Ces deux lignes s'executent APRES le switch et ecrasaient donc l'exemption que le style
+       Focus venait de poser (maxHeight none / overflow visible). Comme son corps ne derive pas
+       de `fs`, la boite suivait le curseur pendant que le texte restait fige : le sous-titre se
+       faisait rogner au lieu d'etre redimensionne. Focus pilote sa propre geometrie, on ne la
+       recouvre plus. */
+    if (style === 'highlight') {
+      el.style.maxHeight = 'none';
+      el.style.overflow = 'visible';
+    } else {
+      el.style.maxHeight = `${Math.round(fs * 1.25 * 2 + 4)}px`;
+      el.style.overflow = 'hidden';
+    }
     el.style.display = text ? 'block' : 'none';
     el.style.cursor = 'grab';
     el.style.pointerEvents = 'all';
