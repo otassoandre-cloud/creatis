@@ -189,7 +189,45 @@ const Auth = (() => {
     /* ── Getters ── */
     estAuthentifie() { return !!_session || _demoMode; },
     estDemoMode() { return _demoMode; },
-    getToken() { return _session?.access_token || null; },
+    /* `_session` n'est qu'une COPIE EN MÉMOIRE de la session : elle est vide tant que `init()`
+       n'a pas fini, et repart à zéro à chaque rechargement de page. Supabase, lui, persiste la
+       vraie session dans localStorage sous `creatis_sb_session`. Sans ce repli, un appel
+       authentifié parti avant la fin de l'init repartait SANS jeton, et le serveur répondait
+       « Connexion requise » à quelqu'un qui était pourtant bien connecté — c'est ce qui cassait
+       l'aperçu des clips sur mobile après une mise en veille de l'onglet. */
+    getToken() {
+      if (_session?.access_token) return _session.access_token;
+      try {
+        const brut = localStorage.getItem('creatis_sb_session');
+        if (!brut) return null;
+        const s = JSON.parse(brut) || {};
+        const src = s.currentSession || s;
+        const jeton = src.access_token;
+        if (!jeton) return null;
+        // `expires_at` est un epoch en SECONDES. Marge de 30 s : un jeton qui expire pendant le
+        // trajet réseau vaut un jeton expiré, autant le refuser tout de suite.
+        if (src.expires_at && Date.now() / 1000 > src.expires_at - 30) return null;
+        return jeton;
+      } catch { return null; }
+    },
+
+    /* Version asynchrone : tente un vrai rafraîchissement quand plus aucun jeton valide n'est
+       disponible. À utiliser avant un appel authentifié qu'on ne veut pas voir échouer en 401. */
+    async assurerToken() {
+      const direct = this.getToken();
+      if (direct) return direct;
+      const client = _createClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.auth.refreshSession();
+        if (data?.session?.access_token) {
+          _session = data.session;
+          _demoMode = false;
+          return data.session.access_token;
+        }
+      } catch { /* refresh token mort : l'appelant devra proposer une reconnexion */ }
+      return null;
+    },
 
     async getSession() {
       const client = _createClient();

@@ -4440,12 +4440,26 @@ const V2 = (() => {
       const clipEnd   = clip.end_time   ?? clip.end;
       const videoId   = clip.video_id   || _ytVideoId();
       if (!videoId) throw new Error('ID vidéo manquant');
-      const tok = (typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '';
+      /* `assurerToken` plutot que `getToken` : l'apercu exige une authentification cote serveur
+         (mode `raw_segment`), et le jeton en memoire est vide apres une mise en veille d'onglet
+         ou un rechargement. On tente un vrai rafraichissement AVANT de partir, au lieu de laisser
+         le serveur repondre « Connexion requise » a quelqu'un que l'interface affiche connecte. */
+      let tok = '';
+      try {
+        tok = (typeof Auth !== 'undefined' && Auth.assurerToken) ? (await Auth.assurerToken()) || ''
+            : ((typeof Auth !== 'undefined' && Auth.getToken()) ? Auth.getToken() : '');
+      } catch { tok = ''; }
       const authHeaders = tok ? { 'Authorization': `Bearer ${tok}` } : {};
       const startRes = await fetch('/api/repurpose', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ mode: 'raw_segment', video_id: videoId, start: clipStart, end: clipEnd, allow_api_fallback: allowApi }),
       }).then(r => r.json());
+      /* Session vraiment morte : le message brut du serveur (« Connexion requise pour utiliser
+         Repurpose Video ») s'affichait en rouge DANS le lecteur video, sans dire quoi faire. */
+      if (startRes.error && /connexion requise/i.test(startRes.error)) {
+        if (window.posthog) posthog.capture('apercu_session_expiree', { plan: _userPlan });
+        throw new Error('Ta session a expiré. Reconnecte-toi pour voir tes clips — ton analyse est conservée.');
+      }
       if (!startRes.ok || !startRes.job_id) throw new Error(startRes.error || 'Lancement impossible');
       const job_id = startRes.job_id;
       for (let attempt = 0; attempt < 150; attempt++) {
