@@ -138,7 +138,19 @@
 
 <script src="js/config.js"></script>
 <script>
+  /* La SESSION fait foi, pas le miroir `creatis_user` : rien ne garantit que ce reflet local
+     soit ecrit, et un compte parfaitement connecte se voyait alors proposer de creer un compte.
+     `Auth` n'est pas charge sur cette page (elle est volontairement legere) : on lit donc
+     directement la session que Supabase persiste, avec le meme ordre de confiance. */
   function utilisateurCourant() {
+    try {
+      const brut = localStorage.getItem('creatis_sb_session');
+      if (brut) {
+        const s = JSON.parse(brut) || {};
+        const u = (s.currentSession || s).user;
+        if (u?.email) return { id: u.id || null, email: u.email };
+      }
+    } catch {}
     try { return JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch { return {}; }
   }
 
@@ -162,7 +174,10 @@
         <h2>Envoie le lien de ta vidéo</h2>
         <p>Connecté en tant que <strong style="color:var(--paper)">${u.email}</strong>. Le mois offert sera crédité sur ce compte.</p>
         <label for="url">Lien de ta vidéo</label>
-        <input id="url" type="url" placeholder="https://www.tiktok.com/@toi/video/...">
+        <input id="url" type="url" inputmode="url" autocomplete="off" autocorrect="off"
+               autocapitalize="off" spellcheck="false" name="lien-video-publique"
+               data-lpignore="true" data-1p-ignore data-bwignore
+               placeholder="https://www.tiktok.com/@toi/video/...">
         <div class="erreur" id="erreur"></div>
         <button class="btn" id="envoyer" onclick="envoyer()">Soumettre ma vidéo</button>
         <p class="fine">Une seule soumission par lien. La revue est manuelle — compte jusqu'à 48h. Tu peux envoyer plusieurs vidéos différentes si la première n'atteint pas les 300 vues.</p>

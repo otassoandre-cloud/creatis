@@ -4014,7 +4014,10 @@ const V2 = (() => {
 
         <div id="ugc-form-zone">
           <label style="display:block;font-size:0.75rem;font-weight:700;color:#8A93A3;margin-bottom:6px">Lien de ta vidéo</label>
-          <input id="ugc-url-input" type="url" placeholder="https://www.tiktok.com/@toi/video/..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;color:#f2f4f7;font-size:0.85rem;margin-bottom:12px">
+          <input id="ugc-url-input" type="url" inputmode="url" autocomplete="off" autocorrect="off"
+                 autocapitalize="off" spellcheck="false" name="lien-video-publique"
+                 data-lpignore="true" data-1p-ignore data-bwignore
+                 placeholder="https://www.tiktok.com/@toi/video/..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;color:#f2f4f7;font-size:0.85rem;margin-bottom:12px">
           <div id="ugc-form-erreur" style="display:none;color:#f87171;font-size:0.78rem;margin-bottom:10px"></div>
           <button id="ugc-form-envoyer" onclick="window._envoyerSoumissionUGC0()" style="width:100%;background:#10b981;color:#04120b;border:none;border-radius:10px;padding:12px;font-weight:800;font-size:0.9rem;cursor:pointer">Soumettre ma vidéo</button>
           <p style="font-size:10.5px;color:#6b7280;margin-top:10px;line-height:1.5">Une seule vidéo par lien. La revue est manuelle — sois patient, on ne fait pas ça avec un robot.</p>
@@ -4040,8 +4043,18 @@ const V2 = (() => {
       return;
     }
 
-    let currentUser = {};
-    try { currentUser = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; } catch {}
+    /* L'identite vient de la SESSION, pas du miroir `creatis_user` — un simple reflet local que
+       rien ne garantit d'ecrit. Un client parfaitement connecte mais sans ce miroir se voyait
+       repondre « Connecte-toi d'abord » alors qu'il l'etait : c'est exactement ce qui a ete
+       signale. `Auth.identite()` regarde la session en memoire, puis celle persistee par
+       Supabase, et ne retombe sur le miroir qu'en dernier recours. */
+    let currentUser = (typeof Auth !== 'undefined' && Auth.identite) ? (Auth.identite() || {}) : {};
+    if (!currentUser.email) {
+      try { const u = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {}; if (u.email) currentUser = u; } catch {}
+    }
+    if (!currentUser.email && typeof Auth !== 'undefined' && Auth.getUser) {
+      try { const u = await Auth.getUser(); if (u?.email) currentUser = u; } catch {}
+    }
     if (!currentUser.email) {
       erreurZone.textContent = 'Connecte-toi d\'abord pour qu\'on sache à quel compte créditer le mois offert.';
       erreurZone.style.display = 'block';

@@ -211,6 +211,32 @@ const Auth = (() => {
       } catch { return null; }
     },
 
+    /* Identité de la personne connectée, SANS appel réseau et sans dépendre du miroir
+       `creatis_user` — un simple reflet local que rien ne garantit d'écrit. Un compte parfaitement
+       connecte cote Supabase mais dont ce miroir manque etait traite comme deconnecte : c'est ce
+       qui affichait « Connecte-toi d'abord » a un client qui etait bel et bien connecte.
+       Ordre de confiance : session en memoire, puis session persistee par Supabase, puis le
+       miroir en dernier recours. */
+    identite() {
+      const depuisSession = _session?.user;
+      if (depuisSession?.email) {
+        return { id: depuisSession.id || null, email: depuisSession.email };
+      }
+      try {
+        const brut = localStorage.getItem('creatis_sb_session');
+        if (brut) {
+          const s = JSON.parse(brut) || {};
+          const u = (s.currentSession || s).user;
+          if (u?.email) return { id: u.id || null, email: u.email };
+        }
+      } catch {}
+      try {
+        const u = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {};
+        if (u.email) return { id: u.id || null, email: u.email };
+      } catch {}
+      return null;
+    },
+
     /* Version asynchrone : tente un vrai rafraîchissement quand plus aucun jeton valide n'est
        disponible. À utiliser avant un appel authentifié qu'on ne veut pas voir échouer en 401. */
     async assurerToken() {
