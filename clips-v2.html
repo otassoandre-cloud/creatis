@@ -1286,9 +1286,24 @@ const V2 = (() => {
         else if (_ml) mlDemarrer();
       });
     }
+    /* Cablage des commandes de lecture AVANT tout appel reseau. Purement local, aucune raison
+       d'attendre l'authentification pour que la barre reponde au doigt. */
+    _setupProgBarDrag();
+
     // Auth check + récupération plan (Auth.init() requis pour restaurer la session Supabase dans l'iframe)
     if (typeof Auth !== 'undefined') {
-      await Auth.init().catch(() => {});
+      /* DELAI MAXIMAL SUR L'INIT D'AUTH — sans lui, tout ce qui suit dans `init()` est otage
+         du reseau. `Auth.init()` fait `getSession()` puis, au besoin, `refreshSession()` :
+         deux appels HTTP sans timeout. Le `.catch()` attrape un REJET, jamais un appel qui
+         traine. Sur une connexion mobile capricieuse, l'attente ne se terminait pas et le
+         cablage place plus bas — dont `_setupProgBarDrag()` — n'avait jamais lieu : la barre
+         de lecture restait totalement morte au doigt, sans le moindre message.
+         Six secondes suffisent largement a une session valide ; au-dela on continue sans
+         attendre, la session se restaurera d'elle-meme via `onAuthStateChange`. */
+      await Promise.race([
+        Auth.init().catch(() => {}),
+        new Promise(r => setTimeout(r, 6000)),
+      ]);
       Auth.getUser().then(user => {
         const el = document.getElementById('nav-user');
         if (el && user) el.textContent = user.email?.split('@')[0] || user.nom || '';
@@ -1336,7 +1351,7 @@ const V2 = (() => {
       }
       _chargerHistorique();   // liste des analyses passées, sous la zone d'upload
     }
-    _setupProgBarDrag();
+    _setupProgBarDrag();   // idempotent : deja cable plus haut, on garde l'appel par securite
     // Tracker upload_started au clic sur la zone d'upload
     const _dz = document.getElementById('drop-zone');
     if (_dz) _dz.addEventListener('click', () => { if (window.posthog) posthog.capture('upload_started', { plan: _userPlan, method: 'click' }); }, { capture: true });
@@ -5622,6 +5637,10 @@ const V2 = (() => {
   function _setupProgBarDrag() {
     const wrap = document.getElementById('modal-prog-wrap');
     if (!wrap) return;
+    // Appelee a deux endroits (avant et apres l'auth) pour que la barre reponde meme si le
+    // reseau traine : meme garde que _setupCropDrag, sinon chaque geste serait traite en double.
+    if (wrap._progDragWired) return;
+    wrap._progDragWired = true;
     const fill = document.getElementById('modal-prog-fill');
     const handle = document.getElementById('modal-prog-handle');
     let dragging = false;
@@ -5655,7 +5674,23 @@ const V2 = (() => {
       // Fichier local (vidéo complète) : seek dans [clipStart, clipEnd].
       const rawOffset = clip._rawOffset ?? null;
       const cible = rawOffset != null ? pct * clipDur : clipStart + pct * clipDur;
-      if (isFinite(cible)) { try { video.currentTime = cible; } catch {} }
+      if (!isFinite(cible)) return;
+      try { video.currentTime = cible; } catch {}
+      /* `currentTime` est AVALE EN SILENCE quand le media n'a pas encore ses metadonnees
+         (readyState 0) : aucune exception, aucun effet. La boucle d'affichage relit alors
+         `currentTime` — reste a 0 — et remet aussitot le curseur au depart. Vu du doigt, la
+         barre est morte : elle suit pendant le geste puis revient sur place au relachement.
+         Le cas est courant sur telephone, ou la duree affichee vient des metadonnees du clip
+         (0:53) et non du media, qui peut ne pas etre encore charge.
+         On rejoue donc la cible des que le media est en mesure de l'honorer. */
+      if (video.readyState < 1 || Math.abs(video.currentTime - cible) > 0.5) {
+        const rejouer = () => { try { video.currentTime = cible; } catch {} };
+        video.addEventListener('loadedmetadata', rejouer, { once: true });
+        video.addEventListener('canplay', rejouer, { once: true });
+        if (window.posthog && video.readyState < 1) {
+          posthog.capture('seek_media_non_pret', { readyState: video.readyState, plan: _userPlan });
+        }
+      }
     }
 
     wrap.addEventListener('pointerdown', (e) => {
