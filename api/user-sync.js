@@ -30,6 +30,34 @@ function ugcDetecterPlateforme(url) {
   return 'autre';
 }
 
+/* Envoi d'email ATTENDU, mais jamais fatal.
+   Sur Vercel, l'invocation est gelee des que la reponse HTTP part : un `fetch(...)` lance sans
+   `await` est tue en vol et l'email ne part JAMAIS. C'est ce qui rendait la notification de
+   soumission silencieuse alors que la cle Brevo fonctionne (verifie : envoi direct -> HTTP 201).
+   On attend donc l'envoi avant de repondre — quelques centaines de millisecondes — mais on
+   avale toute erreur : l'action metier (soumission enregistree, decision prise) est deja
+   accomplie a ce stade et ne doit pas echouer parce qu'un email n'est pas parti. */
+async function ugcEnvoyerEmail(payload, contexte) {
+  const cle = (process.env.BREVO_API_KEY || '').trim();
+  if (!cle) { console.warn(`[${contexte}] BREVO_API_KEY absente — email non envoyé`); return false; }
+  try {
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': cle },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      console.error(`[${contexte}] Brevo ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+      return false;
+    }
+    console.log(`[${contexte}] email envoyé à ${payload.to?.[0]?.email}`);
+    return true;
+  } catch (e) {
+    console.error(`[${contexte}] envoi échoué: ${e.message}`);
+    return false;
+  }
+}
+
 function ugcVerifierAdmin(req) {
   const adminToken = (process.env.ADMIN_TOKEN || '').trim();
   const auth = (req.headers['authorization'] || '').replace('Bearer ', '');
@@ -201,12 +229,9 @@ module.exports = async (req, res) => {
              arrive tout seul et porte le lien cliquable, donc la video se regarde tout de
              suite. Non bloquant : la soumission est deja enregistree a ce stade, un echec
              d'envoi ne doit surtout pas la faire echouer cote utilisateur. */
-          if (process.env.BREVO_API_KEY) {
+          {
             const _labels = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', autre: 'Autre' };
-            fetch('https://api.brevo.com/v3/smtp/email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
-              body: JSON.stringify({
+            await ugcEnvoyerEmail({
                 sender: { email: 'contact@creatis.app', name: 'Créatis' },
                 // `replyTo` sur l'auteur : repondre au mail lui ecrit directement, sans copier
                 // son adresse a la main (pour demander une precision, un autre lien, etc.).
@@ -225,8 +250,7 @@ module.exports = async (req, res) => {
                   + `<a href="https://creatis.app/admin-ugc-croissance.html" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">✅ Approuver ou rejeter</a>`
                   + `<p style="color:#999;font-size:12px;margin:0;word-break:break-all">Lien brut : ${url}</p>`
                   + `</div>`,
-              }),
-            }).catch(e => console.error('[ugc_soumettre] notification admin échouée:', e.message));
+            }, 'ugc_soumettre');
           }
           return res.status(200).json({ ok: true, soumission: ligne });
         } catch (e) {
@@ -282,18 +306,14 @@ module.exports = async (req, res) => {
              paiement en mode essai (voir api/create-checkout-session.js, paramètre essaiToken).
              `essai_token` existe déjà sur la ligne depuis la soumission — un jeton à part de
              `id`, pour qu'il ne soit pas devinable ni exposé ailleurs dans l'admin. */
-          if (process.env.BREVO_API_KEY) {
+          {
             const lienEssai = `https://creatis.app/paiement.html?plan=pro&essai=${soumission.essai_token}`;
-            fetch('https://api.brevo.com/v3/smtp/email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
-              body: JSON.stringify({
+            await ugcEnvoyerEmail({
                 sender: { name: 'Créatis', email: 'contact@creatis.app' },
                 to: [{ email: soumission.email }],
                 subject: 'Ta vidéo est validée — active ton mois Pro offert 🎬',
                 htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Bien joué !</h2><p style="line-height:1.7;margin:0 0 16px">Ta vidéo a été validée. Il reste une étape pour activer ton <strong>mois Pro offert</strong> : renseigne une carte (aucun prélèvement maintenant).</p><a href="${lienEssai}" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px;margin:0 0 20px">Activer mon mois offert →</a><p style="line-height:1.7;margin:0 0 8px;color:#444;font-size:14px">Le mois est à 0€. Passé ce délai, l'abonnement Pro continue automatiquement à 14€/mois — résiliable à tout moment avant, sans rien devoir.</p><p style="color:#999;font-size:12px;margin:16px 0 0">Ce lien est personnel, ne le partage pas. Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`,
-              }),
-            }).catch(e => console.error('[ugc_decider] email approbation échoué:', e.message));
+            }, 'ugc_decider/approbation');
           }
         }
 
@@ -301,12 +321,9 @@ module.exports = async (req, res) => {
            savoir si sa demande avait ete vue, et renvoyait le meme lien. Dire non clairement,
            avec le motif, vaut mieux qu'un silence — et lui laisse une chance de refaire une
            video conforme plutot que d'abandonner. */
-        if (decision === 'rejete' && process.env.BREVO_API_KEY) {
+        if (decision === 'rejete') {
           const motif = (note || '').trim();
-          fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
-            body: JSON.stringify({
+          await ugcEnvoyerEmail({
               sender: { name: 'Créatis', email: 'contact@creatis.app' },
               replyTo: { email: 'contact@creatis.app' },
               to: [{ email: soumission.email }],
@@ -321,8 +338,7 @@ module.exports = async (req, res) => {
                 + `<a href="https://creatis.app/offre-createur" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">Revoir les conditions →</a>`
                 + `<p style="color:#999;font-size:12px;margin:0">Une question ? Réponds à cet email. Créatis · creatis.app</p>`
                 + `</div>`,
-            }),
-          }).catch(e => console.error('[ugc_decider] email rejet échoué:', e.message));
+          }, 'ugc_decider/rejet');
         }
 
         return res.status(200).json({ ok: true });
