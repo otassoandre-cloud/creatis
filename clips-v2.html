@@ -3919,10 +3919,12 @@ const V2 = (() => {
         <button onclick="document.getElementById('paywall-modal').remove();if(window.posthog)posthog.capture('paywall_dismissed',{plan:'${_userPlan}'})" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#8A93A3;font-size:20px;cursor:pointer">✕</button>
         <div style="font-size:36px;margin-bottom:12px">🚀</div>
         <h2 style="font-size:1.4rem;font-weight:800;color:#f2f4f7;margin-bottom:8px">${_nbClips ? `Tes ${_nbClips} clips sont prêts` : 'Tes clips sont prêts'}</h2>
-        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:20px;line-height:1.5">Ils sont déjà recadrés en 9:16 et sous-titrés, exactement comme dans l'aperçu. Il ne reste qu'à débloquer le téléchargement.</p>
+        <p style="color:#8A93A3;font-size:0.9rem;margin-bottom:20px;line-height:1.5">Recadrés en 9:16, sous-titrés — exactement ce que tu as vu dans l'aperçu. Sans abonnement, ils restent verrouillés ici.</p>
 
         <!-- Les 3 offres présentées ensemble : n'afficher que le Pro faisait fermer la modale au
-             prix-sensible au lieu de lui vendre le Starter, et masquait l'annuel (le meilleur ARPU). -->
+             prix-sensible au lieu de lui vendre le Starter, et masquait l'annuel (le meilleur ARPU).
+             Prix ramené au clip sur chaque carte (24/08) : neutralise l'objection prix en la
+             comparant à un montage manuel plutôt que de laisser un chiffre mensuel abstrait. -->
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;text-align:left">
 
           <button onclick="window._goToPro('starter')" class="pw-plan" style="border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02)">
@@ -3930,7 +3932,7 @@ const V2 = (() => {
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Starter</span>
               <span style="font-size:1.1rem;font-weight:800;color:#f2f4f7">9,95€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/mois</span></span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">20 clips par mois</div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">20 clips par mois · soit 0,50€ le clip</div>
           </button>
 
           <button onclick="window._goToPro('pro')" class="pw-plan" style="border:1.5px solid #10b981;background:rgba(16,185,129,0.08);position:relative">
@@ -3939,7 +3941,7 @@ const V2 = (() => {
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro</span>
               <span style="font-size:1.3rem;font-weight:800;color:#f2f4f7">14€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/mois</span></span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">150 clips par mois · tous les outils IA</div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">150 clips par mois · tous les outils IA · soit 0,09€ le clip</div>
           </button>
 
           <button onclick="window._goToPro('pro', true)" class="pw-plan" style="border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02)">
@@ -3947,22 +3949,22 @@ const V2 = (() => {
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro Annuel</span>
               <span style="font-size:1.1rem;font-weight:800;color:#f2f4f7">139€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/an</span></span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Tout le Pro · soit 11,58€/mois · 2 mois offerts</div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Tout le Pro · 11,58€/mois · soit 0,08€ le clip</div>
           </button>
 
         </div>
 
-        <!-- 4e carte, visuellement distincte (bordure en pointilles) des 3 offres payantes au-dessus :
-             ce n'est pas un palier tarifaire de plus, c'est une alternative gratuite. La confondre
-             visuellement avec Starter/Pro aurait brouille la grille que ces trois-la existent pour
-             clarifier. -->
-        <button onclick="window._ouvrirSoumissionUGC()" class="pw-plan" style="border:1.5px dashed rgba(16,185,129,0.45);background:rgba(16,185,129,0.03);margin-bottom:16px">
-          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-            <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">🎬 Publie une vidéo sur Créatis</span>
-            <span style="font-size:1rem;font-weight:800;color:#10b981">1 mois offert</span>
-          </div>
-          <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">TikTok, Instagram ou YouTube · 300 vues minimum · validé sous 48h</div>
-        </button>
+        <!-- Alternative gratuite (UGC) : deliberement en RETRAIT visuel des 3 offres payantes
+             au-dessus (24/08 — avant, meme carrure de carte-prix = 4e option en concurrence
+             directe avec Starter/Pro dans la meme liste). Un separateur + un simple lien la
+             sortent de la comparaison de prix sans la rendre introuvable : c'est une porte de
+             sortie legitime (principe "respecter le non" du paywall), pas un pallier de plus. -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08);margin:4px 0 14px;padding-top:12px">
+          <button onclick="window._ouvrirSoumissionUGC()" style="background:none;border:none;padding:0;cursor:pointer;font-family:inherit;text-align:left;width:100%">
+            <span style="font-size:0.82rem;color:#8A93A3">Pas envie de payer maintenant ?</span>
+            <span style="font-size:0.82rem;color:#10b981;font-weight:700"> Publie une vidéo (300 vues mini), 1 mois offert →</span>
+          </button>
+        </div>
 
         <p style="font-size:11px;color:#8A93A3;margin-top:4px;line-height:1.6">Téléchargement immédiat après paiement · Résiliable en un clic<br>Paiement sécurisé par Stripe · Sans engagement</p>
       </div>
