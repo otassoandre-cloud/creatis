@@ -4018,6 +4018,14 @@ const V2 = (() => {
                  autocapitalize="off" spellcheck="false" name="lien-video-publique"
                  data-lpignore="true" data-1p-ignore data-bwignore
                  placeholder="https://www.tiktok.com/@toi/video/..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 13px;color:#f2f4f7;font-size:0.85rem;margin-bottom:12px">
+          <!-- La regle « c'est TA video » n'apparaissait nulle part au moment de coller le lien :
+               un utilisateur a soumis une video de MrBeast. Une case a cocher oblige a la lire,
+               la ou un paragraphe se saute. Elle ne prouve rien — la revue reste humaine — mais
+               elle supprime le malentendu de bonne foi. -->
+          <label style="display:flex;gap:8px;align-items:flex-start;font-size:0.76rem;color:#8A93A3;line-height:1.45;margin-bottom:12px;cursor:pointer">
+            <input type="checkbox" id="ugc-confirme" style="margin-top:2px;flex-shrink:0;accent-color:#10b981;width:15px;height:15px">
+            <span>Je confirme que <strong style="color:#f2f4f7">cette vidéo est la mienne</strong> et qu'elle parle de Créatis.</span>
+          </label>
           <div id="ugc-form-erreur" style="display:none;color:#f87171;font-size:0.78rem;margin-bottom:10px"></div>
           <button id="ugc-form-envoyer" onclick="window._envoyerSoumissionUGC0()" style="width:100%;background:#10b981;color:#04120b;border:none;border-radius:10px;padding:12px;font-weight:800;font-size:0.9rem;cursor:pointer">Soumettre ma vidéo</button>
           <p style="font-size:10.5px;color:#6b7280;margin-top:10px;line-height:1.5">Une seule vidéo par lien. La revue est manuelle — sois patient, on ne fait pas ça avec un robot.</p>
@@ -4036,6 +4044,13 @@ const V2 = (() => {
     const btn = document.getElementById('ugc-form-envoyer');
     const url = (input?.value || '').trim();
     erreurZone.style.display = 'none';
+
+    const _confirme = document.getElementById('ugc-confirme');
+    if (_confirme && !_confirme.checked) {
+      erreurZone.textContent = "Coche la case : la vidéo doit être la tienne et parler de Créatis.";
+      erreurZone.style.display = 'block';
+      return;
+    }
 
     if (!/^https?:\/\//i.test(url)) {
       erreurZone.textContent = 'Colle le lien complet de ta vidéo (commence par https://).';

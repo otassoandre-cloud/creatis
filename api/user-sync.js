@@ -197,6 +197,37 @@ module.exports = async (req, res) => {
             video_url: url,
             plateforme,
           }) || [];
+          /* Notification a l'equipe. Le panneau admin oblige a PENSER a aller voir ; un mail
+             arrive tout seul et porte le lien cliquable, donc la video se regarde tout de
+             suite. Non bloquant : la soumission est deja enregistree a ce stade, un echec
+             d'envoi ne doit surtout pas la faire echouer cote utilisateur. */
+          if (process.env.BREVO_API_KEY) {
+            const _labels = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', autre: 'Autre' };
+            fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+              body: JSON.stringify({
+                sender: { email: 'contact@creatis.app', name: 'Créatis' },
+                // `replyTo` sur l'auteur : repondre au mail lui ecrit directement, sans copier
+                // son adresse a la main (pour demander une precision, un autre lien, etc.).
+                replyTo: { email: mail.toLowerCase() },
+                to: [{ email: 'contact@creatis.app' }],
+                subject: `🎬 Vidéo à vérifier (${_labels[plateforme] || plateforme}) — ${mail.toLowerCase()}`,
+                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">`
+                  + `<h2 style="font-size:19px;margin:0 0 6px">Nouvelle vidéo soumise</h2>`
+                  + `<p style="color:#666;font-size:14px;margin:0 0 20px">Programme « publie une vidéo, 1 mois offert »</p>`
+                  + `<div style="background:#f6f6f6;border-radius:10px;padding:16px 18px;margin:0 0 20px;line-height:1.8;font-size:14px">`
+                  + `<strong>Créateur :</strong> ${mail.toLowerCase()}<br>`
+                  + `<strong>Plateforme :</strong> ${_labels[plateforme] || plateforme}<br>`
+                  + `<strong>Compte lié :</strong> ${req.body?.userId ? 'oui' : '— aucun (à vérifier)'}`
+                  + `</div>`
+                  + `<a href="${url}" style="display:inline-block;background:#111;color:#fff;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 12px">▶ Regarder la vidéo</a><br>`
+                  + `<a href="https://creatis.app/admin-ugc-croissance.html" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">✅ Approuver ou rejeter</a>`
+                  + `<p style="color:#999;font-size:12px;margin:0;word-break:break-all">Lien brut : ${url}</p>`
+                  + `</div>`,
+              }),
+            }).catch(e => console.error('[ugc_soumettre] notification admin échouée:', e.message));
+          }
           return res.status(200).json({ ok: true, soumission: ligne });
         } catch (e) {
           if (/duplicate key|unique constraint/i.test(e.message)) {
@@ -264,6 +295,34 @@ module.exports = async (req, res) => {
               }),
             }).catch(e => console.error('[ugc_decider] email approbation échoué:', e.message));
           }
+        }
+
+        /* Un rejet ne prevenait PERSONNE : la personne restait en attente indefiniment, sans
+           savoir si sa demande avait ete vue, et renvoyait le meme lien. Dire non clairement,
+           avec le motif, vaut mieux qu'un silence — et lui laisse une chance de refaire une
+           video conforme plutot que d'abandonner. */
+        if (decision === 'rejete' && process.env.BREVO_API_KEY) {
+          const motif = (note || '').trim();
+          fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+            body: JSON.stringify({
+              sender: { name: 'Créatis', email: 'contact@creatis.app' },
+              replyTo: { email: 'contact@creatis.app' },
+              to: [{ email: soumission.email }],
+              subject: "Ta vidéo n'a pas été retenue",
+              htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">`
+                + `<h2 style="font-size:19px;margin:0 0 14px">Ta vidéo n'a pas été retenue</h2>`
+                + (motif
+                    ? `<div style="background:#f6f6f6;border-left:3px solid #999;border-radius:6px;padding:14px 16px;margin:0 0 18px;font-size:14px;line-height:1.6"><strong>Motif :</strong> ${motif}</div>`
+                    : '')
+                + `<p style="line-height:1.7;margin:0 0 16px;font-size:14px">Pour rappel, pour obtenir le mois offert la vidéo doit être <strong>la tienne</strong>, <strong>présenter Créatis</strong> (démo, avis, avant/après) et dépasser <strong>300 vues</strong>. Une vidéo qui ne parle pas de l'outil, ou qui appartient à quelqu'un d'autre, ne peut pas être acceptée.</p>`
+                + `<p style="line-height:1.7;margin:0 0 20px;font-size:14px">Tu peux retenter autant de fois que tu veux avec une nouvelle vidéo.</p>`
+                + `<a href="https://creatis.app/offre-createur" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">Revoir les conditions →</a>`
+                + `<p style="color:#999;font-size:12px;margin:0">Une question ? Réponds à cet email. Créatis · creatis.app</p>`
+                + `</div>`,
+            }),
+          }).catch(e => console.error('[ugc_decider] email rejet échoué:', e.message));
         }
 
         return res.status(200).json({ ok: true });
