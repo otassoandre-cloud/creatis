@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
 
   // Crons Vercel envoient GET — autoriser GET pour les actions cron
   const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
-  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires'].includes(actionFromQuery)) {
+  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires', 'relance_essai_annuel_j5'].includes(actionFromQuery)) {
     req.body = { action: actionFromQuery };
   } else if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -200,7 +200,7 @@ module.exports = async (req, res) => {
 
   const { userId, email, plan, chaine, action, metadata, source } = req.body || {};
 
-  const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires';
+  const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires' || action === 'relance_essai_annuel_j5';
   // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
   // il ne doit donc pas être recalé par ce contrôle.
   const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer'
@@ -602,6 +602,104 @@ module.exports = async (req, res) => {
         }
         console.log(`[expirer_plans_temporaires] ${downgrades} compte(s) redescendu(s) en gratuit`);
         return res.status(200).json({ ok: true, downgrades });
+      }
+
+      /* ═══ Relance J-2 de l'essai annuel (Pro Annuel, 7 jours, carte requise) ═══
+         Demande explicite du 26/08/2026 : prévenir avant le premier prélèvement, pas après.
+         Le nom du cron dit "J5" (jour 5 sur 7) parce que c'est ainsi qu'on en a parlé, mais la
+         condition qui compte est "il reste entre 1 et 2 jours avant trial_ends_at" — équivalent
+         pour un essai de 7 jours, et robuste à un cron qui tourne en retard d'une heure ou deux,
+         contrairement à une comparaison de date exacte.
+         Un lien de portail Stripe FRAIS est généré pour chaque destinataire, pas un lien générique
+         renvoyant vers /app : quelqu'un qui ouvre cet email n'est pas forcément connecté, et le
+         forcer à se reconnecter avant de pouvoir résilier est exactement le genre de friction qui
+         finit en opposition bancaire plutôt qu'en résiliation propre. */
+      case 'relance_essai_annuel_j5': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: true, sent: 0, note: 'BREVO_API_KEY manquante' });
+
+        const maintenant = Date.now();
+        const dans1Jour = new Date(maintenant + 1 * 86400000).toISOString();
+        const dans2Jours = new Date(maintenant + 2 * 86400000).toISOString();
+
+        const candidats = await supabase(
+          `/abonnements?annuel=eq.true&status=eq.active&relance_essai_envoyee=eq.false`
+          + `&trial_ends_at=gt.${dans1Jour}&trial_ends_at=lte.${dans2Jours}`
+          + `&select=id,user_id,stripe_customer_id,trial_ends_at,montant_centimes`
+        ).catch(() => []);
+
+        let envoyes = 0;
+        const cronLog = [];
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+
+        for (const abo of (candidats || [])) {
+          try {
+            if (!abo.stripe_customer_id) { cronLog.push(`SKIP ${abo.id}: pas de stripe_customer_id`); continue; }
+
+            const utilisateur = abo.user_id
+              ? await supabase(`/users?id=eq.${abo.user_id}&select=email,nom`).catch(() => [])
+              : [];
+            const email = utilisateur?.[0]?.email;
+            if (!email) { cronLog.push(`SKIP ${abo.id}: email introuvable`); continue; }
+            const nom = utilisateur[0].nom || email.split('@')[0];
+
+            const dateFin = new Date(abo.trial_ends_at);
+            const dateFinTexte = dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+            const montant = ((abo.montant_centimes || 13900) / 100).toFixed(2).replace('.', ',');
+
+            // Lien direct vers le portail Stripe, prêt à l'emploi dès l'ouverture du mail —
+            // aucune reconnexion requise pour résilier.
+            let lienPortail = `${appUrl}/app`;
+            try {
+              const sess = await stripeLib.billingPortal.sessions.create({
+                customer: abo.stripe_customer_id,
+                return_url: `${appUrl}/app`
+              });
+              if (sess?.url) lienPortail = sess.url;
+            } catch (e) { console.warn('[relance_essai_annuel_j5] portail non généré, repli /app:', e.message); }
+
+            const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+              body: JSON.stringify({
+                sender: { email: 'contact@creatis.app', name: 'Créatis' },
+                to: [{ email, name: nom }],
+                subject: `Ton essai Créatis Pro se termine le ${dateFinTexte}`,
+                htmlContent: `
+                  <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
+                    <div style="font-size:28px;font-weight:800;color:#ffffff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div>
+                    <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Rappel d'essai gratuit</p>
+                    <h1 style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px;">Salut ${nom},</h1>
+                    <p style="color:#9ca3af;line-height:1.6;margin:0 0 20px;">Ton essai gratuit de Créatis Pro Annuel se termine dans 2 jours, le <strong style="color:#ffffff;">${dateFinTexte}</strong>.</p>
+                    <div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:24px;">
+                      <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;">Sans action de ta part, ta carte sera débitée de <strong style="color:#10b981;">${montant}€</strong> le ${dateFinTexte} pour un an de Créatis Pro.</p>
+                      <p style="color:#d1d5db;font-size:14px;margin:0;">Rien n'a encore été prélevé.</p>
+                    </div>
+                    <a href="${lienPortail}" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:12px;">Gérer mon abonnement →</a>
+                    <p style="color:#4b5563;font-size:13px;margin:16px 0 0;">Tu veux continuer ? Rien à faire, l'essai se termine automatiquement en abonnement.<br>Tu veux annuler ? Le lien ci-dessus t'y emmène directement, résiliable en un clic.</p>
+                    <p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p>
+                  </div>
+                `
+              })
+            });
+
+            if (r.ok) {
+              await supabase(`/abonnements?id=eq.${abo.id}`, 'PATCH', { relance_essai_envoyee: true, updated_at: new Date().toISOString() });
+              envoyes++;
+              cronLog.push(`OK ${email}`);
+            } else {
+              cronLog.push(`ERR_BREVO ${email}: ${r.status}`);
+            }
+          } catch (e) {
+            cronLog.push(`ERR ${abo.id}: ${e.message}`);
+          }
+        }
+        console.log('[relance_essai_annuel_j5]', cronLog);
+        return res.status(200).json({ ok: true, sent: envoyes, candidats: (candidats || []).length, log: cronLog });
       }
 
       case 'daily_report': {

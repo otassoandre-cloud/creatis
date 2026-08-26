@@ -17,6 +17,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/user-sync?action=relance_essai_annuel_j5",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/prospect-batch",
       "schedule": "0 10 * * *"
     },

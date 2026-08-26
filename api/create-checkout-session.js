@@ -19,6 +19,16 @@ const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 const UGC_ESSAI_JOURS = 30;
 const UGC_PRIX_PRO_MENSUEL = (process.env.STRIPE_PRICE_PRO || 'price_1Tx8U8AptK6HZtp5DrLkfs5m').trim();
 
+/* ── Essai gratuit 7 jours sur le Pro Annuel (26/08/2026) ────────────────────────────────────
+   Meme mecanisme que l'essai UGC ci-dessus (trial_period_days Stripe, carte requise des le
+   depart) mais sans jeton a verifier : des que `annuel === true` sur le chemin normal (pas
+   essaiToken), l'essai s'applique automatiquement — c'est la promesse affichee sur la carte
+   Pro Annuel du paywall et sur paiement.html. `trial_ends_at` est calcule ICI, au moment ou on
+   connait exactement `trial_period_days`, et voyage dans les metadata de la session ET de
+   l'abonnement : le webhook (checkout.session.completed) le relit tel quel pour peupler
+   abonnements.trial_ends_at, sans requete Stripe supplementaire. */
+const ANNUEL_ESSAI_JOURS = 7;
+
 async function ugcSoumissionParJeton(jeton) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !jeton) return null;
   const r = await fetch(
@@ -73,11 +83,19 @@ module.exports = async (req, res) => {
     finalPriceId = UGC_PRIX_PRO_MENSUEL;
     finalUserId = soumissionUGC.user_id || userId;
     trialDays = UGC_ESSAI_JOURS;
+  } else if (annuel) {
+    // Automatique, pas de jeton a verifier : choisir l'annuel EST la demande d'essai.
+    trialDays = ANNUEL_ESSAI_JOURS;
   }
 
   if (!finalPriceId) {
     return res.status(400).json({ error: 'priceId manquant' });
   }
+
+  // Calcule ici, pas dans le webhook : c'est le seul endroit ou trialDays est connu avec
+  // certitude au moment de la creation. Ecrit dans les 2 metadata (session + abonnement) pour
+  // que checkout.session.completed le relise sans requete Stripe supplementaire.
+  const trialEndsAt = trialDays ? new Date(Date.now() + trialDays * 86400000).toISOString() : null;
 
   // Email fiable : celui de la soumission approuvée en priorité (garantit que le mois offert
   // atterrit sur le bon compte même si ce navigateur n'est pas connecté), sinon le chemin normal.
@@ -118,9 +136,13 @@ module.exports = async (req, res) => {
         userEmail: customerEmail || '',
         annuel: 'false',
         ...(essaiToken ? { source: 'ugc_essai' } : {}),
+        ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
       },
       subscription_data: {
-        metadata: { plan: 'pro', userId: finalUserId || 'anonymous', userEmail: customerEmail || '' },
+        metadata: {
+          plan: 'pro', userId: finalUserId || 'anonymous', userEmail: customerEmail || '',
+          ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+        },
         // Coeur du dispositif : carte enregistrée maintenant, aucun prélèvement avant la fin de
         // l'essai. Stripe gère seul le passage à un abonnement payant — invoice.payment_succeeded
         // et invoice.payment_failed (déjà gérés dans api/stripe-webhook.js) s'en chargent sans
@@ -135,6 +157,7 @@ module.exports = async (req, res) => {
       sessionParams.metadata.plan = plan || 'pro';
       sessionParams.metadata.annuel = annuel ? 'true' : 'false';
       sessionParams.subscription_data.metadata.plan = plan || 'pro';
+      sessionParams.subscription_data.metadata.annuel = annuel ? 'true' : 'false';
     }
 
     if (customerEmail) {

@@ -3957,12 +3957,17 @@ const V2 = (() => {
             <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">150 clips par mois · tous les outils IA · <span style="color:#10b981;font-weight:700">à partir de 0,09€ le clip</span></div>
           </button>
 
-          <button onclick="window._goToPro('pro', true)" class="pw-plan" style="border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.02)">
+          <!-- Essai 7 jours (26/08) : le prix affiche doit rester honnete comme les 2 cartes
+               au-dessus — "139€/an" tout court aurait ete une charge immediate annoncee a tort.
+               "7 jours offerts" est desormais LE prix mis en avant, le vrai tarif redescend en
+               sous-texte, meme mecanique que la barre "a partir de" plus haut. -->
+          <button onclick="window._goToPro('pro', true)" class="pw-plan" style="border:1px solid rgba(16,185,129,0.35);background:rgba(255,255,255,0.02);position:relative">
+            <span style="position:absolute;top:-8px;right:12px;background:#0a0f0a;border:1px solid #10b981;color:#10b981;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">7 JOURS D'ESSAI</span>
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro Annuel</span>
-              <span style="font-size:1.1rem;font-weight:800;color:#f2f4f7">139€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/an</span></span>
+              <span style="font-size:1.1rem;font-weight:800;color:#10b981">Offert</span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Tout le Pro · 11,58€/mois · <span style="color:#10b981;font-weight:700">à partir de 0,08€ le clip</span></div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Puis 139€/an (11,58€/mois) · résiliable avant sans rien payer</div>
           </button>
 
         </div>

@@ -354,6 +354,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (banniere) banniere.innerHTML = "<strong>Vidéo validée !</strong> Renseigne une carte pour activer ton mois offert — rien n'est prélevé aujourd'hui.";
     document.querySelector('.paiement-form-titre').textContent = 'Débloque ton mois offert';
     document.querySelector('.paiement-form-sous').textContent = "Carte requise pour activer l'essai. Aucun prélèvement avant la fin du mois offert.";
+  } else if (annuel) {
+    // Meme divulgation que l'essai UGC ci-dessus, transposee a 7 jours : la personne doit voir
+    // "essai" et "carte requise, rien de preleve" AVANT de taper son numero, pas le decouvrir
+    // dans un email 5 jours plus tard.
+    const banniere = document.getElementById('recap-continuite-texte');
+    if (banniere) banniere.innerHTML = "<strong>Essai gratuit 7 jours.</strong> Carte requise pour l'activer — rien n'est prélevé aujourd'hui.";
+    document.querySelector('.paiement-form-titre').textContent = 'Démarre ton essai gratuit';
+    document.querySelector('.paiement-form-sous').textContent = "Carte requise pour activer l'essai de 7 jours. Aucun prélèvement avant la fin de l'essai — résiliable à tout moment avant.";
   }
 
   // ── Récapitulatif, entièrement piloté par CONFIG.PLANS ────────────────────
@@ -376,10 +384,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       `Puis ${fmtPrix(planConf.prix)}/mois à partir du ${dansUnMois} · résiliable avant sans rien payer`;
   } else if (annuel) {
     const parMois = ((planConf.prixAnnuel || 139) / 12).toFixed(2);
-    document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
-    document.querySelector('.recap-prix-period').textContent = '/an';
+    const dansSeptJours = new Date(Date.now() + 7 * 86400000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    document.querySelector('.recap-prix-barre').textContent = fmtPrix(prixAffiche) + '/an';
+    document.querySelector('.recap-prix-barre').style.display = 'inline';
+    document.querySelector('.recap-prix-final').textContent = 'Offert';
+    document.querySelector('.recap-prix-period').textContent = '7 jours';
     document.querySelector('.recap-prix-suite').textContent =
-      `Soit ${fmtPrix(parMois)} par mois — deux mois offerts · renouvellement annuel`;
+      `Puis ${fmtPrix(prixAffiche)}/an (soit ${fmtPrix(parMois)}/mois) à partir du ${dansSeptJours} · résiliable avant sans rien payer`;
   } else {
     document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
     document.querySelector('.recap-prix-period').textContent = '/mois';
@@ -391,7 +402,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (rmNom)  rmNom.textContent = `Créatis ${planConf.nom}`;
   if (rmPrix) rmPrix.innerHTML = essaiToken
     ? `Offert<small>ce mois-ci</small>`
-    : `${fmtPrix(prixAffiche)}<small>${annuel ? '/an' : '/mois'}</small>`;
+    : annuel
+      ? `Offert<small>7 jours</small>`
+      : `${fmtPrix(prixAffiche)}<small>/mois</small>`;
 
   /* Ce que le plan donne VRAIMENT, déduit des quotas de CONFIG.PLANS. Rien n'est écrit en dur :
      c'est ce qui avait laissé « 10 agents IA » (il y en a huit), « 30 miniatures » et
@@ -419,7 +432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (essaiToken) {
     // rien : le jeton ne vaut que pour le Pro mensuel, changer d'offre ici casserait l'essai.
   } else if (plan === 'pro' && !annuel) {
-    if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — ${fmtPrix(cPro.prixAnnuel)}/an, deux mois offerts</a>`);
+    if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — 7 jours d'essai gratuit, puis ${fmtPrix(cPro.prixAnnuel)}/an</a>`);
     if (cStarter) alternatives.push(`<a href="?plan=starter">Il te faut moins de clips ? Starter — ${fmtPrix(cStarter.prix)}/mois, ${cStarter.clips} clips</a>`);
   } else if (plan === 'pro' && annuel) {
     alternatives.push(`<a href="?plan=pro">Préférer le mensuel — ${fmtPrix(cPro.prix)}/mois</a>`);

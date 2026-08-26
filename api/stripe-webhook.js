@@ -211,6 +211,10 @@ module.exports = async (req, res) => {
           }
 
           // Enregistrer l'abonnement
+          // trial_ends_at : calcule et pose une fois pour toutes par create-checkout-session.js
+          // (essai UGC 30j OU essai annuel 7j), relu tel quel depuis les metadata — jamais
+          // recalcule ici, sinon un webhook retraite des heures plus tard poserait une date
+          // fausse. null pour tout abonnement sans essai (le cas normal).
           await supabaseUpsert('abonnements', {
             user_id: userRow?.id || null,
             stripe_subscription_id: subscriptionId,
@@ -219,6 +223,8 @@ module.exports = async (req, res) => {
             status: 'active',
             montant_centimes: session.amount_total || 0,
             annuel: session.metadata?.annuel === 'true',
+            trial_ends_at: session.metadata?.trial_ends_at || null,
+            relance_essai_envoyee: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
