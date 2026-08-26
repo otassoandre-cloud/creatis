@@ -625,6 +625,15 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   grid-template-columns: 1.3fr 1fr; gap: 26px; align-items: center;
 }
 .fpanel.on { display: grid; }
+/* Les elements d'une grille ont `min-width: auto` : ils refusent de retrecir sous la largeur
+   de leur contenu. `.fp-ex-wrap` contient une rangee d'exemples en defilement horizontal dont
+   le min-content vaut 608 px. La colonne entiere se figeait donc a 608 px dans un ecran de
+   393 px : le titre, le paragraphe et la carte de demo debordaient, rognes a droite — c'est
+   le decalage constate sur telephone. La page ne defilait pas pour autant, `overflow-x: hidden`
+   masquant le probleme au lieu de le signaler.
+   `min-width: 0` rend le retrecissement possible ; la rangee d'exemples defile alors dans son
+   propre `overflow-x: auto`, ce qui etait l'intention. */
+.fpanel > * { min-width: 0; }
 .fpanel-visual { border-radius: 14px; overflow: hidden; }
 /* Rangée d'exemples réels — pleine largeur sous les deux colonnes du panneau */
 .fp-ex-wrap { grid-column: 1 / -1; margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line); }

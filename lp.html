@@ -604,6 +604,12 @@ h1 strong, h2 strong, h3 strong { font-weight: 800; }
   grid-template-columns: 1.3fr 1fr; gap: 26px; align-items: center;
 }
 .fpanel.on { display: grid; }
+/* Meme regle que index.html : un element de grille a `min-width: auto` et refuse de retrecir
+   sous la largeur de son contenu. Sur index.html, une rangee d'exemples a defilement horizontal
+   figeait ainsi la colonne a 608 px dans un ecran de 393, rognant tout le texte du panneau.
+   Cette page n'a pas encore ce contenu-la, mais les deux partagent le meme design : la regle est
+   posee ici aussi pour que le probleme ne reapparaisse pas au premier bloc large ajoute. */
+.fpanel > * { min-width: 0; }
 .fpanel-visual { border-radius: 14px; overflow: hidden; }
 .fpanel-visual img { width: 100%; display: block; border-radius: 14px; }
 .fpanel-text h3 { font-size: 1.5rem; margin-bottom: 14px; font-weight: 700; }
