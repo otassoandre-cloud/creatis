@@ -40,18 +40,6 @@ async function ugcSoumissionParJeton(jeton) {
   return lignes?.[0] || null;
 }
 
-async function ugcMarquerJetonUtilise(id) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return;
-  await fetch(`${SUPABASE_URL}/rest/v1/ugc_soumissions?id=eq.${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({ essai_utilise: true }),
-  }).catch(() => {}); // best-effort : au pire le lien reste utilisable une 2e fois, jamais bloquant
-}
-
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', APP_URL);
@@ -136,6 +124,7 @@ module.exports = async (req, res) => {
         userEmail: customerEmail || '',
         annuel: 'false',
         ...(essaiToken ? { source: 'ugc_essai' } : {}),
+        ...(soumissionUGC ? { ugc_soumission_id: soumissionUGC.id } : {}),
         ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
       },
       subscription_data: {
@@ -166,9 +155,19 @@ module.exports = async (req, res) => {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Marqué APRÈS la création réussie de la session, jamais avant : un jeton qui échoue à cette
-    // étape (Stripe indisponible, priceId invalide) doit rester utilisable pour un nouvel essai.
-    if (soumissionUGC) await ugcMarquerJetonUtilise(soumissionUGC.id);
+    /* Le jeton n'est PLUS consommé ici (29/08/2026).
+       Il l'était juste après la création de la session — c'est-à-dire au simple CHARGEMENT de
+       paiement.html, qui crée la session embarquée pour afficher le formulaire. Résultat : ouvrir
+       son lien une fois suffisait à le brûler. Fermer l'onglet, recharger, ou hésiter cinq
+       minutes, et la personne se retrouvait définitivement devant « Ce lien d'essai n'est plus
+       valide » sans avoir jamais rien payé — signalé par un créateur dont la vidéo venait
+       d'être validée.
+       Le jeton est désormais marqué utilisé par le webhook, sur `checkout.session.completed`,
+       c'est-à-dire quand l'essai démarre réellement. `ugc_soumission_id` voyage dans les
+       métadonnées de la session pour que le webhook sache quelle ligne marquer.
+       Contrepartie assumée : on peut créer plusieurs sessions avec le même jeton. Une seule peut
+       aboutir, et un lien réutilisable vaut mieux qu'un lien à usage unique qui se consomme tout
+       seul. */
 
     res.setHeader('Access-Control-Allow-Origin', APP_URL);
     if (embedded) {

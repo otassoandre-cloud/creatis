@@ -210,6 +210,18 @@ module.exports = async (req, res) => {
             }
           }
 
+          /* Jeton d'essai UGC consomme ICI, et nulle part ailleurs (29/08/2026).
+             Avant, create-checkout-session.js le marquait des la creation de la session, donc
+             au simple chargement de paiement.html : ouvrir son lien une fois suffisait a le
+             bruler, meme sans carte saisie. On le marque desormais quand l'essai demarre pour
+             de vrai. `ugc_soumission_id` vient des metadonnees posees a la creation. */
+          const idSoumissionUGC = session.metadata?.ugc_soumission_id;
+          if (idSoumissionUGC) {
+            await supabasePatch('ugc_soumissions', { id: idSoumissionUGC }, { essai_utilise: true })
+              .catch((e) => console.warn('[Webhook] jeton UGC non marqué:', e.message));
+            console.log(`[Webhook] 🎬 Jeton UGC consommé — soumission ${idSoumissionUGC}`);
+          }
+
           // Enregistrer l'abonnement
           // trial_ends_at : calcule et pose une fois pour toutes par create-checkout-session.js
           // (essai UGC 30j OU essai annuel 7j), relu tel quel depuis les metadata — jamais
