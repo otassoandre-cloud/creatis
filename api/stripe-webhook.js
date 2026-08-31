@@ -415,6 +415,54 @@ module.exports = async (req, res) => {
         const plan = getPlanFromPriceId(priceId);
         const status = sub.status;
 
+        /* RÉSILIATION PROGRAMMÉE — le trou noir du suivi, comblé le 31/08/2026.
+           Quand un client résilie, Stripe ne supprime pas l'abonnement : il pose
+           `cancel_at_period_end: true` et laisse courir jusqu'à la fin de période.
+           `customer.subscription.deleted` ne se déclenchera donc qu'à cette
+           date-là — parfois un mois plus tard. Or Stripe sort le client du MRR
+           IMMÉDIATEMENT. Résultat : le chiffre baisse sans qu'aucune trace
+           n'apparaisse nulle part, et on découvre le départ une fois qu'il est
+           consommé, sans fenêtre pour le rattraper.
+           On enregistre donc l'état à chaque mise à jour, et on alerte au moment
+           du clic, pas à l'expiration. */
+        /* Tout ce bloc est du SUIVI, pas de la facturation : il est isolé pour
+           qu'une panne Supabase ou Brevo ne fasse jamais échouer le webhook.
+           Sans ça, Stripe recevrait un 500 et rejouerait l'événement en boucle
+           alors que le paiement lui-même s'est bien passé. */
+        try {
+          const finPeriode = sub.current_period_end
+            ? new Date(sub.current_period_end * 1000).toISOString()
+            : null;
+
+          const avant = await supabaseGet('abonnements', { stripe_subscription_id: sub.id });
+          await supabasePatch('abonnements', { stripe_subscription_id: sub.id }, {
+            cancel_at_period_end: !!sub.cancel_at_period_end,
+            current_period_end: finPeriode,
+            updated_at: new Date().toISOString()
+          });
+
+          // On n'alerte que sur la BASCULE, sinon chaque webhook renverrait un mail.
+          if (sub.cancel_at_period_end && avant && !avant.cancel_at_period_end) {
+            const client = await supabaseGet('users', { stripe_customer_id: customerId });
+            let motif = '', commentaire = '';
+            try {
+              const cli = await stripe.customers.retrieve(customerId);
+              motif = cli?.metadata?.motif_resiliation || '';
+              commentaire = cli?.metadata?.commentaire_resiliation || '';
+            } catch (e) {
+              console.warn('[Webhook] métadonnées client illisibles:', e.message);
+            }
+            console.log(`[Webhook] ⏳ Résiliation programmée — ${client?.email || customerId} jusqu'au ${finPeriode}`);
+            await notifierResiliation({
+              email: client?.email, customerId, subscriptionId: sub.id,
+              plan: client?.plan, motif, commentaire,
+              programmeePour: finPeriode
+            });
+          }
+        } catch (e) {
+          console.error('[Webhook] suivi résiliation programmée non enregistré:', e.message);
+        }
+
         if (plan && status === 'active') {
           console.log(`[Webhook] 🔄 Abonnement mis à jour — plan: ${plan}`);
           await supabasePatch('users', { stripe_customer_id: customerId }, {
@@ -615,7 +663,7 @@ const MOTIFS_LISIBLES = {
   autre:        'Autre raison'
 };
 
-async function notifierResiliation({ email, customerId, subscriptionId, plan, motif, commentaire }) {
+async function notifierResiliation({ email, customerId, subscriptionId, plan, motif, commentaire, programmeePour }) {
   if (!process.env.BREVO_API_KEY) {
     console.warn('[Webhook] BREVO_API_KEY absente — alerte résiliation non envoyée');
     return;
@@ -629,9 +677,10 @@ async function notifierResiliation({ email, customerId, subscriptionId, plan, mo
     body: JSON.stringify({
       sender: { email: 'contact@creatis.app', name: 'Créatis' },
       to: [{ email: 'contact@creatis.app' }],
-      subject: `🔴 Résiliation — ${email || customerId}${motif ? ` (${motifTexte})` : ''}`,
+      subject: `${programmeePour ? '🟠 Résiliation programmée' : '🔴 Résiliation'} — ${email || customerId}${motif ? ` (${motifTexte})` : ''}`,
       htmlContent: `<div style="font-family:Inter,sans-serif;padding:24px;background:#0a0f0a;color:#e5e7eb;border-radius:8px;max-width:520px">
-        <h2 style="color:#ef4444;margin:0 0 12px">Abonnement résilié</h2>
+        <h2 style="color:${programmeePour ? '#f59e0b' : '#ef4444'};margin:0 0 12px">${programmeePour ? 'Résiliation programmée' : 'Abonnement résilié'}</h2>
+        ${programmeePour ? `<p style="margin:4px 0"><strong>Accès jusqu'au :</strong> ${new Date(programmeePour).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>` : ''}
         <p style="margin:4px 0"><strong>Client :</strong> ${email || '(email inconnu)'}</p>
         <p style="margin:4px 0"><strong>Plan quitté :</strong> ${plan || '—'}</p>
         <p style="margin:4px 0"><strong>Motif :</strong> ${motifTexte}</p>
@@ -639,7 +688,9 @@ async function notifierResiliation({ email, customerId, subscriptionId, plan, mo
         <p style="margin:4px 0"><strong>Abonnement :</strong> ${subscriptionId || '—'}</p>
         <p style="margin:4px 0"><strong>Date :</strong> ${date}</p>
         <p style="margin:20px 0 4px"><a href="${lien}" style="color:#10b981">Voir le client dans Stripe →</a></p>
-        <p style="margin-top:16px;color:#9ca3af;font-size:13px">Un départ pour raison technique se rattrape souvent : si le motif est un bug, un mail personnel dans les 24 h fonctionne mieux qu'une relance automatique.</p>
+        <p style="margin-top:16px;color:#9ca3af;font-size:13px">${programmeePour
+          ? "Le client paie encore et garde son accès jusqu'à cette date : c'est la seule fenêtre pour le récupérer, et elle se referme toute seule. Stripe l'a déjà sorti du MRR."
+          : "Un départ pour raison technique se rattrape souvent : si le motif est un bug, un mail personnel dans les 24 h fonctionne mieux qu'une relance automatique."}</p>
       </div>`
     })
   }).catch((e) => console.error('[Webhook] Alerte résiliation non envoyée:', e.message));
