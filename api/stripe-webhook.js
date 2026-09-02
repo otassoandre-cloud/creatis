@@ -588,6 +588,20 @@ async function lireErreurPaiement(paymentIntent) {
   }
 }
 
+/* Brevo renvoie 201 quand il accepte, un 4xx quand il refuse — mais `fetch` ne
+   rejette PAS sur un 4xx. Les trois alertes internes ci-dessous se contentaient
+   d'un `.catch()`, qui n'attrape que les pannes réseau : un refus de Brevo
+   passait donc en silence, sans log. Conséquence mesurée le 02/09/2026 : zéro
+   alerte de résiliation reçue en 90 jours pour 5 résiliations réelles, et zéro
+   alerte d'échec de paiement, sans la moindre trace. */
+const verifierBrevo = (quoi) => async (r) => {
+  if (r && !r.ok) {
+    const corps = await r.text().catch(() => '');
+    console.error(`[Webhook] Brevo a REFUSÉ l'alerte ${quoi} — HTTP ${r.status}: ${corps.slice(0, 300)}`);
+  }
+  return r;
+};
+
 /* Alerte interne — échec de paiement / vente perdue */
 async function notifierEchecPaiement({ email, customerId, subscriptionId, montant, devise, raison, code, plan, contexte }) {
   if (!process.env.BREVO_API_KEY) {
@@ -615,7 +629,9 @@ async function notifierEchecPaiement({ email, customerId, subscriptionId, montan
         <p style="margin-top:16px;color:#9ca3af;font-size:13px">Client chaud : il a tenté de payer. Relance-le rapidement avec un nouveau lien de paiement.</p>
       </div>`
     })
-  }).catch((e) => console.error('[Webhook] Alerte échec non envoyée:', e.message));
+  })
+    .then(verifierBrevo('échec'))
+    .catch((e) => console.error('[Webhook] Alerte échec non envoyée:', e.message));
 }
 
 /* Alerte interne — paiement réussi mais impossible à rattacher à un compte Créatis.
@@ -647,7 +663,9 @@ async function notifierPaiementOrphelin({ email, identifiant, plan, customerId, 
         <p style="margin-top:16px;color:#fca5a5;font-size:13px">Ce client paie et n'a AUCUN accès. Crée ou corrige son compte Supabase avec cet email, puis confirme-lui par mail.</p>
       </div>`
     })
-  }).catch((e) => console.error('[Webhook] Alerte orpheline non envoyée:', e.message));
+  })
+    .then(verifierBrevo('orpheline'))
+    .catch((e) => console.error('[Webhook] Alerte orpheline non envoyée:', e.message));
 }
 
 /* Alerte interne — résiliation confirmée.
@@ -693,7 +711,9 @@ async function notifierResiliation({ email, customerId, subscriptionId, plan, mo
           : "Un départ pour raison technique se rattrape souvent : si le motif est un bug, un mail personnel dans les 24 h fonctionne mieux qu'une relance automatique."}</p>
       </div>`
     })
-  }).catch((e) => console.error('[Webhook] Alerte résiliation non envoyée:', e.message));
+  })
+    .then(verifierBrevo('résiliation'))
+    .catch((e) => console.error('[Webhook] Alerte résiliation non envoyée:', e.message));
 }
 
 /* Notification interne — nouveau client Studio */
@@ -813,6 +833,12 @@ async function envoyerEmailBienvenue(email) {
 }
 
 module.exports.envoyerEmailBienvenue = envoyerEmailBienvenue;
+
+/* Le traitement d'un evenement enchaine jusqu'a 5 allers-retours reseau en serie
+   (Supabase x3, API Stripe, Brevo) et l'alerte e-mail est TOUJOURS la derniere.
+   Au delai par defaut de Vercel, la fonction pouvait etre coupee juste avant :
+   la base etait a jour, l'alerte ne partait jamais. */
+module.exports.config = { maxDuration: 30 };
 
 /* Résout l'affilié associé à un code promo utilisé au checkout (fallback si pas de ?ref=) */
 async function resolvePromoCodeAffiliate(sessionId) {

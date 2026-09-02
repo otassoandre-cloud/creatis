@@ -668,20 +668,39 @@ module.exports = async (req, res) => {
               body: JSON.stringify({
                 sender: { email: 'contact@creatis.app', name: 'Créatis' },
                 to: [{ email, name: nom }],
-                subject: `Ton essai Créatis Pro se termine le ${dateFinTexte}`,
+                subject: `Il te reste 2 jours d'essai — Créatis Pro`,
+                /* REECRIT LE 02/09/2026. L'ancienne version poussait a partir :
+                   elle ouvrait sur « ta carte sera débitée de 139€ », et son SEUL
+                   bouton — gros, vert — menait au portail de résiliation, avec la
+                   mention « résiliable en un clic ». Aucune raison de rester
+                   n'était donnée. On offrait une seule action : partir.
+
+                   Ce qui change : le bouton principal ramène DANS le produit,
+                   parce que la vraie cause d'annulation n'est pas le prix, c'est
+                   la non-utilisation (vérifié : l'abonné annulé le 02/09 n'avait
+                   rien généré en 7 jours). Le montant et la date restent écrits
+                   noir sur blanc, et le lien de résiliation reste présent et
+                   explicite — on dé-hiérarchise, on ne cache pas. */
                 htmlContent: `
                   <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
                     <div style="font-size:28px;font-weight:800;color:#ffffff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div>
-                    <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Rappel d'essai gratuit</p>
+                    <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Ton essai Pro</p>
+
                     <h1 style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px;">Salut ${nom},</h1>
-                    <p style="color:#9ca3af;line-height:1.6;margin:0 0 20px;">Ton essai gratuit de Créatis Pro Annuel se termine dans 2 jours, le <strong style="color:#ffffff;">${dateFinTexte}</strong>.</p>
-                    <div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:24px;">
-                      <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;">Sans action de ta part, ta carte sera débitée de <strong style="color:#10b981;">${montant}€</strong> le ${dateFinTexte} pour un an de Créatis Pro.</p>
-                      <p style="color:#d1d5db;font-size:14px;margin:0;">Rien n'a encore été prélevé.</p>
+                    <p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Il te reste <strong style="color:#ffffff;">2 jours</strong> d'essai sur Créatis Pro. Autant en profiter : une vidéo collée maintenant, c'est dix clips prêts à publier dans une minute.</p>
+
+                    <div style="background:#0f1a12;border:1px solid #10b98133;border-radius:8px;padding:20px;margin-bottom:24px;">
+                      <p style="color:#10b981;font-size:13px;font-weight:700;letter-spacing:0.04em;margin:0 0 10px;">CE QUE TU AS AVEC PRO</p>
+                      <p style="color:#d1d5db;font-size:14px;line-height:1.7;margin:0;">30 vidéos par mois · 150 clips téléchargeables<br>Recadrage, sous-titres et export automatiques</p>
                     </div>
-                    <a href="${lienPortail}" style="display:inline-block;background:#10b981;color:#000000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;margin-bottom:12px;">Gérer mon abonnement →</a>
-                    <p style="color:#4b5563;font-size:13px;margin:16px 0 0;">Tu veux continuer ? Rien à faire, l'essai se termine automatiquement en abonnement.<br>Tu veux annuler ? Le lien ci-dessus t'y emmène directement, résiliable en un clic.</p>
-                    <p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p>
+
+                    <a href="${appUrl}/studio" style="display:inline-block;background:#10b981;color:#04120b;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Créer mes clips →</a>
+
+                    <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:28px 0 0;">Le <strong style="color:#ffffff;">${dateFinTexte}</strong>, ton essai devient un abonnement d'un an à <strong style="color:#ffffff;">${montant}€</strong>. Rien n'a encore été prélevé, et tu n'as rien à faire pour continuer.</p>
+
+                    <p style="color:#6b7280;font-size:13px;margin:14px 0 0;">Tu préfères ne pas continuer ? <a href="${lienPortail}" style="color:#9ca3af;text-decoration:underline;">Gérer ou résilier mon abonnement</a> — un clic, sans justification à donner.</p>
+
+                    <p style="color:#4b5563;font-size:12px;margin-top:32px;">Une question, un blocage ? Réponds à ce mail ou écris à <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a> — on répond vite.</p>
                   </div>
                 `
               })
