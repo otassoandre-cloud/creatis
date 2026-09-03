@@ -1018,7 +1018,7 @@ def _ytapi_verrou(cle: str) -> threading.Lock:
         return _ytapi_verrous.setdefault(cle, threading.Lock())
 
 
-def _ytapi_cached_video(video_id: str, fmt: str = "720") -> Optional[Path]:
+def _ytapi_cached_video(video_id: str, fmt: str = "1080") -> Optional[Path]:
     """Télécharge la vidéo complète via l'API tierce UNE FOIS et la met en cache par video_id —
     réutilisée par tous les segments/previews/exports (économise le quota API). None si indispo.
     720p et non 480p : un crop 9:16 dans du 480p ne fait que ~270x480 vrais pixels, agrandis
@@ -1050,7 +1050,7 @@ def _ytapi_cached_video(video_id: str, fmt: str = "720") -> Optional[Path]:
         return cache
 
 
-def _ytapi_titre_cache(video_id: str, fmt: str = "720") -> str:
+def _ytapi_titre_cache(video_id: str, fmt: str = "1080") -> str:
     """Titre memorise a cote de la video mise en cache (survit a un cache hit)."""
     try:
         f = WORK_DIR / f"ytapi_{video_id}_{fmt}.titre"
@@ -1213,7 +1213,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
     if YT_DOWNLOAD_API_KEY:
         api_out = out_dir / "audio_api.mp3"
         if video_id:
-            cached = _ytapi_cached_video(video_id, "720")
+            cached = _ytapi_cached_video(video_id, "1080")
             if cached and cached.exists():
                 r = subprocess.run(
                     ["ffmpeg", "-y", "-loglevel", "error", "-i", str(cached),
@@ -1222,7 +1222,7 @@ def _download_audio_for_transcription(youtube_url: str, out_dir: Path) -> tuple:
                     capture_output=True)
                 if r.returncode == 0 and api_out.exists() and api_out.stat().st_size > 10_000:
                     logger.info("[audio] extrait de la video API deja payee (0 credit supplementaire)")
-                    return str(api_out), _ytapi_titre_cache(video_id, "720")
+                    return str(api_out), _ytapi_titre_cache(video_id, "1080")
                 logger.warning(f"[audio] extraction ffmpeg depuis le cache API echouee: {r.stderr.decode()[-200:]}")
         # Filet : video indisponible via l API (au-dela de la limite de taille du forfait, par
         # exemple) — on retombe sur le mp3, qui reste mieux que rien.
@@ -1257,7 +1257,12 @@ def download_video(youtube_url: str, out_dir: Path) -> str:
     ]
 
     formats = [
-        "bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best[height<=720]/best",
+        # 1080p et non 720 : le crop 9:16 ne garde que 56 % de la largeur de la source.
+        # Depuis du 720p cela ne fait que 405x720 pixels REELS, etires ensuite a 1080x1920
+        # a l export — facteur 2,67, ce qui se voit immediatement. Depuis du 1080p :
+        # 607x1080 pixels reels, facteur 1,78. Cote API payante le nombre de
+        # telechargements factures ne change pas (la facturation porte sur le nombre).
+        "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best[height<=1080]/best",
         "best",
         None,
     ]
@@ -1319,7 +1324,9 @@ def _section_via_proxy_direct(youtube_url: str, out_dir: Path, start: float, end
         "quiet": True, "no_warnings": True, "skip_download": True,
         "extractor_args": _yt_extractor_args(),
         "proxy": proxy,
-        "format": "bv*[height<=720]+ba/b[height<=720]/best",
+        # Meme plafond que le telechargement complet : sans cela l URL directe choisie
+        # ramenait du 720p alors que le reste de la chaine vise le 1080p.
+        "format": "bv*[height<=1080]+ba/b[height<=1080]/best",
     }
     if cookies_file:
         opts["cookiefile"] = cookies_file
@@ -1464,7 +1471,7 @@ def download_video_section(youtube_url: str, out_dir: Path, start: float, end: f
     _mv = re.search(r'(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})', youtube_url)
     _vid = _mv.group(1) if _mv else None
     if _vid and YT_DOWNLOAD_API_KEY:
-        cached = _ytapi_cached_video(_vid, "720")
+        cached = _ytapi_cached_video(_vid, "1080")
         if cached and cached.exists():
             api_seg = out_dir / "source_apiseg.mp4"
             r = subprocess.run(
@@ -1882,7 +1889,7 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
     # Déjà au bon ratio (±1.5%) → juste scale à 720×1280, pas de crop
     if abs(src_ratio - target_ratio) / target_ratio < 0.015:
         logger.info(f"[reframe] already {aspect_ratio} ({src_w}x{src_h}) — scale only, no crop")
-        vf = f"{lb_prefix}scale=720:1280"
+        vf = f"{lb_prefix}scale=1080:1920"
     else:
         # Calcule le crop vers le ratio cible
         if target_ratio < src_ratio:
@@ -1962,10 +1969,10 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
             ch = max(2, int(crop_h * sx / 2) * 2)
             xc = max(0, min(pw - cw, int(x_crop * sx)))
             yy = max(0, int(y0 * sx))
-            vf = f"{lb_prefix}scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=720:1280"
+            vf = f"{lb_prefix}scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=1080:1920"
             logger.info(f"[reframe] pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
         else:
-            vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=720:1280"
+            vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=1080:1920"
             logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
 
     _enc_tail = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -2035,8 +2042,8 @@ def _reframe_positional_split(in_path: str, out_path: str, src_w: int, src_h: in
     # partie haute — un centrage vertical strict croppait la table et coupait les têtes.
     top_y = max(0, min(src_h - crop_h, int(src_h * 0.28) - crop_h // 2))
     cy = top_y
-    vf_top = f"crop={crop_w}:{crop_h}:{lx}:{cy},scale=720:640"
-    vf_bot = f"crop={crop_w}:{crop_h}:{rx}:{cy},scale=720:640"
+    vf_top = f"crop={crop_w}:{crop_h}:{lx}:{cy},scale=1080:960"
+    vf_bot = f"crop={crop_w}:{crop_h}:{rx}:{cy},scale=1080:960"
     stack = f"[0:v]split=2[a][b];[a]{vf_top}[t];[b]{vf_bot}[bt];[t][bt]vstack=inputs=2[st]"
     fc = f"{stack};[st]{overlay_vf}[out]" if overlay_vf else f"{stack};[st]null[out]"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", in_path,
@@ -2092,13 +2099,13 @@ def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
     def split_fc(tf, bf):
         lx = max(0, min(src_w - cw, int(src_w * tf) - cw // 2))
         rx = max(0, min(src_w - cw, int(src_w * bf) - cw // 2))
-        vf_t = f"crop={cw}:{ch}:{lx}:{top_y},scale=720:640"
-        vf_b = f"crop={cw}:{ch}:{rx}:{top_y},scale=720:640"
+        vf_t = f"crop={cw}:{ch}:{lx}:{top_y},scale=1080:960"
+        vf_b = f"crop={cw}:{ch}:{rx}:{top_y},scale=1080:960"
         return f"[0:v]split=2[a][b];[a]{vf_t}[t];[b]{vf_b}[bt];[t][bt]vstack=inputs=2[out]"
     def solo_fc(frac):
         sw = int(src_h * 9 / 16); sw = max(2, sw - sw % 2)
         x = max(0, min(src_w - sw, int(src_w * frac) - sw // 2))
-        return f"[0:v]crop={sw}:{src_h}:{x}:0,scale=720:1280[out]"
+        return f"[0:v]crop={sw}:{src_h}:{x}:0,scale=1080:1920[out]"
 
     tmpdir = _tf.mkdtemp(); segs = []; list_file = os.path.join(tmpdir, "concat.txt")
     try:
@@ -2339,14 +2346,14 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         y = max(0, min(src_h - crop_h, cy - crop_h // 2))
         return f"crop={crop_w}:{crop_h}:{x}:{y},scale={out_w}:{out_h}"
 
-    def center_vf(out_w=720, out_h=1280):
+    def center_vf(out_w=1080, out_h=1920):
         crop_w = int(src_h * out_w / out_h)
         crop_w = max(2, crop_w - crop_w % 2)
         x = (src_w - crop_w) // 2
         return f"crop={crop_w}:{src_h}:{x}:0,scale={out_w}:{out_h}"
 
-    vf_A_full = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 720, 1280)
-    vf_B_full = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 720, 1280)
+    vf_A_full = make_vf(face_A[0], face_A[1], face_A[2], face_A[3], 1080, 1920)
+    vf_B_full = make_vf(face_B[0], face_B[1], face_B[2], face_B[3], 1080, 1920)
 
     # ── 6. Générer les segments ──
     tmpdir = tempfile.mkdtemp()
@@ -2381,7 +2388,7 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
                 closest = min(frame_data, key=lambda x: abs(x[0] / fps - seg_mid))
                 if closest[1]:
                     f1 = closest[1][0]
-                    vf = make_vf(f1[0], f1[1], f1[2], f1[3], 720, 1280)
+                    vf = make_vf(f1[0], f1[1], f1[2], f1[3], 1080, 1920)
                 else:
                     vf = center_vf()
                 vf_final = f"{vf},{overlay_vf}" if overlay_vf else vf
@@ -3650,9 +3657,15 @@ def _r2_client():
         )
     return _r2_client_cache["c"]
 
+SEG_CACHE_VERSION = "v2-1080"   # incrementer a CHAQUE changement de definition cible
+
 def _seg_r2_key(video_id: str, start: float, end: float) -> str:
     # Clé stable par clip source (indépendante du cadrage/sous-titres appliqués ensuite).
-    return f"seg/{video_id}/{start:.1f}_{end:.1f}.mp4"
+    # La VERSION fait partie de la cle, et c est essentiel : sans elle, un segment mis en
+    # cache a l ancienne definition etait resservi indefiniment — y compris a d autres
+    # utilisateurs, et APRES correction du pipeline. C est le mecanisme qui faisait revenir
+    # le probleme de qualite « a chaque fois » malgre les correctifs successifs.
+    return f"seg/{SEG_CACHE_VERSION}/{video_id}/{start:.1f}_{end:.1f}.mp4"
 
 def _r2_get(key: str, dest_path) -> bool:
     """Récupère l'objet depuis R2 s'il existe. Fail-open : False si absent ou erreur."""
@@ -3838,7 +3851,9 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             tmp_path = out_dir / "full.%(ext)s"
             ydl_opts = {
                 # Préférer H.264 (avc1) + AAC (mp4a) — lisibles nativement par tous les navigateurs.
-                "format": "bestvideo[height<=720][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[height<=720][vcodec^=avc1]/best[height<=720]/best",
+                # Le segment part TEL QUEL au navigateur, qui y decoupe le 9:16 lui-meme :
+                # c est donc ici que se joue la definition finale percue par l utilisateur.
+                "format": "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[height<=1080][vcodec^=avc1]/best[height<=1080]/best",
                 "merge_output_format": "mp4",
                 "outtmpl": str(tmp_path),
                 "download_ranges": lambda _, __: [{"start_time": max(0, start - 1), "end_time": end + 1}],
@@ -3967,7 +3982,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
                 RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
                 cached = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _ytapi_cached_video(video_id, "720"))
+                    None, lambda: _ytapi_cached_video(video_id, "1080"))
                 if not cached or not cached.exists():
                     raise RuntimeError("yt-dlp et API de secours ont tous deux échoué")
                 RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
@@ -4404,7 +4419,7 @@ async def process_clip_endpoint(
             elif YT_DOWNLOAD_API_KEY and re.fullmatch(r"[a-zA-Z0-9_-]{11}", video_id):
                 # Source YouTube (pas d'upload) → récupère la vidéo complète via l'API (cache partagé)
                 api_video = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _ytapi_cached_video(video_id, "720"))
+                    None, lambda: _ytapi_cached_video(video_id, "1080"))
                 if not api_video or not api_video.exists():
                     raise HTTPException(400, f"Téléchargement API échoué pour {video_id}")
                 shutil.copy2(str(api_video), str(in_path))
@@ -4525,7 +4540,12 @@ async def process_clip_endpoint(
         overlay_vf = ""
         if has_subs and style != "none":
             ass_lines = [
-                "[Script Info]","ScriptType: v4.00+","PlayResX: 720","PlayResY: 1280","WrapStyle: 1","",
+                "[Script Info]","ScriptType: v4.00+","PlayResX: 720","PlayResY: 1280",
+                # PlayRes reste a 720x1280 : libass met les sous-titres a l echelle de la
+                # sortie reelle, donc la geometrie calibree ne bouge pas quand on encode plus
+                # grand. ScaledBorderAndShadow fait suivre les CONTOURS — sans lui le texte
+                # grandirait mais pas son contour, et l aspect changerait.
+                "ScaledBorderAndShadow: yes","WrapStyle: 1","",
                 "[V4+ Styles]",
                 "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
                 style_line, hook_style_line,
@@ -4535,6 +4555,10 @@ async def process_clip_endpoint(
                 # Ils restent dans le bloc [V4+ Styles], avant la ligne vide.
                 # Le curseur de taille du studio pilote enfin ce style, comme tous les autres.
                 _hl_ech = caption_highlight.echelle_depuis_taille(font_size)
+                # 720x1280 VOLONTAIREMENT, meme si la video sort en 1080x1920 : ces modules
+                # calculent leur geometrie dans l espace PlayRes declare plus haut, et libass
+                # met le tout a l echelle de la sortie reelle. Passer 1080x1920 ici rendrait
+                # les sous-titres 1,5x trop gros. Ne pas « corriger ».
                 ass_lines.extend(caption_highlight.style_lines(720, 1280, margin_v, _hl_ech))
             ass_lines += [
                 "",
