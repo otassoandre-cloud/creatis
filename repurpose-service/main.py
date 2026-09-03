@@ -3537,6 +3537,17 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
             result["total_formats"] = len(fmts)
             result["audio_formats"] = len(audio)
             result["client_utilise"] = _yt_extractor_args()["youtube"]["player_client"]
+            # Les DEFINITIONS reellement proposees, et ce que le selecteur de production en
+            # tire. Sans cela on ne peut pas diagnostiquer une chute de qualite : on voyait
+            # « 34 formats » sans savoir qu'aucun n'etait exploitable au-dela de 360p.
+            _vid = [f for f in fmts if f.get("vcodec") not in (None, "none") and f.get("height")]
+            result["hauteurs_disponibles"] = sorted({int(f["height"]) for f in _vid}, reverse=True)
+            result["meilleure_hauteur"] = max((int(f["height"]) for f in _vid), default=0)
+            result["formats_video"] = [
+                f"{f.get('format_id')} {f.get('width')}x{f.get('height')} "
+                f"{f.get('vcodec','?').split('.')[0]} {'progressif' if f.get('acodec') not in (None,'none') else 'separe'}"
+                for f in sorted(_vid, key=lambda x: int(x["height"]), reverse=True)[:14]
+            ]
         if download and _tmp_dl:
             # La seule mesure qui compte : des octets sont-ils réellement arrivés ?
             fichiers = [p for p in _tmp_dl.iterdir() if p.is_file() and p.stat().st_size > 0]
