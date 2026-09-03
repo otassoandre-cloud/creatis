@@ -3810,6 +3810,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             },
         ]
         stream_url = None
+        audio_url = None   # renseignee avec stream_url quand les flux sont separes
         for c in ([] if _r2_hit else it_clients):
             try:
                 async with httpx.AsyncClient(timeout=30, follow_redirects=True) as hc:
@@ -3817,14 +3818,43 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     if r.status_code == 200:
                         d = r.json()
                         if d.get("streamingData"):
-                            fmts = [f for f in d["streamingData"].get("formats", [])
-                                    if f.get("url") and "mp4" in f.get("mimeType", "")]
-                            fmts.sort(key=lambda f: f.get("height", 0), reverse=True)
-                            pick = next((f for f in fmts if (f.get("height") or 0) <= 720), fmts[0] if fmts else None)
-                            if pick:
-                                stream_url = pick["url"]
-                                logger.info(f"[raw-segment] {c['name']} OK {pick.get('qualityLabel','?')}")
+                            _sd = d["streamingData"]
+                            # `formats` ne contient QUE les flux progressifs (audio+video muxes).
+                            # YouTube n'en publie plus qu'en 360p : s'en contenter donnait un
+                            # segment 640x360, quelle que soit la definition reelle de la source.
+                            # Les 720p / 1080p et au-dela vivent dans `adaptiveFormats`, en flux
+                            # video et audio SEPARES — d'ou les deux URLs et le muxage par ffmpeg.
+                            _adapt = [f for f in _sd.get("adaptiveFormats", []) if f.get("url")]
+                            _va = [f for f in _adapt
+                                   if f.get("mimeType", "").startswith("video/mp4")
+                                   and (f.get("height") or 0) <= 1080]
+                            _au = [f for f in _adapt if f.get("mimeType", "").startswith("audio/mp4")]
+                            # avc1 en priorite : il se recopie tel quel (-c copy), sans re-encodage.
+                            _va.sort(key=lambda f: ((f.get("height") or 0),
+                                                    1 if "avc1" in f.get("mimeType", "") else 0),
+                                     reverse=True)
+                            _au.sort(key=lambda f: (f.get("bitrate") or 0), reverse=True)
+
+                            _prog = [f for f in _sd.get("formats", [])
+                                     if f.get("url") and "mp4" in f.get("mimeType", "")]
+                            _prog.sort(key=lambda f: f.get("height", 0), reverse=True)
+
+                            if _va and _au:
+                                stream_url = _va[0]["url"]
+                                audio_url = _au[0]["url"]
+                                logger.info(f"[raw-segment] {c['name']} OK {_va[0].get('qualityLabel','?')} "
+                                            f"({_va[0].get('width')}x{_va[0].get('height')}) flux separes")
                                 break
+                            # Pas de flux separe exploitable : le progressif ne depanne que s'il
+                            # tient la definition. En dessous de 720p on prefere ne RIEN renvoyer
+                            # et laisser yt-dlp faire le travail — il sait muxer, lui.
+                            if _prog and (_prog[0].get("height") or 0) >= 720:
+                                stream_url = _prog[0]["url"]
+                                logger.info(f"[raw-segment] {c['name']} OK {_prog[0].get('qualityLabel','?')} progressif")
+                                break
+                            logger.warning(f"[raw-segment] {c['name']} definition insuffisante "
+                                           f"(progressif max {(_prog[0].get('height') if _prog else 0)}p) "
+                                           f"— bascule sur yt-dlp")
                         else:
                             logger.warning(f"[raw-segment] {c['name']} pas streamingData: {d.get('playabilityStatus',{}).get('status')}")
                     else:
@@ -3835,20 +3865,30 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         # out_path et duration déjà définis en haut de la fonction (avant la tentative API)
         if not _r2_hit and stream_url:
             RAW_SEGMENTS[job_id]["progress"] = "Extraction du segment…"
+            # Deux entrees quand la video et l'audio sont des flux separes (adaptiveFormats).
+            # Le -ss est repete AVANT chaque -i : place ainsi il est applique a chaque entree,
+            # ce qui garde les deux pistes synchrones.
+            _args = ["ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", stream_url]
+            if audio_url:
+                _args += ["-ss", str(start), "-t", str(duration), "-i", audio_url,
+                          "-map", "0:v:0", "-map", "1:a:0"]
+            _args += ["-c", "copy", "-movflags", "faststart", str(out_path)]
             proc = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
-                "-i", stream_url, "-c", "copy", "-movflags", "faststart", str(out_path),
+                *_args,
                 stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
             )
             _, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
 
             if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
                 logger.warning(f"[raw-segment] copy rc={proc.returncode}, re-encode fallback")
+                _args2 = ["ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", stream_url]
+                if audio_url:
+                    _args2 += ["-ss", str(start), "-t", str(duration), "-i", audio_url,
+                               "-map", "0:v:0", "-map", "1:a:0"]
+                _args2 += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                           "-c:a", "aac", "-movflags", "faststart", str(out_path)]
                 proc2 = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
-                    "-i", stream_url,
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                    "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                    *_args2,
                     stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                 )
                 _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
