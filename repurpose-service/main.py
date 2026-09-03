@@ -3853,7 +3853,17 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 # Préférer H.264 (avc1) + AAC (mp4a) — lisibles nativement par tous les navigateurs.
                 # Le segment part TEL QUEL au navigateur, qui y decoupe le 9:16 lui-meme :
                 # c est donc ici que se joue la definition finale percue par l utilisateur.
-                "format": "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[height<=1080][vcodec^=avc1]/best[height<=1080]/best",
+                #
+                # AUCUNE contrainte de codec, et c est deliberé. La version precedente
+                # exigeait [vcodec^=avc1] pour eviter un re-encodage — sauf que le clip est
+                # re-encode en libx264 quelques lignes plus bas DE TOUTE FACON. Le gain
+                # etait donc nul, et le cout enorme : sur les clients modernes YouTube ne
+                # sert plus de flux video avc1 separe (le 1080p est en VP9/AV1), le seul
+                # avc1 disponible etant le progressif 18 en 360p. Le selecteur echouait sur
+                # ses deux premieres branches et retombait sur ce 360p.
+                # Mesure en production avant correction : segment servi en 640x360, alors
+                # que YouTube exposait 27 formats video pour la meme video.
+                "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best",
                 "merge_output_format": "mp4",
                 "outtmpl": str(tmp_path),
                 "download_ranges": lambda _, __: [{"start_time": max(0, start - 1), "end_time": end + 1}],
@@ -3936,8 +3946,25 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                                 str(downloaded),
                                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
                             _po, _ = await asyncio.wait_for(_pr.communicate(), timeout=15)
-                            logger.info(f"[raw-segment] {job_id} source {_po.decode().strip()} "
-                                        f"via {'PROXY' if _proxy else 'gratuit'}")
+                            _dims = _po.decode().strip()
+                            _voie = "PROXY" if _proxy else "gratuit"
+                            logger.info(f"[raw-segment] {job_id} source {_dims} via {_voie}")
+                            # Le probleme de qualite est revenu plusieurs fois sans que rien
+                            # ne l annonce : une chute de definition ne se voit pas dans la
+                            # taille du fichier, qui depend surtout du contenu. On la rend
+                            # donc bruyante. Le crop 9:16 ne gardant que 56 % de la largeur,
+                            # une source sous 720 de hauteur donne moins de 405 px reels et
+                            # se voit immediatement a l ecran.
+                            try:
+                                _h = int(_dims.split(",")[1])
+                                if _h < 720:
+                                    logger.error(
+                                        f"[raw-segment] QUALITE DEGRADEE — source {_dims} "
+                                        f"(< 720p) via {_voie} pour {video_id}. Le clip final "
+                                        f"sera flou : verifier le selecteur de format et les "
+                                        f"formats reellement exposes (/test-formats).")
+                            except Exception:
+                                pass
                         except Exception:
                             pass
                         RAW_SEGMENTS[job_id]["progress"] = "Découpe précise…"
