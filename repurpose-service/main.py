@@ -3100,8 +3100,24 @@ async def thumbnail_endpoint(video_id: str = Form(...), t: float = Form(0.0), _=
 
 
 @app.post("/reframe-clip")
-async def reframe_clip_endpoint(file: UploadFile = File(...), _=Depends(auth)):
-    """Reframe un segment vidéo en 9:16 (ffmpeg natif). Reçoit un segment MP4 stream-copié."""
+async def reframe_clip_endpoint(
+    file: UploadFile = File(...),
+    reframe_mode: str = Form("face"),
+    _=Depends(auth),
+):
+    """Reframe un segment vidéo en 9:16 (ffmpeg natif). Reçoit un segment MP4 stream-copié.
+
+    Le mode par défaut est **"face"**, plus "center". C'était un vrai défaut produit :
+    `_reframe_vertical` a toujours su suivre les visages, mais cet endpoint l'appelait sans
+    argument — donc avec `reframe_mode="center"` — et clips-v2.html ne transmet que le
+    fichier. Résultat : TOUS les clips clients sortaient en crop centré, alors que sur une
+    interview ou un podcast filmé en 16:9 l'intervenant est presque toujours décentré. Il se
+    retrouvait collé au bord, avec un tiers de cadre vide (constaté le 04/09/2026).
+
+    Passer "face" par défaut est sans risque : le suivi exige un visage détecté sur au moins
+    la moitié des images échantillonnées et retombe de lui-même sur le crop centré quand le
+    signal est trop faible — c'est le garde-fou anti-faux-positif déjà en place.
+    """
     import shutil
     from fastapi.responses import FileResponse
     tmp_dir = WORK_DIR / f"rf_{uuid.uuid4().hex[:8]}"
@@ -3112,7 +3128,7 @@ async def reframe_clip_endpoint(file: UploadFile = File(...), _=Depends(auth)):
         with open(in_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         await asyncio.get_event_loop().run_in_executor(
-            None, lambda: _reframe_vertical(str(in_path), str(out_path))
+            None, lambda: _reframe_vertical(str(in_path), str(out_path), reframe_mode=reframe_mode)
         )
         if not out_path.exists():
             raise HTTPException(500, "Reframe échoué")
