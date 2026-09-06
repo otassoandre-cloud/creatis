@@ -7626,7 +7626,7 @@ const V2 = (() => {
     const tokData = await tokRes.json();
     if (!tokData.ok) throw new Error(tokData.error || 'Auth Railway échouée');
 
-    let segmentBlob = null, clipStartParam = -1, clipEndParam = -1;
+    let segmentBlob = null, clipStartParam = -1, clipEndParam = -1, ytSegId = '';
     if (usePreUpload) {
       // Segment déjà sur Railway — uniquement le traitement (~5-10s)
       if (onMsg) onMsg('Traitement Railway…');
@@ -7673,7 +7673,15 @@ const V2 = (() => {
       const _ci = _clips.indexOf(clip);
       if (onMsg) onMsg('Préparation du clip…');
       const blobUrl = _ytSegCache[_ci] || await _getYtSegment(clip, _ci, (pr) => { if (onMsg) onMsg(pr); });
-      segmentBlob = await fetch(blobUrl).then(r => r.blob());
+      /* On envoie l'IDENTITÉ du segment, pas ses octets. Railway l'a déjà : c'est lui qui vient de
+         le produire, et il le garde en cache sous une clé déduite de (video_id, début, fin). Le
+         chemin précédent relisait le blob local puis le renvoyait — soit ~20-25 Mo à la montée par
+         export depuis un téléphone. C'est cet envoi qui échouait : sur 7 jours, la totalité des
+         échecs d'export venait d'iPhone/iPad, aucun d'un ordinateur ni d'Android.
+         Si l'identifiant vidéo manque (cas anormal), on reprend l'ancien chemin. */
+      ytSegId = clip.video_id || _ytVideoId() || '';
+      if (ytSegId) { clipStartParam = -1; clipEndParam = -1; }
+      else segmentBlob = await fetch(blobUrl).then(r => r.blob());
     }
     if (onPct) onPct(20);
     if (onMsg) onMsg('Reframe 9:16 + sous-titres…');
@@ -7684,6 +7692,10 @@ const V2 = (() => {
       form.append('video_id', _clipSegmentIds[_segKey]);
     } else if (_fullFileVideoId && !segmentBlob) {
       form.append('video_id', _fullFileVideoId);
+    } else if (ytSegId && !segmentBlob) {
+      form.append('yt_video_id', ytSegId);
+      form.append('yt_start', String(start));
+      form.append('yt_end',   String(end));
     } else {
       form.append('file', segmentBlob, 'segment.mp4');
     }
@@ -7788,7 +7800,7 @@ const V2 = (() => {
             }
           };
           xhr.onerror   = () => { _stopEnc(); reject(Object.assign(new Error('Erreur réseau Railway'), { retryable: true })); };
-          xhr.ontimeout = () => { _stopEnc(); reject(Object.assign(new Error('Timeout Railway (2 min)'), { retryable: true })); };
+          xhr.ontimeout = () => { _stopEnc(); reject(Object.assign(new Error('Timeout Railway (20 min)'), { retryable: true })); };
           xhr.send(form);
         });
         break;

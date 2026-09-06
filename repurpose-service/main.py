@@ -4484,6 +4484,12 @@ async def process_clip_endpoint(
     reframe_mode: str = Form("center"),
     clip_start: float = Form(-1.0),
     clip_end: float = Form(-1.0),
+    # Source YouTube : le segment brut existe deja cote serveur (cache R2 pose par /raw-segment).
+    # Le client envoie l'identite du segment au lieu de ses octets — voir le bloc de resolution
+    # de source plus bas pour la raison.
+    yt_video_id: str = Form(""),
+    yt_start: float = Form(-1.0),
+    yt_end: float = Form(-1.0),
     crop_x_frac: float = Form(-1.0),
     split_top_x: float = Form(-1.0),
     split_bot_x: float = Form(-1.0),
@@ -4505,7 +4511,40 @@ async def process_clip_endpoint(
     ass_path     = tmp_dir / "subs.ass"
     out_path     = tmp_dir / "clip_final.mp4"
     try:
-        if video_id:
+        # ── Source YouTube : reprendre le segment deja produit, sans le faire transiter ──
+        # Avant : le telephone telechargeait le segment brut (~20-25 Mo en 1080p), le gardait en
+        # memoire, puis le RE-uploadait ici a chaque export. Sur iOS c'est ce trajet montant qui
+        # cassait — 100 % des echecs d'export mesures sur 7 jours venaient d'iPhone/iPad, aucun
+        # sur ordinateur ni Android, et le motif dominant etait « Erreur reseau Railway », c.-a-d.
+        # l'evenement `error` de l'upload XHR. Le segment est deja sur R2 sous une cle deterministe
+        # (video_id + bornes) : on le relit ici. Zero octet a la montee depuis le mobile.
+        _yt_ok = False
+        if yt_video_id and yt_end > yt_start >= 0:
+            if _r2_enabled():
+                _yt_ok = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _r2_get(_seg_r2_key(yt_video_id, yt_start, yt_end), in_path))
+            if _yt_ok:
+                logger.info(f"[process-clip] segment R2 {yt_video_id} {yt_start:.1f}→{yt_end:.1f}s "
+                            f"({in_path.stat().st_size/1_048_576:.1f} MB)")
+            elif not file:
+                # Cache absent (R2 coupe, objet purge) : on refabrique le segment plutot que de
+                # renvoyer une erreur. L'utilisateur ne doit pas dependre de l'etat du cache.
+                _seg_dir = tmp_dir / "ytseg"
+                _seg_dir.mkdir(parents=True, exist_ok=True)
+                _seg_job = f"pc-{job_id}"
+                logger.warning(f"[process-clip] segment absent du cache — refabrication {yt_video_id}")
+                await _run_raw_segment(yt_video_id, yt_start, yt_end, _seg_job, _seg_dir, True)
+                _st = RAW_SEGMENTS.pop(_seg_job, {})
+                _seg_file = _seg_dir / "clip.mp4"
+                if _st.get("status") == "done" and _seg_file.exists() and _seg_file.stat().st_size > 1000:
+                    shutil.move(str(_seg_file), str(in_path))
+                    _yt_ok = True
+                else:
+                    raise HTTPException(400, _st.get("error") or "Segment YouTube indisponible")
+
+        if _yt_ok:
+            pass
+        elif video_id:
             upload_source = UPLOAD_DIR / video_id / "source.mp4"
             if upload_source.exists():
                 shutil.copy2(str(upload_source), str(in_path))
