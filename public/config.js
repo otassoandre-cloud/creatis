@@ -13,6 +13,6 @@
    ============================================================ */
 
 window.ARDOISE_CONFIG = {
-  SB_URL: "",
-  SB_KEY: ""
+  SB_URL: "https://rbjegjctaqynnmnuxuee.supabase.co",
+  SB_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJiamVnamN0YXF5bm5tbnV4dWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NjEwNjcsImV4cCI6MjEwNDMzNzA2N30.djs8FK8Bg-t4CvTd2W0qLTHNM9GAvnzrPkRewobjoMI"
 };

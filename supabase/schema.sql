@@ -183,6 +183,16 @@ create policy "prospect insertion" on public.prospects
 -- --- événements Stripe : aucune policy, donc inaccessible
 --     sauf via service_role. C'est voulu.
 
+-- --- fonctions de déclencheur : pas d'appel direct ---
+-- PostgREST expose toute fonction du schéma public comme /rest/v1/rpc/...
+-- Ces deux-là ne servent que de déclencheurs. Un appel direct échouerait,
+-- mais rien ne justifie de laisser la porte ouverte — et l'analyseur de
+-- sécurité Supabase le signale, à raison.
+-- Les déclencheurs continuent de fonctionner : le droit d'exécution est
+-- vérifié à la création du déclencheur, pas à chaque déclenchement.
+revoke execute on function public.cree_profil()        from anon, authenticated, public;
+revoke execute on function public.protege_champs_abo() from anon, authenticated, public;
+
 -- ============================================================
 --  VUE DE PILOTAGE (pour vous, dans le tableau de bord Supabase)
 --  Une vue contourne la RLS des tables qu'elle lit, et Supabase
