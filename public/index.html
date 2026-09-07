@@ -125,6 +125,10 @@
 
   .champ{margin-bottom:12px}
   .champ label{display:block;font-size:12.5px;color:var(--sourdine);margin-bottom:6px;line-height:1.35}
+  select{width:100%;padding:12px 13px;border-radius:3px;border:1px solid var(--lisere);
+    background:rgba(0,0,0,.4);color:var(--craie);font:15px var(--sans);min-height:44px;
+    -webkit-appearance:none;appearance:none}
+  select:focus{outline:0;border-color:var(--somme)}
   textarea,input[type=number],input[type=email]{
     width:100%;padding:12px 13px;border-radius:3px;border:1px solid var(--lisere);
     background:rgba(0,0,0,.4);color:var(--craie);font:15px/1.5 var(--mono);
@@ -352,6 +356,16 @@
       <p class="ou">ou collez les lignes à la main</p>
 
       <div class="champ">
+        <label for="pf-manuel">De quelle plateforme vient ce relevé&nbsp;?</label>
+        <select id="pf-manuel">
+          <option value="uber">Uber Eats — fenêtre de 30 jours</option>
+          <option value="deliveroo">Deliveroo — fenêtre de 7 jours</option>
+          <option value="justeat">Just Eat — délai non vérifié</option>
+          <option value="inconnu">Je ne sais pas</option>
+        </select>
+      </div>
+
+      <div class="champ">
         <label for="src">Une ligne par prélèvement — date&nbsp;; référence&nbsp;; motif&nbsp;; montant</label>
         <textarea id="src" spellcheck="false" placeholder="02/09/2026 ; UE-88134 ; commande non livrée ; 24,80
 03/09/2026 ; UE-88251 ; article manquant ; 11,40"></textarea>
@@ -474,7 +488,17 @@
     var CFG    = window.ARDOISE_CONFIG || {};
   var SB_URL = CFG.SB_URL || "";
   var SB_KEY = CFG.SB_KEY || "";   /* clé anon uniquement — voir config.js */
-  var FENETRE  = 30;   // jours — HYPOTHESE, a remplacer par le delai reel de chaque plateforme
+  /* La fenêtre de contestation dépend de la plateforme : 30 jours chez Uber
+     Eats à compter de la commande, 7 jours chez Deliveroo à compter du
+     remboursement. Une version antérieure appliquait 30 jours partout —
+     c'était faux pour Deliveroo, et dangereux : un restaurateur s'y fiant
+     aurait raté toutes ses fenêtres. Les valeurs viennent de parseur.js,
+     qui est la source unique. */
+  function fenetreChoisie(){
+    var pf = ($("pf-manuel") || {}).value || "inconnu";
+    var infos = (window.Ardoise && Ardoise.PLATEFORMES[pf]) || {fenetre:null, nom:"", verifie:false};
+    return infos;
+  }
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -559,6 +583,8 @@
     box.innerHTML="";
     var auj=new Date(); auj.setHours(0,0,0,0);
     var tot=0,rec=0,exp=0,somme=0,urg=[],res=[];
+    var infos = fenetreChoisie();
+    var seuilUrgent = infos.fenetre ? Math.max(2, Math.round(infos.fenetre*0.25)) : 0;
 
     for(var i=0;i<lignes.length;i++){
       var L=lignes[i].trim(); if(!L) continue;
@@ -567,13 +593,14 @@
       tot++;
       var d=dparse(c[0]), ref=c[1]||"—", g=classer(c[2]||"");
       var mt=parseFloat((c[3]||"").replace(/\s/g,"").replace(",","."))||0;
-      var reste = d ? FENETRE-Math.floor((auj-d)/86400000) : null;
+      var reste = (d && infos.fenetre) ? infos.fenetre-Math.floor((auj-d)/86400000) : null;
       var etat,st;
       if(!g.r){ etat="non"; st="Non contestable"; }
-      else if(reste===null){ etat="rec"; st="Date illisible"; }
+      else if(!infos.fenetre){ etat="rec"; st="Délai non vérifié"; rec++; somme+=mt; }
+      else if(reste===null){ etat="rec"; st="Date illisible"; rec++; somme+=mt; }
       else if(reste<=0){ etat="exp"; st="Fenêtre fermée"; exp++; }
       else { etat="rec"; st=reste+" j pour déposer"; rec++; somme+=mt;
-             if(reste<=5) urg.push({ref:ref,j:reste,mt:mt}); }
+             if(reste<=seuilUrgent) urg.push({ref:ref,j:reste,mt:mt}); }
       res.push({ref:ref,l:g.l,p:g.p,mt:mt,st:st,e:etat,reste:reste===null?999:reste});
     }
 
@@ -596,6 +623,11 @@
       el.appendChild(g); el.appendChild(m); box.appendChild(el);
     });
 
+    $("res-pf").innerHTML = infos.fenetre
+      ? 'Fenêtre appliquée&nbsp;: <b>'+infos.nom+', '+infos.fenetre+' jours</b> à compter de la date de '+
+        (infos.depuis==="remboursement"?"remboursement":"commande")+'.'
+      : '<span class="alerte">Délai de contestation non vérifié</span> — les montants sont calculés, '+
+        'mais l\'horloge ne l\'est pas. Choisissez la plateforme pour obtenir les jours restants.';
     $("res-lbl").textContent="Récupérable, fenêtre encore ouverte";
     $("res-montant").textContent=euros(somme);
     $("res-sub").textContent = tot ? "" : "Aucune ligne lue. Format attendu : date ; référence ; motif ; montant.";
@@ -605,7 +637,7 @@
     var u=$("res-urg");
     if(urg.length){
       urg.sort(function(a,b){return a.j-b.j;});
-      u.textContent=urg.length+" contestation"+(urg.length>1?"s ferment":" ferme")+" dans moins de 6 jours. La plus urgente : "+urg[0].ref+", "+euros(urg[0].mt)+", "+urg[0].j+" jour"+(urg[0].j>1?"s":"")+".";
+      u.textContent=urg.length+" contestation"+(urg.length>1?"s ferment":" ferme")+" dans moins de "+(seuilUrgent+1)+" jours. La plus urgente : "+urg[0].ref+", "+euros(urg[0].mt)+", "+urg[0].j+" jour"+(urg[0].j>1?"s":"")+".";
     } else if(exp>0){
       u.textContent=exp+" ligne"+(exp>1?"s sont":" est")+" hors délai. C'est exactement ce que l'analyse hebdomadaire évite.";
     } else u.textContent="";
@@ -619,18 +651,21 @@
       var d=new Date(t.getTime()-n*86400000);
       return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
     };
+    /* un seul relevé, une seule plateforme : mélanger Uber et Deliveroo
+       n'aurait aucun sens dès lors que la fenêtre dépend de la plateforme */
+    $("pf-manuel").value = "uber";
     $("src").value=
       j(2)+" ; UE-88134 ; commande non livrée ; 24,80\n"+
       j(3)+" ; UE-88251 ; article manquant ; 11,40\n"+
-      j(26)+" ; DE-4471 ; commande non livrée ; 38,90\n"+
-      j(27)+" ; DE-4488 ; ajustement d'erreur ; 47,00\n"+
+      j(26)+" ; UE-88251 ; commande non livrée ; 38,90\n"+
+      j(27)+" ; UE-88302 ; ajustement d'erreur ; 47,00\n"+
       j(34)+" ; UE-87002 ; article manquant ; 19,60\n"+
-      j(5)+" ; JE-20913 ; annulation après préparation ; 31,50\n"+
-      j(6)+" ; JE-20940 ; article incorrect ; 16,20\n"+
+      j(5)+" ; UE-88913 ; annulation après préparation ; 31,50\n"+
+      j(6)+" ; UE-88940 ; article incorrect ; 16,20\n"+
       j(4)+" ; UE-88410 ; plat froid ; 9,80\n"+
       j(4)+" ; UE-88410 ; commission de plateforme ; 214,30\n"+
-      j(7)+" ; DE-4502 ; participation promotionnelle ; 62,00\n"+
-      j(8)+" ; JE-20977 ; annulation client avant préparation ; 12,40\n"+
+      j(7)+" ; UE-88502 ; participation promotionnelle ; 62,00\n"+
+      j(8)+" ; UE-88977 ; annulation client avant préparation ; 12,40\n"+
       j(41)+" ; UE-86550 ; commande non livrée ; 27,30";
     analyser();
   });
