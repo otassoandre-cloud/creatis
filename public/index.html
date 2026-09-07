@@ -216,6 +216,8 @@
   .capt button[disabled]{opacity:.55;cursor:progress}
   .capt button:focus-visible{outline:3px solid var(--craie);outline-offset:2px}
   .capt .ok{color:var(--somme);font-size:14px;margin:10px 0 0;display:none}
+  .capt .deja{font-size:13px;margin:11px 0 0}
+  .capt .deja a{color:var(--craie-2)}
   .capt .ok.on{display:block}
   .capt .ok.err{color:var(--perdu)}
 
@@ -379,14 +381,16 @@
       <div class="lignes" id="res-lignes"></div>
 
       <div class="capt">
-        <h3>Recevoir ce calcul chaque semaine</h3>
-        <p>Le lundi matin, les prélèvements de la semaine, triés, avec les délais restants.</p>
+        <h3>Recevoir ce calcul chaque lundi</h3>
+        <p>Le rapport du lundi reprend les prélèvements encore déposables, triés par jours restants.
+           Il se calcule sur les relevés de votre espace : il démarre donc à votre premier dépôt.</p>
         <form id="f-mail">
           <label for="mail" class="lbl-mail">Votre adresse e-mail</label>
           <input type="email" id="mail" inputmode="email" placeholder="votre@restaurant.fr" required autocomplete="email">
           <button type="submit" id="b-mail">Recevoir</button>
         </form>
-        <p class="ok" id="mail-ok">C'est noté. Vous recevrez le premier lundi prochain.</p>
+        <p class="deja">Déjà décidé ? <a href="app.html">Ouvrir mon espace</a></p>
+        <p class="ok" id="mail-ok">C'est noté. Vous recevrez un message pour ouvrir votre espace — le rapport du lundi suit votre premier relevé déposé.</p>
       </div>
     </div>
   </div>
@@ -455,6 +459,7 @@
   </div>
 </footer>
 
+<script src="config.js"></script>
 <script src="parseur.js"></script>
 <script>
 (function(){
@@ -466,8 +471,9 @@
      la lecture. Ne mettez JAMAIS la cle service_role ici.
      Tant que SB_URL est vide, rien n'est envoye : le site fonctionne,
      mais vous ne collectez rien. */
-  var SB_URL  = "";
-  var SB_KEY  = "";
+    var CFG    = window.ARDOISE_CONFIG || {};
+  var SB_URL = CFG.SB_URL || "";
+  var SB_KEY = CFG.SB_KEY || "";   /* clé anon uniquement — voir config.js */
   var FENETRE  = 30;   // jours — HYPOTHESE, a remplacer par le delai reel de chaque plateforme
 
   var $ = function(id){ return document.getElementById(id); };
@@ -634,7 +640,7 @@
     var v=$("mail").value.trim(); if(!v) return;
     var b=$("b-mail"), ok=$("mail-ok");
     var succes=function(){
-      ok.textContent="C'est noté. Vous recevrez le premier lundi prochain.";
+      ok.textContent="C'est noté. Vous recevrez un message pour ouvrir votre espace — le rapport du lundi suit votre premier relevé déposé.";
       ok.classList.remove("err"); ok.classList.add("on");
       $("f-mail").style.display="none";
     };

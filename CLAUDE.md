@@ -53,6 +53,7 @@ Rapport Uber Eats à utiliser : **Reports → Order Errors (Transaction)**. Il c
 Vanilla HTML/CSS/JS, aucun framework, aucune étape de build. Vercel + Supabase + Stripe.
 
 ```
+public/config.js       clés publiques Supabase — LE SEUL fichier à remplir
 public/index.html      page publique + analyseur gratuit
 public/app.html        espace client
 public/parseur.js      lecteur de relevés (détection de plateforme + mappage flou)
@@ -62,6 +63,8 @@ api/webhook.js         webhook Stripe (signature + idempotence)
 api/portail.js         portail de facturation client
 api/rapport-hebdo.js   tâche planifiée du lundi, envoi via Brevo
 api/desinscription.js  lien « ne plus recevoir », signé
+api/diagnostic.js      vérifie que toute la chaîne est branchée
+outils/domaine.sh      change le domaine aux 9 endroits d'un coup
 supabase/schema.sql    tables, RLS, vue pilotage
 test/                  node --test — `npm test`
 ```
@@ -106,19 +109,55 @@ Statut : **auto-entrepreneur, franchise en base de TVA**. Mention obligatoire : 
 
 ---
 
+## Identité de l'entreprise
+
+Reprise des mentions légales de Créatis : **même auto-entreprise**, donc mêmes
+nom, adresse et SIRET. C'est le seul point commun entre les deux projets, et il
+est inévitable : il n'y a qu'un entrepreneur.
+
+| | |
+|---|---|
+| Éditeur | Otasso André, entrepreneur individuel (EI) |
+| Adresse | 11 avenue Varavilla, 06190, France |
+| SIRET | 988 630 943 00013 |
+| Téléphone | 06 59 42 64 01 |
+| Contact Ardoise | contact@ardoise.app |
+
+**L'adresse de contact d'Ardoise n'est pas celle de Créatis.** Mettre
+`contact@creatis.app` sur ce site relierait publiquement les deux projets pour
+n'importe quel visiteur. La boîte `contact@ardoise.app` doit exister.
+
+**L'adresse postale ne mentionne pas la commune** — elle est déjà ainsi sur
+Créatis. Si les mentions légales doivent être parfaitement exactes, c'est à
+compléter aux deux endroits.
+
+**Le code APE a été retiré** des mentions légales : l'article 19 de la LCEN ne
+l'exige pas, et une ligne vide vaut moins qu'une ligne absente. À rajouter s'il
+est souhaité, il figure sur l'avis de situation INSEE.
+
+**Le médiateur de la consommation a été écarté**, parce que les CGV réservent
+le service aux professionnels (article 10). Si le service s'ouvre un jour aux
+consommateurs, l'adhésion à un médiateur redevient obligatoire et la mention
+doit revenir.
+
+---
+
 ## Ce qui reste à faire, par ordre de priorité
 
-**1. Remplir les `[CROCHETS]` des pages légales.** Nom, adresse, SIRET, code APE, e-mail, région Supabase. Ne pas mettre en ligne sans. Ajouter Brevo à la liste des sous-traitants dans la page de confidentialité : le rapport hebdomadaire lui transmet l'adresse du client.
+**1. Détection de schémas par plat et créneau.** C'est ce qui justifie le plan Maison à 249 €. **Ne pas vendre Maison tant que ça n'existe pas.**
 
-**2. La promesse faite aux prospects n'est pas tenue.** `index.html` dit « vous recevrez le premier lundi prochain » à qui laisse son adresse sans créer de compte. Le rapport se calcule à partir des relevés enregistrés — un prospect n'en a aucun, donc ne reçoit rien. Deux issues honnêtes : corriger la phrase, ou construire une relance de prospect distincte. Ne pas laisser en l'état.
+**2. Interface multi-établissements.** Le schéma le supporte, l'interface non. Ne pas vendre Groupe avant.
 
-**3. Détection de schémas par plat et créneau.** C'est ce qui justifie le plan Maison à 249 €. **Ne pas vendre Maison tant que ça n'existe pas.**
+**3. Délai et format Just Eat.** Non trouvés. Le produit signale l'incertitude plutôt que de deviner — garder ce comportement tant que la source manque.
 
-**4. Interface multi-établissements.** Le schéma le supporte, l'interface non. Ne pas vendre Groupe avant.
+**4. Relance des prospects de la page publique.** La page ne promet plus d'envoi
+automatique — elle annonce un message pour ouvrir l'espace, et le rapport du
+lundi à partir du premier relevé déposé. **Cette promesse suppose que vous
+répondiez à la main.** Si vous ne le faites pas, retirez le formulaire.
 
-**5. Délai et format Just Eat.** Non trouvés. Le produit signale l'incertitude plutôt que de deviner — garder ce comportement tant que la source manque.
-
-**Fait :** le rapport hebdomadaire par e-mail (Brevo + tâche planifiée + désinscription signée + réglage dans l'espace client).
+**Fait :** le rapport hebdomadaire (Brevo + tâche planifiée + désinscription
+signée + réglages), les pages légales remplies, la configuration ramenée à un
+seul fichier, le diagnostic de déploiement, et `PREMIER-CLIENT.md`.
 
 ---
 

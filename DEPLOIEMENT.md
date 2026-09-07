@@ -9,6 +9,7 @@ Projet **entièrement séparé de Créatis** : autre Supabase, autre Stripe, aut
 ```
 ardoise-app/
 ├── public/
+│   ├── config.js             LE SEUL FICHIER À REMPLIR : clés publiques Supabase
 │   ├── index.html            page publique + analyseur gratuit
 │   ├── app.html              espace client (connexion, import, suivi, abonnement)
 │   ├── parseur.js            lecteur de relevés (Uber Eats, Deliveroo)
@@ -22,18 +23,21 @@ ardoise-app/
 │   ├── webhook.js            reçoit Stripe, active l'abonnement
 │   ├── portail.js            le client gère son abonnement seul
 │   ├── rapport-hebdo.js      le courrier du lundi (tâche planifiée)
-│   └── desinscription.js     le lien « ne plus recevoir », signé
+│   ├── desinscription.js     le lien « ne plus recevoir », signé
+│   └── diagnostic.js         « est-ce que tout est vraiment branché ? »
 ├── lib/rapport.js            calcul et rédaction du rapport, sans réseau
 ├── test/                     node --test : parseur et rapport
 ├── supabase/
 │   ├── schema.sql            tables, RLS, vue de pilotage
 │   └── migration-01-rapport-hebdo.sql   pour une base déjà en service
+├── outils/domaine.sh         change le domaine partout d'un coup
+├── PREMIER-CLIENT.md         comment aller chercher le premier client
 ├── vercel.json, package.json, .env.exemple
 ```
 
 ---
 
-## Les 9 étapes, dans l'ordre
+## Les 10 étapes, dans l'ordre
 
 ### 1. Créer le projet Supabase
 
@@ -59,12 +63,22 @@ Authentication → URL Configuration → Redirect URLs : ajouter `https://VOTRE-
 
 ### 3. Renseigner les clés publiques
 
-Project Settings → API. Copier l'URL du projet et la clé **anon** dans **deux** fichiers :
+Project Settings → API. Copier l'URL du projet et la clé **anon** dans **un seul
+fichier**, `public/config.js` :
 
-- `public/index.html` → `SB_URL`, `SB_KEY`
-- `public/app.html` → `SB_URL`, `SB_KEY`
+```js
+window.ARDOISE_CONFIG = {
+  SB_URL: "https://xxxx.supabase.co",
+  SB_KEY: "eyJ..."          // clé anon / public
+};
+```
 
-Jamais la clé `service_role` ici : elle contourne toute la RLS.
+Jamais la clé `service_role` ici : elle contourne toute la RLS et donnerait,
+depuis le navigateur, accès à l'ensemble de la base.
+
+Tant que ce fichier est vide, la page publique fonctionne normalement — elle
+n'enregistre simplement aucune analyse — et l'espace client affiche
+« Connexion indisponible ».
 
 ### 4. Créer les tarifs Stripe
 
@@ -144,11 +158,29 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 
 Le rapport ne part **qu'aux abonnés actifs**, **qu'une fois par semaine** (garde-fou de 6 jours, pour qu'un rejeu de la tâche n'écrive pas deux fois), et **seulement s'il reste quelque chose à déposer** : un courrier vide chaque lundi ne fabrique que des désabonnements.
 
-### 9. Compléter les pages légales
+### 9. Le domaine, et la boîte de contact
 
-`mentions-legales.html`, `cgv.html` et `confidentialite.html` contiennent des `[CROCHETS]` à remplacer : nom, adresse, SIRET, code APE, e-mail de contact, région Supabase, outil d'e-mail (c'est **Brevo**, désormais : à indiquer dans la page de confidentialité, au titre des sous-traitants).
+Le domaine est écrit à neuf endroits : adresse canonique, métadonnées de partage, `sitemap.xml`, `robots.txt`, et l'adresse de contact des trois pages légales. Une seule commande les change tous :
 
-**Ne mettez pas le site en ligne avec les crochets.** Les mentions légales sont obligatoires et leur absence est sanctionnée.
+```bash
+sh outils/domaine.sh mon-domaine.fr
+```
+
+Puis, hors de ces fichiers : `SITE_URL` dans les variables Vercel, et **la boîte `contact@votre-domaine` doit exister**. Les mentions légales, les CGV et la politique de confidentialité la donnent comme point de contact : elle doit recevoir du courrier, sinon la mention est inexacte.
+
+Les pages légales sont **déjà remplies** — nom, adresse, SIRET, statut, sous-traitants. Rien à compléter, sauf si votre situation change.
+
+### 10. Vérifier que tout est branché
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://VOTRE-URL/api/diagnostic
+```
+
+Le diagnostic contrôle les treize variables d'environnement, l'existence de chaque table Supabase avec ses colonnes, le fait que la clé publique ne puisse rien lire dans `prospects`, les quatre tarifs Stripe (montant, devise, récurrence), le mode live ou test, la validité de la clé Brevo et le fait que l'expéditeur soit validé chez eux.
+
+Il répond `"pret": true` seulement quand tout passe, et sinon liste ce qui manque avec la manœuvre pour le corriger. Il ne renvoie jamais la valeur d'un secret.
+
+**Un déploiement en mode test Stripe est signalé comme un blocage**, pas comme un avertissement : un client pourrait souscrire sans qu'un centime soit encaissé.
 
 ---
 
@@ -186,6 +218,7 @@ En B2B, facturer la TVA n'est pas un désavantage : vos clients restaurateurs la
 | Souscription avec la carte de test `4242 4242 4242 4242` | retour sur `/app.html?paiement=ok`, badge passé à « Plan Service » |
 | Stripe → Webhooks → onglet des tentatives | réponses `200`, aucune en échec |
 | `npm test` | 26 tests au vert |
+| `/api/diagnostic` avec le bon secret | `"pret": true` |
 | `/api/rapport-hebdo?simulation=1` avec le bon secret | montants calculés, `"envoye": false` partout |
 | Le même sans en-tête `Authorization` | `401`, aucune donnée renvoyée |
 | Un envoi forcé vers votre propre adresse | courrier reçu, montants identiques à ceux de l'espace client |

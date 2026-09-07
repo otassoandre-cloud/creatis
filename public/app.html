@@ -247,14 +247,16 @@
   </div>
 </footer>
 
+<script src="config.js"></script>
 <script src="parseur.js"></script>
 <script>
 (function(){
   "use strict";
 
   /* ====== à renseigner : Supabase → Project Settings → API ====== */
-  var SB_URL = "";
-  var SB_KEY = "";   /* clé anon uniquement — jamais service_role */
+    var CFG    = window.ARDOISE_CONFIG || {};
+  var SB_URL = CFG.SB_URL || "";
+  var SB_KEY = CFG.SB_KEY || "";   /* clé anon uniquement — voir config.js */
 
   var $ = function(id){ return document.getElementById(id); };
   var session = null, profil = null, rapport = null, nomFichier = null;
@@ -305,7 +307,7 @@
   $("envoyer-lien").addEventListener("click", function(){
     var v = $("email").value.trim();
     if(!v || v.indexOf("@")===-1){ dit("msg-connexion","Adresse e-mail invalide.",true); return; }
-    if(!SB_URL || !SB_KEY){ dit("msg-connexion","Supabase n'est pas encore configuré (SB_URL / SB_KEY).",true); return; }
+    if(!SB_URL || !SB_KEY){ dit("msg-connexion","Connexion indisponible : le service n'est pas encore configuré. Réessayez dans un instant.",true); return; }
     var b=this; b.disabled=true; b.textContent="Envoi…";
     api("/auth/v1/otp",{
       method:"POST",
@@ -605,7 +607,7 @@
 
   if(!SB_URL || !SB_KEY){
     montre("vue-connexion", true);
-    dit("msg-connexion","Supabase n'est pas encore configuré. Renseignez SB_URL et SB_KEY dans app.html.", true);
+    dit("msg-connexion","Connexion indisponible : le service n'est pas encore configuré. Réessayez dans un instant.", true);
   } else {
     demarre();
   }
