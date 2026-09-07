@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mon ardoise</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#12140F">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/caveat-700.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face{font-family:"Archivo";src:url("fonts/archivo-var.woff2") format("woff2-variations");
+    font-weight:400 800;font-stretch:62% 125%;font-style:normal;font-display:swap}
+  @font-face{font-family:"Caveat";src:url("fonts/caveat-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:"JetBrains Mono";src:url("fonts/jetbrains-700.woff2") format("woff2");
+    font-weight:500 700;font-style:normal;font-display:swap}
+
+  :root{
+    --fond:#12140F;--panneau:#1B1E18;--panneau-h:#242821;--craie:#EFEDE2;--craie-2:#B9BDB2;
+    --sourdine:#889084;--somme:#E8B84B;--perdu:#C97A6E;--gagne:#7DBFA0;
+    --lisere:rgba(239,237,226,.13);
+    --sans:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --main:"Caveat","Segoe Script",cursive;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--fond);color:var(--craie);
+       font:400 16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;position:relative}
+  body::before{content:"";position:fixed;inset:-50%;pointer-events:none;z-index:0;opacity:.5;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23n)' opacity='.3'/></svg>");
+    mix-blend-mode:overlay}
+  .w{max-width:660px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+  h1,h2,h3{margin:0;line-height:1.08}
+  p{margin:0 0 1em}
+  a{color:inherit}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .sd{color:var(--sourdine)}
+  .main{font-family:var(--main);font-weight:700}
+
+  header{border-bottom:1px solid var(--lisere)}
+  .bar{display:flex;align-items:center;gap:10px;height:60px}
+  .bar img{width:25px;height:25px}
+  .bar b{font-family:var(--main);font-size:25px;font-weight:700}
+  .bar .sortie{margin-left:auto;font-size:14px;color:var(--sourdine);
+               background:none;border:0;cursor:pointer;font-family:var(--sans);min-height:44px}
+
+  section{padding:30px 0 0}
+  .titre{font-family:var(--main);font-weight:700;font-size:34px;margin-bottom:18px}
+
+  .bloc{background:var(--panneau);border:1px solid var(--lisere);padding:20px 18px;
+        border-radius:4px;margin-bottom:16px}
+
+  label{display:block;font-size:12.5px;color:var(--sourdine);margin-bottom:6px}
+  input,select{width:100%;padding:12px 13px;border-radius:3px;border:1px solid var(--lisere);
+    background:rgba(0,0,0,.4);color:var(--craie);font:15px var(--sans);min-height:44px;
+    -webkit-appearance:none;appearance:none}
+  input:focus,select:focus{outline:0;border-color:var(--somme)}
+  input::placeholder{color:#5F6660}
+
+  .btn{width:100%;min-height:48px;font:700 16px var(--sans);font-stretch:90%;padding:13px;
+       border-radius:3px;cursor:pointer;border:0;background:var(--craie);color:var(--fond);
+       transition:background .18s;margin-top:10px}
+  .btn:hover{background:#fff}
+  .btn:focus-visible{outline:3px solid var(--somme);outline-offset:2px}
+  .btn[disabled]{opacity:.55;cursor:progress}
+  .btn.creux{background:transparent;color:var(--craie-2);border:1px solid var(--lisere)}
+  .btn.or{background:var(--somme);color:var(--fond)}
+
+  .msg{margin-top:12px;font-size:14.5px;line-height:1.5;padding:11px 13px;border-left:2px solid var(--somme);
+       background:rgba(232,184,75,.08);color:var(--somme)}
+  .msg.err{border-color:var(--perdu);background:rgba(201,122,110,.1);color:var(--perdu)}
+  .msg:empty{display:none;padding:0;border:0}
+
+  .depot-btn{width:100%;min-height:56px;padding:16px;border-radius:3px;cursor:pointer;
+    border:2px dashed rgba(239,237,226,.26);background:rgba(0,0,0,.24);color:var(--craie);
+    font:600 15.5px var(--sans);transition:border-color .18s,background .18s}
+  .depot-btn:hover{border-color:var(--somme);background:rgba(232,184,75,.07)}
+
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 0;
+        padding-top:14px;border-top:1px solid var(--lisere)}
+  .stat div span{display:block;font-size:11px;color:var(--sourdine);margin-bottom:2px}
+  .stat div b{font-family:var(--mono);font-weight:700;font-size:19px}
+  .stat .or b{color:var(--somme)}
+  .stat .x b{color:var(--perdu)}
+
+  .lg{display:grid;grid-template-columns:1fr auto;gap:12px;padding:13px 0;
+      border-bottom:1px solid rgba(239,237,226,.075);font-size:14.5px;align-items:start}
+  .lg:last-child{border-bottom:0}
+  .lg .t{font-weight:600}
+  .lg .pq{display:block;color:var(--sourdine);font-size:12.5px;margin-top:3px;font-weight:400}
+  .lg .d{text-align:right;white-space:nowrap}
+  .lg .m{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;color:var(--somme)}
+  .lg select{margin-top:6px;font-size:12.5px;padding:6px 8px;min-height:36px;width:auto}
+  .lg.gagne .m{color:var(--gagne)}
+  .lg.perdu .m,.lg.hors_delai .m{color:var(--perdu)}
+  .lg.non_contestable .m,.lg.non_contestable .t{color:var(--sourdine);font-weight:400}
+
+  .hist{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+        padding:12px 0;border-bottom:1px solid rgba(239,237,226,.075);font-size:14.5px}
+  .hist:last-child{border-bottom:0}
+  .hist .m{font-family:var(--mono);font-weight:700;color:var(--somme);white-space:nowrap}
+  .hist .d{color:var(--sourdine);font-size:12.5px}
+
+  .plan{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+        padding:14px 0;border-bottom:1px solid var(--lisere)}
+  .plan:last-of-type{border-bottom:0}
+  .plan .nom{font-family:var(--main);font-size:26px;font-weight:700}
+  .plan .prix{font-family:var(--main);font-size:28px;font-weight:700;color:var(--somme);white-space:nowrap}
+  .plan .prix small{font-family:var(--sans);font-size:11.5px;color:var(--sourdine);font-weight:500}
+
+  .bascule{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;
+           font-size:15px;color:var(--craie);margin:0}
+  .bascule input{width:22px;height:22px;min-height:22px;flex:0 0 auto;accent-color:var(--somme);
+                 -webkit-appearance:auto;appearance:auto;padding:0}
+
+  .badge{display:inline-block;font-size:12px;padding:4px 9px;border-radius:2px;
+         background:rgba(232,184,75,.14);color:var(--somme);font-weight:600}
+  .badge.off{background:rgba(239,237,226,.08);color:var(--sourdine)}
+
+  footer{padding:34px 0 40px;margin-top:34px;border-top:1px solid var(--lisere);
+         color:var(--sourdine);font-size:12.5px;line-height:1.7}
+  footer a{color:var(--craie-2)}
+  .cache{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="w bar">
+    <img src="logo.svg" alt="" width="25" height="25">
+    <b>Mon ardoise</b>
+    <button class="sortie cache" id="deconnexion">Déconnexion</button>
+  </div>
+</header>
+
+<main class="w">
+
+  <!-- ============ CONNEXION ============ -->
+  <section id="vue-connexion">
+    <h2 class="titre">Connexion</h2>
+    <div class="bloc">
+      <p class="sd" style="font-size:14.5px">Entrez votre adresse. Vous recevez un lien de connexion — pas de mot de passe à retenir.</p>
+      <label for="email">Adresse e-mail</label>
+      <input type="email" id="email" inputmode="email" autocomplete="email" placeholder="vous@restaurant.fr">
+      <button class="btn" id="envoyer-lien">Recevoir mon lien</button>
+      <p class="msg" id="msg-connexion"></p>
+    </div>
+    <p class="sd" style="font-size:13px">Pas encore client ? <a href="/">Analysez un relevé gratuitement</a> avant de créer un compte.</p>
+  </section>
+
+  <!-- ============ ESPACE CLIENT ============ -->
+  <section id="vue-app" class="cache">
+
+    <div class="bloc">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px">
+        <h2 class="main" style="font-size:28px">Nouveau relevé</h2>
+        <span class="badge off" id="badge-plan">Sans abonnement</span>
+      </div>
+      <p class="sd" style="font-size:13.5px;margin-bottom:14px">
+        Uber Eats : Reports → Order Errors (Transaction). Deliveroo : Partner Hub → Invoices.
+      </p>
+      <input type="file" id="fichier" accept=".csv,.tsv,.txt" aria-label="Fichier de relevé CSV" hidden>
+      <button type="button" class="depot-btn" id="depot-btn">Choisir le fichier</button>
+      <p class="msg" id="msg-import"></p>
+
+      <div id="resultat" class="cache">
+        <div class="stat">
+          <div class="or"><span>Récupérable</span><b id="r-montant">0 €</b></div>
+          <div><span>À déposer</span><b id="r-deposer">0</b></div>
+          <div class="x"><span>Hors délai</span><b id="r-horsdelai">0</b></div>
+        </div>
+        <button class="btn or" id="enregistrer">Enregistrer ce relevé</button>
+      </div>
+    </div>
+
+    <div class="bloc" id="bloc-suivi">
+      <h2 class="main" style="font-size:28px;margin-bottom:4px">À déposer</h2>
+      <p class="sd" style="font-size:13.5px;margin-bottom:10px">Marquez l'issue de chaque contestation — c'est ce qui alimente votre bilan.</p>
+      <div id="liste-suivi"><p class="sd" style="font-size:14px">Rien pour l'instant.</p></div>
+    </div>
+
+    <div class="bloc">
+      <h2 class="main" style="font-size:28px;margin-bottom:10px">Historique</h2>
+      <div id="liste-hist"><p class="sd" style="font-size:14px">Aucun relevé enregistré.</p></div>
+    </div>
+
+    <div class="bloc" id="bloc-abo">
+      <h2 class="main" style="font-size:28px;margin-bottom:10px">Abonnement</h2>
+      <div id="abo-inactif">
+        <div class="plan"><span class="nom">Service</span><span class="prix">99 €<small> /mois</small></span></div>
+        <div class="plan"><span class="nom">Maison</span><span class="prix">249 €<small> /mois</small></span></div>
+        <div class="plan"><span class="nom">Groupe</span><span class="prix">+45 €<small> /étab.</small></span></div>
+        <label for="plan-choix" style="margin-top:14px">Votre formule</label>
+        <select id="plan-choix">
+          <option value="service">Service — 1 établissement — 99 €</option>
+          <option value="maison">Maison — 2 à 5 établissements — 249 €</option>
+          <option value="groupe">Groupe — 6 à 20 établissements</option>
+        </select>
+        <div id="champ-etab" class="cache" style="margin-top:10px">
+          <label for="nb-etab">Nombre d'établissements</label>
+          <input type="number" id="nb-etab" min="6" max="20" value="6" inputmode="numeric">
+          <p class="sd" style="font-size:12.5px;margin:6px 0 0" id="calcul-groupe"></p>
+        </div>
+        <button class="btn or" id="souscrire">S'abonner</button>
+        <p class="sd" style="font-size:12px;margin-top:10px">
+          TVA non applicable, art. 293 B du CGI. Résiliable à tout moment.
+          Premier mois remboursé si le montant récupérable trouvé ne dépasse pas l'abonnement.
+        </p>
+      </div>
+      <div id="abo-actif" class="cache">
+        <p id="abo-detail" style="font-size:15px"></p>
+        <button class="btn creux" id="gerer">Gérer mon abonnement</button>
+      </div>
+      <p class="msg" id="msg-abo"></p>
+    </div>
+
+    <div class="bloc" id="bloc-reglages">
+      <h2 class="main" style="font-size:28px;margin-bottom:10px">Réglages</h2>
+
+      <label for="nom-restaurant">Nom de l'établissement</label>
+      <input type="text" id="nom-restaurant" autocomplete="organization" placeholder="Chez Martin">
+      <p class="sd" style="font-size:12.5px;margin:6px 0 16px">Il apparaît en tête du rapport du lundi.</p>
+
+      <label class="bascule" for="rapport-hebdo">
+        <input type="checkbox" id="rapport-hebdo" checked>
+        <span>Recevoir le rapport du lundi matin</span>
+      </label>
+      <p class="sd" style="font-size:12.5px;margin:6px 0 0" id="etat-rapport">
+        Les prélèvements encore déposables, triés par jours restants. Envoyé seulement s'il reste quelque chose à déposer.
+      </p>
+
+      <button class="btn creux" id="enregistrer-reglages">Enregistrer mes réglages</button>
+      <p class="msg" id="msg-reglages"></p>
+    </div>
+
+  </section>
+</main>
+
+<footer>
+  <div class="w">
+    <a href="mentions-legales.html">Mentions légales</a> ·
+    <a href="cgv.html">CGV</a> ·
+    <a href="confidentialite.html">Confidentialité</a><br>
+    Ardoise n'est affiliée à aucune plateforme de livraison et n'agit jamais à votre place sur vos comptes.
+  </div>
+</footer>
+
+<script src="parseur.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ====== à renseigner : Supabase → Project Settings → API ====== */
+  var SB_URL = "";
+  var SB_KEY = "";   /* clé anon uniquement — jamais service_role */
+
+  var $ = function(id){ return document.getElementById(id); };
+  var session = null, profil = null, rapport = null, nomFichier = null;
+
+  function euros(v){
+    return (v||0).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+  }
+  function dit(el, texte, erreur){
+    var e=$(el); e.textContent=texte||""; e.className="msg"+(erreur?" err":"");
+  }
+  function montre(id,oui){ $(id).classList.toggle("cache", !oui); }
+
+  /* ---------- appels Supabase REST ---------- */
+  function api(chemin, options){
+    options = options || {};
+    options.headers = Object.assign({
+      apikey: SB_KEY,
+      "Content-Type": "application/json"
+    }, options.headers||{});
+    if(session) options.headers.Authorization = "Bearer " + session.access_token;
+    return fetch(SB_URL.replace(/\/+$/,"") + chemin, options);
+  }
+
+  /* ---------- session ---------- */
+  function litSession(){
+    try{ return JSON.parse(localStorage.getItem("ardoise_session")||"null"); }
+    catch(e){ return null; }
+  }
+  function ecritSession(s){
+    if(s) localStorage.setItem("ardoise_session", JSON.stringify(s));
+    else localStorage.removeItem("ardoise_session");
+  }
+
+  /* le lien magique renvoie les jetons dans le fragment d'URL */
+  function recupereFragment(){
+    if(!location.hash || location.hash.indexOf("access_token") === -1) return null;
+    var p = new URLSearchParams(location.hash.slice(1));
+    var s = {
+      access_token: p.get("access_token"),
+      refresh_token: p.get("refresh_token"),
+      expires_at: Math.floor(Date.now()/1000) + (parseInt(p.get("expires_in"),10)||3600)
+    };
+    history.replaceState(null,"",location.pathname+location.search);
+    return s.access_token ? s : null;
+  }
+
+  /* ---------- connexion par lien ---------- */
+  $("envoyer-lien").addEventListener("click", function(){
+    var v = $("email").value.trim();
+    if(!v || v.indexOf("@")===-1){ dit("msg-connexion","Adresse e-mail invalide.",true); return; }
+    if(!SB_URL || !SB_KEY){ dit("msg-connexion","Supabase n'est pas encore configuré (SB_URL / SB_KEY).",true); return; }
+    var b=this; b.disabled=true; b.textContent="Envoi…";
+    api("/auth/v1/otp",{
+      method:"POST",
+      body: JSON.stringify({ email:v, create_user:true,
+        options:{ email_redirect_to: location.origin + "/app.html" } })
+    }).then(function(r){
+      b.disabled=false; b.textContent="Recevoir mon lien";
+      if(r.ok) dit("msg-connexion","Lien envoyé. Ouvrez votre boîte mail — pensez aux indésirables.");
+      else dit("msg-connexion","L'envoi a échoué. Réessayez dans un instant.",true);
+    }).catch(function(){
+      b.disabled=false; b.textContent="Recevoir mon lien";
+      dit("msg-connexion","Impossible de joindre le serveur.",true);
+    });
+  });
+
+  $("deconnexion").addEventListener("click", function(){
+    ecritSession(null); location.reload();
+  });
+
+  /* ---------- import de relevé ---------- */
+  $("depot-btn").addEventListener("click", function(){ $("fichier").click(); });
+  $("fichier").addEventListener("change", function(e){
+    var f = e.target.files[0]; if(!f) return;
+    nomFichier = f.name;
+    var fr = new FileReader();
+    fr.onload = function(){
+      rapport = Ardoise.analyse(fr.result);
+      $("depot-btn").textContent = f.name;
+      if(!rapport.ok){
+        dit("msg-import", rapport.probleme, true);
+        montre("resultat", false);
+        return;
+      }
+      var i = rapport.infos;
+      dit("msg-import", i.nom + " — fenêtre de " +
+        (i.fenetre ? i.fenetre + " jours à compter de la date de " +
+          (i.depuis==="remboursement"?"remboursement":"commande") : "contestation non vérifiée pour cette plateforme"));
+      $("r-montant").textContent = euros(rapport.somme);
+      $("r-deposer").textContent = rapport.rec;
+      $("r-horsdelai").textContent = rapport.exp;
+      montre("resultat", true);
+    };
+    fr.onerror = function(){ dit("msg-import","Le fichier n'a pas pu être lu.",true); };
+    fr.readAsText(f,"utf-8");
+  });
+
+  /* ---------- enregistrement ---------- */
+  $("enregistrer").addEventListener("click", function(){
+    if(!rapport || !rapport.ok || !session) return;
+    var b=this; b.disabled=true; b.textContent="Enregistrement…";
+
+    api("/rest/v1/imports",{
+      method:"POST",
+      headers:{ Prefer:"return=representation" },
+      body: JSON.stringify({
+        profil: session.user.id,
+        plateforme: rapport.infos.nom,
+        fenetre_jours: rapport.infos.fenetre,
+        delai_verifie: rapport.infos.verifie,
+        nom_fichier: nomFichier,
+        nb_lignes: rapport.tot,
+        nb_deposer: rapport.rec,
+        nb_hors_delai: rapport.exp,
+        montant_total: Math.round(rapport.somme*100)/100
+      })
+    }).then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+      .then(function(rows){
+        var imp = rows[0];
+        var lignes = rapport.lignes.map(function(l){
+          return {
+            import: imp.id, profil: session.user.id,
+            reference: l.ref, motif: l.l,
+            montant: Math.round(l.mt*100)/100,
+            contestable: l.e !== "non",
+            /* la date de référence est ce qui permet au rapport du lundi de
+               recalculer les jours restants ; sans elle il resterait figé */
+            date_ref: l.dateRef || null,
+            jours_restants: l.reste === 999 ? null : l.reste,
+            statut: l.e === "non" ? "non_contestable"
+                  : l.e === "exp" ? "hors_delai" : "a_deposer"
+          };
+        });
+        return api("/rest/v1/prelevements",{
+          method:"POST", headers:{ Prefer:"return=minimal" },
+          body: JSON.stringify(lignes)
+        });
+      })
+      .then(function(){
+        b.disabled=false; b.textContent="Enregistrer ce relevé";
+        dit("msg-import","Relevé enregistré.");
+        montre("resultat", false);
+        $("depot-btn").textContent="Choisir le fichier";
+        charge();
+      })
+      .catch(function(){
+        b.disabled=false; b.textContent="Enregistrer ce relevé";
+        dit("msg-import","L'enregistrement a échoué. Réessayez.",true);
+      });
+  });
+
+  /* ---------- chargement des données ---------- */
+  function charge(){
+    api("/rest/v1/profils?id=eq."+session.user.id+"&select=*")
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        profil = rows[0] || {};
+        var actif = profil.statut_abo === "actif";
+        $("badge-plan").textContent = actif
+          ? "Plan " + (profil.plan||"").charAt(0).toUpperCase() + (profil.plan||"").slice(1)
+          : "Sans abonnement";
+        $("badge-plan").className = "badge" + (actif ? "" : " off");
+        montre("abo-actif", actif);
+        montre("abo-inactif", !actif);
+        if(actif){
+          $("abo-detail").textContent =
+            "Formule " + profil.plan + " — " + profil.nb_etablissements +
+            " établissement" + (profil.nb_etablissements>1?"s":"") + ". Abonnement actif.";
+        }
+        remplitReglages(actif);
+      });
+
+    api("/rest/v1/prelevements?profil=eq."+session.user.id+
+        "&statut=eq.a_deposer&select=*&order=jours_restants.asc&limit=40")
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        var box=$("liste-suivi"); box.innerHTML="";
+        if(!rows.length){ box.innerHTML='<p class="sd" style="font-size:14px">Rien à déposer pour l\'instant.</p>'; return; }
+        rows.forEach(function(p){
+          var el=document.createElement("div"); el.className="lg";
+          var g=document.createElement("div");
+          var t=document.createElement("span"); t.className="t"; t.textContent=p.motif;
+          var pq=document.createElement("span"); pq.className="pq";
+          pq.textContent=(p.reference||"—")+(p.jours_restants!=null? " — "+p.jours_restants+" j restants":"");
+          g.appendChild(t); g.appendChild(pq);
+
+          var d=document.createElement("div"); d.className="d";
+          var m=document.createElement("div"); m.className="m"; m.textContent=euros(p.montant);
+          var sel=document.createElement("select");
+          sel.setAttribute("aria-label","Statut de la contestation "+(p.reference||""));
+          [["a_deposer","À déposer"],["depose","Déposée"],["gagne","Gagnée"],["perdu","Perdue"]]
+            .forEach(function(o){
+              var op=document.createElement("option"); op.value=o[0]; op.textContent=o[1];
+              if(p.statut===o[0]) op.selected=true; sel.appendChild(op);
+            });
+          sel.addEventListener("change", function(){
+            var maj={ statut: sel.value };
+            if(sel.value==="depose") maj.depose_le=new Date().toISOString();
+            if(sel.value==="gagne"){ maj.resolu_le=new Date().toISOString(); maj.montant_gagne=p.montant; }
+            if(sel.value==="perdu"){ maj.resolu_le=new Date().toISOString(); maj.montant_gagne=0; }
+            api("/rest/v1/prelevements?id=eq."+p.id,{
+              method:"PATCH", headers:{Prefer:"return=minimal"}, body:JSON.stringify(maj)
+            }).then(function(){ if(sel.value!=="a_deposer") charge(); });
+          });
+          d.appendChild(m); d.appendChild(sel);
+          el.appendChild(g); el.appendChild(d); box.appendChild(el);
+        });
+      });
+
+    api("/rest/v1/imports?profil=eq."+session.user.id+"&select=*&order=cree_le.desc&limit=15")
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        var box=$("liste-hist"); box.innerHTML="";
+        if(!rows.length){ box.innerHTML='<p class="sd" style="font-size:14px">Aucun relevé enregistré.</p>'; return; }
+        rows.forEach(function(i){
+          var el=document.createElement("div"); el.className="hist";
+          var g=document.createElement("div");
+          g.innerHTML='<div>'+(i.plateforme||"—")+'</div>';
+          var d=document.createElement("div"); d.className="d";
+          d.textContent=new Date(i.cree_le).toLocaleDateString("fr-FR")+" — "+i.nb_lignes+" lignes";
+          g.appendChild(d);
+          var m=document.createElement("span"); m.className="m"; m.textContent=euros(i.montant_total);
+          el.appendChild(g); el.appendChild(m); box.appendChild(el);
+        });
+      });
+  }
+
+  /* ---------- réglages ---------- */
+  function remplitReglages(aboActif){
+    $("nom-restaurant").value = profil.nom_restaurant || "";
+    $("rapport-hebdo").checked = profil.rapport_hebdo !== false;
+
+    var t;
+    if(!aboActif){
+      t = "Le rapport du lundi part aux abonnés. Il démarrera dès votre abonnement actif.";
+    } else if(profil.rapport_hebdo === false){
+      t = "Rapport coupé. Recochez la case pour le recevoir de nouveau lundi prochain.";
+    } else if(profil.dernier_rapport_le){
+      t = "Dernier envoi le " + new Date(profil.dernier_rapport_le).toLocaleDateString("fr-FR") +
+          " à " + (profil.email || "votre adresse") + ".";
+    } else {
+      t = "Premier envoi lundi prochain, s'il reste des prélèvements à déposer.";
+    }
+    $("etat-rapport").textContent = t;
+  }
+
+  $("enregistrer-reglages").addEventListener("click", function(){
+    if(!session) return;
+    var b=this; b.disabled=true; b.textContent="Enregistrement…";
+    api("/rest/v1/profils?id=eq."+session.user.id,{
+      method:"PATCH",
+      headers:{ Prefer:"return=minimal" },
+      body: JSON.stringify({
+        nom_restaurant: $("nom-restaurant").value.trim() || null,
+        rapport_hebdo: $("rapport-hebdo").checked
+      })
+    }).then(function(r){
+      b.disabled=false; b.textContent="Enregistrer mes réglages";
+      if(!r.ok) return dit("msg-reglages","L'enregistrement a échoué. Réessayez.",true);
+      dit("msg-reglages","Réglages enregistrés.");
+      charge();
+    }).catch(function(){
+      b.disabled=false; b.textContent="Enregistrer mes réglages";
+      dit("msg-reglages","Impossible de joindre le serveur.",true);
+    });
+  });
+
+  /* ---------- abonnement ---------- */
+  $("plan-choix").addEventListener("change", function(){
+    montre("champ-etab", this.value === "groupe");
+    calculeGroupe();
+  });
+  function calculeGroupe(){
+    var n = parseInt($("nb-etab").value,10)||6;
+    n = Math.max(6, Math.min(20, n));
+    $("calcul-groupe").textContent =
+      "249 € + " + (n-5) + " × 45 € = " + (249 + 45*(n-5)) + " € par mois, soit " +
+      Math.round((249+45*(n-5))/n) + " € par établissement.";
+  }
+  $("nb-etab").addEventListener("input", calculeGroupe);
+  calculeGroupe();
+
+  $("souscrire").addEventListener("click", function(){
+    if(!session) return;
+    var b=this; b.disabled=true; b.textContent="Ouverture…";
+    fetch("/api/checkout",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        plan: $("plan-choix").value,
+        etablissements: $("nb-etab").value,
+        token: session.access_token
+      })
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.url){ location.href = d.url; }
+        else { b.disabled=false; b.textContent="S'abonner"; dit("msg-abo", d.erreur||"Erreur.", true); }
+      })
+      .catch(function(){
+        b.disabled=false; b.textContent="S'abonner";
+        dit("msg-abo","Impossible de joindre le serveur de paiement.",true);
+      });
+  });
+
+  $("gerer").addEventListener("click", function(){
+    var b=this; b.disabled=true; b.textContent="Ouverture…";
+    fetch("/api/portail",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ token: session.access_token })
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.url) location.href = d.url;
+        else { b.disabled=false; b.textContent="Gérer mon abonnement"; dit("msg-abo", d.erreur||"Erreur.", true); }
+      })
+      .catch(function(){
+        b.disabled=false; b.textContent="Gérer mon abonnement";
+        dit("msg-abo","Impossible d'ouvrir le portail.",true);
+      });
+  });
+
+  /* ---------- démarrage ---------- */
+  function demarre(){
+    var s = recupereFragment() || litSession();
+    if(!s || !s.access_token || (s.expires_at && s.expires_at < Date.now()/1000)){
+      montre("vue-connexion", true); montre("vue-app", false);
+      var p=new URLSearchParams(location.search);
+      if(p.get("paiement")==="ok") dit("msg-connexion","Paiement enregistré. Connectez-vous pour retrouver votre espace.");
+      return;
+    }
+    session = s;
+    api("/auth/v1/user").then(function(r){
+      if(!r.ok) throw new Error("session");
+      return r.json();
+    }).then(function(u){
+      session.user = u; ecritSession(session);
+      montre("vue-connexion", false);
+      montre("vue-app", true);
+      $("deconnexion").classList.remove("cache");
+      var p=new URLSearchParams(location.search);
+      if(p.get("paiement")==="ok") dit("msg-abo","Paiement enregistré. Merci.");
+      if(p.get("paiement")==="annule") dit("msg-abo","Paiement annulé — rien n'a été débité.", true);
+      charge();
+    }).catch(function(){
+      ecritSession(null);
+      montre("vue-connexion", true); montre("vue-app", false);
+      dit("msg-connexion","Votre session a expiré. Redemandez un lien.", true);
+    });
+  }
+
+  if(!SB_URL || !SB_KEY){
+    montre("vue-connexion", true);
+    dit("msg-connexion","Supabase n'est pas encore configuré. Renseignez SB_URL et SB_KEY dans app.html.", true);
+  } else {
+    demarre();
+  }
+})();
+</script>
+
+</body>
+</html>

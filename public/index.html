@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ardoise — ce que les applis de livraison vous doivent</title>
+<meta name="description" content="Les plateformes de livraison prélèvent sur vos versements. Une partie n'est pas justifiée et se conteste. Déposez votre relevé, on vous dit ce qui est récupérable.">
+<meta name="theme-color" content="#12140F">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="canonical" href="https://ardoise.app/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ardoise">
+<meta property="og:title" content="Ce que les applis de livraison vous doivent">
+<meta property="og:description" content="70 % des restaurants ne contestent jamais les prélèvements des applis. Déposez votre relevé, on vous dit ce qui est récupérable.">
+<meta property="og:image" content="https://ardoise.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://ardoise.app/">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preload" href="fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/caveat-700.woff2" as="font" type="font/woff2" crossorigin>
+
+<style>
+  /* Polices auto-hebergees — SIL Open Font License, voir fonts/LICENCES-POLICES.txt.
+     Aucune requete vers un tiers : plus rapide, et rien qui parte chez Google. */
+  @font-face{font-family:"Archivo";src:url("fonts/archivo-var.woff2") format("woff2-variations");
+    font-weight:400 800;font-stretch:62% 125%;font-style:normal;font-display:swap}
+  @font-face{font-family:"Caveat";src:url("fonts/caveat-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:"JetBrains Mono";src:url("fonts/jetbrains-700.woff2") format("woff2");
+    font-weight:500 700;font-style:normal;font-display:swap}
+</style>
+
+<style>
+  :root{
+    --fond:#12140F;
+    --panneau:#1B1E18;
+    --panneau-h:#242821;
+    --craie:#EFEDE2;
+    --craie-2:#B9BDB2;
+    --sourdine:#889084;
+    --somme:#E8B84B;
+    --perdu:#C97A6E;
+    --lisere:rgba(239,237,226,.13);
+    --sans:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --main:"Caveat","Segoe Script","Bradley Hand",cursive;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --pad:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+  body{
+    margin:0;background:var(--fond);color:var(--craie);
+    font:400 17px/1.62 var(--sans);-webkit-font-smoothing:antialiased;
+    position:relative;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:-50%;pointer-events:none;z-index:0;opacity:.6;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23n)' opacity='.34'/></svg>");
+    mix-blend-mode:overlay;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(130% 55% at 22% -5%, rgba(239,237,226,.06), transparent 62%),
+      radial-gradient(80% 45% at 92% 38%, rgba(239,237,226,.028), transparent 60%),
+      radial-gradient(150% 65% at 45% 105%, rgba(0,0,0,.55), transparent 62%);
+  }
+
+  /* la page entiere est encadree comme une vraie ardoise */
+  .cadre{position:fixed;inset:9px;pointer-events:none;z-index:2;opacity:.22}
+  .cadre rect{fill:none;stroke:var(--craie);stroke-width:2;rx:4}
+
+  .w{max-width:640px;margin:0 auto;padding:0 var(--pad);position:relative;z-index:1}
+
+  h1,h2,h3{margin:0;line-height:1.06}
+  p{margin:0 0 1.05em}
+  a{color:inherit}
+  .sd{color:var(--sourdine)}
+
+  /* ---------- craie ecrite a la main ---------- */
+  .main{font-family:var(--main);font-weight:700;line-height:.94;letter-spacing:.005em}
+
+  /* ---------- en-tete ---------- */
+  header{position:relative;z-index:1}
+  .bar{display:flex;align-items:center;gap:10px;height:64px}
+  .bar img{width:26px;height:26px;display:block}
+  .bar b{font-family:var(--main);font-weight:700;font-size:26px;letter-spacing:.01em}
+
+  /* ---------- ouverture ---------- */
+  .hero{padding:14px 0 4px}
+  .hero h1{
+    font-family:var(--sans);font-stretch:76%;font-weight:800;
+    font-size:clamp(31px,8.6vw,44px);letter-spacing:-.022em;line-height:1.08;
+  }
+  /* le mot cle est chale a la main, plus grand, legerement de travers */
+  .hero .cle{
+    display:inline-block;font-family:var(--main);font-weight:700;color:var(--somme);
+    font-size:1.62em;line-height:.7;letter-spacing:0;
+    transform:rotate(-3.2deg);margin:0 .06em;vertical-align:-.06em;
+  }
+  .hero .sous{font-size:16.5px;color:var(--craie-2);margin:22px 0 0;max-width:42ch}
+  .hero .sous b{color:var(--craie);font-weight:700}
+
+  /* ---------- l'outil : zone delimitee a la craie, pas une carte ---------- */
+  .zone{position:relative;margin:26px 0 0;padding:20px 18px 18px}
+  .zone .bord{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.34}
+  .zone .bord path{fill:none;stroke:var(--craie);stroke-width:1.6;stroke-linecap:round}
+  .zone .fondu{position:absolute;inset:0;background:rgba(0,0,0,.22);border-radius:3px;pointer-events:none}
+  .zone > *{position:relative;z-index:1}
+
+  .onglets{display:flex;gap:0;margin-bottom:18px;border-bottom:1px solid var(--lisere)}
+  .onglets button{
+    flex:1;min-height:44px;font:600 14.5px var(--sans);font-stretch:92%;padding:11px 6px;
+    cursor:pointer;border:0;border-bottom:2px solid transparent;background:transparent;
+    color:var(--sourdine);transition:color .16s,border-color .16s;margin-bottom:-1px;
+  }
+  .onglets button[aria-selected="true"]{color:var(--craie);border-bottom-color:var(--somme)}
+  .onglets button:focus-visible{outline:2px solid var(--somme);outline-offset:-3px}
+
+  .champ{margin-bottom:12px}
+  .champ label{display:block;font-size:12.5px;color:var(--sourdine);margin-bottom:6px;line-height:1.35}
+  textarea,input[type=number],input[type=email]{
+    width:100%;padding:12px 13px;border-radius:3px;border:1px solid var(--lisere);
+    background:rgba(0,0,0,.4);color:var(--craie);font:15px/1.5 var(--mono);
+    -webkit-appearance:none;appearance:none;transition:border-color .15s;
+  }
+  textarea{min-height:116px;resize:vertical;font-size:13px;line-height:1.7}
+  textarea:focus,input:focus{outline:0;border-color:var(--somme)}
+  input::placeholder,textarea::placeholder{color:#5F6660}
+
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .g3 label{min-height:2.7em}
+
+  .go{
+    width:100%;margin-top:4px;font:700 17px var(--sans);font-stretch:90%;padding:15px;border-radius:3px;
+    cursor:pointer;border:0;background:var(--craie);color:var(--fond);transition:background .18s,transform .1s;
+  }
+  .go:hover{background:#FFFFFF}
+  .go:active{transform:translateY(1px)}
+  .go.creux{background:transparent;color:var(--craie-2);border:1px solid var(--lisere);
+            font-weight:600;font-size:15px;padding:12px;margin-top:8px;min-height:44px}
+  .go.creux:hover{border-color:rgba(239,237,226,.34);color:var(--craie);background:transparent}
+  .go:focus-visible{outline:3px solid var(--somme);outline-offset:2px}
+  .depot{margin-bottom:14px}
+  .depot-btn{width:100%;min-height:56px;padding:16px;border-radius:3px;cursor:pointer;
+    border:2px dashed rgba(239,237,226,.26);background:rgba(0,0,0,.24);color:var(--craie);
+    font:600 15.5px var(--sans);font-stretch:92%;transition:border-color .18s,background .18s}
+  .depot-btn:hover,.depot.survol .depot-btn{border-color:var(--somme);background:rgba(232,184,75,.07)}
+  .depot-btn:focus-visible{outline:3px solid var(--somme);outline-offset:2px}
+  .depot-aide{margin:9px 0 0;font-size:12.5px;color:var(--sourdine);line-height:1.6;text-align:center}
+  .depot-aide b{color:var(--craie-2);font-weight:600}
+  .ou{text-align:center;font-size:12.5px;color:var(--sourdine);margin:0 0 12px;
+      display:flex;align-items:center;gap:10px}
+  .ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--lisere)}
+
+  .pf{font-size:12.5px;color:var(--craie-2);margin-bottom:12px;padding:9px 11px;
+      background:rgba(0,0,0,.3);border-left:2px solid var(--somme);line-height:1.55}
+  .pf:empty{display:none}
+  .pf b{color:var(--craie)}
+  .pf .alerte{color:var(--perdu);font-weight:600}
+
+  .mapman{margin-top:16px;padding:14px;background:rgba(0,0,0,.3);border-left:2px solid var(--perdu)}
+  .mapman p{font-size:14px;color:var(--craie-2);margin:0 0 12px;line-height:1.55}
+  .mapman label{display:block;font-size:12.5px;color:var(--sourdine);margin-bottom:6px}
+  .mapman select{width:100%;padding:11px;border-radius:3px;border:1px solid var(--lisere);
+    background:rgba(0,0,0,.4);color:var(--craie);font:14px var(--sans);min-height:44px}
+
+  .rassure{margin:11px 0 0;font-size:12.5px;color:var(--sourdine);text-align:center;line-height:1.45}
+
+  /* ---------- resultat ---------- */
+  .res{display:none;margin-top:20px;padding-top:18px;border-top:1px solid var(--lisere)}
+  .res.on{display:block;animation:monte .42s cubic-bezier(.22,1,.36,1)}
+  @keyframes monte{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .res .lbl{font-size:12.5px;color:var(--sourdine);margin-bottom:6px;letter-spacing:.02em}
+  .res .gros{
+    font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;color:var(--somme);
+    font-size:clamp(38px,11.5vw,54px);letter-spacing:-.045em;line-height:1;
+    text-shadow:0 0 34px rgba(232,184,75,.22);
+  }
+  .res .sub{font-size:14px;color:var(--craie-2);margin:10px 0 0;line-height:1.5}
+  .compte{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;
+          padding-top:14px;border-top:1px solid var(--lisere)}
+  .compte div span{display:block;font-size:11px;color:var(--sourdine);margin-bottom:2px;letter-spacing:.03em}
+  .compte div b{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;font-size:20px}
+  .compte .x b{color:var(--perdu)}
+  .urg{margin:15px 0 0;padding:11px 13px;background:rgba(232,184,75,.09);
+       border-left:2px solid var(--somme);font-size:13.5px;color:var(--somme);line-height:1.5}
+  .urg:empty{display:none}
+  .lignes{margin-top:14px}
+  .lg{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px 0;
+      border-bottom:1px solid rgba(239,237,226,.075);font-size:14.5px;align-items:baseline}
+  .lg:last-child{border-bottom:0}
+  .lg .t{color:var(--craie);font-weight:600}
+  .lg .pq{display:block;color:var(--sourdine);font-size:12.5px;margin-top:3px;line-height:1.5;font-weight:400}
+  .lg .m{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+  .lg .s{display:block;font-size:10.5px;font-weight:500;color:var(--sourdine);margin-top:3px;letter-spacing:.02em}
+  .lg.rec .m{color:var(--somme)}
+  .lg.exp .m,.lg.exp .s{color:var(--perdu)}
+  .lg.non .t,.lg.non .m{color:var(--sourdine);font-weight:400}
+
+  .capt{margin-top:18px;padding-top:16px;border-top:1px solid var(--lisere)}
+  .capt h3{font-family:var(--main);font-weight:700;font-size:23px;margin-bottom:4px}
+  .capt p{font-size:13.5px;color:var(--sourdine);margin-bottom:11px}
+  .capt form{display:flex;gap:8px;flex-wrap:wrap}
+  .lbl-mail{flex:1 0 100%;font-size:12.5px;color:var(--sourdine);margin-bottom:-2px}
+  .capt input{flex:1 1 185px;font-family:var(--sans);font-size:16px}
+  .capt button{font:700 16px var(--sans);font-stretch:90%;padding:12px 20px;border:0;border-radius:3px;
+               background:var(--somme);color:var(--fond);cursor:pointer;transition:opacity .18s;min-height:44px}
+  .capt button:hover{opacity:.88}
+  .capt button[disabled]{opacity:.55;cursor:progress}
+  .capt button:focus-visible{outline:3px solid var(--craie);outline-offset:2px}
+  .capt .ok{color:var(--somme);font-size:14px;margin:10px 0 0;display:none}
+  .capt .ok.on{display:block}
+  .capt .ok.err{color:var(--perdu)}
+
+  /* ---------- apparition ---------- */
+  .rev{opacity:0;transform:translateY(12px);transition:opacity .38s ease,transform .38s ease}
+  .rev.vu{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.rev{opacity:1;transform:none}}
+
+  /* ---------- sections : titres a la craie, decales ---------- */
+  section{padding:60px 0 0}
+  .titre{font-family:var(--main);font-weight:700;font-size:clamp(34px,9.4vw,46px);
+         line-height:.98;margin-bottom:26px;max-width:15ch;color:var(--craie)}
+  .titre.dec{margin-left:-2px;transform:rotate(-.8deg)}
+
+  /* ---------- chiffres : enormes, qui debordent, pas dans une boite ---------- */
+  .chiffre{padding:26px 0;border-bottom:1px solid rgba(239,237,226,.1)}
+  .chiffre:last-of-type{border-bottom:0}
+  .chiffre b{
+    display:block;font-family:var(--main);font-weight:700;color:var(--somme);
+    font-size:clamp(74px,23vw,116px);line-height:.78;letter-spacing:-.01em;margin-bottom:12px;
+  }
+  .chiffre:nth-of-type(2) b{transform:rotate(1.2deg)}
+  .chiffre:nth-of-type(3) b{transform:rotate(-1.4deg)}
+  .chiffre p{margin:0;font-size:16px;color:var(--craie-2);line-height:1.55;max-width:38ch}
+
+  /* ---------- deroule : numeros a la craie, sans cadre ---------- */
+  .et{display:grid;grid-template-columns:2.1rem 1fr;gap:14px;padding:16px 0;
+      border-bottom:1px solid rgba(239,237,226,.075);align-items:baseline}
+  .et:last-of-type{border-bottom:0}
+  .et .n{font-family:var(--main);font-weight:700;color:var(--somme);font-size:32px;line-height:.8}
+  .et h3{font-size:17px;font-weight:700;font-stretch:92%;font-family:var(--sans);margin-bottom:4px}
+  .et p{margin:0;color:var(--craie-2);font-size:15.5px;line-height:1.55}
+
+  /* la mise en garde est une note chalee de travers, pas un encadre */
+  .note{margin-top:26px;padding:18px 4px 0;border-top:2px solid var(--lisere);transform:rotate(-.5deg)}
+  .note p{margin:0;font-size:15px;color:var(--craie-2);line-height:1.62}
+  .note b{color:var(--craie)}
+
+  /* ---------- tarifs : une carte de menu, avec des pointilles ---------- */
+  .menu{margin-top:6px}
+  .item{padding:20px 0;border-bottom:1px solid rgba(239,237,226,.09)}
+  .item:last-child{border-bottom:0}
+  .tete{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+  .tete .nom{font-family:var(--main);font-weight:700;font-size:31px;line-height:.9;white-space:nowrap}
+  .tete .pts{flex:1 1 auto;border-bottom:2px dotted rgba(239,237,226,.32);transform:translateY(-6px);min-width:20px}
+  .tete .prix{font-family:var(--main);font-weight:700;font-size:34px;line-height:.9;color:var(--somme);white-space:nowrap}
+  .tete .prix small{font-family:var(--sans);font-weight:500;font-size:12px;color:var(--sourdine)}
+  .item .det{margin:0;font-size:15px;color:var(--craie-2);line-height:1.55}
+  .item .det b{color:var(--craie);font-weight:700}
+
+  /* ---------- garantie : note manuscrite penchee ---------- */
+  .garantie{margin-top:34px;padding:24px 20px;background:rgba(232,184,75,.055);
+            border-left:3px solid var(--somme);transform:rotate(-.7deg)}
+  .garantie h3{font-family:var(--main);font-weight:700;font-size:29px;line-height:1;
+               margin-bottom:10px;color:var(--somme)}
+  .garantie p{color:var(--craie-2);margin:0;font-size:15px;line-height:1.62}
+
+  /* ---------- fin ---------- */
+  .final{padding:34px 0 0;border-top:2px solid var(--lisere);margin-top:52px}
+  .final h2{font-family:var(--main);font-weight:700;font-size:clamp(32px,8.8vw,42px);
+            line-height:.98;margin-bottom:14px;max-width:14ch}
+  .final p{color:var(--craie-2);font-size:15.5px;margin-bottom:22px;max-width:40ch}
+  .final .go{display:block;text-align:center;text-decoration:none;margin-top:0}
+
+  footer{padding:46px 0 48px;color:var(--sourdine);font-size:13px;line-height:1.6}
+  footer p{margin:0 0 7px}
+
+  @media(min-width:720px){
+    :root{--pad:30px}
+    .hero{padding:34px 0 6px}
+    .zone{padding:28px 26px 24px}
+    section{padding:80px 0 0}
+    .chiffre{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:center}
+    .chiffre b{margin-bottom:0;font-size:104px}
+    .tete .nom{font-size:35px}
+    .tete .prix{font-size:39px}
+  }
+</style>
+</head>
+<body>
+
+<svg class="cadre" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="1" y="1" width="98" height="98"/></svg>
+
+<header>
+  <div class="w bar">
+    <img src="logo.svg" alt="" width="26" height="26">
+    <b>Ardoise</b>
+  </div>
+</header>
+
+<main class="w">
+
+  <div class="hero">
+    <h1>Combien les applis vous ont <span class="cle">pris</span> le mois dernier&nbsp;?</h1>
+    <p class="sous">Commande non livrée, article manquant, ajustement d'erreur. Elles remboursent le client et <b>vous débitent, vous</b>. Une partie n'est pas justifiée et se conteste.</p>
+  </div>
+
+  <div class="zone">
+    <div class="fondu"></div>
+    <svg class="bord" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M3,6 C104,2 208,9 397,4 M398,3 C401,86 395,196 397,296 M397,295 C282,299 148,292 4,296 M3,296 C1,203 6,94 3,5"/>
+    </svg>
+
+    <div class="onglets" role="tablist">
+      <button id="t-est" role="tab" aria-selected="true" aria-controls="p-est">Estimation rapide</button>
+      <button id="t-rel" role="tab" aria-selected="false" aria-controls="p-rel">J'ai mon relevé</button>
+    </div>
+
+    <div id="p-est" role="tabpanel" aria-labelledby="t-est">
+      <div class="g3">
+        <div class="champ"><label for="ca">CA livraison / mois</label>
+          <input id="ca" type="number" inputmode="numeric" placeholder="18000" min="0"></div>
+        <div class="champ"><label for="cmd">Commandes / mois</label>
+          <input id="cmd" type="number" inputmode="numeric" placeholder="900" min="0"></div>
+        <div class="champ"><label for="pb">Réclamations / sem.</label>
+          <input id="pb" type="number" inputmode="numeric" placeholder="12" min="0"></div>
+      </div>
+      <button class="go" id="go-est">Estimer</button>
+      <p class="rassure">Estimation indicative. Pour un montant réel, passez par votre relevé.</p>
+    </div>
+
+    <div id="p-rel" role="tabpanel" aria-labelledby="t-rel" hidden>
+      <div class="depot" id="depot">
+        <input type="file" id="fichier" accept=".csv,.tsv,.txt" aria-label="Fichier de relevé au format CSV" hidden>
+        <button type="button" class="depot-btn" id="depot-btn">
+          Choisir le fichier de relevé
+        </button>
+        <p class="depot-aide">Uber Eats&nbsp;: <b>Reports → Order Errors (Transaction)</b><br>
+        Deliveroo&nbsp;: <b>Partner Hub → Invoices</b>, export CSV</p>
+      </div>
+
+      <p class="ou">ou collez les lignes à la main</p>
+
+      <div class="champ">
+        <label for="src">Une ligne par prélèvement — date&nbsp;; référence&nbsp;; motif&nbsp;; montant</label>
+        <textarea id="src" spellcheck="false" placeholder="02/09/2026 ; UE-88134 ; commande non livrée ; 24,80
+03/09/2026 ; UE-88251 ; article manquant ; 11,40"></textarea>
+      </div>
+      <button class="go" id="go-rel">Analyser mon relevé</button>
+      <button class="go creux" id="go-ex">Voir un exemple</button>
+      <p class="rassure">Le fichier ne quitte pas votre téléphone. Aucun envoi, aucun compte.</p>
+    </div>
+
+    <div class="res" id="res">
+      <div class="pf" id="res-pf"></div>
+      <p class="lbl" id="res-lbl">Récupérable, fenêtre encore ouverte</p>
+      <div class="gros" id="res-montant">0 €</div>
+      <p class="sub" id="res-sub"></p>
+      <div class="compte" id="res-compte">
+        <div><span>Lignes</span><b id="n-tot">0</b></div>
+        <div><span>À déposer</span><b id="n-rec">0</b></div>
+        <div class="x"><span>Hors délai</span><b id="n-exp">0</b></div>
+      </div>
+      <p class="urg" id="res-urg"></p>
+      <div class="mapman" id="mapman" hidden>
+        <p id="mapman-txt"></p>
+        <label for="mapman-sel">Quelle colonne contient le montant prélevé&nbsp;?</label>
+        <select id="mapman-sel"></select>
+        <button type="button" class="go creux" id="mapman-go" style="margin-top:10px">Relancer l'analyse</button>
+      </div>
+      <div class="lignes" id="res-lignes"></div>
+
+      <div class="capt">
+        <h3>Recevoir ce calcul chaque semaine</h3>
+        <p>Le lundi matin, les prélèvements de la semaine, triés, avec les délais restants.</p>
+        <form id="f-mail">
+          <label for="mail" class="lbl-mail">Votre adresse e-mail</label>
+          <input type="email" id="mail" inputmode="email" placeholder="votre@restaurant.fr" required autocomplete="email">
+          <button type="submit" id="b-mail">Recevoir</button>
+        </form>
+        <p class="ok" id="mail-ok">C'est noté. Vous recevrez le premier lundi prochain.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<section>
+  <div class="w">
+    <h2 class="titre dec">Pourquoi cet argent reste chez elles</h2>
+    <div class="chiffre"><b>70%</b><p>des restaurants ne contestent jamais les prélèvements des applications tierces. Le processus est complexe et fastidieux.</p></div>
+    <div class="chiffre"><b>&lt;20%</b><p>des contestations effectivement déposées aboutissent. Souvent hors délai, ou sans le bon motif.</p></div>
+    <div class="chiffre"><b>3%</b><p>du chiffre d'affaires des exploitants est immobilisé dans des litiges avec les plateformes de livraison.</p></div>
+    <p class="sd" style="margin-top:22px;font-size:12.5px;line-height:1.6">Sources&nbsp;: données de plateforme publiées par BusinessWire, avril 2024, pour les deux premiers chiffres&nbsp;; Restaurant Business, février 2026, citant un éditeur du secteur, pour le troisième.</p>
+  </div>
+</section>
+
+<section>
+  <div class="w">
+    <h2 class="titre">Comment ça marche</h2>
+    <div class="et"><span class="n">1</span><div><h3>Vous déposez le relevé</h3><p>L'export de paiements hebdomadaire de chaque plateforme.</p></div></div>
+    <div class="et"><span class="n">2</span><div><h3>On isole les prélèvements</h3><p>Chaque ligne classée par motif. Ce qui n'est pas contestable est écarté — c'est ce qui protège votre taux de réussite.</p></div></div>
+    <div class="et"><span class="n">3</span><div><h3>L'horloge tourne</h3><p>Chaque contestation a une fenêtre. Vous voyez les jours restants, et vous êtes prévenu avant qu'elle ne se ferme.</p></div></div>
+    <div class="et"><span class="n">4</span><div><h3>Vous déposez en trente secondes</h3><p>Motif, montant, référence et texte prêts. Vous collez dans l'outil officiel de la plateforme.</p></div></div>
+    <div class="et"><span class="n">5</span><div><h3>On regarde d'où ça vient</h3><p>Trois plats concentrent la moitié de vos réclamations&nbsp;? C'est là qu'on arrête l'hémorragie.</p></div></div>
+    <div class="note" style="margin-top:20px"><p><b>Les délais viennent des plateformes, pas de nous.</b> Uber Eats&nbsp;: 30 jours à compter de la date de commande. Deliveroo&nbsp;: 7 jours à compter de la date d'émission du remboursement. Ce sont les fenêtres publiées par chaque plateforme, et l'horloge d'Ardoise les applique séparément. Pour Just Eat, le délai n'est pas encore vérifié — les montants sont calculés, mais l'horloge est signalée comme non fiable plutôt que devinée.</p></div>
+
+    <div class="note"><p><b>Ardoise ne dépose pas les contestations à votre place.</b> Les conditions commerçant des plateformes ne l'autorisent pas à un tiers, et un compte restreint vous coûterait plus cher que ce qu'on vous fait récupérer. On vous retire les trois heures de recherche, pas le clic final.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="w">
+    <h2 class="titre dec">L'ardoise</h2>
+    <div class="menu">
+      <div class="item">
+        <div class="tete"><span class="nom">Service</span><span class="pts"></span><span class="prix">99 €<small> /mois</small></span></div>
+        <p class="det"><b>1 établissement.</b> Analyse hebdomadaire, dossiers prêts à déposer, horloge et rappels.</p>
+      </div>
+      <div class="item">
+        <div class="tete"><span class="nom">Maison</span><span class="pts"></span><span class="prix">249 €<small> /mois</small></span></div>
+        <p class="det"><b>2 à 5 établissements.</b> Tout le plan Service, plus la détection de schémas par plat et créneau, et le rapport mensuel de récupération.</p>
+      </div>
+      <div class="item">
+        <div class="tete"><span class="nom">Groupe</span><span class="pts"></span><span class="prix">+45 €<small> /étab.</small></span></div>
+        <p class="det"><b>6 à 20 établissements.</b> Le plan Maison à 249 €, puis 45 € par établissement au-delà du cinquième. Analyse quotidienne, vue consolidée, export comptable.</p>
+      </div>
+    </div>
+
+    <div class="garantie">
+      <h3>Le premier mois se rembourse tout seul, ou on vous le rend</h3>
+      <p>Si le montant récupérable trouvé le premier mois ne dépasse pas votre abonnement, il vous est remboursé. Sans condition. On ne vend pas un outil qui ne rapporte pas plus qu'il ne coûte.</p>
+    </div>
+
+    <div class="final">
+      <h2>Commencez par savoir combien vous en avez</h2>
+      <p>Prenez le relevé de la semaine dernière. Trente secondes, aucun compte, rien qui sorte de votre téléphone.</p>
+      <a class="go" href="#" id="remonte" role="button">Analyser mon relevé</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="w">
+    <p>Ardoise n'est affiliée à aucune plateforme de livraison et n'agit jamais à votre place sur vos comptes.</p>
+    <p>Les montants affichés dans l'exemple sont fictifs.</p>
+  </div>
+</footer>
+
+<script src="parseur.js"></script>
+<script>
+(function(){
+  "use strict";
+  /* ============ Supabase ============
+     Renseignez ces deux valeurs : Supabase → Project Settings → API.
+     La cle anon est PUBLIQUE et c'est normal — la securite vient de la
+     RLS definie dans supabase.sql, qui autorise l'insertion et interdit
+     la lecture. Ne mettez JAMAIS la cle service_role ici.
+     Tant que SB_URL est vide, rien n'est envoye : le site fonctionne,
+     mais vous ne collectez rien. */
+  var SB_URL  = "";
+  var SB_KEY  = "";
+  var FENETRE  = 30;   // jours — HYPOTHESE, a remplacer par le delai reel de chaque plateforme
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* Enregistre une trace. Ne transmet JAMAIS le relevé lui-même :
+     seulement le résultat agrégé (plateforme, montant, nb de lignes). */
+  function enregistre(donnees){
+    if(!SB_URL || !SB_KEY) return Promise.resolve(null);
+    donnees.referent = document.referrer ? document.referrer.slice(0,180) : null;
+    return fetch(SB_URL.replace(/\/+$/,"") + "/rest/v1/prospects", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "apikey": SB_KEY,
+        "Authorization":"Bearer " + SB_KEY,
+        "Prefer":"return=minimal"
+      },
+      body: JSON.stringify(donnees)
+    });
+  }
+
+  function onglet(est){
+    $("t-est").setAttribute("aria-selected", est);
+    $("t-rel").setAttribute("aria-selected", !est);
+    $("p-est").hidden = !est;
+    $("p-rel").hidden = est;
+    $("res").classList.remove("on");
+  }
+  $("t-est").addEventListener("click", function(){ onglet(true); });
+  $("t-rel").addEventListener("click", function(){ onglet(false); });
+
+  var REGLES = [
+    {c:/non livr|jamais livr|marqu.* livr/i, l:"Commande non livrée", r:true,
+     p:"Marquée livrée sans remise. Preuve de remise exigible."},
+    {c:/manquant/i, l:"Article manquant", r:true,
+     p:"Réclamation sans preuve. Contestable si la préparation est tracée."},
+    {c:/incorrect|erreur de pr|mauvais/i, l:"Article incorrect", r:true,
+     p:"Contestable si le ticket de préparation correspond."},
+    {c:/annul.*avant/i, l:"Annulation avant préparation", r:false,
+     p:"Aucun coût matière engagé. Non contestable."},
+    {c:/annul.*apr[èe]s|apr[èe]s pr[ée]par/i, l:"Annulation après préparation", r:true,
+     p:"Plat produit puis annulé. Le coût matière est dû."},
+    {c:/ajustement/i, l:"Ajustement d'erreur", r:true,
+     p:"Prélèvement sans motif détaillé. Demander la ventilation."},
+    {c:/froid|temp[ée]rature|retard/i, l:"Retard ou plat froid", r:false,
+     p:"Rarement gagné sans horodatage de remise."},
+    {c:/commission|frais/i, l:"Commission de plateforme", r:false,
+     p:"Prévu au contrat. Non contestable."},
+    {c:/promo|remise|marketing/i, l:"Participation promotionnelle", r:false,
+     p:"Offre souscrite. Non contestable."}
+  ];
+  function classer(m){
+    for(var i=0;i<REGLES.length;i++) if(REGLES[i].c.test(m)) return REGLES[i];
+    return {l:(m||"Motif non reconnu"), r:false, p:"Motif non reconnu. À vérifier à la main."};
+  }
+  function euros(v){ return v.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
+  function euros0(v){ return Math.round(v).toLocaleString("fr-FR")+" €"; }
+  function dparse(s){
+    var m=/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(s.trim());
+    if(!m) return null;
+    var a=+m[3]; if(a<100) a+=2000;
+    var d=new Date(a,+m[2]-1,+m[1]);
+    return isNaN(d.getTime())?null:d;
+  }
+
+  $("go-est").addEventListener("click", function(){
+    var ca=+$("ca").value||0, cmd=+$("cmd").value||0, pb=+$("pb").value||0;
+    if(!ca && !cmd && !pb){ $("ca").focus(); return; }
+    var panier = cmd>0 ? ca/cmd : 22;
+    var recl = pb*4.33, contestable = recl*0.55;
+    var basse = contestable*panier*0.45, haute = contestable*panier*0.85;
+    if(ca>0){ haute = Math.min(haute, ca*0.03); basse = Math.min(basse, haute*0.6); }
+    $("res-lbl").textContent = "Fourchette estimée, par mois";
+    $("res-montant").textContent = euros0(basse)+" – "+euros0(haute);
+    $("res-sub").textContent = "Sur environ "+Math.round(recl)+" réclamations par mois, à "+euros0(panier)+" de panier moyen. Une estimation ne prouve rien — seul votre relevé donne le vrai montant.";
+    $("res-compte").style.display="none";
+    $("res-urg").textContent=""; $("res-lignes").innerHTML="";
+    $("res").classList.add("on");
+  });
+
+  function analyser(){
+    var lignes=$("src").value.split(/\r?\n/), box=$("res-lignes");
+    box.innerHTML="";
+    var auj=new Date(); auj.setHours(0,0,0,0);
+    var tot=0,rec=0,exp=0,somme=0,urg=[],res=[];
+
+    for(var i=0;i<lignes.length;i++){
+      var L=lignes[i].trim(); if(!L) continue;
+      var c=L.split(/[;\t]/).map(function(x){return x.trim();});
+      if(c.length<4) continue;
+      tot++;
+      var d=dparse(c[0]), ref=c[1]||"—", g=classer(c[2]||"");
+      var mt=parseFloat((c[3]||"").replace(/\s/g,"").replace(",","."))||0;
+      var reste = d ? FENETRE-Math.floor((auj-d)/86400000) : null;
+      var etat,st;
+      if(!g.r){ etat="non"; st="Non contestable"; }
+      else if(reste===null){ etat="rec"; st="Date illisible"; }
+      else if(reste<=0){ etat="exp"; st="Fenêtre fermée"; exp++; }
+      else { etat="rec"; st=reste+" j pour déposer"; rec++; somme+=mt;
+             if(reste<=5) urg.push({ref:ref,j:reste,mt:mt}); }
+      res.push({ref:ref,l:g.l,p:g.p,mt:mt,st:st,e:etat,reste:reste===null?999:reste});
+    }
+
+    var ordre={rec:0,exp:1,non:2};
+    res.sort(function(a,b){
+      if(ordre[a.e]!==ordre[b.e]) return ordre[a.e]-ordre[b.e];
+      if(a.e==="rec" && a.reste!==b.reste) return a.reste-b.reste;
+      return b.mt-a.mt;
+    });
+
+    res.forEach(function(e){
+      var el=document.createElement("div"); el.className="lg "+e.e;
+      var g=document.createElement("div");
+      var t=document.createElement("span"); t.className="t"; t.textContent=e.l;
+      var p=document.createElement("span"); p.className="pq"; p.textContent=e.ref+" — "+e.p;
+      g.appendChild(t); g.appendChild(p);
+      var m=document.createElement("div"); m.className="m"; m.textContent=euros(e.mt);
+      var s=document.createElement("span"); s.className="s"; s.textContent=e.st;
+      m.appendChild(s);
+      el.appendChild(g); el.appendChild(m); box.appendChild(el);
+    });
+
+    $("res-lbl").textContent="Récupérable, fenêtre encore ouverte";
+    $("res-montant").textContent=euros(somme);
+    $("res-sub").textContent = tot ? "" : "Aucune ligne lue. Format attendu : date ; référence ; motif ; montant.";
+    $("res-compte").style.display="grid";
+    $("n-tot").textContent=tot; $("n-rec").textContent=rec; $("n-exp").textContent=exp;
+
+    var u=$("res-urg");
+    if(urg.length){
+      urg.sort(function(a,b){return a.j-b.j;});
+      u.textContent=urg.length+" contestation"+(urg.length>1?"s ferment":" ferme")+" dans moins de 6 jours. La plus urgente : "+urg[0].ref+", "+euros(urg[0].mt)+", "+urg[0].j+" jour"+(urg[0].j>1?"s":"")+".";
+    } else if(exp>0){
+      u.textContent=exp+" ligne"+(exp>1?"s sont":" est")+" hors délai. C'est exactement ce que l'analyse hebdomadaire évite.";
+    } else u.textContent="";
+
+    $("res").classList.add("on");
+  }
+  $("go-rel").addEventListener("click", analyser);
+
+  $("go-ex").addEventListener("click", function(){
+    var t=new Date(), j=function(n){
+      var d=new Date(t.getTime()-n*86400000);
+      return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+    };
+    $("src").value=
+      j(2)+" ; UE-88134 ; commande non livrée ; 24,80\n"+
+      j(3)+" ; UE-88251 ; article manquant ; 11,40\n"+
+      j(26)+" ; DE-4471 ; commande non livrée ; 38,90\n"+
+      j(27)+" ; DE-4488 ; ajustement d'erreur ; 47,00\n"+
+      j(34)+" ; UE-87002 ; article manquant ; 19,60\n"+
+      j(5)+" ; JE-20913 ; annulation après préparation ; 31,50\n"+
+      j(6)+" ; JE-20940 ; article incorrect ; 16,20\n"+
+      j(4)+" ; UE-88410 ; plat froid ; 9,80\n"+
+      j(4)+" ; UE-88410 ; commission de plateforme ; 214,30\n"+
+      j(7)+" ; DE-4502 ; participation promotionnelle ; 62,00\n"+
+      j(8)+" ; JE-20977 ; annulation client avant préparation ; 12,40\n"+
+      j(41)+" ; UE-86550 ; commande non livrée ; 27,30";
+    analyser();
+  });
+
+  $("f-mail").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var v=$("mail").value.trim(); if(!v) return;
+    var b=$("b-mail"), ok=$("mail-ok");
+    var succes=function(){
+      ok.textContent="C'est noté. Vous recevrez le premier lundi prochain.";
+      ok.classList.remove("err"); ok.classList.add("on");
+      $("f-mail").style.display="none";
+    };
+    var echec=function(){
+      b.disabled=false; b.textContent="Recevoir";
+      ok.textContent="L'envoi a échoué. Réessayez dans un instant.";
+      ok.classList.add("err","on");
+    };
+    b.disabled=true; b.textContent="Envoi…";
+    ok.classList.remove("on","err");
+    if(!SB_URL || !SB_KEY){ setTimeout(succes,450); return; }
+    var charge = {email:v, source:"email"};
+    if(dernierRapport && dernierRapport.ok){
+      charge.plateforme    = dernierRapport.infos.nom;
+      charge.montant       = Math.round(dernierRapport.somme*100)/100;
+      charge.nb_lignes     = dernierRapport.tot;
+      charge.nb_deposer    = dernierRapport.rec;
+      charge.nb_hors_delai = dernierRapport.exp;
+      charge.delai_verifie = dernierRapport.infos.verifie;
+    }
+    enregistre(charge)
+      .then(function(r){ (r && r.ok===false) ? echec() : succes(); })
+      .catch(echec);
+  });
+
+  /* apparition au defilement — desactivee si mouvement reduit */
+  var doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var cibles = document.querySelectorAll(".titre, .chiffre, .et, .item, .garantie, .note, .final");
+  if(doux || !("IntersectionObserver" in window)){
+    for(var k=0;k<cibles.length;k++) cibles[k].classList.add("vu");
+  } else {
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("vu"); obs.unobserve(e.target); } });
+    },{rootMargin:"0px 0px -8% 0px"});
+    for(var k=0;k<cibles.length;k++){ cibles[k].classList.add("rev"); obs.observe(cibles[k]); }
+    /* filet de securite : rien ne doit rester invisible, quoi qu'il arrive */
+    setTimeout(function(){
+      for(var k=0;k<cibles.length;k++) cibles[k].classList.add("vu");
+    }, 2600);
+  }
+
+  /* le CTA final renvoie a l'outil, onglet releve ouvert */
+  $("remonte").addEventListener("click", function(ev){
+    ev.preventDefault();
+    onglet(false);
+    document.querySelector(".zone").scrollIntoView({behavior: doux ? "auto" : "smooth", block:"start"});
+    setTimeout(function(){ $("src").focus({preventScroll:true}); }, doux?0:420);
+  });
+
+  /* ============ import de relevé réel ============ */
+  var dernierTexte = null;
+  var dernierRapport = null;
+
+  function afficheRapport(r){
+    var pf=$("res-pf"), map=$("mapman");
+    map.hidden=true;
+    dernierRapport = r;
+
+    /* trace anonyme du resultat — repond a la question ouverte du dossier :
+       combien un restaurant francais recupere reellement */
+    if(r.ok && r.tot > 0){
+      enregistre({
+        source:"analyse",
+        plateforme: r.infos.nom,
+        montant: Math.round(r.somme*100)/100,
+        nb_lignes: r.tot,
+        nb_deposer: r.rec,
+        nb_hors_delai: r.exp,
+        delai_verifie: r.infos.verifie
+      }).catch(function(){ /* la collecte ne doit jamais casser l'outil */ });
+    }
+
+    if(!r.ok){
+      pf.innerHTML='<span class="alerte">Fichier non exploitable.</span> '+r.probleme;
+      $("res-lbl").textContent="";
+      $("res-montant").textContent="—";
+      $("res-sub").textContent="";
+      $("res-compte").style.display="none";
+      $("res-urg").textContent="";
+      $("res-lignes").innerHTML="";
+      if(r.besoinMap && r.colonnes){
+        var sel=$("mapman-sel"); sel.innerHTML="";
+        r.colonnes.forEach(function(c,i){
+          var o=document.createElement("option");
+          o.value=i; o.textContent=(c||"(colonne "+(i+1)+")");
+          sel.appendChild(o);
+        });
+        $("mapman-txt").textContent="J'ai lu "+r.colonnes.length+" colonnes mais aucune ne ressemble à un montant prélevé. Indiquez-la et je relance — je ne devine pas, un mauvais choix donnerait un faux montant.";
+        map.hidden=false;
+      }
+      $("res").classList.add("on");
+      return;
+    }
+
+    var i=r.infos, txt='Fichier reconnu&nbsp;: <b>'+i.nom+'</b>. ';
+    if(i.verifie){
+      txt+='Fenêtre de contestation&nbsp;: <b>'+i.fenetre+' jours</b> à compter de la date de '+
+           (i.depuis==="remboursement"?"remboursement":"commande")+'.';
+    } else {
+      txt+='<span class="alerte">Délai de contestation non vérifié pour cette plateforme</span> — les montants sont calculés, mais l\'horloge ne l\'est pas.';
+    }
+    pf.innerHTML=txt;
+
+    $("res-lbl").textContent="Récupérable, fenêtre encore ouverte";
+    $("res-montant").textContent=euros(r.somme);
+    $("res-sub").textContent = r.tot ? "" : "Aucune ligne de prélèvement trouvée dans ce fichier.";
+    $("res-compte").style.display="grid";
+    $("n-tot").textContent=r.tot; $("n-rec").textContent=r.rec; $("n-exp").textContent=r.exp;
+
+    var u=$("res-urg");
+    if(r.urg.length){
+      u.textContent=r.urg.length+" contestation"+(r.urg.length>1?"s ferment":" ferme")+
+        " très bientôt. La plus urgente : "+r.urg[0].ref+", "+euros(r.urg[0].mt)+", "+
+        r.urg[0].j+" jour"+(r.urg[0].j>1?"s":"")+".";
+    } else if(r.exp>0){
+      u.textContent=r.exp+" ligne"+(r.exp>1?"s sont":" est")+" hors délai. C'est exactement ce que l'analyse hebdomadaire évite.";
+    } else u.textContent="";
+
+    var box=$("res-lignes"); box.innerHTML="";
+    r.lignes.forEach(function(e){
+      var el=document.createElement("div"); el.className="lg "+e.e;
+      var g=document.createElement("div");
+      var t=document.createElement("span"); t.className="t"; t.textContent=e.l;
+      var pq=document.createElement("span"); pq.className="pq"; pq.textContent=e.ref+" — "+e.p;
+      g.appendChild(t); g.appendChild(pq);
+      var m=document.createElement("div"); m.className="m"; m.textContent=euros(e.mt);
+      var st=document.createElement("span"); st.className="s"; st.textContent=e.st;
+      m.appendChild(st);
+      el.appendChild(g); el.appendChild(m); box.appendChild(el);
+    });
+    $("res").classList.add("on");
+  }
+
+  function lisFichier(f){
+    if(!f) return;
+    var fr=new FileReader();
+    fr.onload=function(){
+      dernierTexte=fr.result;
+      $("depot-btn").textContent=f.name;
+      afficheRapport(Ardoise.analyse(dernierTexte));
+      $("res").scrollIntoView({behavior:"smooth",block:"nearest"});
+    };
+    fr.onerror=function(){
+      $("res-pf").innerHTML='<span class="alerte">Le fichier n\'a pas pu être lu.</span> Réessayez.';
+      $("res").classList.add("on");
+    };
+    fr.readAsText(f,"utf-8");
+  }
+
+  $("depot-btn").addEventListener("click",function(){ $("fichier").click(); });
+  $("fichier").addEventListener("change",function(e){ lisFichier(e.target.files[0]); });
+
+  var dz=$("depot");
+  ["dragenter","dragover"].forEach(function(ev){
+    dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.add("survol"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.remove("survol"); });
+  });
+  dz.addEventListener("drop",function(e){
+    if(e.dataTransfer && e.dataTransfer.files.length) lisFichier(e.dataTransfer.files[0]);
+  });
+
+  $("mapman-go").addEventListener("click",function(){
+    if(!dernierTexte) return;
+    var i=parseInt($("mapman-sel").value,10);
+    afficheRapport(Ardoise.analyse(dernierTexte,null,{
+      ref:-1,date:-1,dateRemb:-1,motif:-1,montant:i,couvert:-1,article:-1
+    }));
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ardoise.app/sitemap.xml
