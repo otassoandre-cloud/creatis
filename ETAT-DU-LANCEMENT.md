@@ -52,12 +52,47 @@ contestations, l'historique, les réglages.
 
 ---
 
-## Ce qui manque, et pourquoi je ne peux pas le faire
+### Adresses et domaine — alignés
 
-Trois étapes vivent dans des tableaux de bord, derrière une connexion à vos
-comptes. Aucune n'est longue.
+Décision prise : **on démarre sur l'adresse gratuite `ardoise.vercel.app`.**
+Les cinq occurrences du domaine (adresse canonique, métadonnées de partage,
+sitemap, robots.txt) pointent dessus.
 
-### 1. Vercel — mettre le site en ligne, et poser les variables
+Si Vercel attribue une autre adresse — c'est le cas si « ardoise » est déjà
+pris —, une commande suffit :
+
+```bash
+sh outils/domaine.sh l-adresse-reellement-attribuee.vercel.app
+```
+
+**L'adresse de contact des pages légales est `otasso.andre@gmail.com`.** Une
+mention légale doit donner un contact qui reçoit vraiment du courrier, et on ne
+peut pas avoir de boîte sur un sous-domaine `.vercel.app`. Ce n'est pas une
+adresse Créatis, donc rien ne relie les deux sites. **À remplacer par une
+adresse du domaine définitif dès qu'il existe**, dans `mentions-legales.html`,
+`cgv.html` et `confidentialite.html`.
+
+---
+
+## Ce qui manque : quatre gestes, tous dans un tableau de bord
+
+Je ne peux en faire aucun — chacun bute sur une limite réelle, constatée, pas
+supposée. Aucun n'est long.
+
+### 1. GitHub — créer le dépôt « ardoise » *(30 secondes)*
+
+**Le connecteur GitHub n'a pas le droit de créer un dépôt** : `403 Resource not
+accessible by integration`. C'est une limite de l'application GitHub connectée,
+pas un problème de configuration.
+
+Sur `github.com/new` : nom **`ardoise`**, **privé**, **sans README ni
+.gitignore** — le dépôt doit rester vide, je pousse le projet complet dedans.
+
+Dites-le moi ensuite : je l'attache à la session et j'y pousse Ardoise sur
+`main`. Le projet cesse alors de cohabiter avec Créatis, comme l'exige la
+règle 3, et l'import Vercel devient sans piège.
+
+### 2. Vercel — mettre le site en ligne, et poser les variables
 
 **Le connecteur Vercel ne sait pas écrire de variables d'environnement.** Il
 sait déployer, acheter, lire des journaux — pas configurer. Et créer un projet
@@ -71,20 +106,25 @@ et `/api/diagnostic` répondraient en erreur. Un site où le bouton « S'abonner
 
 À faire, dans l'interface Vercel :
 
-1. **Add New → Project → Import** le dépôt GitHub.
-2. **Réglez la branche de production** sur `claude/nouveau-projet-independant-8m44mf`.
-   Par défaut Vercel prend `main`, qui contient **Créatis** — vous déploieriez
-   le mauvais projet.
-3. **Settings → Environment Variables** : les treize variables de `.env.exemple`.
+1. **Add New → Project → Import** le dépôt `ardoise` créé à l'étape 1.
+   Aucun réglage de branche à faire : `main` contient Ardoise et rien d'autre.
+2. **Settings → Environment Variables** : les treize variables de `.env.exemple`.
    Deux se fabriquent en une commande chacune :
    `openssl rand -hex 32` pour `CRON_SECRET`, puis pour `SECRET_RAPPORT`.
-4. Redéployez après avoir posé les variables — celles ajoutées après un
+3. Redéployez après avoir posé les variables — celles ajoutées après un
    déploiement ne sont pas prises en compte.
 
-`SUPABASE_URL` est déjà connue : `https://rbjegjctaqynnmnuxuee.supabase.co`.
-`SUPABASE_SERVICE_ROLE` se copie dans Supabase → Project Settings → API.
+Deux valeurs sont déjà connues :
 
-### 2. Stripe — un compte séparé, et le mode live
+```
+SITE_URL=https://ardoise.vercel.app          (ou l'adresse réellement attribuée)
+SUPABASE_URL=https://rbjegjctaqynnmnuxuee.supabase.co
+```
+
+`SUPABASE_SERVICE_ROLE` se copie dans Supabase → Project Settings → API.
+C'est un secret serveur : il ne doit jamais entrer dans `public/`.
+
+### 3. Stripe — un compte séparé, et le mode live
 
 Le compte connecté est **l'environnement de test de Créatis**
 (`acct_1TVnwYAKwn6IEnxD`, `livemode: false`). Deux problèmes, chacun bloquant :
@@ -94,11 +134,14 @@ Le compte connecté est **l'environnement de test de Créatis**
 - **Il est en mode test.** Un client pourrait souscrire sans qu'un centime soit
   encaissé.
 
-Créer un compte Stripe distinct est une inscription — elle ne passe pas par un
-connecteur. Une fois le compte créé et connecté, je crée les quatre tarifs et
-je vérifie le webhook.
+Décision prise : **un compte Stripe distinct pour Ardoise.** Créer un compte
+est une inscription — elle ne passe par aucun connecteur.
 
-### 3. Brevo — une clé d'API, et un expéditeur pour Ardoise
+Une fois le compte créé et connecté ici, je m'occupe du reste : les quatre
+tarifs avec le bon montant, la bonne devise et la bonne récurrence, puis le
+contrôle du webhook.
+
+### 4. Brevo — une clé d'API, et un expéditeur pour Ardoise
 
 Le compte est actif, plan gratuit, 300 courriers par jour : très au-delà du
 besoin. Mais les deux expéditeurs déclarés sont ceux de Créatis
@@ -107,12 +150,18 @@ besoin. Mais les deux expéditeurs déclarés sont ceux de Créatis
 Le connecteur Brevo sait lire les expéditeurs, pas en créer, ni fabriquer une
 clé d'API. À faire :
 
-1. **Senders, Domains & Dedicated IPs → Domains** : ajouter le domaine
-   d'Ardoise et poser les enregistrements DNS (SPF, DKIM, DMARC). Sans domaine
-   authentifié, les rapports partent en indésirables — c'est l'étape qui décide
-   si le client lit son courrier.
-2. **SMTP & API → API Keys** : générer une clé → `BREVO_API_KEY`.
-3. Déclarer `contact@` ou `rapport@` du domaine comme expéditeur.
+1. **SMTP & API → API Keys** : générer une clé → `BREVO_API_KEY`.
+2. Déclarer un expéditeur et le valider → `EXPEDITEUR_EMAIL`.
+
+**Tant qu'il n'y a pas de domaine à vous, l'authentification SPF/DKIM est
+impossible** — on n'authentifie ni `gmail.com` ni `vercel.app`. Les rapports
+partiront donc avec une délivrabilité médiocre, et beaucoup finiront en
+indésirables.
+
+Ce n'est pas bloquant pour trouver le premier client : le rapport du lundi ne
+concerne que les abonnés, et vous n'en avez pas encore. Mais **c'est bloquant
+avant de facturer quelqu'un**, puisque c'est le service qu'il paie. Un domaine
+et son authentification DNS doivent arriver avant le premier abonnement.
 
 ---
 

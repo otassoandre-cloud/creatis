@@ -4,13 +4,14 @@
 #   sh outils/domaine.sh mon-restaurant-ardoise.fr
 #
 # Le domaine apparaît dans l'adresse canonique, les métadonnées de partage,
-# le sitemap, le robots.txt et l'adresse de contact des trois pages légales.
-# En oublier un, c'est une balise canonique qui désigne un site qui n'est pas
-# le vôtre — Google suit la balise, pas vos intentions.
+# le sitemap et le robots.txt. En oublier un, c'est une balise canonique qui
+# désigne un site qui n'est pas le vôtre — Google suit la balise, pas vos
+# intentions.
 #
-# Pensez ensuite à SITE_URL dans les variables Vercel, qui n'est pas dans ces
-# fichiers, et à créer la boîte contact@VOTRE-DOMAINE : les pages légales et
-# les CGV la donnent comme point de contact, elle doit recevoir du courrier.
+# L'adresse de contact des pages légales est INDÉPENDANTE : elle doit recevoir
+# du courrier pour de vrai, ce qu'un sous-domaine .vercel.app ne permet pas.
+# Elle se change à la main dans mentions-legales.html, cgv.html et
+# confidentialite.html.
 
 set -eu
 
@@ -47,6 +48,8 @@ done
 echo ""
 echo "$TOTAL occurrence(s) de « $ANCIEN » remplacées par « $NOUVEAU »."
 echo ""
-echo "Il reste deux choses, hors de ces fichiers :"
-echo "  1. SITE_URL=https://$NOUVEAU dans les variables Vercel, puis redéployer."
-echo "  2. La boîte contact@$NOUVEAU doit exister : les pages légales la donnent."
+echo "Il reste SITE_URL=https://$NOUVEAU dans les variables Vercel, puis un"
+echo "redéploiement : une variable ajoutée après un déploiement est ignorée."
+echo ""
+echo "L'adresse de contact des pages légales n'a pas été touchée : elle doit"
+echo "recevoir du courrier, donc elle ne suit pas forcément le domaine du site."
