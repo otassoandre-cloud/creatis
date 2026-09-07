@@ -74,10 +74,63 @@ adresse du domaine définitif dès qu'il existe**, dans `mentions-legales.html`,
 
 ---
 
-## Ce qui manque : quatre gestes, tous dans un tableau de bord
+### Un délai faux, corrigé avant toute mise en ligne
 
-Je ne peux en faire aucun — chacun bute sur une limite réelle, constatée, pas
-supposée. Aucun n'est long.
+Le dépôt de fichier passait par `parseur.js`, qui applique la bonne fenêtre par
+plateforme. Mais le chemin « coller les lignes à la main » — et le bouton
+**Voir un exemple** qui l'utilise — gardait un `FENETRE = 30` appliqué à
+**toutes** les plateformes.
+
+Concrètement : une ligne Deliveroo de 40 € vieille de 20 jours s'affichait
+« 10 j pour déposer, 40 € récupérables », alors que sa fenêtre de 7 jours était
+fermée depuis treize jours. C'est mot pour mot le piège que ce fichier décrit
+comme dangereux, et il était encore vivant.
+
+La page demande maintenant de quelle plateforme vient le relevé et applique la
+fenêtre réelle, lue dans `Ardoise.PLATEFORMES` — `parseur.js` reste la source
+unique. Vérifié au navigateur sur la même ligne :
+
+| Plateforme | Avant | Après |
+|---|---|---|
+| Uber Eats | 10 j, 40 € récupérables | 10 j, 40 € récupérables |
+| Deliveroo | 10 j, 40 € récupérables | **fenêtre fermée, 0 €** |
+| Just Eat | 10 j, 40 € récupérables | **délai non vérifié, pas d'horloge** |
+
+---
+
+## L'état de Vercel : je peux écrire, je ne peux pas relire
+
+C'est le point qui a arrêté la mise en ligne, et il mérite d'être précis.
+
+| Action | Résultat |
+|---|---|
+| Déployer des fichiers | **fonctionne** — deux déploiements créés |
+| Lier un dépôt Git | 403, périmètre d'équipe refusé |
+| Lire l'état d'un déploiement | 403 |
+| Relire une page déployée | 403 |
+| Écrire une variable d'environnement | **l'outil n'existe pas** |
+| Joindre le site en HTTPS direct | bloqué par la politique réseau de ma session |
+
+Un projet **`ardoise`** existe donc sur le compte, avec un déploiement de
+production **partiel** : les trois pages légales, la feuille de style, le logo,
+`config.js`, `robots.txt` et `sitemap.xml`. **Il n'a pas de page d'accueil** —
+`/` renvoie une erreur.
+
+**Pourquoi je me suis arrêté là.** Mettre le reste en ligne imposait de
+retranscrire à la main 100 Ko de HTML et de JavaScript dans un appel d'outil,
+sans pouvoir relire une seule ligne de ce qui serait servi. Une coquille dans
+une expression régulière ou un guillemet mal échappé, et l'analyseur affiche un
+montant faux à un restaurateur — sans que rien ne le signale. C'est exactement
+ce que la règle 1 interdit. Un site en retard vaut mieux qu'un site qui ment.
+
+Le projet `ardoise` que j'ai créé peut être supprimé sans regret : votre import
+depuis Vercel le remplacera.
+
+---
+
+## Ce qui manque : les gestes qui restent
+
+Chacun bute sur une limite réelle, constatée, pas supposée. Aucun n'est long.
 
 ### 1. GitHub — créer le dépôt « ardoise » *(30 secondes)*
 
@@ -107,7 +160,10 @@ et `/api/diagnostic` répondraient en erreur. Un site où le bouton « S'abonner
 À faire, dans l'interface Vercel :
 
 1. **Add New → Project → Import** le dépôt `ardoise` créé à l'étape 1.
-   Aucun réglage de branche à faire : `main` contient Ardoise et rien d'autre.
+   Aucun réglage de branche à faire : `main` contiendra Ardoise et rien d'autre.
+   C'est ce seul geste qui met le site complet en ligne — **avec les polices**,
+   et en se remettant à jour à chaque poussée. Tout ce que je ne peux pas faire
+   par le connecteur, cet import le règle d'un coup.
 2. **Settings → Environment Variables** : les treize variables de `.env.exemple`.
    Deux se fabriquent en une commande chacune :
    `openssl rand -hex 32` pour `CRON_SECRET`, puis pour `SECRET_RAPPORT`.
