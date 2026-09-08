@@ -66,7 +66,7 @@ async function verifyTokenStrict(token) {
 async function checkQuota(userId) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return { ok: true }; // fail open si Supabase down
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_used,generations_reset_at`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_used,generations_reset_at,abonnements(status,past_due_depuis)`, {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
@@ -76,6 +76,23 @@ async function checkQuota(userId) {
     const rows = await res.json();
     const user = rows?.[0];
     if (!user) return { ok: true };
+
+    /* Un abonnement impayé depuis plus de 72 h ne donne plus le quota payant.
+       Même règle et mêmes garde-fous que `planEffectif` dans api/repurpose.js —
+       le raisonnement complet y est documenté ; ici on n'en garde que la
+       décision, ce fichier étant sur le chemin des agents et non du produit
+       vendu. On ne restreint que s'il existe une ligne explicitement en défaut,
+       datée, et aucune ligne active à côté. */
+    const abos = Array.isArray(user.abonnements) ? user.abonnements : [];
+    const actif = abos.some((a) => a.status === 'active' || a.status === 'trialing');
+    const impayeDepuis = abos
+      .filter((a) => a.status === 'past_due' || a.status === 'unpaid')
+      .map((a) => new Date(a.past_due_depuis).getTime())
+      .filter((t) => Number.isFinite(t));
+    if (!actif && impayeDepuis.length && Date.now() - Math.min(...impayeDepuis) > 72 * 3600e3) {
+      user.plan = 'gratuit';
+    }
+
     if (user.plan === 'studio') return { ok: true }; // Studio = illimité
 
     const now = new Date();

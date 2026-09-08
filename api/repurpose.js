@@ -115,6 +115,15 @@ function verifierQuotaVideos(userData) {
   const used = _compteurDuMois(userData?.videos_count, userData?.videos_reset);
   if (used < max) return null;
   if (plan === 'gratuit') {
+    /* Distinguer les deux causes : proposer « Passe à Pro » à quelqu'un qui a DÉJÀ
+       souscrit et dont la carte a été refusée est incompréhensible côté client, et
+       l'envoie sur un tunnel de paiement au lieu de la mise à jour de sa carte. */
+    if (userData?.impaye) {
+      return { status: 402, body: {
+        ok: false, error: 'paiement_en_defaut',
+        message: `Ton dernier paiement n'est pas passé — l'accès ${userData.plan_facture || 'payant'} est suspendu. Mets à jour ta carte pour le rétablir.`
+      } };
+    }
     return { status: 403, body: { ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' } };
   }
   return { status: 429, body: {
@@ -140,10 +149,59 @@ async function verifyToken(token) {
   } catch { return null; }
 }
 
+/* Delai laisse a un client dont le prelevement a echoue pour regulariser avant de
+   perdre l'acces. Trois jours : assez pour une carte a re-approvisionner ou a
+   remplacer, bien moins que les ~3 semaines pendant lesquelles Stripe rejoue. */
+const GRACE_IMPAYE_H = 72;
+
+/* Plan reellement accorde = ce que `users.plan` annonce, MOINS les abonnements en
+   defaut de paiement.
+
+   `users.plan` etait jusqu'ici la seule colonne consultee pour autoriser. Le
+   webhook, lui, passait bien l'abonnement en `past_due` sur echec — mais personne
+   ne lisait ce statut. Un abonne dont le prelevement echouait gardait donc l'acces
+   Pro complet jusqu'a ce que Stripe abandonne ses relances et emette
+   `customer.subscription.deleted`, seul evenement qui retrogradait le compte : de
+   l'ordre de trois semaines.
+
+   Constate le 07/09/2026 sur les deux premiers essais annuels arrives a terme
+   (139 EUR, provision insuffisante les deux fois) : `abonnements.status =
+   past_due` et `users.plan = pro` en meme temps, sans qu'aucun euro soit encaisse.
+
+   Trois garde-fous, parce que couper l'acces a tort coute plus cher que de le
+   laisser ouvert trois jours de trop :
+   - aucune ligne d'abonnement -> on ne touche a rien. Beaucoup de comptes Pro
+     legitimes n'en ont pas (crees a la main, comptes de test, offres accordees).
+   - une ligne active ou en essai -> on ne touche a rien, meme si une vieille ligne
+     resiliee traine a cote. Le cas se produit des qu'un client se reabonne.
+   - `past_due_depuis` absent -> on ne touche a rien. Sans date de depart on ne peut
+     pas savoir si le delai est ecoule, et on prefere l'erreur genereuse. */
+function planEffectif(user) {
+  const plan = user?.plan || 'gratuit';
+  if (plan === 'gratuit') return { plan, impaye: false };
+
+  const abos = Array.isArray(user?.abonnements) ? user.abonnements : [];
+  if (!abos.length) return { plan, impaye: false };
+  if (abos.some((a) => a.status === 'active' || a.status === 'trialing')) return { plan, impaye: false };
+
+  const dates = abos
+    .filter((a) => a.status === 'past_due' || a.status === 'unpaid')
+    .map((a) => a.past_due_depuis)
+    .filter(Boolean)
+    .map((d) => new Date(d).getTime())
+    .filter((t) => Number.isFinite(t));
+  if (!dates.length) return { plan, impaye: false };
+
+  const ecoule = Date.now() - Math.min(...dates);
+  return ecoule > GRACE_IMPAYE_H * 3600e3
+    ? { plan: 'gratuit', impaye: true }
+    : { plan, impaye: false };
+}
+
 async function getUserPlan(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return 'gratuit';
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset,videos_count,videos_reset`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset,videos_count,videos_reset,abonnements(status,past_due_depuis)`, {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
@@ -151,7 +209,14 @@ async function getUserPlan(userId) {
     });
     if (!r.ok) return 'gratuit';
     const rows = await r.json();
-    return rows?.[0] || { plan: 'gratuit', repurpose_count: 0 };
+    const row = rows?.[0];
+    if (!row) return { plan: 'gratuit', repurpose_count: 0 };
+
+    /* `plan` est ecrase par le plan REELLEMENT accorde ; le plan facture reste
+       dispo sous `plan_facture` pour les messages. Tous les appelants lisent
+       `.plan`, donc la restriction s'applique partout sans les modifier un a un. */
+    const { plan, impaye } = planEffectif(row);
+    return { ...row, plan, plan_facture: row.plan, impaye };
   } catch { return { plan: 'gratuit', repurpose_count: 0 }; }
 }
 

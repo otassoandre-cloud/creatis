@@ -9,12 +9,20 @@ const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 const APP_URL = process.env.APP_URL || 'https://creatis.app';
 
 /* Appel Supabase REST API */
+const OPERATEURS_POSTGREST = /^(eq|neq|gt|gte|lt|lte|is|in|like|ilike)\./;
+
 async function supabasePatch(table, match, data) {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.warn('[Webhook] Supabase non configuré — mise à jour ignorée');
     return null;
   }
-  const query = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
+  /* Une valeur peut porter son propre operateur PostgREST ("is.null", "neq.x").
+     Sans ca le seul filtre possible serait l'egalite, et on ne pourrait pas ecrire
+     "ne mets a jour que si la colonne est encore vide" — ce dont a besoin
+     past_due_depuis, qui doit etre pose une seule fois. */
+  const query = Object.entries(match)
+    .map(([k, v]) => (OPERATEURS_POSTGREST.test(String(v)) ? `${k}=${v}` : `${k}=eq.${encodeURIComponent(v)}`))
+    .join('&');
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
     method: 'PATCH',
     headers: {
@@ -292,6 +300,7 @@ module.exports = async (req, res) => {
         if (subscriptionId) {
           await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
             status: 'active',
+            past_due_depuis: null, // le compteur de grace repart de zero au prochain incident
             updated_at: new Date().toISOString()
           });
         }
@@ -376,10 +385,22 @@ module.exports = async (req, res) => {
 
         // Un renouvellement échoué → l'abonnement existant passe en past_due
         if (!nouvelleSouscription && subscriptionId) {
+          const maintenant = new Date().toISOString();
           await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
             status: 'past_due',
-            updated_at: new Date().toISOString()
+            updated_at: maintenant
           });
+
+          /* Date du PREMIER echec de la serie, posee une seule fois grace au filtre
+             `is.null`. C'est elle qui fait courir le delai de grace avant coupure de
+             l'acces (voir planEffectif dans api/repurpose.js).
+             Ne PAS se rabattre sur updated_at : Stripe rejoue le prelevement pendant
+             environ trois semaines et bouge updated_at a chaque tentative, ce qui
+             repousserait la fin du delai indefiniment. Constate le 08/09/2026 — les
+             trois abonnements en defaut avaient tous ete rejoues le matin meme. */
+          await supabasePatch('abonnements',
+            { stripe_subscription_id: subscriptionId, past_due_depuis: 'is.null' },
+            { past_due_depuis: maintenant });
         }
 
         // Alerte interne — on ne veut plus découvrir ça dans le dashboard Stripe
