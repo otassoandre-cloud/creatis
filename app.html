@@ -541,7 +541,7 @@
             <div style="display:flex;align-items:baseline;gap:10px;">
               <div style="font-size:24px;font-weight:800;color:var(--texte);">14€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
             </div>
-            <div style="font-size:12px;color:var(--texte-doux);">150 clips/mois · Sans engagement · ou 7 jours d'essai puis 139€/an</div>
+            <div style="font-size:12px;color:var(--texte-doux);">150 clips/mois · 7 jours d'essai gratuit · sans engagement</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
             <span class="badge badge-vert">Le plus populaire</span>
@@ -560,23 +560,24 @@
         </button>
       </div>
 
-      <!-- Plan Annuel — essai 7 jours (26/08/2026) : "139€/an" tout court annoncait une charge
-           immediate a tort, meme correction que index.html/lp.html/paywall. -->
+      <!-- Plan Annuel — 08/09/2026 : l'essai de 7 jours est passe sur le Pro MENSUEL. Sur
+           l'annuel il ne convertissait pas : 4 essais arrives a terme, 0 payant, 3 impayes
+           (139€ d'un coup que la carte refusait). L'annuel redit ce qu'il est : une remise. -->
       <div style="background:var(--bg);border:1px solid var(--bordure);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
-            <div style="font-size:24px;font-weight:800;color:var(--vert);">Offert <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">7 jours</span></div>
-            <div style="font-size:12px;color:var(--texte-doux);">Puis 139€/an (11,58€/mois) — Pro Annuel</div>
+            <div style="font-size:24px;font-weight:800;color:var(--texte);">139€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/an</span></div>
+            <div style="font-size:12px;color:var(--texte-doux);">Soit 11,58€/mois — Pro Annuel</div>
           </div>
-          <span class="badge badge-vert">7 JOURS D'ESSAI</span>
+          <span class="badge badge-vert">2 MOIS OFFERTS</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Tout le plan Pro, en illimité</div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">7 jours</strong> pour changer d'avis, sans frais</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">29€ d'économie</strong> contre le mensuel</div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Sans engagement au renouvellement</div>
         </div>
         <button class="btn-secondaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('pro', true)">
-          Démarrer l'essai gratuit
+          Prendre l'annuel
         </button>
       </div>
 

@@ -3949,25 +3949,26 @@ const V2 = (() => {
           </button>
 
           <button onclick="window._goToPro('pro')" class="pw-plan" style="border:1.5px solid #10b981;background:rgba(16,185,129,0.08);position:relative">
-            <span style="position:absolute;top:-8px;right:12px;background:#10b981;color:#04120b;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">LE PLUS CHOISI</span>
+            <span style="position:absolute;top:-8px;right:12px;background:#10b981;color:#04120b;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">7 JOURS D'ESSAI</span>
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro</span>
-              <span style="font-size:1.3rem;font-weight:800;color:#f2f4f7">14€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/mois</span></span>
+              <span style="font-size:1.3rem;font-weight:800;color:#10b981">Offert</span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">150 clips par mois · tous les outils IA · <span style="color:#10b981;font-weight:700">à partir de 0,09€ le clip</span></div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Puis 14€/mois · 150 clips · <span style="color:#10b981;font-weight:700">résiliable avant sans rien payer</span></div>
           </button>
 
-          <!-- Essai 7 jours (26/08) : le prix affiche doit rester honnete comme les 2 cartes
-               au-dessus — "139€/an" tout court aurait ete une charge immediate annoncee a tort.
-               "7 jours offerts" est desormais LE prix mis en avant, le vrai tarif redescend en
-               sous-texte, meme mecanique que la barre "a partir de" plus haut. -->
+          <!-- 08/09/2026 : l'essai de 7 jours a QUITTE cette carte pour le Pro mensuel.
+               Motif mesure, pas esthetique : 4 essais annuels sont arrives a terme entre le 02
+               et le 08/09 et AUCUN n'est devenu payant — 1 annulation, 3 impayes. A la sortie
+               d'essai Stripe presentait 139€ d'un coup, que la carte refusait. La carte annuelle
+               redevient donc ce qu'elle est vraiment : une remise sur l'engagement d'un an. -->
           <button onclick="window._goToPro('pro', true)" class="pw-plan" style="border:1px solid rgba(16,185,129,0.35);background:rgba(255,255,255,0.02);position:relative">
-            <span style="position:absolute;top:-8px;right:12px;background:#0a0f0a;border:1px solid #10b981;color:#10b981;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">7 JOURS D'ESSAI</span>
+            <span style="position:absolute;top:-8px;right:12px;background:#0a0f0a;border:1px solid #10b981;color:#10b981;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.03em">2 MOIS OFFERTS</span>
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
               <span style="font-size:0.95rem;font-weight:800;color:#f2f4f7">Pro Annuel</span>
-              <span style="font-size:1.1rem;font-weight:800;color:#10b981">Offert</span>
+              <span style="font-size:1.3rem;font-weight:800;color:#f2f4f7">139€<span style="font-size:0.72rem;color:#8A93A3;font-weight:500">/an</span></span>
             </div>
-            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Puis 139€/an (11,58€/mois) · résiliable avant sans rien payer</div>
+            <div style="font-size:0.75rem;color:#8A93A3;margin-top:3px">Soit 11,58€/mois · <span style="color:#10b981;font-weight:700">2 mois offerts contre 14€/mois</span></div>
           </button>
 
         </div>

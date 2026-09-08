@@ -604,7 +604,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, downgrades });
       }
 
-      /* ═══ Relance J-2 de l'essai annuel (Pro Annuel, 7 jours, carte requise) ═══
+      /* ═══ Relance J-2 de l'essai (Pro MENSUEL depuis le 08/09, 7 jours, carte requise) ═══
          Demande explicite du 26/08/2026 : prévenir avant le premier prélèvement, pas après.
          Le nom du cron dit "J5" (jour 5 sur 7) parce que c'est ainsi qu'on en a parlé, mais la
          condition qui compte est "il reste entre 1 et 2 jours avant trial_ends_at" — équivalent
@@ -649,7 +649,12 @@ module.exports = async (req, res) => {
 
             const dateFin = new Date(abo.trial_ends_at);
             const dateFinTexte = dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-            const montant = ((abo.montant_centimes || 13900) / 100).toFixed(2).replace('.', ',');
+            /* Repli a 1400 et non 13900 depuis le 08/09/2026 : l'essai de 7 jours porte
+               desormais sur le Pro MENSUEL, plus sur l'annuel. Pendant un essai la ligne
+               `abonnements` est ecrite avec montant_centimes = 0 — donc le repli est le cas
+               NORMAL, pas un cas limite, et un repli a 139€ annoncerait un prelevement de
+               139€ a quelqu'un qui va etre debite de 14€. */
+            const montant = ((abo.montant_centimes || 1400) / 100).toFixed(2).replace('.', ',');
 
             // Lien direct vers le portail Stripe, prêt à l'emploi dès l'ouverture du mail —
             // aucune reconnexion requise pour résilier.

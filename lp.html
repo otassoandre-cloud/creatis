@@ -1409,8 +1409,8 @@ vs.forEach(function(v){io.observe(v);});})();
       <div class="plan plan-feat">
         <span class="glow green" style="width:200px;height:200px;top:-80px;right:-50px;"></span>
         <h3 style="color:var(--green)">Pro ⭐</h3>
-        <div class="plan-price">14€ <span class="plan-price-sub">/mois</span></div>
-        <div class="plan-note">résiliable à tout moment</div>
+        <div class="plan-price">Offert <span class="plan-price-sub">7 jours</span></div>
+        <div class="plan-note">Puis 14€/mois · résiliable avant sans rien payer</div>
         <ul>
           <li><strong>150 clips</strong> téléchargeables / mois</li>
           <li><strong>30 vidéos</strong> analysées / mois</li>
@@ -1419,13 +1419,15 @@ vs.forEach(function(v){io.observe(v);});})();
           <li>30 crédits image / mois</li>
           <li>Support prioritaire</li>
         </ul>
-        <a href="auth.html?plan=pro" class="btn-grad" style="justify-content:center">⚡ Démarrer le Pro</a>
+        <a href="auth.html?plan=pro" class="btn-grad" style="justify-content:center">⚡ Démarrer l'essai gratuit</a>
       </div>
-      <!-- Pro Annuel — essai 7 jours (26/08/2026), meme correction que index.html/paywall. -->
+      <!-- 08/09/2026 : l'essai de 7 jours a quitte l'annuel pour le Pro mensuel. Mesure a
+           l'appui — 4 essais annuels arrives a terme, 0 payant, 3 impayes : Stripe presentait
+           139€ d'un coup a la sortie d'essai et la carte refusait. -->
       <div class="plan">
         <h3 style="color:var(--green)">Pro Annuel 🔥</h3>
-        <div class="plan-price">Offert <span class="plan-price-sub">7 jours</span></div>
-        <div class="plan-note">Puis 139€/an (11,58€/mois) · résiliable avant sans rien payer</div>
+        <div class="plan-price">139€ <span class="plan-price-sub">/an</span></div>
+        <div class="plan-note">Soit 11,58€/mois · deux mois offerts contre le mensuel</div>
         <ul>
           <li><strong>150 clips</strong> téléchargeables / mois</li>
           <li><strong>30 vidéos</strong> analysées / mois</li>
@@ -1434,7 +1436,7 @@ vs.forEach(function(v){io.observe(v);});})();
           <li>30 crédits image / mois</li>
           <li>Support prioritaire</li>
         </ul>
-        <a href="auth.html?plan=pro&annuel=1" class="btn-grad" style="justify-content:center">🔥 Démarrer l'essai gratuit</a>
+        <a href="auth.html?plan=pro&annuel=1" class="btn-grad" style="justify-content:center">🔥 Prendre l'annuel</a>
       </div>
     </div>
 

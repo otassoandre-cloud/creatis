@@ -17,17 +17,29 @@ const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
    ici. Le prix est FORCE au Pro mensuel cote serveur, jamais confie au client — sinon n'importe
    quelle page pourrait demander l'annuel en essai gratuit avec le meme jeton. */
 const UGC_ESSAI_JOURS = 30;
-const UGC_PRIX_PRO_MENSUEL = (process.env.STRIPE_PRICE_PRO || 'price_1Tx8U8AptK6HZtp5DrLkfs5m').trim();
+const PRIX_PRO_MENSUEL = (process.env.STRIPE_PRICE_PRO || 'price_1Tx8U8AptK6HZtp5DrLkfs5m').trim();
 
-/* ── Essai gratuit 7 jours sur le Pro Annuel (26/08/2026) ────────────────────────────────────
-   Meme mecanisme que l'essai UGC ci-dessus (trial_period_days Stripe, carte requise des le
-   depart) mais sans jeton a verifier : des que `annuel === true` sur le chemin normal (pas
-   essaiToken), l'essai s'applique automatiquement — c'est la promesse affichee sur la carte
-   Pro Annuel du paywall et sur paiement.html. `trial_ends_at` est calcule ICI, au moment ou on
-   connait exactement `trial_period_days`, et voyage dans les metadata de la session ET de
-   l'abonnement : le webhook (checkout.session.completed) le relit tel quel pour peupler
-   abonnements.trial_ends_at, sans requete Stripe supplementaire. */
-const ANNUEL_ESSAI_JOURS = 7;
+/* ── Essai gratuit 7 jours : DEPLACE de l'annuel vers le Pro MENSUEL (08/09/2026) ────────────
+   Mecanisme inchange (trial_period_days Stripe, carte requise des le depart, pas de jeton a
+   verifier). Ce qui change, c'est le plan qui le porte, et c'est une decision prise sur mesure :
+
+     4 essais annuels sont arrives a leur terme entre le 02 et le 08/09.
+     AUCUN n'est devenu un abonnement payant — 1 annulation et 3 IMPAYES.
+
+   Le mode d'echec est toujours le meme : a la sortie d'essai, Stripe presente 139 EUR d'un coup
+   et la carte refuse (provision insuffisante). A 14 EUR elle passe. Un essai qui debouche sur
+   une somme que la carte ne peut pas honorer ne fabrique pas des clients, il fabrique des
+   `past_due` — et un impaye gardait l'acces Pro trois semaines avant le correctif du 08/09.
+
+   Le declencheur est le PRIX RESOLU cote serveur, pas le couple `plan`/`annuel` envoye par le
+   client : sinon n'importe quelle page pourrait reclamer un essai sur l'annuel en mentant sur
+   les deux champs. `trial_ends_at` est calcule ICI, au moment ou on connait exactement
+   `trial_period_days`, et voyage dans les metadata de la session ET de l'abonnement : le
+   webhook (checkout.session.completed) le relit tel quel pour peupler
+   abonnements.trial_ends_at, sans requete Stripe supplementaire.
+
+   Les essais annuels DEJA en cours ne sont pas touches : leur abonnement Stripe existe deja. */
+const PRO_ESSAI_JOURS = 7;
 
 async function ugcSoumissionParJeton(jeton) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !jeton) return null;
@@ -68,12 +80,13 @@ module.exports = async (req, res) => {
     if (!soumissionUGC) {
       return res.status(400).json({ error: "Ce lien d'essai n'est plus valide — il a peut-être déjà été utilisé." });
     }
-    finalPriceId = UGC_PRIX_PRO_MENSUEL;
+    finalPriceId = PRIX_PRO_MENSUEL;
     finalUserId = soumissionUGC.user_id || userId;
     trialDays = UGC_ESSAI_JOURS;
-  } else if (annuel) {
-    // Automatique, pas de jeton a verifier : choisir l'annuel EST la demande d'essai.
-    trialDays = ANNUEL_ESSAI_JOURS;
+  } else if (!annuel && String(priceId || '').trim() === PRIX_PRO_MENSUEL) {
+    // Automatique, pas de jeton a verifier : choisir le Pro mensuel EST la demande d'essai.
+    // L'annuel n'en a plus (voir l'en-tete : 0 conversion sur 4 essais annuels termines).
+    trialDays = PRO_ESSAI_JOURS;
   }
 
   if (!finalPriceId) {

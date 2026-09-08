@@ -20,6 +20,7 @@ Toutes les formules payantes incluent : détection IA des moments viraux, sous-t
 ## Pro
 
 - Price: 14€/mois
+- Trial: 7 jours d'essai gratuit, carte requise, aucun prélèvement avant la fin de l'essai
 - Billing: mensuel, résiliable à tout moment
 - Limits: 150 clips téléchargeables/mois, 30 vidéos analysées/mois
 - Features: script YouTube IA, générateur de titres, miniatures, idées de vidéos, tous les outils créateur débloqués, 30 crédits image/mois, support prioritaire

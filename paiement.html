@@ -354,10 +354,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (banniere) banniere.innerHTML = "<strong>Vidéo validée !</strong> Renseigne une carte pour activer ton mois offert — rien n'est prélevé aujourd'hui.";
     document.querySelector('.paiement-form-titre').textContent = 'Débloque ton mois offert';
     document.querySelector('.paiement-form-sous').textContent = "Carte requise pour activer l'essai. Aucun prélèvement avant la fin du mois offert.";
-  } else if (annuel) {
-    // Meme divulgation que l'essai UGC ci-dessus, transposee a 7 jours : la personne doit voir
-    // "essai" et "carte requise, rien de preleve" AVANT de taper son numero, pas le decouvrir
-    // dans un email 5 jours plus tard.
+  } else if (plan === 'pro' && !annuel) {
+    /* 08/09/2026 : cette divulgation suit l'essai, qui est passe de l'annuel au Pro MENSUEL.
+       Elle reste indispensable — la personne doit voir "essai" et "carte requise, rien de
+       preleve" AVANT de taper son numero, pas le decouvrir dans un email 5 jours plus tard.
+       C'est d'autant plus vrai ici que la sortie d'essai est desormais un prelevement reel de
+       14 EUR : sur l'annuel, 3 des 4 essais termines ont fini en impaye faute de provision. */
     const banniere = document.getElementById('recap-continuite-texte');
     if (banniere) banniere.innerHTML = "<strong>Essai gratuit 7 jours.</strong> Carte requise pour l'activer — rien n'est prélevé aujourd'hui.";
     document.querySelector('.paiement-form-titre').textContent = 'Démarre ton essai gratuit';
@@ -382,15 +384,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('.recap-prix-period').textContent = 'ce mois-ci';
     document.querySelector('.recap-prix-suite').textContent =
       `Puis ${fmtPrix(planConf.prix)}/mois à partir du ${dansUnMois} · résiliable avant sans rien payer`;
-  } else if (annuel) {
-    const parMois = ((planConf.prixAnnuel || 139) / 12).toFixed(2);
+  } else if (plan === 'pro' && !annuel) {
+    /* L'essai de 7 jours porte desormais sur le Pro MENSUEL (08/09/2026). Ce bloc doit dire la
+       meme chose que Stripe fera : rien aujourd'hui, 14 EUR dans 7 jours. Sur l'annuel, cette
+       meme promesse debouchait sur 139 EUR d'un coup et 3 des 4 essais termines ont fini en
+       impaye — la somme annoncee ici est desormais une somme qu'une carte honore. */
     const dansSeptJours = new Date(Date.now() + 7 * 86400000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-    document.querySelector('.recap-prix-barre').textContent = fmtPrix(prixAffiche) + '/an';
+    document.querySelector('.recap-prix-barre').textContent = fmtPrix(prixAffiche) + '/mois';
     document.querySelector('.recap-prix-barre').style.display = 'inline';
     document.querySelector('.recap-prix-final').textContent = 'Offert';
     document.querySelector('.recap-prix-period').textContent = '7 jours';
     document.querySelector('.recap-prix-suite').textContent =
-      `Puis ${fmtPrix(prixAffiche)}/an (soit ${fmtPrix(parMois)}/mois) à partir du ${dansSeptJours} · résiliable avant sans rien payer`;
+      `Puis ${fmtPrix(prixAffiche)}/mois à partir du ${dansSeptJours} · résiliable avant sans rien payer`;
+  } else if (annuel) {
+    const parMois = ((planConf.prixAnnuel || 139) / 12).toFixed(2);
+    document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
+    document.querySelector('.recap-prix-period').textContent = '/an';
+    document.querySelector('.recap-prix-suite').textContent =
+      `Soit ${fmtPrix(parMois)}/mois · renouvellement annuel · résiliable à tout moment`;
   } else {
     document.querySelector('.recap-prix-final').textContent = fmtPrix(prixAffiche);
     document.querySelector('.recap-prix-period').textContent = '/mois';
@@ -432,10 +443,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (essaiToken) {
     // rien : le jeton ne vaut que pour le Pro mensuel, changer d'offre ici casserait l'essai.
   } else if (plan === 'pro' && !annuel) {
-    if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — 7 jours d'essai gratuit, puis ${fmtPrix(cPro.prixAnnuel)}/an</a>`);
+    if (cPro?.stripeIdAnnuel) alternatives.push(`<a href="?plan=pro&annuel=1">Passer à l'annuel — ${fmtPrix(cPro.prixAnnuel)}/an, deux mois offerts</a>`);
     if (cStarter) alternatives.push(`<a href="?plan=starter">Il te faut moins de clips ? Starter — ${fmtPrix(cStarter.prix)}/mois, ${cStarter.clips} clips</a>`);
   } else if (plan === 'pro' && annuel) {
-    alternatives.push(`<a href="?plan=pro">Préférer le mensuel — ${fmtPrix(cPro.prix)}/mois</a>`);
+    alternatives.push(`<a href="?plan=pro">Préférer le mensuel — 7 jours d'essai, puis ${fmtPrix(cPro.prix)}/mois</a>`);
   } else if (plan === 'starter' && cPro) {
     alternatives.push(`<a href="?plan=pro">Passer au Pro — ${fmtPrix(cPro.prix)}/mois, ${cPro.clips} clips</a>`);
   }
