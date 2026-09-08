@@ -383,6 +383,16 @@ module.exports = async (req, res) => {
           plan
         });
 
+        /* Etat AVANT patch : sert a distinguer la 1re tentative des relances Stripe
+           (environ quatre sur trois semaines) et a reconnaitre une sortie d'essai
+           d'un vrai renouvellement. */
+        const aboAvant = subscriptionId
+          ? await supabaseGet('abonnements', { stripe_subscription_id: subscriptionId }, 'trial_ends_at,past_due_depuis')
+          : null;
+        const premiereTentative = !aboAvant?.past_due_depuis;
+        const sortieEssai = !!aboAvant?.trial_ends_at
+          && Math.abs(Date.now() - new Date(aboAvant.trial_ends_at).getTime()) < 30 * 86400000;
+
         // Un renouvellement échoué → l'abonnement existant passe en past_due
         if (!nouvelleSouscription && subscriptionId) {
           const maintenant = new Date().toISOString();
@@ -409,17 +419,31 @@ module.exports = async (req, res) => {
           contexte: nouvelleSouscription ? 'Nouvelle souscription' : 'Renouvellement'
         });
 
-        // Notifier l'utilisateur par email (Brevo)
-        if (process.env.BREVO_API_KEY && email) {
+        /* On n'ecrit qu'a la PREMIERE tentative. Stripe rejoue environ quatre fois
+           sur trois semaines : sans ce garde-fou la personne recevrait quatre fois le
+           meme mail, ce qui transforme une relance utile en harcelement. */
+        if (process.env.BREVO_API_KEY && email && (nouvelleSouscription || premiereTentative)) {
+          /* Trois situations, trois messages. La sortie d'essai a ete ajoutee le
+             08/09/2026 : les deux premiers essais annuels arrives a terme ont echoue
+             tous les deux sur 139 EUR en provision insuffisante, et le message
+             generique ne parlait que de « renouvellement » et de mise a jour de carte.
+             Or le probleme n'est pas la carte mais le montant — proposer le mensuel a
+             14 EUR transforme une perte seche en abonnement. */
           const corps = nouvelleSouscription
             ? `<p>Bonjour,</p><p>Votre paiement Créatis n'a pas abouti — la validation par votre banque (3D Secure) a échoué.</p><p>Deux solutions : validez la notification dans votre application bancaire pendant le paiement, ou essayez une autre carte.</p><p><a href="${APP_URL}/paiement.html">Reprendre le paiement</a></p>`
+            : sortieEssai
+            ? `<p>Bonjour,</p><p>Ton essai Créatis est terminé et le paiement de ${montant} ${devise} n'est pas passé${code === 'insufficient_funds' ? ' (provision insuffisante)' : ''}.</p><p>Ton accès Pro reste ouvert <strong>3 jours</strong>, le temps de choisir :</p><ul><li><strong>Garder l'annuel</strong> — mets à jour ta carte depuis <a href="${APP_URL}/app.html">ton espace</a>, le prélèvement repart.</li><li><strong>Passer au mensuel à 14 €</strong> — même accès, prélevé chaque mois. <a href="${APP_URL}/paiement.html?plan=pro">Basculer au mensuel</a></li></ul><p>Sans action de ta part le compte repasse simplement en gratuit. Rien d'autre ne sera prélevé.</p>`
             : `<p>Bonjour,</p><p>Le renouvellement de votre abonnement Créatis a échoué. Mettez à jour votre moyen de paiement sur <a href="${APP_URL}/app.html">votre espace</a>.</p>`;
           await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
             body: JSON.stringify({
               to: [{ email }],
-              subject: nouvelleSouscription ? 'Votre paiement Créatis n\'a pas abouti' : '⚠️ Problème de paiement Créatis',
+              subject: nouvelleSouscription
+                ? 'Votre paiement Créatis n\'a pas abouti'
+                : sortieEssai
+                ? 'Ton essai est terminé — le paiement n\'est pas passé'
+                : '⚠️ Problème de paiement Créatis',
               htmlContent: corps,
               sender: { email: 'contact@creatis.app', name: 'Créatis' }
             })
