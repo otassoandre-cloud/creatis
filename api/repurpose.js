@@ -133,8 +133,33 @@ function verifierQuotaVideos(userData) {
   } };
 }
 
+/* Un jeton du connecteur MCP n'est pas un JWT Supabase : c'est une chaine opaque
+   dont seul le SHA-256 est en base. On le reconnait a sa forme (pas trois parties
+   separees par des points) et on resout l'utilisateur dans `mcp_tokens`.
+
+   Le faire ICI et pas dans api/mcp.js est deliberé : tout le reste du fichier —
+   verification du plan, quota videos, quota clips, decompte — s'applique alors au
+   connecteur exactement comme a l'application web, sans duplication. Un abonne qui
+   passe par Claude consomme le meme quota que s'il passait par le site. */
+async function verifierJetonMcp(token) {
+  if (!token || !process.env.SUPABASE_SERVICE_KEY) return null;
+  try {
+    const hash = require('crypto').createHash('sha256').update(token).digest('hex');
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/mcp_tokens?token_hash=eq.${hash}&revoked_at=is.null&select=user_id,expires_at`,
+      { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const t = (await r.json())?.[0];
+    if (!t || new Date(t.expires_at) < new Date()) return null;
+    return { id: t.user_id, email: null, via: 'mcp' };
+  } catch { return null; }
+}
+
 async function verifyToken(token) {
   if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  // Jeton opaque = connecteur MCP ; JWT a trois segments = session web.
+  if (token.split('.').length !== 3) return verifierJetonMcp(token);
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
