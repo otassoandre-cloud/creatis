@@ -374,9 +374,26 @@ async def jeton(request: Request):
 # Les descriptions sont écrites pour être lues par un modèle : elles disent quand
 # appeler l'outil et ce qu'il coûte. `creer_clips` consomme un quota réel — c'est
 # dit explicitement pour que Claude ne l'appelle pas en boucle « pour voir ».
+# Les annotations sont EXIGEES pour figurer dans l'annuaire Anthropic : chaque outil
+# doit porter un `title` et le `readOnlyHint`/`destructiveHint` applicable, faute de
+# quoi la soumission est renvoyee. Elles servent aussi au client, qui s'en sert pour
+# decider quoi demander a l'utilisateur avant d'appeler.
+#
+# `etat_clips` est declare NON lecture seule a dessein : vu de l'utilisateur il
+# consulte un avancement, mais cote serveur il lance l'export du clip suivant de la
+# file. Le declarer read-only serait faux, et c'est exactement le genre d'ecart
+# qu'une revue de securite releve.
 OUTILS = [
     {
         "name": "creer_clips",
+        "title": "Créer des clips à partir d'une vidéo YouTube",
+        "annotations": {
+            "title": "Créer des clips à partir d'une vidéo YouTube",
+            "readOnlyHint": False,
+            "destructiveHint": False,   # cree du contenu, n'en supprime aucun
+            "idempotentHint": False,    # deux appels = deux generations = deux fois le quota
+            "openWorldHint": True,      # va chercher une video sur YouTube
+        },
         "description": (
             "Découpe une vidéo YouTube longue en clips verticaux (9:16) prêts à publier sur "
             "TikTok, Reels ou Shorts. L'IA repère les moments les plus forts, recadre sur le "
@@ -398,6 +415,14 @@ OUTILS = [
     },
     {
         "name": "etat_clips",
+        "title": "Suivre une génération de clips",
+        "annotations": {
+            "title": "Suivre une génération de clips",
+            "readOnlyHint": False,      # fait avancer la file d'export, voir ci-dessus
+            "destructiveHint": False,
+            "idempotentHint": True,     # rappelable sans risque, c'est meme l'usage prevu
+            "openWorldHint": True,
+        },
         "description": (
             "Donne l'avancement d'une génération lancée par `creer_clips`, et les liens de "
             "téléchargement des clips terminés. Une génération complète prend en général 3 à "
@@ -413,6 +438,14 @@ OUTILS = [
     },
     {
         "name": "mon_quota",
+        "title": "Consulter mon quota Créatis",
+        "annotations": {
+            "title": "Consulter mon quota Créatis",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        },
         "description": (
             "Indique le plan de l'utilisateur et ce qu'il lui reste ce mois-ci (vidéos "
             "analysables, clips exportables). À appeler si l'utilisateur demande combien il lui "
