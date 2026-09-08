@@ -297,6 +297,21 @@ class _CatchAllMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_CatchAllMiddleware)
 
+# ── Connecteur MCP (OAuth + JSON-RPC) ─────────────────────────────────────────
+# Monte sur creatis.app cote Vercel etait impossible : le plan Hobby plafonne a
+# 12 fonctions serverless et le projet y etait deja. Ici il n'y a ni limite de
+# nombre ni limite de duree d'execution, ce qui convient mieux a des rendus longs.
+# Le routeur ne depend PAS de `auth` : ses routes sont publiques (decouverte,
+# consentement) ou protegees par leur propre jeton OAuth.
+try:
+    from mcp_connecteur import router as _mcp_router, ISSUER as _MCP_ISSUER
+    app.include_router(_mcp_router)
+    logger.info(f"[mcp] connecteur monte — emetteur {_MCP_ISSUER}")
+except Exception as _e:  # noqa: BLE001
+    # Volontairement non bloquant : une erreur d'import du connecteur ne doit pas
+    # empecher le service de traitement de demarrer, dont depend tout le produit.
+    logger.error(f"[mcp] connecteur NON monte: {_e}", exc_info=True)
+
 # ── Nettoyage périodique mémoire + disque (toutes les 2h) ─────────────────────
 import time as _time
 
