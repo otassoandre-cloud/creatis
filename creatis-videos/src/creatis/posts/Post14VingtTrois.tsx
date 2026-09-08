@@ -14,7 +14,7 @@ import { COULEURS } from "../theme";
 import { CartonFinal } from "./CartonFinal";
 
 /**
- * POST 14 — « 23 verticales, 2 trailers, zéro montage ».
+ * POST 14 — « 23 clips, 2 trailers, zéro montage ».
  *
  * ── LE PARI ───────────────────────────────────────────────────────────────
  * Les douze premiers posts DECRIVENT un resultat (« 3 clips », « 0 montage »,
@@ -141,7 +141,7 @@ const Annonce: React.FC = () => (
           paintOrder: "stroke fill",
         }}
       >
-        verticales
+        clips
       </div>
       <div
         style={{
@@ -182,7 +182,7 @@ const Defile: React.FC = () => {
       {/* Le compteur est la mecanique de retention du plan : il dit combien il
           en reste, donc il rouvre la boucle a chaque clip au lieu de la fermer. */}
       <AbsoluteFill
-        style={{ justifyContent: "flex-start", alignItems: "center", paddingTop: 120 }}
+        style={{ justifyContent: "center", alignItems: "center" }}
       >
         <div
           style={{
@@ -212,7 +212,7 @@ const Bilan: React.FC = () => {
 
   const lignes: [string, string][] = [
     ["2", "trailers collés"],
-    ["23", "verticales sorties"],
+    ["23", "clips sortis"],
     ["0", "montage"],
   ];
 
@@ -270,7 +270,7 @@ const Bilan: React.FC = () => {
 export const Post14VingtTrois: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: FOND_CLAIR, fontFamily: POLICE }}>
     <Series>
-      <Series.Sequence durationInFrames={66} name="A · 23 verticales">
+      <Series.Sequence durationInFrames={66} name="A · 23 clips">
         <Punch force={1.04} flash={0}>
           <Annonce />
         </Punch>

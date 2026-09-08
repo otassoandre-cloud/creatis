@@ -73,6 +73,13 @@ const PART_GARDEE = (9 / 16) / (16 / 9); // 0,3164
     extraites a 29,8 s et 30,9 s : il derive legerement vers la droite. */
 const SUJET = 0.52;
 
+/* Le cadre de demonstration ne peut plus etre centre : le texte l'est, et il le
+   recouvrirait entierement. Il descend dans le tiers bas — hauteur 607 px, donc
+   de 1215 a 1822 — ce qui laisse tout le haut au bloc de texte centre. La
+   demonstration reste entiere et le texte occupe la meme position que dans les
+   deux autres videos. */
+const HAUT_CADRE = 1215;
+
 /** La source, calee en 16:9 pleine largeur au centre du cadre vertical.
  *
  * Le premier rendu laissait deux bandes de fond vert de 650 px au-dessus et
@@ -81,7 +88,7 @@ const SUJET = 0.52;
  * ailleurs. On remplit avec la MEME image, agrandie et floutee : le vide
  * disparait, la valeur remonte, et rien d'etranger n'entre dans le cadre. */
 const CadreSource: React.FC<{ enfant?: React.ReactNode }> = ({ enfant }) => {
-  const { width, height } = useVideoConfig();
+  const { width } = useVideoConfig();
   const h = (width * 9) / 16;
   return (
     <AbsoluteFill>
@@ -104,7 +111,7 @@ const CadreSource: React.FC<{ enfant?: React.ReactNode }> = ({ enfant }) => {
         style={{
           position: "absolute",
           left: 0,
-          top: (height - h) / 2,
+          top: HAUT_CADRE,
           width,
           height: h,
           overflow: "hidden",
@@ -174,9 +181,9 @@ const Perte: React.FC = () => {
       <AbsoluteFill
         style={{
           flexDirection: "column",
-          justifyContent: "flex-start",
+          justifyContent: "center",
           alignItems: "center",
-          paddingTop: 210,
+          paddingBottom: 620,
           paddingLeft: 70,
           paddingRight: 70,
           textAlign: "center",
@@ -193,7 +200,7 @@ const Perte: React.FC = () => {
             paintOrder: "stroke fill",
           }}
         >
-          En vertical, tu jettes
+          Pour faire un short, tu jettes
         </div>
         <div
           style={{
@@ -230,9 +237,9 @@ const Perte: React.FC = () => {
           que le spectateur peut refaire. */}
       <AbsoluteFill
         style={{
-          justifyContent: "flex-end",
+          justifyContent: "center",
           alignItems: "center",
-          paddingBottom: 180,
+          paddingBottom: 240,
         }}
       >
         <div
@@ -260,7 +267,7 @@ const Perte: React.FC = () => {
 /** PLAN B — la bande balaye. Le propos : sa POSITION est tout le travail. */
 const Balayage: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
+  const { fps, width } = useVideoConfig();
 
   const largeurBande = width * PART_GARDEE;
   const libre = width - largeurBande;
@@ -282,7 +289,9 @@ const Balayage: React.FC = () => {
   const x = Math.max(0, Math.min(libre, parcours * width));
 
   const h = (width * 9) / 16;
-  const hautCadre = (height - h) / 2;
+  /* Meme reperage que CadreSource : le voile et le rectangle vert doivent se
+     poser exactement sur le cadre, pas sur son ancienne position centree. */
+  const hautCadre = HAUT_CADRE;
 
   return (
     <AbsoluteFill style={{ backgroundColor: FOND_CLAIR }}>
@@ -318,9 +327,9 @@ const Balayage: React.FC = () => {
       <AbsoluteFill
         style={{
           flexDirection: "column",
-          justifyContent: "flex-start",
+          justifyContent: "center",
           alignItems: "center",
-          paddingTop: 230,
+          paddingBottom: 620,
           paddingLeft: 70,
           paddingRight: 70,
           textAlign: "center",
@@ -401,16 +410,15 @@ const Verticale: React.FC = () => {
       <AbsoluteFill
         style={{
           background:
-            "linear-gradient(to bottom, rgba(4,10,7,0) 52%, rgba(4,10,7,0.88) 72%, rgba(4,10,7,0.95) 100%)",
+            "linear-gradient(to bottom, rgba(4,10,7,0.35) 0%, rgba(4,10,7,0.82) 38%, rgba(4,10,7,0.82) 62%, rgba(4,10,7,0.35) 100%)",
         }}
       />
 
       <AbsoluteFill
         style={{
           flexDirection: "column",
-          justifyContent: "flex-end",
+          justifyContent: "center",
           alignItems: "center",
-          paddingBottom: 180,
           paddingLeft: 70,
           paddingRight: 70,
           textAlign: "center",

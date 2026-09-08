@@ -280,8 +280,7 @@ const Division: React.FC = () => {
           partagent toutes les videos du compte qui ont depasse 400 vues. */}
       <div
         style={{
-          position: "absolute",
-          bottom: 150,
+          marginTop: 44,
           fontSize: 30,
           fontWeight: 600,
           color: COULEURS.texteDoux,
@@ -420,16 +419,15 @@ const Machine: React.FC = () => {
       <AbsoluteFill
         style={{
           background:
-            "linear-gradient(to bottom, rgba(4,10,7,0.85) 0%, rgba(4,10,7,0.25) 22%, rgba(4,10,7,0) 40%, rgba(4,10,7,0.9) 78%, rgba(4,10,7,0.95) 100%)",
+            "linear-gradient(to bottom, rgba(4,10,7,0.55) 0%, rgba(4,10,7,0.88) 34%, rgba(4,10,7,0.9) 62%, rgba(4,10,7,0.55) 100%)",
         }}
       />
 
       <AbsoluteFill
         style={{
           flexDirection: "column",
-          justifyContent: "flex-end",
+          justifyContent: "center",
           alignItems: "center",
-          paddingBottom: 170,
           textAlign: "center",
         }}
       >
@@ -463,7 +461,7 @@ const Machine: React.FC = () => {
             }),
           }}
         >
-          Récupère tes verticales.
+          Récupère tes clips.
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
