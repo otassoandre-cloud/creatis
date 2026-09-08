@@ -132,30 +132,36 @@ depuis Vercel le remplacera.
 
 Chacun bute sur une limite réelle, constatée, pas supposée. Aucun n'est long.
 
-### 1. GitHub — créer le dépôt « ardoise » *(30 secondes)*
+### 1. GitHub — fait
 
-**Le connecteur GitHub n'a pas le droit de créer un dépôt** : `403 Resource not
-accessible by integration`. C'est une limite de l'application GitHub connectée,
-pas un problème de configuration.
+Dépôt **`otassoandre-cloud/Ardoise`** créé, attaché, et le projet complet y est
+poussé sur `main` : **39 fichiers, 7 commits**, dont les trois polices
+auto-hébergées que je ne pouvais pas déployer par fichier.
 
-Sur `github.com/new` : nom **`ardoise`**, **privé**, **sans README ni
-.gitignore** — le dépôt doit rester vide, je pousse le projet complet dedans.
+Ardoise ne cohabite plus avec Créatis : dépôt séparé, historique séparé, comme
+l'exige la règle 3. La branche `claude/nouveau-projet-independant-8m44mf` du
+dépôt `creatis` reste un miroir, mais **`Ardoise` est désormais la source**.
 
-Dites-le moi ensuite : je l'attache à la session et j'y pousse Ardoise sur
-`main`. Le projet cesse alors de cohabiter avec Créatis, comme l'exige la
-règle 3, et l'import Vercel devient sans piège.
+Attention à la majuscule : GitHub a enregistré le nom **`Ardoise`**, pas
+`ardoise`.
 
-### 2. Vercel — mettre le site en ligne, et poser les variables
+### 2. Vercel — la seule étape qui reste avant que le site soit en ligne
 
-**Le connecteur Vercel ne sait pas écrire de variables d'environnement.** Il
-sait déployer, acheter, lire des journaux — pas configurer. Et créer un projet
-lié à Git exige un identifiant d'équipe : le compte n'en a aucune, c'est un
-compte personnel.
+Deux blocages, tous deux vérifiés après la création du dépôt :
 
-Déployer les fichiers directement contournerait le premier point mais pas le
-second : sans variables, `/api/checkout`, `/api/webhook`, `/api/rapport-hebdo`
-et `/api/diagnostic` répondraient en erreur. Un site où le bouton « S'abonner »
-échoue vaut moins qu'un site pas encore en ligne.
+**Lier le dépôt m'est refusé.** `create_git_project` renvoie
+`403 — You must re-authenticate to this scope`. Le connecteur Vercel a été
+autorisé sans accès à l'équipe `otassoandre-clouds-projects`. Le dépôt n'y
+change rien : j'ai retenté juste après l'avoir poussé, même refus.
+
+**Écrire une variable d'environnement m'est impossible.** Ce n'est pas une
+question de droits : l'outil n'existe pas dans le connecteur. Même parfaitement
+autorisé, je ne pourrai jamais poser `SUPABASE_SERVICE_ROLE` ni les clés Stripe.
+Cette étape restera la vôtre quoi qu'il arrive.
+
+Si vous reconnectez le connecteur Vercel en cochant l'équipe, je récupère la
+liaison Git et la relecture de mes propres déploiements — mais pas les
+variables.
 
 À faire, dans l'interface Vercel :
 
