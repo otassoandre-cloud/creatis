@@ -80,6 +80,14 @@ COPY caption_highlight.py .
 # Sert à vérifier DANS le conteneur que le coefficient libass vaut encore celui codé en dur.
 # Sans cette copie, le script n'est exécutable que sur un poste de développement — donc jamais
 # là où le rendu se fait réellement, ce qui lui retire tout intérêt.
+# Meme piege que caption_highlight ci-dessus, et il s'est produit : le connecteur MCP a ete
+# deploye sans cette ligne le 08/09/2026, le service a demarre normalement (l'import est
+# volontairement enveloppe dans un try pour ne pas empecher le produit de tourner) mais toutes
+# les routes du connecteur repondaient 404, avec pour seule trace une ligne de log :
+#   [mcp] connecteur NON monte: No module named 'mcp_connecteur'
+# Regle a retenir : tout module importe par main.py doit avoir son COPY ici, le contexte de
+# build etant limite a repurpose-service/.
+COPY mcp_connecteur.py .
 COPY verifier_geometrie.py .
 COPY watermark_base.png .
 
