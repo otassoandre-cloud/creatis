@@ -3966,6 +3966,10 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 ydl_opts["cookiefile"] = cookies_file
 
             segment_ready = False
+            # Hauteur mesuree quand la source est sous 720p, et chemin du fichier flou mis de
+            # cote le temps de tenter le secours API. Voir le bloc de controle plus bas.
+            _hauteur_degradee = 0
+            _degrade_path = None
             # Tentatives : gratuit, gratuit (retry), puis PROXY RÉSIDENTIEL en dernier recours.
             #
             # Historique, pour ne pas refaire les deux erreurs :
@@ -4026,6 +4030,9 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     if downloaded:
                         # Trace la définition réellement obtenue : c'est le seul moyen fiable de
                         # voir une chute de qualité, la taille du fichier dépendant du contenu.
+                        # Remis a zero a CHAQUE tentative : sans ca, un premier essai en 360p
+                        # invaliderait le 1080p qu'un second essai via proxy vient d'obtenir.
+                        _hauteur_degradee = 0
                         try:
                             _pr = await asyncio.create_subprocess_exec(
                                 "ffprobe", "-v", "error", "-select_streams", "v:0",
@@ -4045,6 +4052,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                             try:
                                 _h = int(_dims.split(",")[1])
                                 if _h < 720:
+                                    _hauteur_degradee = _h
                                     logger.error(
                                         f"[raw-segment] QUALITE DEGRADEE — source {_dims} "
                                         f"(< 720p) via {_voie} pour {video_id}. Le clip final "
@@ -4067,7 +4075,26 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                         await asyncio.wait_for(proc.communicate(), timeout=180)
                         downloaded.unlink(missing_ok=True)
                         if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1000:
-                            segment_ready = True
+                            # Une source sous 720p n'est PAS un succes : apres le crop 9:16 il ne
+                            # reste que 56 % de la largeur, soit moins de 405 px reels. Jusqu'ici
+                            # ce cas etait seulement journalise en ERROR et le job se terminait
+                            # quand meme — or le repli payant ne se declenche que `if not
+                            # segment_ready`, donc il n'etait jamais atteint. Constate le
+                            # 09/09/2026 : deux videos rendues en 640x360 alors que le secours API
+                            # etait autorise et disponible.
+                            # Le fichier flou est garde de cote : si l'API echoue a son tour, un
+                            # clip degrade vaut mieux que pas de clip du tout.
+                            if _hauteur_degradee and allow_api_fallback and YT_DOWNLOAD_API_KEY:
+                                try:
+                                    _degrade_path = out_path.with_name('degrade.mp4')
+                                    out_path.replace(_degrade_path)
+                                except Exception:
+                                    _degrade_path = None
+                                logger.warning(
+                                    f"[raw-segment] {job_id} source degradee ({_hauteur_degradee}p)"
+                                    f" — on tente le secours API plutot que de livrer du flou")
+                            else:
+                                segment_ready = True
                     if segment_ready:
                         break
                 except Exception as e:
@@ -4089,6 +4116,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             # vidéo complète (cache par video_id), puis découpe. Consomme du crédit API, d'où le
             # fait de ne l'utiliser qu'ici, jamais en premier. Et JAMAIS si allow_api_fallback=False
             # (préchargement en arrière-plan : on n'engage pas de crédit sans action utilisateur).
+            _degrade_livre = False
             if not segment_ready:
                 if not allow_api_fallback:
                     raise RuntimeError("yt-dlp échoué (secours API désactivé pour le préchargement)")
@@ -4098,17 +4126,28 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 cached = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: _ytapi_cached_video(video_id, "1080"))
                 if not cached or not cached.exists():
-                    raise RuntimeError("yt-dlp et API de secours ont tous deux échoué")
-                RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
-                proc = await asyncio.create_subprocess_exec(
-                    "ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", str(cached),
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-movflags", "faststart", str(out_path),
-                    stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
-                )
-                _, stderr = await asyncio.wait_for(proc.communicate(), timeout=180)
-                if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
-                    raise RuntimeError(f"ffmpeg cut (API): {stderr.decode()[-200:]}")
+                    # L'API a echoue elle aussi. Si on a mis un fichier flou de cote, mieux vaut
+                    # le livrer que de renvoyer une erreur : l'utilisateur prefere un clip
+                    # imparfait a un ecran d'echec. Il ne sera simplement pas mis en cache.
+                    if _degrade_path and _degrade_path.exists():
+                        _degrade_path.replace(out_path)
+                        _degrade_livre = True
+                        logger.warning(
+                            f"[raw-segment] {job_id} secours API indisponible — livraison du "
+                            f"segment degrade ({_hauteur_degradee}p), non mis en cache")
+                    else:
+                        raise RuntimeError("yt-dlp et API de secours ont tous deux échoué")
+                if not _degrade_livre:
+                    RAW_SEGMENTS[job_id]["progress"] = "Découpe du segment…"
+                    proc = await asyncio.create_subprocess_exec(
+                        "ffmpeg", "-y", "-ss", str(start), "-t", str(duration), "-i", str(cached),
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-movflags", "faststart", str(out_path),
+                        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+                    )
+                    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=180)
+                    if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
+                        raise RuntimeError(f"ffmpeg cut (API): {stderr.decode()[-200:]}")
 
         size_kb = out_path.stat().st_size // 1024
         logger.info(f"[raw-segment] {job_id} done {size_kb}KB")
@@ -4116,7 +4155,11 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
 
         # Mise en cache R2 APRÈS 'done' (ne retarde pas l'user) : ce segment ne sera plus jamais
         # retéléchargé depuis YouTube, quel que soit le user ou la session.
-        if not _r2_hit and _r2_enabled():
+        # La cle de cache porte « v2-1080 » : y deposer un 360p empoisonne durablement TOUS les
+        # jobs suivants sur cette video, y compris ceux des clients, et le probleme devient
+        # invisible puisque le cache repond avant meme d'atteindre YouTube. On ne met donc en
+        # cache que ce qui tient la definition annoncee.
+        if not _r2_hit and _r2_enabled() and not _degrade_livre:
             try:
                 await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_put(_r2key, out_path))
             except Exception:
