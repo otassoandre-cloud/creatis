@@ -2035,3 +2035,18 @@ ${JSON.stringify(textes, null, 0)}`;
   }
 };
 
+/* Duree maximale d'execution. Elle n'etait pas declaree, donc la fonction tournait avec le
+   defaut de la plateforme — bien en dessous de ce que dure reellement une analyse.
+   Le commentaire cote client l'annonce lui-meme : « cette requete dure 30 a 90 s ».
+
+   60 s est le plafond du plan Hobby. Ca ne suffit PAS pour une video que YouTube bot-bloque :
+   le 09/09/2026, OZ7oN-v_G74 a demande 18 tentatives yt-dlp, deux attentes, un rafraichissement
+   de cookies via Chromium puis le repli sur l'API payante — plusieurs minutes. Les deux essais
+   de l'utilisateur ont echoue alors que le serveur, lui, a fini par produire ses 2176 segments :
+   personne n'ecoutait plus.
+
+   Le vrai correctif est de passer l'analyse en tache de fond (Railway expose deja POST /clips +
+   GET /status/{session_id}, et ce fichier expose deja `mode: 'clips_status'`) — mais le client
+   ne s'en sert jamais. Tant que ce cablage n'est pas fait, ce plafond releve au moins la barre
+   pour les videos qui prennent entre 10 et 60 s. */
+module.exports.config = { maxDuration: 60 };
