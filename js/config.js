@@ -105,6 +105,12 @@ const CONFIG = {
     pro: {
       nom: 'Pro',
       prix: 14,
+      /* Affiche desormais le prix MENSUEL de l'annuel : depuis le 10/09/2026 il est preleve
+         en douze fois (11,58 € x 12 = 139 €) au lieu d'un comptant de 139 € que les cartes
+         refusaient — 8 echecs, tous en provision insuffisante, zero conversion sur 6 essais.
+         `prixAnnuel` reste le total annuel, utilise pour les comparaisons. */
+      prixAnnuelMensuel: 11.58,
+      engagementMois: 12,
       prixAnnuel: 139,
       videos: 30,
       clips: 150,

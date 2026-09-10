@@ -19,6 +19,27 @@ const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 const UGC_ESSAI_JOURS = 30;
 const PRIX_PRO_MENSUEL = (process.env.STRIPE_PRICE_PRO || 'price_1Tx8U8AptK6HZtp5DrLkfs5m').trim();
 
+/* ── ANNUEL MENSUALISE (10/09/2026) ──────────────────────────────────────────────────────────
+   Remplace le Pro Annuel preleve 139 EUR d'un coup. Meme total sur l'annee, mais encaisse en
+   douze fois a 11,58 EUR.
+
+   Ce n'est pas un ajustement de confort. Sur les 6 essais annuels arrives a leur terme : 2
+   annulations, 4 IMPAYES, 0 conversion. Les 8 lignes d'echec portent toutes le meme code,
+   `insufficient_funds`, toujours sur 139 EUR. Le 08/09 l'essai a ete deplace vers le mensuel,
+   ce qui a supprime le mur en sortie d'essai — mais l'annuel encaissait alors ses 139 EUR
+   comptant au checkout, donc le mur etait seulement avance. A 11,58 EUR la carte passe.
+
+   ENGAGEMENT. Sans terme, cette offre serait juste un Pro mensuel 17 % moins cher et personne
+   ne prendrait plus celui a 14 EUR. `engagement_fin` voyage dans les metadata, le webhook le
+   pose dans abonnements.engagement_jusqu_au, et la resiliation prend effet a la fin du terme
+   au lieu d'etre immediate. C'est ce qui garde a l'annuel sa valeur : la retention, precieuse
+   avec un churn mensuel mesure a 41 %.
+
+   Tant que STRIPE_PRICE_PRO_ANNUEL_MENSUALISE n'est pas renseignee, rien ne change : l'ancien
+   annuel continue de fonctionner tel quel. */
+const PRIX_ANNUEL_MENSUALISE = (process.env.STRIPE_PRICE_PRO_ANNUEL_MENSUALISE || '').trim();
+const ENGAGEMENT_MOIS = 12;
+
 /* ── Essai gratuit 7 jours : DEPLACE de l'annuel vers le Pro MENSUEL (08/09/2026) ────────────
    Mecanisme inchange (trial_period_days Stripe, carte requise des le depart, pas de jeton a
    verifier). Ce qui change, c'est le plan qui le porte, et c'est une decision prise sur mesure :
@@ -74,6 +95,7 @@ module.exports = async (req, res) => {
   let finalUserId = userId;
   let trialDays = null;
   let soumissionUGC = null;
+  let engagementFin = null;
 
   if (essaiToken) {
     soumissionUGC = await ugcSoumissionParJeton(essaiToken);
@@ -87,6 +109,15 @@ module.exports = async (req, res) => {
     // Automatique, pas de jeton a verifier : choisir le Pro mensuel EST la demande d'essai.
     // L'annuel n'en a plus (voir l'en-tete : 0 conversion sur 4 essais annuels termines).
     trialDays = PRO_ESSAI_JOURS;
+  } else if (annuel && PRIX_ANNUEL_MENSUALISE) {
+    /* L'annuel est FORCE sur le prix mensualise cote serveur, quel que soit le priceId envoye :
+       le client ne doit jamais pouvoir reclamer l'ancien tarif comptant a 139 EUR, qui est
+       precisement celui que les cartes refusent. */
+    finalPriceId = PRIX_ANNUEL_MENSUALISE;
+    trialDays = PRO_ESSAI_JOURS;   // meme essai que le mensuel : a 11,58 EUR la sortie passe
+    engagementFin = new Date(
+      new Date().setMonth(new Date().getMonth() + ENGAGEMENT_MOIS)
+    ).toISOString();
   }
 
   if (!finalPriceId) {
@@ -139,11 +170,14 @@ module.exports = async (req, res) => {
         ...(essaiToken ? { source: 'ugc_essai' } : {}),
         ...(soumissionUGC ? { ugc_soumission_id: soumissionUGC.id } : {}),
         ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+        ...(engagementFin ? { engagement_fin: engagementFin } : {}),
       },
       subscription_data: {
         metadata: {
           plan: 'pro', userId: finalUserId || 'anonymous', userEmail: customerEmail || '',
           ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+          // Relu par le webhook pour peupler abonnements.engagement_jusqu_au sans requete Stripe.
+          ...(engagementFin ? { engagement_fin: engagementFin } : {}),
         },
         // Coeur du dispositif : carte enregistrée maintenant, aucun prélèvement avant la fin de
         // l'essai. Stripe gère seul le passage à un abonnement payant — invoice.payment_succeeded

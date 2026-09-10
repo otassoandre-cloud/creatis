@@ -373,7 +373,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelector('.recap-plan-nom').textContent = `Créatis ${planConf.nom}`;
   document.querySelector('.recap-plan-desc').textContent = planConf.description;
 
-  const prixAffiche = annuel ? (planConf.prixAnnuel || 139) : planConf.prix;
+  /* L'annuel est preleve mensuellement depuis le 10/09/2026 : on affiche donc son prix
+     MENSUEL, pas le total annuel. Afficher 139 € ici reproduirait exactement le choc qui
+     faisait refuser les cartes, alors que le debit reel est de 11,58 €. */
+  const prixAffiche = annuel ? (planConf.prixAnnuelMensuel || 11.58) : planConf.prix;
   if (essaiToken) {
     // Le prix barré rend visible ce qui va se passer ensuite — jamais de charge surprise :
     // la personne voit MAINTENANT ce qu'elle paiera dans 30 jours, pas seulement à l'échéance.

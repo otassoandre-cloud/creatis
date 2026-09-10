@@ -89,11 +89,16 @@ async function supabaseGet(table, match, select = 'id,plan,email,referred_by') {
   return rows?.[0] || null;
 }
 
+/* Le prix de l'annuel mensualise est lu dans l'environnement : il est cree a la main dans le
+   dashboard Stripe et n'a donc pas d'identifiant connu a l'avance. Tant qu'il n'est pas
+   renseigne, tout fonctionne comme avant. */
+const PRIX_ANNUEL_MENSUALISE = (process.env.STRIPE_PRICE_PRO_ANNUEL_MENSUALISE || '').trim();
+
 /* Map Stripe price ID → plan interne */
 const PRICE_TO_PLAN = {
   'price_1Tx8TXAptK6HZtp5vB5clklV': 'starter', // starter mensuel 9,95€ (live, actuel)
   'price_1Tx8U8AptK6HZtp5DrLkfs5m': 'pro',     // pro mensuel 14€ (live, actuel)
-  'price_1TxaweAptK6HZtp5p0LjSDk5': 'pro',     // pro annuel 139€ (live, actuel)
+  'price_1TxaweAptK6HZtp5p0LjSDk5': 'pro',     // pro annuel 139€ comptant (legacy depuis le 10/09)
   'price_1Tonw3AptK6HZtp5f4UFBIa0': 'pro',     // pro annuel 149€ (legacy — abonnés existants)
   'price_1TonvgAptK6HZtp5sG7ZG5TE': 'pro',     // pro mensuel 19,90€ (legacy — abonnés existants)
   'price_1TWISZAptK6HZtp5uBP0RHe8': 'pro',     // pro mensuel 19€ (legacy — abonnés existants)
@@ -104,6 +109,8 @@ const PRICE_TO_PLAN = {
 
 function getPlanFromPriceId(priceId) {
   if (!priceId) return null;
+  // L'annuel mensualise n'est pas dans la table : son identifiant vient de l'environnement.
+  if (PRIX_ANNUEL_MENSUALISE && priceId === PRIX_ANNUEL_MENSUALISE) return 'pro';
   return PRICE_TO_PLAN[priceId] || null;
 }
 
@@ -244,6 +251,10 @@ module.exports = async (req, res) => {
             montant_centimes: session.amount_total || 0,
             annuel: session.metadata?.annuel === 'true',
             trial_ends_at: session.metadata?.trial_ends_at || null,
+            /* Fin du terme pour l'annuel mensualise. Relu tel quel depuis les metadata, jamais
+               recalcule ici : un webhook rejoue des heures plus tard poserait une date fausse.
+               null pour tout abonnement sans engagement, c'est-a-dire le cas normal. */
+            engagement_jusqu_au: session.metadata?.engagement_fin || null,
             relance_essai_envoyee: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
