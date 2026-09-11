@@ -1227,6 +1227,17 @@ const V2 = (() => {
   let _fullFileVideoId = null; // Railway video_id du fichier source complet (upload unique, mobile useServerSideCut)
   let _thumbs = {};           // index → dataUrl (sauvegardé pour la récupération)
   let _userPlan = 'gratuit';  // plan récupéré depuis Supabase
+  /* Nombre de clips qu'un compte gratuit peut réellement ouvrir. Au-delà, la vignette est
+     verrouillée — pas par avarice, par arithmétique : ouvrir un clip déclenche un vrai
+     téléchargement YouTube (bande passante, et parfois le proxy résidentiel facturé au
+     gigaoctet), alors qu'un compte gratuit ne peut RIEN exporter. On payait donc jusqu'à dix
+     téléchargements pour un revenu possible de zéro. L'aperçu complet des deux premiers reste
+     offert : c'est ce qui donne envie de payer. */
+  const APERCU_GRATUIT = 2;
+  /* Plan avec lequel la grille a été dessinée. `_userPlan` arrive de Supabase de façon
+     asynchrone : sans ce témoin, un client Pro qui charge la page voit des cadenas jusqu'au
+     prochain rendu, et un gratuit les voit apparaître d'un coup. */
+  let _grillePlan = null;
   let _repurposeCount = 0;   // nb clips déjà exportés (depuis Supabase)
   // 0 = aucun export gratuit. Le compte gratuit sert à ANALYSER et VOIR ses clips (aperçu complet,
   // 9:16, sous-titres) ; le téléchargement est réservé aux plans payants. Choix assumé : l'export
@@ -1313,6 +1324,20 @@ const V2 = (() => {
         if (data?.plan) _userPlan = data.plan;
         if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
         if (window.posthog && data?.plan) try { posthog.people?.set({ plan: data.plan }); } catch {}
+        /* Le plan arrive APRES le premier rendu. Si la grille a été dessinée avec un autre plan,
+           on la redessine — sinon un client Pro reste devant des cadenas qui ne le concernent
+           pas. On ne le fait QUE si le plan a changé : `renderClipsGrid` réécrit tout le HTML,
+           donc efface les pastilles déjà posées, qu'on repose juste après pour les clips dont
+           le segment est déjà en cache. */
+        if (_grillePlan !== null && _grillePlan !== _userPlan && _clips.length) {
+          renderClipsGrid();
+          Object.keys(_ytSegCache).forEach(k => _markClipReady(Number(k)));
+          /* Le préchargement a pu démarrer AVANT que le plan ne soit connu, donc s'arrêter au
+             deuxième clip en croyant avoir affaire à un gratuit. Maintenant qu'on sait que ce
+             n'en est pas un, on reprend : la fonction ignore d'elle-même les clips déjà en
+             cache, la relancer ne retélécharge rien. */
+          if (_userPlan !== 'gratuit') _prefetchYtSegments().catch(() => {});
+        }
       }).catch(() => {});
     }
     // Watermark opacity display
@@ -3811,13 +3836,14 @@ const V2 = (() => {
   function renderClipsGrid() {
     const grid = document.getElementById('clips-grid');
     if (!grid) return;
+    _grillePlan = _userPlan;
 
     grid.innerHTML = _clips.map((clip, i) => {
       const sc = scoreColor(clip.score);
       const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
       const tags = autoTags(clip);
       const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
-      const locked = false; // pas de lock par index — paywall déclenché à l'export
+      const locked = _userPlan === 'gratuit' && i >= APERCU_GRATUIT;
 
       if (locked) return `
       <div class="clip-card locked" id="clip-card-${i}" onclick="V2.showUpgradeModal()" style="cursor:pointer;">
@@ -4165,9 +4191,17 @@ const V2 = (() => {
   function closeUpgradeModal() {}
 
   function showModal(i) {
-    // pas de blocage à l'ouverture — on bloque à l'export uniquement
     const clip = _clips[i];
     if (!clip) return;
+    /* Le verrou se joue ICI et pas seulement sur la vignette : la carte verrouillée appelle
+       déjà showUpgradeModal, mais showModal est aussi atteignable autrement (clavier, reprise
+       d'historique, export groupé). Sans cette garde, ces chemins déclencheraient le
+       téléchargement qu'on cherche précisément à éviter. */
+    if (_userPlan === 'gratuit' && i >= APERCU_GRATUIT) {
+      if (window.posthog) posthog.capture('clip_verrouille_clic', { clip_index: i, plan: _userPlan });
+      showUpgradeModal();
+      return;
+    }
     /* Une entrée d'historique par ouverture d'éditeur : c'est elle que le bouton Retour du
        téléphone consomme, ce qui referme la modale au lieu de faire dérailler toute l'app.
        Une seule à la fois — passer d'un clip à l'autre ne doit pas empiler dix entrées. */
@@ -4622,6 +4656,10 @@ const V2 = (() => {
         : '✅ Ton premier clip est prêt — ouverture instantanée', 'succes', 4000);
     }
 
+    /* Un compte gratuit ne peut ouvrir que les APERCU_GRATUIT premiers : télécharger les
+       suivants serait payer une bande passante que personne ne pourra jamais consommer. */
+    if (_userPlan === 'gratuit') return;
+
     // Phase 2 — le reste en fond, gratuit-only.
     // Concurrence à 3 : YouTube throttle par connexion (~350 Ko/s chacune, mesuré sur les logs
     // Railway), donc paralléliser divise bien le temps total — mais au-delà de 3 connexions
@@ -4665,6 +4703,10 @@ const V2 = (() => {
   // Échec du préchargement : le clip reste ouvrable (nouvelle tentative au clic), on le dit juste.
   function _markClipFailed(i) {
     if (_ytSegCache[i]) return;
+    // « À la demande » est une invitation à cliquer, donc à déclencher un téléchargement.
+    // Sur un clip verrouillé ce serait une promesse qu'on refuse ensuite : la carte porte
+    // déjà son cadenas, on n'ajoute rien.
+    if (_userPlan === 'gratuit' && i >= APERCU_GRATUIT) return;
     _setClipBadge(i, 'clip-failed-badge', 'rgba(0,0,0,.72)', '#fbbf24', 'À la demande');
   }
 
