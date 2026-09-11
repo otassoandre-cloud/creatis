@@ -203,8 +203,11 @@ module.exports = async (req, res) => {
   const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires' || action === 'relance_essai_annuel_j5';
   // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
   // il ne doit donc pas être recalé par ce contrôle.
+  // `rattrapage_impayes` s'authentifie par CRON_SECRET et travaille sur une liste qu'il
+  // construit lui-meme : il n'a aucun identifiant a recevoir dans le corps de la requete.
   const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer'
-    || action === 'ugc_soumettre' || action === 'ugc_lister' || action === 'ugc_decider';
+    || action === 'ugc_soumettre' || action === 'ugc_lister' || action === 'ugc_decider'
+    || action === 'rattrapage_impayes';
   if (!sansIdentifiantCorps && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
