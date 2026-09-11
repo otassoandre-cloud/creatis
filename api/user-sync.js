@@ -614,6 +614,151 @@ module.exports = async (req, res) => {
          renvoyant vers /app : quelqu'un qui ouvre cet email n'est pas forcément connecté, et le
          forcer à se reconnecter avant de pouvoir résilier est exactement le genre de friction qui
          finit en opposition bancaire plutôt qu'en résiliation propre. */
+      /* ═══ Rattrapage des impayés — annule l'annuel intenable, propose le mensuel ═══
+         Ajouté le 11/09/2026 après un constat sans appel : sur les 5 personnes dont l'essai de
+         7 jours est arrivé à terme, les 5 ont échoué au prélèvement de 139 € — quatre pour fonds
+         insuffisants. Et `relance_envoyee` était à false sur la TOTALITÉ de la table
+         `paiements_echoues` : aucune relance n'était jamais partie, donc personne n'a jamais eu
+         l'occasion de réagir.
+
+         Trois segments, trois messages, parce que leur situation n'a rien à voir :
+
+           annuel_impaye  — essai terminé, 139 € refusés. On ANNULE l'abonnement dans Stripe
+                            (ils n'ont jamais rien payé, ils ne doivent rien) puis on propose le
+                            Pro mensuel à 14 €. L'annulation n'est pas une politesse : sans elle
+                            Stripe continue de retenter, et quelqu'un qui reprend le mensuel se
+                            retrouverait avec deux abonnements.
+           mensuel_impaye — renouvellement raté sur un plan déjà mensuel. Leur proposer « moins
+                            cher » n'a pas de sens, ils sont déjà au tarif le plus bas : on
+                            envoie un lien de portail Stripe pour corriger la carte.
+           jamais_abouti  — paiement bloqué à la souscription (3D Secure le plus souvent), donc
+                            jamais client. On les réinvite, avec l'essai de 7 jours en argument.
+
+         `dry_run=1` renvoie exactement ce qui serait fait, sans rien annuler ni envoyer. */
+      case 'rattrapage_impayes': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const simulation = String(req.query?.dry_run || req.body?.dry_run || '') === '1';
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY && !simulation) return res.status(200).json({ ok: true, note: 'BREVO_API_KEY manquante' });
+
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const appUrl = (process.env.APP_URL || 'https://creatis.app').trim();
+
+        // Une seule relance par personne, jamais deux : on repart des lignes non relancées.
+        const echecs = await supabase(
+          `/paiements_echoues?relance_envoyee=eq.false&select=id,email,montant,statut,plan,created_at&order=created_at.desc`
+        ).catch(() => []);
+
+        const bl = await supabase(`/email_blacklist?select=email`).catch(() => []);
+        const blacklist = new Set((bl || []).map(b => String(b.email || '').toLowerCase()));
+
+        // Stripe retente plusieurs fois : la même personne apparaît jusqu'à 4 fois. On garde la
+        // ligne la plus récente et on collecte les id pour toutes les marquer d'un coup.
+        const parPersonne = new Map();
+        for (const e of (echecs || [])) {
+          const mail = String(e.email || '').toLowerCase().trim();
+          if (!mail || blacklist.has(mail)) continue;
+          if (!parPersonne.has(mail)) parPersonne.set(mail, { ...e, email: mail, ids: [] });
+          parPersonne.get(mail).ids.push(e.id);
+        }
+
+        const rapport = [];
+        for (const [mail, ligne] of parPersonne) {
+          try {
+            const users = await supabase(`/users?email=eq.${encodeURIComponent(mail)}&select=id,nom`).catch(() => []);
+            const uid = users?.[0]?.id;
+            const nom = users?.[0]?.nom || mail.split('@')[0];
+            const abos = uid
+              ? await supabase(`/abonnements?user_id=eq.${uid}&select=id,stripe_subscription_id,stripe_customer_id,status,annuel&order=created_at.desc`).catch(() => [])
+              : [];
+            const abo = (abos || [])[0];
+
+            let segment;
+            if (abo?.status === 'past_due' && abo?.annuel) segment = 'annuel_impaye';
+            else if (abo?.status === 'past_due') segment = 'mensuel_impaye';
+            else if (!abo || ['canceled', 'incomplete_expired'].includes(abo?.status)) segment = 'jamais_abouti';
+            else { rapport.push({ mail, segment: 'ignore', raison: `abonnement ${abo?.status} — rien à rattraper` }); continue; }
+
+            let annule = false, portail = `${appUrl}/app`;
+
+            if (segment === 'annuel_impaye' && abo?.stripe_subscription_id) {
+              if (!simulation) {
+                await stripeLib.subscriptions.cancel(abo.stripe_subscription_id);
+                await supabase(`/abonnements?id=eq.${abo.id}`, 'PATCH', {
+                  status: 'canceled', canceled_at: new Date().toISOString(),
+                });
+                if (uid) await supabase(`/users?id=eq.${uid}`, 'PATCH', { plan: 'gratuit' });
+              }
+              annule = true;
+            }
+
+            if (segment === 'mensuel_impaye' && abo?.stripe_customer_id && !simulation) {
+              try {
+                const sess = await stripeLib.billingPortal.sessions.create({
+                  customer: abo.stripe_customer_id, return_url: `${appUrl}/app`,
+                });
+                portail = sess.url;
+              } catch (e) { console.warn('[rattrapage] portail indisponible:', e.message); }
+            }
+
+            const CTA = (href, txt) =>
+              `<a href="${href}" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px">${txt}</a>`;
+            const coque = (corps) =>
+              `<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:auto;color:#111;padding:26px">
+                 <p style="font-size:17px;margin:0 0 18px">Salut ${nom},</p>${corps}
+                 <p style="color:#999;font-size:12px;margin:26px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p>
+               </div>`;
+
+            let sujet, corps;
+            if (segment === 'annuel_impaye') {
+              sujet = 'Ton abonnement annuel est annulé — tu ne dois rien';
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Ton essai de 7 jours s'est terminé et le prélèvement annuel de 139 € n'est pas passé.</p>
+                <p style="line-height:1.7;margin:0 0 16px"><strong>On a annulé cet abonnement. Tu ne dois rien</strong>, et plus rien ne sera tenté sur ta carte.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Honnêtement, demander 139 € d'un coup était une mauvaise idée de notre part. On a changé : le <strong>Pro est à 14 €/mois</strong>, et les 7 jours d'essai sont dessus maintenant.</p>
+                <p style="margin:0 0 20px">${CTA(`${appUrl}/paiement.html?plan=pro`, 'Reprendre le Pro — 14 €/mois')}</p>
+                <p style="line-height:1.7;margin:0 0 8px;color:#555;font-size:14px">7 jours gratuits, puis 14 €/mois. Résiliable à tout moment, rien n'est prélevé pendant l'essai.</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Si quelque chose n'allait pas dans le produit, réponds à ce mail — je lis tout.</p>`;
+            } else if (segment === 'mensuel_impaye') {
+              sujet = "Ton renouvellement Créatis n'est pas passé";
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Le renouvellement de ton abonnement n'a pas pu être prélevé. Ton accès est encore actif, mais il va s'arrêter si ça ne se règle pas.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Le plus souvent c'est une carte expirée ou un plafond. Ça se corrige en trente secondes :</p>
+                <p style="margin:0 0 20px">${CTA(portail, 'Mettre à jour ma carte')}</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Si tu préfères arrêter, tu peux résilier depuis ce même lien — sans justification.</p>`;
+            } else {
+              sujet = "Ton paiement Créatis n'avait pas abouti";
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Tu as essayé de t'abonner à Créatis mais le paiement n'est jamais allé au bout — le plus souvent c'est la validation bancaire (3D Secure) qui bloque.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Entre-temps on a ajouté <strong>7 jours d'essai gratuit sur le Pro</strong> : tu peux tout tester avant que quoi que ce soit ne soit prélevé.</p>
+                <p style="margin:0 0 20px">${CTA(`${appUrl}/paiement.html?plan=pro`, 'Essayer 7 jours gratuitement')}</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Puis 14 €/mois, résiliable à tout moment.</p>`;
+            }
+
+            if (!simulation) {
+              const envoye = await ugcEnvoyerEmail({
+                sender: { name: 'André — Créatis', email: 'contact@creatis.app' },
+                to: [{ email: mail, name: nom }],
+                subject: sujet,
+                htmlContent: coque(corps),
+              }, 'rattrapage_impayes');
+              if (envoye) {
+                for (const id of ligne.ids) {
+                  await supabase(`/paiements_echoues?id=eq.${id}`, 'PATCH', { relance_envoyee: true }).catch(() => {});
+                }
+              }
+              rapport.push({ mail, segment, annule, envoye, lignes: ligne.ids.length });
+            } else {
+              rapport.push({ mail, segment, annulerait: annule, sujet, lignes: ligne.ids.length });
+            }
+          } catch (e) {
+            rapport.push({ mail, erreur: e.message });
+          }
+        }
+
+        return res.status(200).json({ ok: true, simulation, total: rapport.length, rapport });
+      }
+
       case 'relance_essai_annuel_j5': {
         const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
         if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
