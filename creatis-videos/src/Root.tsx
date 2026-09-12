@@ -8,6 +8,13 @@ import { DUREE_PUB_DOULEUR, PubDouleur } from "./creatis/PubDouleur";
 import { DUREE_PUB_GTA, PubGta } from "./creatis/PubGta";
 import { DUREE_PUB_CLAIRE, PubClaire } from "./creatis/PubClaire";
 import { DUREE_PUB_MONTAGE, PubMontage } from "./creatis/PubMontage";
+import { DUREE_PARCOURS, Parcours } from "./creatis/Parcours";
+import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
+import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
+import { DUREE_ETAPES, Etapes } from "./creatis/Etapes";
+import { Demo, DUREE_DEMO } from "./creatis/Demo";
+import { DUREE_VITRINE, Vitrine } from "./creatis/Vitrine";
+import { DUREE_ILLU, PubIllustration } from "./creatis/PubIllustration";
 import {
   DUREE_TRAILER,
   TrailerFlamants,
@@ -48,6 +55,7 @@ import { DUREE_POST_8, Post8DejaLa } from "./creatis/posts/Post8DejaLa";
 import { DUREE_POST_13, Post13Marche } from "./creatis/posts/Post13Marche";
 import { DUREE_POST_14, Post14VingtTrois } from "./creatis/posts/Post14VingtTrois";
 import { DUREE_POST_15, Post15Bande } from "./creatis/posts/Post15Bande";
+import { DUREE_POST_16, Post16Transformation } from "./creatis/posts/Post16Transformation";
 
 const FPS = 30;
 
@@ -104,6 +112,62 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
       />
 
+        <Composition
+          id="Parcours"
+          component={Parcours}
+          durationInFrames={DUREE_PARCOURS}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="EtapesV3"
+          component={EtapesV3}
+          durationInFrames={DUREE_V3}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="EtapesV2"
+          component={EtapesV2}
+          durationInFrames={DUREE_V2}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Etapes"
+          component={Etapes}
+          durationInFrames={DUREE_ETAPES}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Demo"
+          component={Demo}
+          durationInFrames={DUREE_DEMO}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Vitrine"
+          component={Vitrine}
+          durationInFrames={DUREE_VITRINE}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Illustration"
+          component={PubIllustration}
+          durationInFrames={DUREE_ILLU}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="Trailer-Plage"
           component={TrailerPlage}
@@ -307,6 +371,14 @@ export const RemotionRoot: React.FC = () => {
           id="Post15-Bande"
           component={Post15Bande}
           durationInFrames={DUREE_POST_15}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Post16-Transformation"
+          component={Post16Transformation}
+          durationInFrames={DUREE_POST_16}
           fps={FPS}
           width={1080}
           height={1920}
