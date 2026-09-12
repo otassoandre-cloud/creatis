@@ -61,6 +61,14 @@ try {
   // ── Connexion ───────────────────────────────────────────────────────────
   console.log("· connexion");
   await page.goto(`${SITE}/auth.html`, { waitUntil: "domcontentloaded" });
+  /* La page ouvre en mode INSCRIPTION. Soumettre un email déjà existant renvoie
+     un 422 de Supabase et la navigation n'a jamais lieu — c'est exactement ce
+     qui a fait échouer le premier essai. On bascule d'abord en connexion. */
+  await page.click("#toggle-btn");
+  await page.waitForFunction(
+    () => document.getElementById("btn-submit-texte")?.textContent?.includes("connecter"),
+    { timeout: 10000 },
+  );
   await page.fill("#auth-email", EMAIL);
   await page.fill("#auth-password", MDP);
   await page.click("#btn-submit");
@@ -110,11 +118,23 @@ try {
   await nav.close(); // n'écrit le fichier qu'à la fermeture.
   if (video) {
     const brut = await video.path();
-    const cible = path.join(SORTIE, "parcours.mp4");
-    fs.copyFileSync(brut, cible);
+    /* On écrit TOUJOURS sous un nom provisoire. La première version copiait
+       directement sur `parcours.mp4` dans le bloc `finally` : un échec de
+       connexion a donc écrasé l'enregistrement qui marchait par huit secondes
+       de page de login. Un enregistrement raté ne doit jamais détruire le bon. */
+    const provisoire = path.join(SORTIE, "parcours-nouveau.mp4");
+    fs.copyFileSync(brut, provisoire);
     fs.unlinkSync(brut);
-    const mo = (fs.statSync(cible).size / 1048576).toFixed(1);
-    console.log(`\n→ ${cible} (${mo} Mo)`);
-    console.log("Vérifier la durée réelle et recaler les repères de Parcours.tsx.");
+    const mo = (fs.statSync(provisoire).size / 1048576).toFixed(1);
+    if (process.exitCode) {
+      console.log(`
+échec — enregistrement partiel : ${provisoire} (${mo} Mo)`);
+      console.log("  parcours.mp4 n'a PAS été touché.");
+    } else {
+      fs.renameSync(provisoire, path.join(SORTIE, "parcours.mp4"));
+      console.log(`
+OK — public/parcours.mp4 (${mo} Mo)`);
+      console.log("  Vérifier la durée réelle et recaler les repères de Parcours.tsx.");
+    }
   }
 }
