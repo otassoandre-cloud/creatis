@@ -27,7 +27,7 @@
  * · La fenêtre est en 1080x1920 : on filme déjà au format de sortie, ce qui
  *   évite un recadrage au montage.
  */
-import { chromium } from "playwright";
+import { chromium, devices } from "playwright";
 import fs from "fs";
 import path from "path";
 
@@ -46,12 +46,44 @@ if (!URL_VIDEO || !EMAIL || !MDP) {
 
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const nav = await chromium.launch({ headless: true });
-const ctx = await nav.newContext({
-  viewport: { width: 1080, height: 1920 },
-  deviceScaleFactor: 1,
-  recordVideo: { dir: SORTIE, size: { width: 1080, height: 1920 } },
-});
+/* TELEPHONE PAR DEFAUT.
+ *
+ * La premiere version filmait en 1080x1920 — un format vertical, mais une
+ * LARGEUR de 1080 CSS : le site servait donc sa disposition de bureau, six
+ * vignettes par rangee. Reduite dans l'encart de 480 px de la composition, la
+ * grille devenait illisible : on distinguait des rectangles, pas des clips.
+ *
+ * Le site bascule en deux colonnes sous 600 px (`@media (max-width: 600px)`).
+ * On filme donc un vrai telephone, ce qui donne exactement ce qu'un spectateur
+ * de TikTok reconnait : son propre ecran.
+ *
+ * LA TAILLE N'EST PAS ARBITRAIRE. `recordVideo.size` plus grand que le viewport
+ * ne l'agrandit pas : Playwright pose la page dans le coin et REMPLIT le reste
+ * de gris. Un premier essai en 390x664 capture dans un cadre de 780x1328 a donne
+ * une video au tiers utile. On filme donc a la taille EXACTE de l'encart de la
+ * composition — 480 px de large — pour que le montage n'ait rien a redimensionner.
+ *
+ * 480 reste sous le seuil de 600 px du site, donc la mise en page telephone
+ * s'applique bien (`@media (max-width: 600px)`, grille a deux colonnes).
+ *
+ * Passer BUREAU=1 revient a l'ancien cadrage si besoin de comparer. */
+const BUREAU = process.env.BUREAU === "1";
+const tel = devices["iPhone 13"];
+const ctx = await (await chromium.launch({ headless: true })).newContext(
+  BUREAU
+    ? {
+        viewport: { width: 1080, height: 1920 },
+        deviceScaleFactor: 1,
+        recordVideo: { dir: SORTIE, size: { width: 1080, height: 1920 } },
+      }
+    : {
+        ...tel,
+        viewport: { width: 480, height: 817 },
+        deviceScaleFactor: 2,
+        recordVideo: { dir: SORTIE, size: { width: 480, height: 817 } },
+      },
+);
+const nav = ctx.browser();
 const page = await ctx.newPage();
 page.on("console", (m) => {
   if (m.type() === "error") console.log("  [page]", m.text().slice(0, 140));
@@ -95,15 +127,51 @@ try {
      déjà abandonné. */
   console.log("· analyse en cours (jusqu'à 15 min)");
   await page.waitForSelector(".clip-card", { timeout: 15 * 60 * 1000 });
-  const nbClips = await page.locator(".clip-card").count();
-  console.log(`  ${nbClips} clips affichés`);
   await attendre(2500);
 
-  /* On ouvre le PREMIER clip : c'est le mieux noté, et c'est aussi le seul dont
-     on soit sûr qu'il est déjà préchargé — les suivants déclencheraient un
-     téléchargement et une attente au milieu du plan. */
-  console.log("· ouverture du premier clip");
-  await page.locator(".clip-card").first().click();
+  /* On RELEVE la grille au lieu d'aller la relire en pixels plus tard.
+     Premiere version : elle ne journalisait qu'un `count()` d'elements
+     `.clip-card`, qui a annonce 10 alors que le site affichait « 8 clips viraux
+     trouves » — l'entete lit `_clips.length`, lui. Il a fallu rouvrir la video
+     image par image pour retrouver les vraies bornes. Tout est ecrit ici, et
+     c'est le TITRE de la page qui fait foi sur le nombre. */
+  const releve = await page.evaluate(() => ({
+    titre: document.getElementById("studio-title")?.textContent?.trim() || "",
+    source: document.getElementById("studio-meta")?.textContent?.trim() || "",
+    clips: [...document.querySelectorAll(".clip-card")].map((c) => ({
+      duree: c.querySelector(".clip-dur-badge")?.textContent?.trim() || "",
+      score: c.querySelector(".clip-score-num")?.textContent?.trim() || "",
+      titre: c.querySelector(".clip-title")?.textContent?.trim() || "",
+    })),
+  }));
+  fs.writeFileSync(path.join(SORTIE, "parcours-clips.json"), JSON.stringify(releve, null, 2));
+  console.log(`  ${releve.titre}`);
+  releve.clips.forEach((c, i) => console.log(`   ${i} · ${c.score} · ${c.duree} · ${c.titre}`));
+
+  /* QUEL CLIP OUVRIR — et pourquoi ca ne peut pas etre un rang fixe.
+     Le clip ouvert finit en plein ecran dans le montage : c'est la vitrine. Or
+     l'analyse n'est PAS deterministe — deux passages sur la meme video ont donne
+     des decoupes et des scores differents. Un « toujours le premier » tombe donc
+     sur ce que le hasard amene, et sur cette source il a successivement donne un
+     passage filme pres d'un bateau de fete (Whisper y rend du charabia) puis un
+     « rant anti-ecologie explosif ». Ni l'un ni l'autre ne peut illustrer l'outil.
+
+     On choisit donc par le TITRE que le produit a lui-meme ecrit, ce qui survit
+     a une nouvelle analyse :
+       CLIP_TITRE="cigare"  ouvre le premier clip dont le titre contient « cigare »
+       CLIP=2               repli par rang si aucun titre n'est donne
+     Si le motif ne trouve rien, on le dit et on prend le premier — jamais un
+     silence qui donnerait une vitrine choisie au hasard. */
+  const motif = (process.env.CLIP_TITRE || "").trim().toLowerCase();
+  let iClip = Math.max(0, parseInt(process.env.CLIP || "0", 10) || 0);
+  if (motif) {
+    const sansAccent = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const trouve = releve.clips.findIndex((c) => sansAccent(c.titre).includes(sansAccent(motif)));
+    if (trouve >= 0) iClip = trouve;
+    else console.log(`  (aucun titre ne contient « ${motif} » — on prend le rang ${iClip})`);
+  }
+  console.log(`· ouverture du clip ${iClip} — ${releve.clips[iClip]?.titre || "?"}`);
+  await page.locator(".clip-card").nth(iClip).click();
   await page.waitForSelector("#modal-player-wrap", { timeout: 60000 });
   await attendre(6000);
 

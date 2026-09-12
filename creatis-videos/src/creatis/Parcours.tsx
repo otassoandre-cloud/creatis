@@ -6,6 +6,7 @@ import {
 import { POLICE } from "./police";
 import { Punch } from "./Punch";
 import { CartonFinal } from "./posts/CartonFinal";
+import { Pastille, Pastilles } from "./Pastilles";
 
 /**
  * PARCOURS COMPLET — 1080x1920, 21,5 s.
@@ -60,16 +61,17 @@ const APP_DEB = 120;   // 4,0 s
 const APP_FIN = 360;   // 12,0 s
 
 const VERT = "#10b981";
-/* Aucun relevement : le clip sort a 135 de luminance (142 sur la premiere
-   seconde), au-dessus des 116 du corpus. Tourne au bord d'une piscine en plein
-   soleil — il n'a besoin de rien, et l'assombrir serait aller contre la mesure. */
-const RELEVE = "saturate(1.04)";
+/* Relevement leger, et calcule : ce clip-ci sort a 113 de luminance (99 sur la
+   premiere seconde) — tourne en interieur, dans une fabrique de cigares. 118/113
+   donne 1,04, qu'on arrondit a 1,06 pour rattraper l'ouverture plus sombre que
+   la moyenne. Loin du plafond de 1,9 : on corrige, on ne repeint pas. */
+const RELEVE = "brightness(1.06) saturate(1.05)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
   [0, 44, "Tu colles le lien"],
   [44, 135, "L’IA analyse la vidéo"],
-  [135, 240, "10 clips prêts"],
+  [135, 240, "Tes clips sont prêts"],
 ];
 
 const Legende: React.FC<{ texte: string }> = ({ texte }) => {
@@ -97,17 +99,25 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * evite un re-encodage et permet de recaler les vitesses sans re-enregistrer.
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
- * Repères mesures sur l'enregistrement, par ecart entre images successives :
+ * Repères mesures sur l'enregistrement, par ecart entre images successives.
+ * Version TELEPHONE du 12/09 (480x816, 123,5 s) — filmee a la largeur EXACTE
+ * de l'encart, donc affichee sans redimensionnement :
  *   2 s    la page du studio s'affiche
- *   15 s   l'analyse demarre
- *   155 s  la grille des 10 clips apparait
- *   158 s  le clip s'ouvre        (fin a 163 s)
+ *   13 s   l'analyse demarre
+ *   116 s  la grille des clips apparait
+ *   118 s  le clip s'ouvre        (fin a 123,5 s)
+ *
+ * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
+ * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
+ * nombre par-dessus une grille qui en montre un autre le lendemain serait faux
+ * une fois sur deux. Le libelle dit donc « tes clips sont prets » et laisse
+ * l'ecran compter.
  *
  * Les trois durees ci-dessous somment exactement 240 images, soit la fenetre
  * APP_FIN - APP_DEB, et epousent les bornes de LEGENDES (44 / 135 / 240) : le
  * libelle affiche correspond donc toujours a ce qui est montre.
  *
- * L'analyse est vue a x46 : personne ne regarde une barre de progression en
+ * L'analyse est vue a x34 : personne ne regarde une barre de progression en
  * temps reel, mais on veut la voir parcourir toute sa course, pas sauter.
  */
 /* `layout="none"` sur chaque sequence : sans lui, Series.Sequence enveloppe ses
@@ -118,18 +128,47 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={44} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={60} playbackRate={8.85} muted />
+        trimBefore={60} playbackRate={7.5} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={91} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={450} playbackRate={46.2} muted />
+        trimBefore={390} playbackRate={34.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={105} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4650} playbackRate={2.29} muted />
+        trimBefore={3480} playbackRate={2.14} muted />
     </Series.Sequence>
   </Series>
 );
+
+/* Les pastilles. Chaque valeur vient de la generation filmee derriere :
+     55 min   duree reelle de la source (3 323 s)
+     1 min 43 duree reelle de l'analyse (13 s -> 116 s dans l'enregistrement)
+     9:16     ce que le clip montre au meme instant
+     32 s     duree du clip ouvert (01:04 -> 01:36), relevee par le script
+     0        montage, au sens propre : aucune coupe faite a la main
+
+   Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
+   analyse a l'autre — 10, 8, 8 puis 4 clips sur la meme video — donc les
+   graver dans une video qui resservira demain en ferait des chiffres faux.
+   Ce qui est constant, lui, est affiche : la duree de la source, celle de
+   l'analyse, le format de sortie, la duree du clip.
+
+   Placement, et il n'y a que deux couloirs libres :
+     y = 8 %   au-dessus de l'encart, qui commence a 240 px
+     y = 62 %  entre le bas de l'encart (1 056 px) et le libelle d'etape
+   Un premier jet posait la rangee basse a 73 %, soit 1 402 px — exactement sur
+   le libelle, qui est ancre a 1 390. « 0 MONTAGE » recouvrait la moitie de
+   « L'IA analyse la video ». On alterne gauche et droite pour que l'oeil se
+   deplace, jamais sous 76 % ou l'interface de TikTok mange l'image. */
+const PASTILLES: Pastille[] = [
+  { debut: 128, duree: 34, valeur: "55 min", libelle: "DE VIDÉO", x: 30, y: 8, angle: -3 },
+  { debut: 166, duree: 36, valeur: "1 min 43", libelle: "D'ANALYSE", x: 70, y: 8, angle: 3 },
+  { debut: 236, duree: 40, valeur: "0", libelle: "MONTAGE", x: 33, y: 62, accent: true, angle: -2 },
+  { debut: 292, duree: 40, valeur: "9:16", libelle: "RECADRÉ TOUT SEUL", x: 66, y: 8, accent: true, angle: 3 },
+  { debut: 376, duree: 40, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 8, accent: true, angle: -2 },
+  { debut: 424, duree: 46, valeur: "32 s", libelle: "PRÊT À POSTER", x: 50, y: 62, accent: true, angle: 2 },
+];
 
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -192,6 +231,12 @@ export const Parcours: React.FC = () => {
             ) : null}
           </>
         ) : null}
+      </Sequence>
+
+      {/* Au-dessus du clip ET de l'encart, mais SOUS le carton final : les
+          pastilles s'arretent avec l'image qu'elles commentent. */}
+      <Sequence durationInFrames={CLIP} name="Pastilles" layout="none">
+        <Pastilles liste={PASTILLES} />
       </Sequence>
 
       <Sequence from={CLIP} durationInFrames={DUREE_PARCOURS - CLIP} name="Créatis">
