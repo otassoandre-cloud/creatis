@@ -2728,8 +2728,18 @@ Transcription (extrait) :
                     logger.warning(f"[identify_clips] morceau abandonné après 3 tentatives: {e}")
             return []
 
-        # Concurrence bornée — ne pas taper trop fort sur les limites de débit Groq (30 RPM en free)
-        sem = asyncio.Semaphore(3)
+        # Concurrence bornee par les TOKENS, pas par les requetes. Mesure du 13/09/2026 sur la
+        # cle de production : la limite Groq qui mord n'est pas le debit de requetes (1000/jour,
+        # largement suffisant) mais 8 000 TOKENS PAR MINUTE. Un morceau pese ~1 900 tokens de
+        # prompt plus les 2 048 reserves en sortie, soit ~4 000 : DEUX appels simultanes saturent
+        # deja le plafond. Avec la valeur precedente (3), une video longue prenait un 429 sur
+        # chacun de ses 8 morceaux — verifie trois fois de suite en production, resultat zero clip.
+        # On envoie donc les morceaux un par un des qu'il y en a plus de deux. C'est plus lent
+        # (~4 min sur une video de 50 min au lieu de ~1), et c'est sans importance : depuis le
+        # passage en tache de fond, personne n'attend sur une connexion ouverte.
+        sem = asyncio.Semaphore(1 if len(chunks) > 2 else 2)
+        logger.info(f"[identify_clips] {len(chunks)} morceau(x), concurrence {1 if len(chunks) > 2 else 2}")
+
         async def bounded(c_segs):
             async with sem:
                 return await analyze_chunk(c_segs)
