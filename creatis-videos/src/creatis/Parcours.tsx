@@ -63,16 +63,18 @@ const APP_FIN = 420;   // 14,0 s — il disparait
 const OFFRE = 501;
 
 const VERT = "#10b981";
-/* 91 de luminance moyenne mais 134 sur la premiere seconde : l ouverture est
-   deja au-dessus de la mediane du corpus, et c est elle qui decide. 1,2 remonte
-   l ensemble vers 109 sans toucher a une ouverture qui n en a pas besoin. */
-const RELEVE = "brightness(1.2) saturate(1.05)";
+/* Plateau sombre : 50 de luminance moyenne, 47 sur la premiere seconde. La
+   formule reclamerait le plafond de 1,9 ; comme sur le plateau de Squeezie ce
+   serait un contresens — les visages sont correctement exposes, c'est le fond
+   bleu nuit qui tire la moyenne vers le bas. 1,35 ouvre les noirs sans delaver
+   la peau. */
+const RELEVE = "brightness(1.35) saturate(1.05)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
   [0, 36, "Tu colles le lien"],
   [36, 108, "L’IA analyse la vidéo"],
-  [108, 300, "10 clips prêts"],
+  [108, 300, "8 clips prêts"],
 ];
 
 const Legende: React.FC<{ texte: string }> = ({ texte }) => {
@@ -101,27 +103,34 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Cyprien (480x816, 124,1 s) :
+ * Version TELEPHONE du 13/09, source Underscore_ (480x816, 148,9 s) :
  *   3 s    la page du studio s'affiche
- *   15 s   l'analyse demarre
- *   109 s  la grille des 10 clips apparait, puis DEFILE
- *   119 s  le clip s'ouvre        (fin a 124,1 s)
+ *   14 s   l'analyse demarre
+ *   135 s  la grille des clips apparait, puis DEFILE
+ *   144 s  le clip s'ouvre        (fin a 148,9 s)
  *
- * SOURCE. 15 minutes, 1,95 M de vues, un recit face camera : voix seule et micro
- * propre, donc transcription fiable — le critere qui avait fait ecarter le jeu
- * televise de Squeezie.
+ * SOURCE. Un plateau de podcast, 26 minutes, 1,5 M de vues. Choisi pour une
+ * raison precise : PLUSIEURS PERSONNES AUTOUR D'UNE TABLE. Konbini avait ete
+ * essaye avant et ecarte au visionnage — c'etait un « Video Club », une seule
+ * personne devant un mur de DVD, ou le split ne peut par construction jamais se
+ * declencher.
  *
- * LE CLIP MONTRE N'EST PAS LE MIEUX NOTE, et c'est deliberé. Le produit classait
- * premier « Mon frere avait honte de moi », dont les 1,2 premieres secondes sont
- * un plan de ville de NUIT : 36 de luminance, aucun visage. Comme c'est la
- * premiere image de toute la video, elle decide de la retention. Trois fenetres
- * ont ete mesurees avant de trancher — 36, 45 et 99 sur la premiere seconde — et
- * on a pris celle qui ouvre a 99. Le score du produit juge le contenu, pas
- * l'exposition.
+ * Deux autres essais ont echoue en amont, et pour la meme cause : le service
+ * Railway a redemarre pendant l'analyse. Tout l'etat des jobs vit dans des
+ * dictionnaires en memoire (JOBS, CLIPS, RAW_SEGMENTS, _transcribe_jobs), donc
+ * un redemarrage les efface et le client interroge ensuite un job qui n'existe
+ * plus — « GET /status/... 404 » jusqu'au bout de ses 15 minutes.
  *
- * LA GRILLE DEFILE : sur telephone elle est a deux colonnes, donc sans
- * defilement quatre vignettes sur dix sont visibles et le titre « 10 clips
- * viraux trouves » n'est jamais confirme par l'image.
+ * LE CLIP EST EN SPLIT ADAPTATIF, c'est le sujet de cette version.
+ * `reframe_mode=split` sans position manuelle ni repere declenche
+ * `_reframe_split_dynamic` : le service analyse la video toutes les 0,5 s et
+ * bascule seul — deux visages donnent un ecran scinde, un seul donne un suivi de
+ * visage, aucun donne un crop centre. L'alternance n'est pas montee a la main,
+ * c'est le comportement du produit.
+ *
+ * SOUS-TITRES : style `submagic`, celui que l'application applique d'office a la
+ * fin d'une generation (`_currentStyle` dans clips-v2.html). Les versions
+ * precedentes utilisaient `karaoke`, qui n'est pas le defaut.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -144,24 +153,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={90} playbackRate={10.0} muted />
+        trimBefore={90} playbackRate={9.17} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={1110} playbackRate={30.0} muted />
+        trimBefore={1890} playbackRate={30.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={3270} playbackRate={2.36} muted />
+        trimBefore={4050} playbackRate={2.17} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     15 min    duree reelle de la source Cyprien (927 s)
-     1 min 34  duree reelle de l'analyse (15 s -> 109 s dans l'enregistrement)
+     26 min    duree reelle du podcast Underscore_ (1 554 s)
+     2 min 01  duree reelle de l'analyse (14 s -> 135 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     34 s      duree du clip ouvert (09:29 -> 10:03), relevee par le script
+     32 s      duree du clip ouvert (00:38 -> 01:10), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -182,10 +191,10 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "15 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "1 min 34", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "26 min", libelle: "DE PODCAST", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "2 min 01", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
-  { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
+  { debut: 330, duree: 42, valeur: "SPLIT", libelle: "AUTOMATIQUE", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
      Un premier jet gardait ces deux pastilles a 26 % de hauteur, la ou elles
      etaient lisibles quand le telephone masquait le centre : elles tombaient
@@ -199,7 +208,7 @@ const PASTILLES: Pastille[] = [
      elles ne genent rien, et les ramener a gauche rouvrirait le conflit le jour
      ou l'incrustation reprendra de la place. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "34 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  { debut: 494, duree: 50, valeur: "32 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
