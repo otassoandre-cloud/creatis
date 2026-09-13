@@ -2658,6 +2658,14 @@ async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
 
         per_chunk_n = max(2, min(n, 4)) if len(chunks) > 1 else n
 
+        # Quand Groq refuse, il refuse pour toute la minute : s'acharner morceau par morceau
+        # ne fait qu'allonger l'attente avant le repli. Ce compteur est partage par tous les
+        # morceaux ; au 3e refus on abandonne le job d'un coup. Le client bascule alors sur la
+        # route synchrone de Vercel — laquelle a sa PROPRE cle Groq (budget distinct) et un
+        # repli Together AI. Autrement dit : echouer vite est la bonne strategie, parce que
+        # l'autre chemin est reellement meilleur dans ce cas precis.
+        refus = {"n": 0}
+
         async def analyze_chunk(chunk_segments: List[Dict]) -> List[Dict]:
             chunk_text = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in chunk_segments)
             prompt = f"""Tu es un expert en contenu viral TikTok/Shorts/Reels pour créateurs francophones.
@@ -2691,7 +2699,9 @@ Transcription (extrait) :
             # — constate en production ce jour-la : 8 morceaux, 8 refus 429, 0 candidat.
             # Groq indique combien de temps attendre dans l'en-tete `retry-after` ; on l'ecoute,
             # avec un repli sur une attente croissante quand il est absent.
-            for tentative in range(3):
+            for tentative in range(2):
+                if refus["n"] >= 3:
+                    return []
                 try:
                     async with httpx.AsyncClient(timeout=60) as c:
                         r = await c.post(
@@ -2700,15 +2710,22 @@ Transcription (extrait) :
                             json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}],
                                   "temperature": 0.7, "max_tokens": 2048},
                         )
-                        if r.status_code == 429 and tentative < 2:
-                            try:
-                                pause = min(float(r.headers.get("retry-after", 0)) or 0, 30.0)
-                            except ValueError:
-                                pause = 0.0
-                            pause = pause or (4.0 * (tentative + 1))
-                            logger.info(f"[identify_clips] 429, nouvelle tentative dans {pause:.0f}s")
-                            await asyncio.sleep(pause)
-                            continue
+                        if r.status_code == 429:
+                            refus["n"] += 1
+                            if tentative == 0 and refus["n"] < 3:
+                                # Une seule retentative, et courte. L'en-tete de Groq annonce
+                                # souvent 30 s : les attendre huit fois de suite ferait patienter
+                                # l'utilisateur huit minutes AVANT le repli, soit bien pire
+                                # qu'avant le passage en tache de fond.
+                                try:
+                                    pause = min(float(r.headers.get("retry-after", 0)) or 0, 8.0)
+                                except ValueError:
+                                    pause = 0.0
+                                logger.info(f"[identify_clips] 429, une nouvelle tentative dans {pause or 5.0:.0f}s")
+                                await asyncio.sleep(pause or 5.0)
+                                continue
+                            logger.warning("[identify_clips] Groq sature — abandon, le client bascule sur Vercel")
+                            return []
                         r.raise_for_status()
                         raw = r.json()["choices"][0]["message"]["content"].strip()
                     data = _parse_json(raw)
@@ -2737,14 +2754,20 @@ Transcription (extrait) :
         # On envoie donc les morceaux un par un des qu'il y en a plus de deux. C'est plus lent
         # (~4 min sur une video de 50 min au lieu de ~1), et c'est sans importance : depuis le
         # passage en tache de fond, personne n'attend sur une connexion ouverte.
-        sem = asyncio.Semaphore(1 if len(chunks) > 2 else 2)
-        logger.info(f"[identify_clips] {len(chunks)} morceau(x), concurrence {1 if len(chunks) > 2 else 2}")
+        # La concurrence n'etait PAS le levier : le sémaphore borne le nombre d'appels
+        # simultanes, pas le debit. Huit requetes sequentielles rapides depassent tout autant
+        # les 8 000 tokens/minute — verifie en production le 13/09, 429 a l'identique avec 1.
+        # On garde 2 (rapide quand le budget le permet) et c'est le compteur `refus` ci-dessus
+        # qui protege, en abandonnant vite.
+        sem = asyncio.Semaphore(2)
 
         async def bounded(c_segs):
             async with sem:
                 return await analyze_chunk(c_segs)
 
         results = await asyncio.gather(*(bounded(c) for c in chunks))
+        if refus["n"] >= 3:
+            raise RuntimeError("Service d'analyse saturé")
         all_clips = [clip for chunk_clips in results for clip in chunk_clips]
         logger.info(f"[identify_clips] {len(chunks)} morceau(x), {len(all_clips)} candidats avant dédoublonnage")
 
