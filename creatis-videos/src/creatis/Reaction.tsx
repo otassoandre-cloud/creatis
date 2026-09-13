@@ -26,17 +26,21 @@ import { COULEURS } from "./theme";
  * n'existe pas, `AVEC_REACTION` reste à false et rien ne s'affiche — le montage
  * continue de rendre exactement comme avant.
  *
- * ── PLACEMENT, ET POURQUOI IL CHANGE EN COURS DE ROUTE ────────────────────
- * Tant que l'encart de l'application est à l'écran (images 120 à 420), il
- * occupe tout le centre : la seule place libre est la marge gauche, à
- * mi-hauteur. Une fois l'encart parti, le cadre se libère et la fenêtre
- * descend en bas à gauche, plus grande — la position classique du format, et
- * celle demandée.
+ * ── AU DEBUT SEULEMENT, ET C'EST TOUT L'INTERET ──────────────────────────
+ * Une premiere version la gardait a l'ecran du debut a la fin, en la deplacant
+ * pour eviter l'encart. C'etait trop : une fenetre presente en permanence cesse
+ * d'etre un regard et devient un element de decor, qu'on ne voit plus au bout de
+ * trois secondes. Elle ne dure donc que les 3,7 premieres secondes — le temps
+ * d'installer quelqu'un qui regarde, puis elle laisse la place.
  *
- * Dans les deux cas : jamais au-dessus de 16 % (barre de recherche TikTok),
- * jamais à droite au-delà de 72 % (colonne de boutons), jamais sous 78 %
- * (légende et pseudo).
- */
+ * C'est la convention des chaines qui filment leur ecran : une vignette en bas a
+ * gauche pendant qu'on montre quelque chose. Le spectateur la connait, il n'a
+ * rien a decoder, et elle lui donne une reaction a laquelle accrocher la sienne.
+ *
+ * Position : bas a gauche, 408 px. Jamais au-dessus de 16 % (barre de recherche
+ * TikTok), jamais a droite au-dela de 72 % (colonne de boutons), et le bas de la
+ * fenetre s'arrete a 70 % pour ne pas toucher les sous-titres du clip, qui sont
+ * incrustes a 74 %. */
 
 /** Actif depuis le 13/09 : `public/reaction.mp4` existe.
  *
@@ -52,58 +56,33 @@ export const AVEC_REACTION = true;
 
 const FICHIER = "reaction.mp4";
 
-type Place = { x: number; y: number; taille: number };
+/** Bas a gauche. 408 px de cote, soit 38 % de la largeur : assez pour lire une
+    expression sur un ecran de telephone, ce que 276 ne permettait pas. */
+const PLACE = { x: 40, y: 940, taille: 408 };
 
-/** Marge gauche, à mi-hauteur : la seule zone libre quand l'encart est affiché. */
-const A_COTE: Place = { x: 16, y: 742, taille: 276 };
-/** Bas à gauche, plus grande : le cadre est libre une fois l'encart parti. */
-const EN_BAS: Place = { x: 36, y: 1040, taille: 336 };
+/** Entree a l'image 8, sortie amorcee a 100, disparue a 112 (3,7 s). */
+const ENTREE_IMG = 8;
+const SORTIE_IMG = 100;
 
-export const Reaction: React.FC<{
-  /** Image où l'encart de l'application apparaît. */
-  debutEncart: number;
-  /** Image où l'encart de l'application disparaît. */
-  finEncart: number;
-  /** Longueur de la séquence hôte, pour la sortie. */
-  duree: number;
-}> = ({ debutEncart, finEncart, duree }) => {
+export const Reaction: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  /* TROIS TEMPS, pas deux. Le cadre n'est occupe par l'encart qu'entre
-     `debutEncart` et `finEncart` : avant et apres, il est libre. La fenetre
-     tient donc sa place naturelle — en bas a gauche, grande — et ne se range
-     dans la marge que le temps ou l'encart a besoin du centre. Un premier jet
-     la laissait petite et a mi-hauteur du debut a la fin, y compris pendant les
-     quatre premieres secondes ou rien ne la genait.
-
-     Les deplacements sont amortis sur une demi-seconde : une fenetre qui se
-     teleporte se lit comme un bug de montage. */
-  const range = interpolate(
-    frame,
-    [debutEncart - 12, debutEncart + 3, finEncart - 6, finEncart + 9],
-    [0, 1, 1, 0],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.16, 1, 0.3, 1) },
-  );
-  const place: Place = {
-    x: interpolate(range, [0, 1], [EN_BAS.x, A_COTE.x]),
-    y: interpolate(range, [0, 1], [EN_BAS.y, A_COTE.y]),
-    taille: interpolate(range, [0, 1], [EN_BAS.taille, A_COTE.taille]),
-  };
-
-  /* Entrée une demi-seconde après le début — le premier plan doit appartenir au
-     clip seul, c'est lui qui retient. Sortie avant le carton final. */
-  const entre = interpolate(frame, [12, 12 + 0.45 * fps], [0, 1], {
+  const entre = interpolate(frame, [ENTREE_IMG, ENTREE_IMG + 0.4 * fps], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.bezier(0.16, 1, 0.3, 1),
   });
-  const sort = interpolate(frame, [duree - 14, duree - 2], [1, 0], {
+  /* Sortie plus vive que l'entree : elle s'efface au moment ou l'encart de
+     l'application arrive, donc au moment ou l'oeil a autre chose a regarder. */
+  const sort = interpolate(frame, [SORTIE_IMG, SORTIE_IMG + 12], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
   const vis = entre * sort;
   if (vis <= 0.01) return null;
+
+  const place = PLACE;
 
   return (
     <AbsoluteFill>

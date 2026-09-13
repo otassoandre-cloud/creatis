@@ -190,11 +190,11 @@ const PASTILLES: Pastille[] = [
      45 % ; on descend donc sur le buste, decale a gauche puis a droite pour que
      les deux ne se lisent pas comme une pile.
 
-     Depuis le 13/09 la colonne de GAUCHE est reservee a l'incrustation du
-     visage (voir Reaction.tsx) : « 0 MONTAGE » et « SOUS-TITRES » y tombaient
-     dessus, elles sont passees a droite. La marge gauche ne recoit plus de
-     pastille, meme quand l'incrustation est desactivee — sinon la mise en page
-     changerait selon qu'on filme une reaction ou non. */
+     « 0 MONTAGE » et « SOUS-TITRES » sont a droite parce qu'elles tombaient sur
+     l'incrustation du visage quand celle-ci durait toute la video. Elle ne dure
+     plus que 3,7 s et ne les croise donc plus, mais on les laisse : a droite
+     elles ne genent rien, et les ramener a gauche rouvrirait le conflit le jour
+     ou l'incrustation reprendra de la place. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
   { debut: 494, duree: 50, valeur: "32 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
@@ -277,7 +277,7 @@ export const Parcours: React.FC = () => {
           montage rend alors exactement comme avant, sans trou ni erreur. */}
       {AVEC_REACTION ? (
         <Sequence durationInFrames={CLIP} name="Réaction" layout="none">
-          <Reaction debutEncart={APP_DEB} finEncart={APP_FIN} duree={CLIP} />
+          <Reaction />
         </Sequence>
       ) : null}
 
