@@ -5,7 +5,7 @@ import {
 } from "remotion";
 import { POLICE } from "./police";
 import { Punch } from "./Punch";
-import { CartonFinal } from "./posts/CartonFinal";
+import { CartonBesoin } from "./posts/CartonBesoin";
 import { Pastille, Pastilles } from "./Pastilles";
 
 /**
@@ -61,14 +61,14 @@ const APP_DEB = 120;   // 4,0 s
 const APP_FIN = 420;   // 12,0 s
 
 const VERT = "#10b981";
-/* Relevement modere, corrige APRES avoir regarde le rendu. Le plateau est
-   sombre — 68 de luminance moyenne sur les 19 s montrees, 50 sur la premiere
-   seconde — et la formule du projet demandait donc le plafond de 1,9. Applique
-   tel quel, le visage ressortait delave : cette moyenne est tiree vers le bas
-   par quelques plans tres sombres, alors que les plans du milieu, ceux qu'on
-   voit vraiment, sont deja corrects. 1,45 amene l'ensemble vers 99 sans cramer
-   les hautes lumieres — la formule donne un point de depart, pas un verdict. */
-const RELEVE = "saturate(1.05)";
+/* Relevement LEGER, et volontairement en dessous de ce que la formule reclame.
+   Le clip mesure 46 de luminance moyenne : la formule demanderait x2,5, donc le
+   plafond de 1,9. Regarde a l'image, c'est un contresens — le studio a un fond
+   bleu sombre mais le VISAGE est correctement expose. La moyenne decrit le
+   decor, pas le sujet, et pousser la remonter delaverait la peau sans rien
+   gagner. Meme erreur evitee sur le plateau de Squeezie. 1,2 ouvre un peu les
+   noirs, rien de plus. */
+const RELEVE = "brightness(1.2) saturate(1.06)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
@@ -103,24 +103,23 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Amixem (480x816, 170,6 s) :
- *   2 s    la page du studio s'affiche
- *   13 s   l'analyse demarre
- *   156 s  la grille des 10 clips apparait, puis DEFILE
- *   166 s  le clip s'ouvre        (fin a 170,6 s)
+ * Version TELEPHONE du 13/09, source Underscore_ (480x816, 186,7 s) :
+ *   5 s    la page du studio s'affiche
+ *   17 s   l'analyse demarre
+ *   172 s  la grille des 10 clips apparait, puis DEFILE
+ *   181 s  le clip s'ouvre        (fin a 186,7 s)
  *
- * POURQUOI AMIXEM ET PAS SQUEEZIE. Squeezie pesait 13,4 M de vues contre 4,4 M,
- * mais c'est un jeu televise : voix qui se chevauchent, cris, musique. Quatre
- * fenetres transcrites a l'essai en sont revenues en charabia (« Tchure sur
- * deux », « Il est bete ou quoi de gars pour emessier ? »), et l'analyse rendait
- * 10, 10 puis 8 clips tous differents d'une passe a l'autre. Impossible d'y
- * choisir une vitrine fiable. Ici, un plan fixe face camera et une voix seule :
- * la transcription sort propre, quel que soit le clip retenu.
+ * POURQUOI CETTE SOURCE. Un PODCAST de 39 minutes, et c'est exactement la cible
+ * du produit — la note d'ICP dit « contenu LONG : podcasts, streams, coachs ».
+ * Montrer 39 minutes devenir dix clips vaut mieux que n'importe quelle
+ * formulation. 1,14 M de vues, studio insonorise : la transcription sort propre,
+ * ce que ni le jeu televise de Squeezie (voix qui se chevauchent, quatre
+ * fenetres transcrites en charabia) ni le bord de piscine de La Menace ne
+ * permettaient.
  *
- * LA GRILLE DEFILE, et c'est le point de cette version. Sur telephone elle est a
- * deux colonnes : sans defilement on voyait quatre vignettes sur dix, et le
- * titre « 10 clips viraux trouves » n'etait jamais confirme par l'image. Le
- * troisieme temps passe donc de 3,5 s a 6,4 s et montre la grille entiere.
+ * LA GRILLE DEFILE : sur telephone elle est a deux colonnes, donc sans
+ * defilement quatre vignettes sur dix sont visibles et le titre « 10 clips
+ * viraux trouves » n'est jamais confirme par l'image.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -143,24 +142,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={60} playbackRate={9.17} muted />
+        trimBefore={150} playbackRate={10.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={2520} playbackRate={30.0} muted />
+        trimBefore={3000} playbackRate={30.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4680} playbackRate={2.28} muted />
+        trimBefore={5160} playbackRate={2.30} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     25 min    duree reelle de la source Amixem (1 505 s)
-     2 min 23  duree reelle de l'analyse (13 s -> 156 s dans l'enregistrement)
+     39 min    duree reelle du podcast Underscore_ (2 374 s)
+     2 min 35  duree reelle de l'analyse (17 s -> 172 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     30 s      duree du clip ouvert (02:30 -> 03:00), relevee par le script
+     31 s      duree du clip ouvert (00:00 -> 00:31), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -181,8 +180,8 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "25 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "2 min 23", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "39 min", libelle: "DE PODCAST", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "2 min 35", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 20, y: 44, accent: true, angle: -2 },
   { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
@@ -192,7 +191,7 @@ const PASTILLES: Pastille[] = [
      45 % ; on descend donc sur le buste, decale a gauche puis a droite pour que
      les deux ne se lisent pas comme une pile. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 34, y: 55, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "30 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  { debut: 494, duree: 50, valeur: "31 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -270,7 +269,7 @@ export const Parcours: React.FC = () => {
       </Sequence>
 
       <Sequence from={CLIP} durationInFrames={DUREE_PARCOURS - CLIP} name="Créatis">
-        <Punch><CartonFinal clair mention="Sous-titres et recadrage automatiques" /></Punch>
+        <Punch><CartonBesoin /></Punch>
       </Sequence>
     </AbsoluteFill>
   );
