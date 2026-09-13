@@ -92,9 +92,11 @@ rester synchronisés avec `js/config.js`.
 
 ---
 
-## Les 22 modes de `api/repurpose.js`
+## Les 23 modes de `api/repurpose.js`
 
-**Analyse** — `clips`, `clips_status`, `rank_clips_visual`, `confirmer_analyse`, `text`
+**Analyse** — `clips_start` + `clips_status` (le chemin normal depuis le 13/09/2026 : job de
+fond sur Railway, interrogé toutes les 3 s), `clips` (la route synchrone, gardée en filet —
+le client y retombe si le job échoue), `rank_clips_visual`, `confirmer_analyse`, `text`
 **Upload** — `upload-token`, `upload-status`
 **Médias** — `raw_segment`, `raw_segment_status`, `preview_clip`, `preview_clip_status`,
 `clip_stream_url`, `clip_export`, `clip_export_status`
