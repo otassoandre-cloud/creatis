@@ -40,3 +40,7 @@ serveur.js
 # Profil navigateur Submagic + captures d analyse (contiennent des cookies de session)
 .playwright-profile-submagic
 .scratch-submagic
+
+# Projet video Remotion (rendu en local, jamais servi par le site)
+creatis-videos
+creatis-hyperframes

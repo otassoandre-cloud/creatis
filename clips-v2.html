@@ -3439,38 +3439,129 @@ const V2 = (() => {
            défiler les étapes aux moments où elles se produisent réellement côté serveur (médianes
            mesurées : sous-titres ~15 s, puis identification des clips). */
         let _pct = 20, _tick = null, _t0 = Date.now();
+        /* Renseigné par les interrogations du job de fond. Tant qu'il est nul, la barre avance
+           à l'aveugle comme avant ; dès que le serveur répond, elle suit l'étape réelle. */
+        let _reel = null;
         _tick = setInterval(() => {
           const s = (Date.now() - _t0) / 1000;
+          if (_reel) {
+            // Jamais en arrière : une interrogation en retard ne doit pas faire reculer la barre.
+            _pct = Math.max(_pct, _reel.pct || 0);
+            setBar(Math.round(Math.min(92, _pct)));
+            if (_reel.progress) setMsg(_reel.progress);
+            return;
+          }
           _pct += Math.max(0.25, (88 - _pct) * 0.035);   // approche asymptotique de 88 %
           setBar(Math.round(Math.min(88, _pct)));
           if (s > 14 && s < 15.5) { setStep(3); setMsg('Identification des meilleurs moments…'); }
           else if (s > 45 && s < 46.5) { setMsg('Analyse en cours — vidéo longue, on continue…'); }
         }, 700);
-        let res;
+
+        let data = null;
         try {
-          const _corps = JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true });
-          const _appel = () => fetch('/api/repurpose', { method: 'POST', headers, body: _corps });
+          /* ── CHEMIN NORMAL : analyse en tâche de fond (13/09/2026) ───────────────────────
+             On lance le travail (`clips_start`), on reçoit un identifiant en une seconde, puis
+             on interroge (`clips_status`) toutes les 3 s. Aucune requête ne dure plus de
+             quelques secondes.
+
+             Ce que ça répare, mesuré le 13/09 sur les 6 analyses de la journée : la requête
+             unique d'avant durait 30 s à 4 min, et deux choses la coupaient — iOS suspend la
+             connexion dès que l'écran se verrouille ou qu'on change d'application (« Load
+             failed » à 2 min 48), et le serveur abandonne l'appel à Railway au bout de 240 s
+             (atteint à 4 min 03 sur une vidéo longue). Les deux fois le travail était bel et
+             bien terminé côté serveur — plus personne n'écoutait. Ici, perdre une
+             interrogation ne coûte rien : la suivante retrouve le même job.
+
+             La barre de progression devient vraie par la même occasion. Elle avançait sur des
+             médianes ; 19 personnes ont rechargé la page en croyant que c'était bloqué. */
           try {
-            res = await _appel();
-          } catch (e) {
-            /* Cette requête dure 30 à 90 s. iOS coupe la connexion dès que l'écran se verrouille
-               ou que l'utilisateur change d'application : le navigateur rejette alors un
-               TypeError « Load failed ». Mesuré dans PostHog : 28 échecs en 4 jours, TOUS avec
-               reseau=true, très majoritairement sur Safari — c'était le premier motif d'échec
-               technique du produit.
-               On retente UNE fois. C'est sans danger pour l'utilisateur : le quota vidéo n'est
-               décompté qu'après confirmation d'affichage des clips (mode confirmer_analyse),
-               jamais à l'envoi. Et le travail serveur est largement mis en cache — transcription,
-               segments R2 — donc la seconde tentative aboutit souvent en quelques secondes.
-               Si elle échoue aussi, l'utilisateur voit exactement l'erreur d'avant. */
-            const _reseau = (e && (e.name === 'TypeError'
-              || /load failed|failed to fetch|network/i.test(e.message || '')));
-            if (!_reseau) throw e;
-            setMsg('Connexion interrompue — on reprend…');
-            res = await _appel();
+            const _rDep = await fetch('/api/repurpose', {
+              method: 'POST', headers,
+              body: JSON.stringify({ mode: 'clips_start', url: _ytUrl, n_clips: 10 })
+            });
+            const _dep = await _lireReponseJson(_rDep, 'démarrage de l\'analyse');
+
+            /* Un refus de quota est une RÉPONSE, pas une panne. Se replier sur la route
+               synchrone la ferait refuser à l'identique, après plusieurs minutes d'attente
+               cette fois. On la laisse traverser jusqu'au test `data.ok` plus bas, qui sait
+               déjà ouvrir la fenêtre d'abonnement. */
+            if (['upgrade_required', 'paiement_en_defaut', 'quota_atteint'].includes(_dep.error)) {
+              data = _dep;
+            } else if (!_dep.ok || !_dep.session_id) {
+              throw new Error(_dep.error || 'Démarrage impossible');
+            } else {
+              const _sid = _dep.session_id;
+              /* Pas de couperet court — celui de 100 s posé le 30/07 coupait du travail qui
+                 allait aboutir. Ce plafond-ci n'est qu'un garde-fou contre une boucle infinie
+                 si le job disparaît d'un redémarrage Railway. */
+              const _limite = Date.now() + 15 * 60 * 1000;
+              let _echecsSuite = 0;
+              for (;;) {
+                await new Promise(r => setTimeout(r, 3000));
+                if (Date.now() > _limite) throw new Error('Analyse trop longue (15 min) — réessaie, ou prends une vidéo plus courte');
+                let _job;
+                try {
+                  const _rSt = await fetch('/api/repurpose', {
+                    method: 'POST', headers,
+                    body: JSON.stringify({ mode: 'clips_status', session_id: _sid, url: _ytUrl })
+                  });
+                  _job = await _lireReponseJson(_rSt, 'suivi de l\'analyse');
+                  _echecsSuite = 0;
+                } catch (e) {
+                  /* Une interrogation perdue n'est rien : le travail continue sur le serveur.
+                     C'est exactement ce que la requête unique ne savait pas encaisser. On
+                     n'abandonne qu'après 10 échecs d'affilée, soit ~30 s sans réseau. */
+                  if (++_echecsSuite < 10) continue;
+                  throw e;
+                }
+                if (_job.status === 'error') throw new Error(_job.error || 'Analyse échouée');
+                if (_job.status === 'done') { data = _job; break; }
+                _reel = { pct: _job.pct, progress: _job.progress };
+                if ((_job.pct || 0) >= 70) setStep(3);
+                else if ((_job.pct || 0) >= 45) setStep(2);
+              }
+            }
+          } catch (eJob) {
+            /* ── FILET : la route synchrone, inchangée ──────────────────────────────────
+               Elle reste le second chemin pour une raison de fond : les deux ne cherchent pas
+               les sous-titres depuis la même adresse — la synchrone essaie d'abord depuis
+               l'IP Vercel, le job depuis celle de Railway. Une vidéo que YouTube refuse à
+               l'une passe parfois par l'autre. Au pire, on retombe sur le comportement
+               d'avant le 13/09 : jamais moins bien qu'aujourd'hui. */
+            console.warn('[clips] job de fond indisponible, repli synchrone :', eJob?.message);
+            if (window.posthog) posthog.capture('analysis_job_fallback', { raison: String(eJob?.message || '').slice(0, 140) });
+            _reel = null; _pct = Math.min(_pct, 60); _t0 = Date.now();
+            setMsg('Nouvelle tentative…');
+          }
+
+          if (!data) {
+            let res;
+            try {
+              const _corps = JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true });
+              const _appel = () => fetch('/api/repurpose', { method: 'POST', headers, body: _corps });
+              try {
+                res = await _appel();
+              } catch (e) {
+                /* Cette requête dure 30 à 90 s. iOS coupe la connexion dès que l'écran se verrouille
+                   ou que l'utilisateur change d'application : le navigateur rejette alors un
+                   TypeError « Load failed ». Mesuré dans PostHog : 28 échecs en 4 jours, TOUS avec
+                   reseau=true, très majoritairement sur Safari — c'était le premier motif d'échec
+                   technique du produit.
+                   On retente UNE fois. C'est sans danger pour l'utilisateur : le quota vidéo n'est
+                   décompté qu'après confirmation d'affichage des clips (mode confirmer_analyse),
+                   jamais à l'envoi. Et le travail serveur est largement mis en cache — transcription,
+                   segments R2 — donc la seconde tentative aboutit souvent en quelques secondes.
+                   Si elle échoue aussi, l'utilisateur voit exactement l'erreur d'avant. */
+                const _reseau = (e && (e.name === 'TypeError'
+                  || /load failed|failed to fetch|network/i.test(e.message || '')));
+                if (!_reseau) throw e;
+                setMsg('Connexion interrompue — on reprend…');
+                res = await _appel();
+              }
+            } finally { clearInterval(_tick); }
+            data = await _lireReponseJson(res, 'analyse YouTube');
           }
         } finally { clearInterval(_tick); }
-        const data = await _lireReponseJson(res, 'analyse YouTube');
         if (!data.ok) {
           if (data.error === 'upgrade_required') { setState('upload'); showUpgradeModal(); return; }
           throw new Error(data.error || 'Erreur analyse YouTube');

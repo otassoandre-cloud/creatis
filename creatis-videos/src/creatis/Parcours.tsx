@@ -4,8 +4,7 @@ import {
   useCurrentFrame, useVideoConfig,
 } from "remotion";
 import { POLICE } from "./police";
-import { Punch } from "./Punch";
-import { CartonBesoin } from "./posts/CartonBesoin";
+import { OffreEssai } from "./OffreEssai";
 import { Pastille, Pastilles } from "./Pastilles";
 import { AVEC_REACTION, Reaction } from "./Reaction";
 
@@ -57,9 +56,11 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
  */
 export const DUREE_PARCOURS = 645;
 
-const CLIP = 570;      // 19 s de clip
-const APP_DEB = 120;   // 4,0 s
-const APP_FIN = 420;   // 12,0 s
+const APP_DEB = 120;   // 4,0 s  — l'encart de l'application apparait
+const APP_FIN = 420;   // 14,0 s — il disparait
+/* 16,7 s : l'offre d'essai se pose sur le clip, qui continue de tourner
+   derriere elle jusqu'a la derniere image. */
+const OFFRE = 501;
 
 const VERT = "#10b981";
 /* Relevement minimal : 99 de luminance moyenne, mais 182 sur la premiere
@@ -101,24 +102,20 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Yomi Denzel (480x816, 155,0 s) :
- *   5 s    la page du studio s'affiche
- *   16 s   l'analyse demarre
- *   140 s  la grille des 10 clips apparait, puis DEFILE
- *   150 s  le clip s'ouvre        (fin a 155,0 s)
+ * Version TELEPHONE du 13/09, source Cyprien (480x816, 153,2 s) :
+ *   2 s    la page du studio s'affiche
+ *   14 s   l'analyse demarre
+ *   139 s  la grille des 10 clips apparait, puis DEFILE
+ *   148 s  le clip s'ouvre        (fin a 153,2 s)
  *
- * SOURCE. « 7 Machines a Acheter pour Gagner de l'Argent », 19 minutes. Choisie
- * pour son public autant que pour son son : e-commerce et business, exactement
- * les gens qui postent du court et qui paieraient pour en produire — c'est le
- * createur que l'application cite elle-meme dans son champ de recherche vocale.
- * Plan fixe face camera, voix seule : transcription propre, comme chez Amixem et
- * Underscore_, et a l'oppose du jeu televise de Squeezie ou quatre fenetres
- * transcrites sont revenues en charabia.
+ * SOURCE. 15 minutes, 1,95 M de vues. Un recit face camera : voix seule, micro
+ * propre, donc transcription fiable — le critere qui a fait ecarter le jeu
+ * televise de Squeezie, ou quatre fenetres transcrites sont revenues en
+ * charabia.
  *
  * LA GRILLE DEFILE : sur telephone elle est a deux colonnes, donc sans
  * defilement quatre vignettes sur dix sont visibles et le titre « 10 clips
- * viraux trouves » n'est jamais confirme par l'image. Le troisieme temps dure
- * 6,4 s et montre la grille entiere.
+ * viraux trouves » n'est jamais confirme par l'image.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -141,24 +138,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={150} playbackRate={9.17} muted />
+        trimBefore={60} playbackRate={10.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={2040} playbackRate={30.0} muted />
+        trimBefore={2010} playbackRate={30.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4200} playbackRate={2.34} muted />
+        trimBefore={4170} playbackRate={2.21} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     19 min    duree reelle de la source Yomi Denzel (1 157 s)
-     2 min 04  duree reelle de l'analyse (16 s -> 140 s dans l'enregistrement)
+     15 min    duree reelle de la source Cyprien (927 s)
+     2 min 05  duree reelle de l'analyse (14 s -> 139 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     32 s      duree du clip ouvert (03:55 -> 04:27), relevee par le script
+     40 s      duree du clip ouvert (06:50 -> 07:30), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -179,8 +176,8 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "19 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "2 min 04", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "15 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "2 min 05", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
   { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
@@ -196,7 +193,7 @@ const PASTILLES: Pastille[] = [
      elles ne genent rien, et les ramener a gauche rouvrirait le conflit le jour
      ou l'incrustation reprendra de la place. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "32 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  { debut: 494, duree: 50, valeur: "40 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -217,7 +214,10 @@ export const Parcours: React.FC = () => {
     <AbsoluteFill style={{ backgroundColor: "#050a07", fontFamily: POLICE }}>
       <Audio src={staticFile("clip-lamenace.mp4")} />
 
-      <Sequence durationInFrames={CLIP} name="Clip">
+      {/* Le clip tourne jusqu'a la DERNIERE image. Il s'arretait a CLIP pour
+          laisser place a un carton plein ecran ; l'offre se pose maintenant
+          par-dessus lui, donc plus rien ne doit l'interrompre. */}
+      <Sequence durationInFrames={DUREE_PARCOURS} name="Clip">
         <Video
           src={staticFile("clip-lamenace.mp4")}
           style={{ width: "100%", height: "100%", filter: RELEVE }}
@@ -269,21 +269,23 @@ export const Parcours: React.FC = () => {
 
       {/* Au-dessus du clip ET de l'encart, mais SOUS le carton final : les
           pastilles s'arretent avec l'image qu'elles commentent. */}
-      <Sequence durationInFrames={CLIP} name="Pastilles" layout="none">
+      <Sequence durationInFrames={OFFRE} name="Pastilles" layout="none">
         <Pastilles liste={PASTILLES} />
       </Sequence>
 
       {/* Le visage. Inactif tant que public/reaction.mp4 n'existe pas : le
           montage rend alors exactement comme avant, sans trou ni erreur. */}
       {AVEC_REACTION ? (
-        <Sequence durationInFrames={CLIP} name="Réaction" layout="none">
+        <Sequence durationInFrames={OFFRE} name="Réaction" layout="none">
           <Reaction />
         </Sequence>
       ) : null}
 
-      <Sequence from={CLIP} durationInFrames={DUREE_PARCOURS - CLIP} name="Créatis">
-        <Punch><CartonBesoin /></Punch>
+      {/* L'offre par-dessus le clip, sur les 4,8 dernieres secondes. */}
+      <Sequence from={OFFRE} durationInFrames={DUREE_PARCOURS - OFFRE} name="Offre d’essai">
+        <OffreEssai duree={DUREE_PARCOURS - OFFRE} />
       </Sequence>
+
     </AbsoluteFill>
   );
 };

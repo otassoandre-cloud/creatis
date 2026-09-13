@@ -46,6 +46,15 @@ export const SousTitreBrule: React.FC<{
    * deviennent illisibles.
    */
   fin?: number;
+  /**
+   * Centre le bloc verticalement, en ignorant `hauteur`.
+   *
+   * Regle appliquee a toute la pub : le texte occupe la MEME position sur chaque
+   * plan. Un sous-titre qui saute du bas au centre entre deux coupes oblige
+   * l'oeil a le rechercher, et on perd la lecture pendant la demi-seconde ou il
+   * cherche — sur un format de quinze secondes, c'est enorme.
+   */
+  centre?: boolean;
 }> = ({
   texte,
   debut,
@@ -55,6 +64,7 @@ export const SousTitreBrule: React.FC<{
   couleurAccent = COULEURS.vert,
   taille = 76,
   fin,
+  centre = false,
 }) => {
   const frame = useCurrentFrame();
   /* La hauteur est convertie en PIXELS a partir de la hauteur reelle de la
@@ -84,9 +94,9 @@ export const SousTitreBrule: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        justifyContent: "flex-start",
+        justifyContent: centre ? "center" : "flex-start",
         alignItems: "center",
-        paddingTop: (height * hauteur) / 100,
+        paddingTop: centre ? 0 : (height * hauteur) / 100,
         // Marges laterales larges : le bandeau de boutons de TikTok mord sur la
         // droite, et un texte qui touche le bord est coupe a la lecture.
         paddingLeft: 110,

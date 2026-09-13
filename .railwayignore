@@ -27,3 +27,5 @@ tests
 *.mkv
 *.psd
 *.zip
+creatis-videos
+creatis-hyperframes

@@ -19,11 +19,20 @@ import { COULEURS, ENTREE } from "../theme";
  * Les conditions reprennent paiement.html mot pour mot. Une video plus
  * genereuse que la page de paiement fabrique des demandes de remboursement.
  */
-export const CartonFinal: React.FC<{ mention?: string }> = ({
+export const CartonFinal: React.FC<{ mention?: string; clair?: boolean }> = ({
   mention = "7 jours d'essai gratuit sur l'annuel",
+  clair = false,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+
+  /* Version claire : trois secondes de carton quasi noir en fin de video tiraient
+     la luminance moyenne de 100 a 83, alors que le corpus mesure est a 116. Le
+     fond passe en clair, le texte en sombre, l'emeraude reste l'accent — la
+     marque tient, la mesure remonte. */
+  const fond = clair ? "#eef3ef" : COULEURS.fond;
+  const encre = clair ? "#0d1710" : COULEURS.texte;
+  const doux = clair ? "#5b6a5e" : COULEURS.texteDoux;
 
   const paraitre = (debut: number) =>
     interpolate(frame, [debut, debut + 0.35 * fps], [0, 1], {
@@ -33,8 +42,8 @@ export const CartonFinal: React.FC<{ mention?: string }> = ({
     });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: COULEURS.fond }}>
-      <Fond intensite={1.4} />
+    <AbsoluteFill style={{ backgroundColor: fond }}>
+      {clair ? null : <Fond intensite={1.4} />}
 
       <AbsoluteFill
         style={{
@@ -79,7 +88,7 @@ export const CartonFinal: React.FC<{ mention?: string }> = ({
             style={{
               fontSize: 88,
               fontWeight: 800,
-              color: COULEURS.texte,
+              color: encre,
               letterSpacing: "-0.04em",
             }}
           >
@@ -109,7 +118,7 @@ export const CartonFinal: React.FC<{ mention?: string }> = ({
             marginTop: 30,
             fontSize: 36,
             fontWeight: 600,
-            color: COULEURS.texteDoux,
+            color: doux,
             opacity: paraitre(0.8 * fps),
           }}
         >

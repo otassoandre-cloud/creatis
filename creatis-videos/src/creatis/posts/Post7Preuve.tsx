@@ -87,7 +87,7 @@ const Ecran: React.FC = () => {
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {vues.toLocaleString("fr-FR").replace(/ /g, " ")}
+          {vues.toLocaleString("fr-FR").replace(/\u202f/g, " ")}
         </div>
         <div
           style={{

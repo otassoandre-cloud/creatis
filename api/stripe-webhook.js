@@ -159,7 +159,35 @@ module.exports = async (req, res) => {
         const subscriptionId = session.subscription;
         let userRow = null; // portée étendue — utilisé par la notif affilié plus bas
 
-        console.log(`[Webhook] ✅ Paiement réussi — plan: ${plan}, user: ${userId || email}, subscription: ${subscriptionId}`);
+        /* ── Le paiement a-t-il VRAIMENT eu lieu ? ─────────────────────────────────
+           `checkout.session.completed` ne dit pas que l'argent est arrivé : Stripe l'émet dès que
+           le formulaire est soumis, AVANT l'authentification bancaire. Quand le 3D Secure n'est
+           pas validé, la première facture reste impayée, l'abonnement Stripe reste `incomplete`
+           — et la session porte `payment_status: 'unpaid'`.
+
+           Sans ce garde-fou, le plan était accordé quand même. Mesuré le 13/09/2026 : un compte
+           avait l'accès Starter depuis le 11/09 sans qu'un centime soit encaissé (facture
+           `requires_action`), avec une ligne `abonnements` en `active` et `past_due_depuis`
+           vide — donc invisible pour `planEffectif()`, qui ne surveille que les impayés de
+           RENOUVELLEMENT. C'est le même 3D Secure que le diagnostic du 24/08 avait désigné
+           comme le vrai goulot du tunnel.
+
+           `no_payment_required` est le cas NORMAL d'un essai (7 j Pro, 30 j UGC) : rien n'est dû
+           aujourd'hui et l'accès doit bien s'ouvrir. On accorde donc sur `paid` et sur
+           `no_payment_required`, jamais sur `unpaid`.
+
+           Fail-open si le champ est absent : une ancienne version d'API, ou un body pré-parsé
+           par Vercel, peuvent ne pas le porter — et couper l'accès d'un vrai payant serait pire
+           que le trou qu'on bouche. */
+        const paiementHonore = !session.payment_status
+          || session.payment_status === 'paid'
+          || session.payment_status === 'no_payment_required';
+
+        if (paiementHonore) {
+          console.log(`[Webhook] ✅ Paiement réussi — plan: ${plan}, user: ${userId || email}, subscription: ${subscriptionId}`);
+        } else {
+          console.warn(`[Webhook] ⏳ Session soumise mais NON payée (${session.payment_status}) — aucun accès accordé. plan: ${plan}, user: ${userId || email}, subscription: ${subscriptionId}. L'accès s'ouvrira sur invoice.payment_succeeded si la banque valide.`);
+        }
 
         if (!plan) {
           console.warn('[Webhook] Plan non identifiable depuis la session');
@@ -175,7 +203,10 @@ module.exports = async (req, res) => {
         }
 
         if (matchEmail || matchId) {
-          const patchData = { plan, stripe_customer_id: customerId, stripe_subscription_id: subscriptionId, updated_at: new Date().toISOString() };
+          /* Les identifiants Stripe sont enregistrés dans tous les cas — c'est par eux que la
+             facture payée plus tard retrouvera le compte. Seul `plan` attend le paiement. */
+          const patchData = { stripe_customer_id: customerId, stripe_subscription_id: subscriptionId, updated_at: new Date().toISOString() };
+          if (paiementHonore) patchData.plan = plan;
           // Mise à jour par userId Supabase (priorité) ou par email (fallback)
           if (matchId) {
             await supabasePatch('users', { id: matchId }, patchData);
@@ -247,7 +278,11 @@ module.exports = async (req, res) => {
             stripe_subscription_id: subscriptionId,
             stripe_customer_id: customerId,
             plan,
-            status: 'active',
+            /* `incomplete` est le statut Stripe d'un abonnement dont la première facture n'est
+               pas honorée. On le reprend tel quel : la ligne existe (le client a bien choisi une
+               offre, et la facture qui aboutit plus tard doit la retrouver) mais elle n'ouvre
+               aucun accès — `planEffectif()` ne considère que `active` et `trialing`. */
+            status: paiementHonore ? 'active' : 'incomplete',
             montant_centimes: session.amount_total || 0,
             annuel: session.metadata?.annuel === 'true',
             trial_ends_at: session.metadata?.trial_ends_at || null,
@@ -268,15 +303,17 @@ module.exports = async (req, res) => {
           );
         }
 
-        // Notifier Brevo si clé disponible
-        if (process.env.BREVO_API_KEY && email) {
+        // Notifier Brevo si clé disponible — jamais sur une session non payée : ce serait
+        // souhaiter la bienvenue à quelqu'un qui n'a aucun accès.
+        if (paiementHonore && process.env.BREVO_API_KEY && email) {
           await notifierBrevo(email, plan, customerId).catch(e =>
             console.warn('[Webhook] Erreur Brevo:', e.message)
           );
         }
 
         // Notifier l'affilié si l'utilisateur a été parrainé
-        if (process.env.BREVO_API_KEY && userRow?.referred_by) {
+        // Même règle pour l'affilié : pas de commission annoncée sur un paiement qui n'a pas eu lieu.
+        if (paiementHonore && process.env.BREVO_API_KEY && userRow?.referred_by) {
           await notifierAffilie(userRow.referred_by, email, plan).catch(e =>
             console.warn('[Webhook] Erreur notif affilié:', e.message)
           );
@@ -292,11 +329,49 @@ module.exports = async (req, res) => {
       /* ===== RENOUVELLEMENT MENSUEL ===== */
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
-        if (invoice.billing_reason === 'subscription_create') break; // Déjà géré par checkout.session.completed
+        const premiereFacture = invoice.billing_reason === 'subscription_create';
 
         const { subscriptionId } = await extraireInfosFacture(invoice);
         const customerId = invoice.customer;
         const email = invoice.customer_email;
+
+        /* PREMIÈRE facture. Elle repartait aussitôt — « déjà géré par checkout.session.completed ».
+           C'était vrai tant que ce dernier accordait le plan sans condition ; ce ne l'est plus
+           (garde-fou `paiementHonore` ci-dessus). Cet événement est désormais le SECOND chemin
+           d'ouverture de l'accès : celui de quelqu'un dont le 3D Secure aboutit après coup, ou
+           qui règle sa facture depuis le lien Stripe. Sans lui, le garde-fou transformerait une
+           authentification tardive en client débité sans accès — exactement le scénario que
+           `notifierPaiementOrphelin` existe pour signaler.
+
+           Le plan n'est jamais deviné ici : il est relu sur la ligne `abonnements` posée au
+           checkout, seule source qui connaisse l'offre réellement choisie. */
+        if (premiereFacture) {
+          if (!subscriptionId) {
+            console.warn('[Webhook] Première facture payée sans abonnement identifiable — ignorée');
+            break;
+          }
+          const abo = await supabaseGet('abonnements', { stripe_subscription_id: subscriptionId }, 'id,user_id,plan,status');
+          if (!abo) {
+            console.warn(`[Webhook] Première facture payée mais aucune ligne abonnements pour ${subscriptionId}`);
+            break;
+          }
+          // Cas courant : le checkout avait déjà tout ouvert (paiement immédiat, ou essai à 0 €
+          // dont la facture de départ est émise payée). Rien à refaire.
+          if (abo.status === 'active') break;
+
+          await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
+            status: 'active',
+            past_due_depuis: null,
+            updated_at: new Date().toISOString()
+          });
+          if (abo.user_id) {
+            await supabasePatch('users', { id: abo.user_id }, { plan: abo.plan, updated_at: new Date().toISOString() });
+          } else if (email) {
+            await supabasePatch('users', { email }, { plan: abo.plan, updated_at: new Date().toISOString() });
+          }
+          console.log(`[Webhook] ✅ Première facture enfin payée — accès ${abo.plan} ouvert (abonnement ${subscriptionId})`);
+          break;
+        }
 
         console.log(`[Webhook] 🔄 Renouvellement réussi — customer: ${customerId}`);
 

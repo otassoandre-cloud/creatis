@@ -209,6 +209,18 @@ function planEffectif(user) {
   if (!abos.length) return { plan, impaye: false };
   if (abos.some((a) => a.status === 'active' || a.status === 'trialing')) return { plan, impaye: false };
 
+  /* `incomplete` : la toute PREMIÈRE facture n'a jamais été honorée — 3D Secure abandonné au
+     checkout, ou carte refusée d'entrée. Aucune période de grâce ici, contrairement à
+     `past_due` juste en dessous : les 72 h protègent quelqu'un qui a déjà payé et dont le
+     renouvellement bute, ce qui mérite qu'on lui laisse le temps de changer de carte. Qui n'a
+     jamais rien versé n'a rien à préserver.
+     Ce chemin ne devrait plus produire d'accès du tout depuis le 13/09/2026 : le webhook
+     n'écrit plus `users.plan` tant que la session n'est pas payée, donc la ligne 206 sort avant
+     d'arriver ici. Il reste comme second verrou, et pour les comptes ouverts avant ce correctif. */
+  if (abos.every((a) => a.status === 'incomplete' || a.status === 'incomplete_expired')) {
+    return { plan: 'gratuit', impaye: true };
+  }
+
   const dates = abos
     .filter((a) => a.status === 'past_due' || a.status === 'unpaid')
     .map((a) => a.past_due_depuis)
@@ -1852,6 +1864,48 @@ ${JSON.stringify(textes, null, 0)}`;
     }
   }
 
+  /* ── ANALYSE EN TÂCHE DE FOND ─────────────────────────────────────────────────────────
+     `clips_start` lance le travail sur Railway et rend la main en une seconde ; le client
+     interroge ensuite `clips_status`. C'est le chemin normal depuis le 13/09/2026.
+
+     Ce que ça répare, mesuré ce jour-là sur 6 analyses : la route synchrone `mode: 'clips'`
+     tient la connexion ouverte pendant toute l'analyse, et deux choses la coupent —
+     iOS qui suspend la requête quand l'écran se verrouille (« Load failed » à 2 min 48), et
+     le délai d'attente de 240 s vers Railway sur une transcription Whisper longue (atteint à
+     4 min 03). Les deux fois le serveur a fini son travail sans que personne n'écoute.
+     Avec un job, la connexion du téléphone n'a plus besoin de survivre à l'analyse : une
+     interrogation perdue est sans conséquence, la suivante retrouve le même `session_id`.
+
+     `mode: 'clips'` reste en place et inchangé : le client y retombe si le job échoue. Les
+     deux chemins ne tirent pas les sous-titres au même endroit — la route synchrone essaie
+     d'abord depuis l'IP Vercel, le job depuis celle de Railway — donc le filet rattrape aussi
+     les vidéos que l'une des deux se fait refuser. */
+  if (mode === 'clips_start') {
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    const _auS = await verifyToken(token);
+    if (_auS) {
+      const _refusS = verifierQuotaVideos(await getUserPlan(_auS.id));
+      if (_refusS) return res.status(_refusS.status).json(_refusS.body);
+    }
+    const videoId = extractVideoId(url);
+    if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ url, n_clips: body.n_clips || 10 }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.session_id) throw new Error(data.detail || `Démarrage impossible (${r.status})`);
+      console.log(`[clips_start][${videoId}] job ${data.session_id}`);
+      return res.status(200).json({ ok: true, mode: 'clips_start', session_id: data.session_id, video_id: videoId });
+    } catch (err) {
+      console.warn(`[clips_start][${videoId}] échec: ${err.message}`);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clips_status') {
     const { session_id } = body;
     if (!session_id) return res.status(400).json({ error: 'session_id manquant' });
@@ -1866,12 +1920,37 @@ ${JSON.stringify(textes, null, 0)}`;
         throw new Error(err.detail || `Erreur statut (${r.status})`);
       }
       const job = await r.json();
-      if (job.status === 'done' && job.result?.clips) {
-        job.result.clips = job.result.clips.map(clip => ({
-          ...clip,
-          download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
-        }));
-        if (authUser) await incrementRepurposeCount(authUser.id);
+
+      /* Le décompte du quota n'a RIEN à faire ici. Il se faisait à l'arrivée des clips ;
+         `mode: 'clips'` l'avait déjà déplacé vers `confirmer_analyse`, pour la raison
+         écrite là-bas : le serveur peut terminer alors que le client n'a jamais rien
+         affiché, et l'utilisateur perdait sa vidéo sur un écran d'erreur. Le laisser ici
+         aurait en plus décompté DEUX fois, ce chemin et la confirmation. */
+
+      /* Railway et Vercel se deploient sur le meme push, sans ordre garanti. Pendant la
+         minute ou l'un est a jour et pas l'autre, `result` peut encore etre l'ANCIENNE forme :
+         une simple liste de clips, sans les segments. Livrer ca au client donnerait des clips
+         sans sous-titres, en silence. On refuse : le client bascule alors sur la route
+         synchrone, qui elle est complete. */
+      if (job.status === 'done' && Array.isArray(job.result)) {
+        console.warn(`[clips_status] ${session_id} : forme ancienne (Railway pas encore deploye) — repli synchrone`);
+        throw new Error('Service en cours de mise a jour');
+      }
+
+      if (job.status === 'done' && job.result) {
+        /* Le titre est cosmétique et ne doit jamais retarder la réponse : le client affiche
+           « Vidéo YouTube » à défaut, exactement comme aujourd'hui quand la page est
+           inaccessible. Une seule tentative, sur la dernière interrogation. */
+        if (!job.result.title && job.result.video_id) {
+          job.result.title = await _fetchYouTubePage(job.result.video_id)
+            .then(html => {
+              const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+              return m ? m[1].replace(' - YouTube', '') : '';
+            })
+            .catch(() => '');
+        }
+        job.result.youtube_url = url || null;
+        console.log(`[clips_status] ${session_id} terminé — ${job.result.clips?.length || 0} clips, ${job.result.segments?.length || 0} segments`);
       }
       return res.status(200).json({ ok: true, mode: 'clips_status', ...job });
     } catch (err) {
@@ -2045,8 +2124,14 @@ ${JSON.stringify(textes, null, 0)}`;
    de l'utilisateur ont echoue alors que le serveur, lui, a fini par produire ses 2176 segments :
    personne n'ecoutait plus.
 
-   Le vrai correctif est de passer l'analyse en tache de fond (Railway expose deja POST /clips +
-   GET /status/{session_id}, et ce fichier expose deja `mode: 'clips_status'`) — mais le client
-   ne s'en sert jamais. Tant que ce cablage n'est pas fait, ce plafond releve au moins la barre
-   pour les videos qui prennent entre 10 et 60 s. */
+   Le vrai correctif — passer l'analyse en tache de fond — est en place depuis le 13/09/2026 :
+   le client appelle `clips_start` puis interroge `clips_status`, et aucune de ces deux requetes
+   ne depasse quelques secondes. Ce plafond ne concerne donc plus que le filet de securite
+   (`mode: 'clips'`, la route synchrone), ou il releve la barre pour les videos qui prennent
+   entre 10 et 60 s.
+
+   A verifier si un jour un doute revient : rien ne prouve que cette declaration soit lue. Le
+   13/09, une analyse a tourne 243 s dans cette fonction avant de repondre — quatre fois la
+   valeur ci-dessous. Vercel documente `export const config` pour les modules ES ; ce fichier
+   est en CommonJS. Ne pas s'appuyer dessus comme sur une garantie. */
 module.exports.config = { maxDuration: 60 };

@@ -2729,14 +2729,41 @@ async def run_clips(
     session_id: str, url: str, n_clips: int,
     video_url: Optional[str] = None, audio_url: Optional[str] = None,
 ) -> None:
+    """Analyse complete en tache de fond. Le client interroge GET /status/{session_id}.
+
+    13/09/2026 — cette fonction existait mais personne ne l'appelait : le client passait par
+    la route SYNCHRONE de Vercel, qui tient la connexion ouverte pendant toute l'analyse.
+    Ca cassait de deux facons, mesurees le meme jour :
+      - iOS coupe la requete des que l'ecran se verrouille ou qu'on change d'appli (« Load
+        failed » a 2 min 48) ;
+      - une transcription Whisper longue depasse le delai d'attente de Vercel vers Railway
+        (240 s, atteint a 4 min 03 sur une video longue).
+    Dans les deux cas le serveur finissait son travail — plus personne n'ecoutait.
+
+    Ce qu'apporte le passage en tache de fond : la connexion du telephone n'a plus besoin de
+    survivre a l'analyse, et une interrogation perdue est sans consequence puisque la
+    suivante retrouve le meme `session_id`.
+
+    `progress` est renseigne a chaque etape. Ce n'est pas decoratif : le client faisait
+    avancer une barre a l'aveugle sur des medianes, et 19 personnes ont recharge la page en
+    croyant que c'etait bloque. Il peut desormais afficher l'etape reelle.
+    """
+    def etape(texte: str, pct: int) -> None:
+        # `.get` et non un acces direct : la session peut avoir ete purgee par
+        # `_cleanup_old_jobs` pendant qu'on travaille.
+        if session_id in CLIPS:
+            CLIPS[session_id].update({"progress": texte, "pct": pct})
+
     try:
         video_id = _get_video_id(url)
         if not video_id:
             raise RuntimeError("URL YouTube invalide")
 
+        etape("Récupération des sous-titres…", 15)
         transcript = await _get_subtitles(video_id)
 
         if not transcript:
+            etape("Téléchargement audio…", 25)
             out_dir = WORK_DIR / f"cl_{session_id}"
             out_dir.mkdir(parents=True, exist_ok=True)
             if video_url:
@@ -2756,14 +2783,32 @@ async def run_clips(
                     logger.warning(f"[clips] audio download failed: {e}")
                 if not source:
                     raise RuntimeError(f"Téléchargement audio échoué: impossible d'obtenir l'audio")
+            etape("Transcription Whisper…", 45)
             transcript = await transcribe(source)
             Path(source).unlink(missing_ok=True)
 
         if not transcript or not transcript["segments"]:
             raise RuntimeError("Impossible d'obtenir la transcription")
 
+        etape("Identification des meilleurs moments…", 70)
         clips = await _identify_clips(transcript, n_clips)
-        CLIPS[session_id] = {"status": "done", "result": clips, "_ts": _time.time()}
+
+        # La forme du resultat suit celle de la route synchrone `mode: 'clips'` de Vercel
+        # (clips + segments + duration), pour que le client consomme les deux chemins avec le
+        # meme code. Les segments sont indispensables : ils portent les sous-titres.
+        CLIPS[session_id] = {
+            "status": "done",
+            "progress": "Clips identifiés",
+            "pct": 100,
+            "result": {
+                "clips": clips,
+                "segments": transcript["segments"],
+                "duration": transcript.get("duration", 0),
+                "video_id": video_id,
+            },
+            "_ts": _time.time(),
+        }
+        logger.info(f"Clips {session_id[:8]} OK: {len(clips)} clips, {len(transcript['segments'])} segments")
         _cleanup_old_jobs()
 
     except Exception as e:
@@ -4484,7 +4529,7 @@ def shorts_file(job_id: str, filename: str):
 @app.post("/clips")
 async def clips(req: ClipsRequest, tasks: BackgroundTasks, _=Depends(auth)):
     session_id = str(uuid.uuid4())[:12]
-    CLIPS[session_id] = {"status": "processing"}
+    CLIPS[session_id] = {"status": "processing", "progress": "Démarrage…", "pct": 5, "_ts": _time.time()}
     tasks.add_task(run_clips, session_id, req.url, min(max(1, req.n_clips), 10), req.video_url, req.audio_url)
     return {"session_id": session_id}
 

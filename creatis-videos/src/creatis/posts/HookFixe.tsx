@@ -30,6 +30,15 @@ export const HookFixe: React.FC<{
   couleurLigne2?: string;
   /** Ombre portee derriere le texte quand il passe sur une video. */
   surVideo?: boolean;
+  /**
+   * Centre le bloc verticalement dans le cadre, en ignorant `hauteur`.
+   *
+   * La recherche 2026 sur les formats courts est explicite : le hook se place
+   * au centre exact de l'ecran, en gras et en fort contraste, parce que c'est la
+   * que l'oeil tombe quand le son est coupe. Un pourcentage regle a la main
+   * derivait des qu'on changeait le nombre de lignes.
+   */
+  centre?: boolean;
 }> = ({
   ligne1,
   ligne2,
@@ -38,6 +47,7 @@ export const HookFixe: React.FC<{
   tailleLigne2 = 56,
   couleurLigne2 = COULEURS.vert,
   surVideo = true,
+  centre = false,
 }) => {
   const frame = useCurrentFrame();
   /* Comme dans SousTitreBrule : un pourcentage CSS se calcule sur la LARGEUR du
@@ -63,9 +73,9 @@ export const HookFixe: React.FC<{
     <AbsoluteFill
       style={{
         flexDirection: "column",
-        justifyContent: "flex-start",
+        justifyContent: centre ? "center" : "flex-start",
         alignItems: "center",
-        paddingTop: (height * hauteur) / 100,
+        paddingTop: centre ? 0 : (height * hauteur) / 100,
         paddingLeft: 90,
         paddingRight: 90,
         textAlign: "center",
