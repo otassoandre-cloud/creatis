@@ -1942,12 +1942,26 @@ ${JSON.stringify(textes, null, 0)}`;
            « Vidéo YouTube » à défaut, exactement comme aujourd'hui quand la page est
            inaccessible. Une seule tentative, sur la dernière interrogation. */
         if (!job.result.title && job.result.video_id) {
-          job.result.title = await _fetchYouTubePage(job.result.video_id)
-            .then(html => {
-              const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
-              return m ? m[1].replace(' - YouTube', '') : '';
-            })
+          /* oEmbed d'abord. Le scrape de la page d'ecoute est bot-bloque depuis l'IP Vercel :
+             verifie le 13/09, la premiere version de ce bloc rendait une chaine vide et le
+             studio affichait « Video YouTube » a la place du vrai titre — y compris dans
+             l'historique des generations, ou toutes les lignes se seraient appelees pareil.
+             oEmbed est une API publique documentee, sans cle, qui repond la ou le scrape est
+             refuse. Le scrape reste en second : il lit le titre dans la langue d'origine. */
+          const _oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + job.result.video_id)}&format=json`;
+          job.result.title = await fetch(_oembed, { signal: AbortSignal.timeout(6000) })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => (d?.title || ''))
             .catch(() => '');
+
+          if (!job.result.title) {
+            job.result.title = await _fetchYouTubePage(job.result.video_id)
+              .then(html => {
+                const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+                return m ? m[1].replace(' - YouTube', '') : '';
+              })
+              .catch(() => '');
+          }
         }
         job.result.youtube_url = url || null;
         console.log(`[clips_status] ${session_id} terminé — ${job.result.clips?.length || 0} clips, ${job.result.segments?.length || 0} segments`);
