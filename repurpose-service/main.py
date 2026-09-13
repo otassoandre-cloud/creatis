@@ -2684,21 +2684,49 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
 
 Transcription (extrait) :
 {chunk_text}"""
-            try:
-                async with httpx.AsyncClient(timeout=60) as c:
-                    r = await c.post(
-                        "https://api.groq.com/openai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                        json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}],
-                              "temperature": 0.7, "max_tokens": 2048},
-                    )
-                    r.raise_for_status()
-                    raw = r.json()["choices"][0]["message"]["content"].strip()
-                data = _parse_json(raw)
-                return data.get("clips", [])
-            except Exception as e:
-                logger.warning(f"[identify_clips] morceau échoué: {e}")
-                return []
+            # Groq plafonne le compte gratuit a 30 requetes/minute. Une video longue produit
+            # jusqu'a 8 morceaux envoyes 3 par 3 : le plafond est atteint des qu'une deuxieme
+            # analyse tourne en meme temps. Avant le 13/09/2026 chaque morceau refuse repartait
+            # les mains vides SANS BRUIT, et une video entiere pouvait ressortir avec zero clip
+            # — constate en production ce jour-la : 8 morceaux, 8 refus 429, 0 candidat.
+            # Groq indique combien de temps attendre dans l'en-tete `retry-after` ; on l'ecoute,
+            # avec un repli sur une attente croissante quand il est absent.
+            for tentative in range(3):
+                try:
+                    async with httpx.AsyncClient(timeout=60) as c:
+                        r = await c.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                            json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}],
+                                  "temperature": 0.7, "max_tokens": 2048},
+                        )
+                        if r.status_code == 429 and tentative < 2:
+                            try:
+                                pause = min(float(r.headers.get("retry-after", 0)) or 0, 30.0)
+                            except ValueError:
+                                pause = 0.0
+                            pause = pause or (4.0 * (tentative + 1))
+                            logger.info(f"[identify_clips] 429, nouvelle tentative dans {pause:.0f}s")
+                            await asyncio.sleep(pause)
+                            continue
+                        r.raise_for_status()
+                        raw = r.json()["choices"][0]["message"]["content"].strip()
+                    data = _parse_json(raw)
+                    clips_morceau = data.get("clips", [])
+                    # Une reponse 200 illisible arrive aussi (JSON tronque par `max_tokens`,
+                    # preambule en markdown). Elle vaut un echec : on retente.
+                    if not clips_morceau and tentative < 2:
+                        logger.info("[identify_clips] morceau sans clip exploitable, nouvelle tentative")
+                        await asyncio.sleep(2.0)
+                        continue
+                    return clips_morceau
+                except Exception as e:
+                    if tentative < 2:
+                        logger.info(f"[identify_clips] morceau en echec ({e}), nouvelle tentative")
+                        await asyncio.sleep(3.0 * (tentative + 1))
+                        continue
+                    logger.warning(f"[identify_clips] morceau abandonné après 3 tentatives: {e}")
+            return []
 
         # Concurrence bornée — ne pas taper trop fort sur les limites de débit Groq (30 RPM en free)
         sem = asyncio.Semaphore(3)
@@ -2792,6 +2820,16 @@ async def run_clips(
 
         etape("Identification des meilleurs moments…", 70)
         clips = await _identify_clips(transcript, n_clips)
+
+        # Une analyse qui ne rend AUCUN clip n'est pas une analyse reussie. Elle etait
+        # pourtant publiee en `done` : le client affichait « 0 clips viraux trouves »,
+        # decomptait le quota et enregistrait une generation vide. Vu en production le
+        # 13/09/2026, apres que les 8 morceaux se soient fait refuser par Groq.
+        # En la declarant en echec, le client bascule sur la route synchrone de Vercel, qui
+        # a son propre repli (Together AI) la ou cette fonction n'en a pas.
+        if not clips:
+            raise RuntimeError("Aucun clip identifié dans cette vidéo")
+
 
         # La forme du resultat suit celle de la route synchrone `mode: 'clips'` de Vercel
         # (clips + segments + duration), pour que le client consomme les deux chemins avec le
