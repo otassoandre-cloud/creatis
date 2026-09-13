@@ -1544,8 +1544,22 @@ ${JSON.stringify(textes, null, 0)}`;
       const _refus = verifierQuotaVideos(await getUserPlan(_au.id));
       if (_refus) return res.status(_refus.status).json(_refus.body);
     }
+    /* Le titre. Ce chemin servait a l'upload de fichier, ou le client le connait toujours
+       (c'est le nom du fichier). Depuis le 13/09 il recoit aussi le repli d'une analyse
+       YouTube : la le client n'a rien, puisque c'est le job qui devait le lui donner et
+       qu'il a echoue. Sans ca, la generation s'appelait « Video YouTube » dans l'historique.
+       oEmbed plutot que le scrape de la page : ce dernier est bot-bloque depuis l'IP Vercel. */
+    let _titre = body.title || '';
+    if (!_titre && body.youtube_url && body.video_id) {
+      _titre = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + body.video_id)}&format=json`,
+        { signal: AbortSignal.timeout(6000) })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => (d?.title || ''))
+        .catch(() => '');
+    }
+
     try {
-      const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5, body.energy_peaks || []);
+      const clips = await identifyViralClips(body.segments, body.video_id, _titre, body.n_clips || 5, body.energy_peaks || []);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       const _debug = clips[0]?._dbg || null;
       // Décompte APRÈS succès uniquement : une analyse qui échoue ne doit pas coûter un crédit.
@@ -1560,7 +1574,7 @@ ${JSON.stringify(textes, null, 0)}`;
            Depuis le 13/09 il recoit aussi le repli d'une analyse YouTube dont le job a rendu
            ses segments — et la generation enregistree doit alors porter la vraie URL, sinon
            le bouton « Reprendre » de l'historique ne sait plus quoi rouvrir. */
-        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: body.youtube_url || `upload:${body.video_id}`, segments: body.segments }
+        result: { clips: clipsWithId, title: _titre, duration: body.duration || 0, youtube_url: body.youtube_url || `upload:${body.video_id}`, segments: body.segments }
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });
