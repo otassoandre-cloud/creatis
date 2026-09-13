@@ -148,6 +148,29 @@ try {
   console.log(`  ${releve.titre}`);
   releve.clips.forEach((c, i) => console.log(`   ${i} · ${c.score} · ${c.duree} · ${c.titre}`));
 
+  /* ON FAIT DEFILER LA GRILLE — c'est le plan qui prouve le produit.
+     Sur telephone la grille est a deux colonnes : sans defilement, quatre
+     vignettes sur dix sont visibles et l'entete « 10 clips viraux trouves »
+     n'est pas confirme par l'image. On descend donc jusqu'au bas de la grille
+     puis on remonte, lentement, pour que le spectateur COMPTE les clips.
+     Defilement par petits pas plutot qu'un `scrollIntoView` : un saut instantane
+     ne se lit pas, et une fois accelere au montage il devient invisible. */
+  const grille = await page.evaluate(() => {
+    const g = document.getElementById("clips-grid");
+    return g ? g.getBoundingClientRect().bottom + window.scrollY : 0;
+  });
+  const pas = 90;
+  for (let y = 0; y < grille; y += pas) {
+    await page.mouse.wheel(0, pas);
+    await attendre(110);
+  }
+  await attendre(700);
+  for (let y = grille; y > 0; y -= pas * 2) {
+    await page.mouse.wheel(0, -pas * 2);
+    await attendre(70);
+  }
+  await attendre(900);
+
   /* QUEL CLIP OUVRIR — et pourquoi ca ne peut pas etre un rang fixe.
      Le clip ouvert finit en plein ecran dans le montage : c'est la vitrine. Or
      l'analyse n'est PAS deterministe — deux passages sur la meme video ont donne
@@ -163,8 +186,35 @@ try {
      Si le motif ne trouve rien, on le dit et on prend le premier — jamais un
      silence qui donnerait une vitrine choisie au hasard. */
   const motif = (process.env.CLIP_TITRE || "").trim().toLowerCase();
+  const cible = parseFloat(process.env.CLIP_SECONDE || "");
   let iClip = Math.max(0, parseInt(process.env.CLIP || "0", 10) || 0);
-  if (motif) {
+
+  /* SELECTION PAR INSTANT — la seule qui resiste a une nouvelle analyse.
+     Le titre ne tient pas : l'IA le reecrit a chaque passe (« Boule au ventre &
+     rire instantane » est devenu « Il perd le jeu en 1 seconde ! »), et un motif
+     qui marchait hier tombe dans le repli demain. Le rang ne tient pas non plus,
+     les scores bougent. L'INSTANT, lui, revient : le meme moment fort est
+     redecoupe a quelques secondes pres (09:30 puis 09:40, 04:44 puis 05:06).
+     On prend donc la carte dont le debut est le plus proche de la seconde visee,
+     et on refuse au-dela de 45 s d'ecart — passe ce seuil ce n'est plus le meme
+     moment, et mieux vaut le dire que montrer autre chose. */
+  const enSecondes = (badge) => {
+    const m = /(\d+):(\d+)/.exec(badge || "");
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN;
+  };
+  if (!Number.isNaN(cible)) {
+    let meilleur = -1, ecart = Infinity;
+    releve.clips.forEach((c, i) => {
+      const d = Math.abs(enSecondes(c.duree) - cible);
+      if (d < ecart) { ecart = d; meilleur = i; }
+    });
+    if (meilleur >= 0 && ecart <= 45) {
+      iClip = meilleur;
+      console.log(`  clip le plus proche de ${cible} s : rang ${iClip} (${ecart} s d'écart)`);
+    } else {
+      console.log(`  AUCUN clip a moins de 45 s de ${cible} s — on prend le rang ${iClip}`);
+    }
+  } else if (motif) {
     const sansAccent = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
     const trouve = releve.clips.findIndex((c) => sansAccent(c.titre).includes(sansAccent(motif)));
     if (trouve >= 0) iClip = trouve;

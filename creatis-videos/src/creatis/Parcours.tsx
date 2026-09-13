@@ -58,7 +58,7 @@ export const DUREE_PARCOURS = 645;
 
 const CLIP = 570;      // 19 s de clip
 const APP_DEB = 120;   // 4,0 s
-const APP_FIN = 360;   // 12,0 s
+const APP_FIN = 420;   // 12,0 s
 
 const VERT = "#10b981";
 /* Relevement modere, corrige APRES avoir regarde le rendu. Le plateau est
@@ -68,13 +68,13 @@ const VERT = "#10b981";
    par quelques plans tres sombres, alors que les plans du milieu, ceux qu'on
    voit vraiment, sont deja corrects. 1,45 amene l'ensemble vers 99 sans cramer
    les hautes lumieres — la formule donne un point de depart, pas un verdict. */
-const RELEVE = "brightness(1.45) saturate(1.06)";
+const RELEVE = "saturate(1.05)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
-  [0, 44, "Tu colles le lien"],
-  [44, 135, "L’IA analyse la vidéo"],
-  [135, 240, "Tes clips sont prêts"],
+  [0, 36, "Tu colles le lien"],
+  [36, 108, "L’IA analyse la vidéo"],
+  [108, 300, "10 clips prêts"],
 ];
 
 const Legende: React.FC<{ texte: string }> = ({ texte }) => {
@@ -103,15 +103,24 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Squeezie (480x816, 165,8 s) :
- *   5 s    la page du studio s'affiche
- *   16 s   l'analyse demarre
- *   158 s  la grille des 10 clips apparait
- *   160 s  le clip s'ouvre        (fin a 165,8 s)
+ * Version TELEPHONE du 13/09, source Amixem (480x816, 170,6 s) :
+ *   2 s    la page du studio s'affiche
+ *   13 s   l'analyse demarre
+ *   156 s  la grille des 10 clips apparait, puis DEFILE
+ *   166 s  le clip s'ouvre        (fin a 170,6 s)
  *
- * L'analyse a dure 2 min 22 sur 1 h 12 de source. On en montre les 90 DERNIERES
- * secondes a x30 : on voit la barre avancer et SE TERMINER, le seul moment qui
- * porte une information. Tout comprimer donnerait un clignotement.
+ * POURQUOI AMIXEM ET PAS SQUEEZIE. Squeezie pesait 13,4 M de vues contre 4,4 M,
+ * mais c'est un jeu televise : voix qui se chevauchent, cris, musique. Quatre
+ * fenetres transcrites a l'essai en sont revenues en charabia (« Tchure sur
+ * deux », « Il est bete ou quoi de gars pour emessier ? »), et l'analyse rendait
+ * 10, 10 puis 8 clips tous differents d'une passe a l'autre. Impossible d'y
+ * choisir une vitrine fiable. Ici, un plan fixe face camera et une voix seule :
+ * la transcription sort propre, quel que soit le clip retenu.
+ *
+ * LA GRILLE DEFILE, et c'est le point de cette version. Sur telephone elle est a
+ * deux colonnes : sans defilement on voyait quatre vignettes sur dix, et le
+ * titre « 10 clips viraux trouves » n'etait jamais confirme par l'image. Le
+ * troisieme temps passe donc de 3,5 s a 6,4 s et montre la grille entiere.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -132,26 +141,26 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
    pixels — au rendu on ne voyait qu'un trait vert. */
 const ParcoursAccelere: React.FC = () => (
   <Series>
-    <Series.Sequence durationInFrames={44} layout="none">
+    <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={150} playbackRate={7.5} muted />
+        trimBefore={60} playbackRate={9.17} muted />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={91} layout="none">
+    <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={2040} playbackRate={29.7} muted />
+        trimBefore={2520} playbackRate={30.0} muted />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={105} layout="none">
+    <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4740} playbackRate={2.24} muted />
+        trimBefore={4680} playbackRate={2.28} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     1 h 12    duree reelle de la source Squeezie (4 320 s)
-     2 min 22  duree reelle de l'analyse (16 s -> 158 s dans l'enregistrement)
+     25 min    duree reelle de la source Amixem (1 505 s)
+     2 min 23  duree reelle de l'analyse (13 s -> 156 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     59 s      duree du clip ouvert (10:40 -> 11:39), relevee par le script
+     30 s      duree du clip ouvert (02:30 -> 03:00), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -172,13 +181,18 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 128, duree: 36, valeur: "1 h 12", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 170, duree: 36, valeur: "2 min 22", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
-  { debut: 240, duree: 40, valeur: "0", libelle: "MONTAGE", x: 20, y: 44, accent: true, angle: -2 },
-  { debut: 296, duree: 40, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
-  // L'encart a disparu a l'image 360 : le cadre est libre, on se centre.
-  { debut: 380, duree: 42, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 26, accent: true, angle: -2 },
-  { debut: 430, duree: 46, valeur: "59 s", libelle: "PRÊT À POSTER", x: 50, y: 62, accent: true, angle: 2 },
+  { debut: 130, duree: 36, valeur: "25 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "2 min 23", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 20, y: 44, accent: true, angle: -2 },
+  { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
+  /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
+     Un premier jet gardait ces deux pastilles a 26 % de hauteur, la ou elles
+     etaient lisibles quand le telephone masquait le centre : elles tombaient
+     desormais EN PLEIN VISAGE. Le recadrage 9:16 place la tete entre 15 % et
+     45 % ; on descend donc sur le buste, decale a gauche puis a droite pour que
+     les deux ne se lisent pas comme une pile. */
+  { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 34, y: 55, accent: true, angle: -2 },
+  { debut: 494, duree: 50, valeur: "30 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
