@@ -61,11 +61,14 @@ const APP_DEB = 120;   // 4,0 s
 const APP_FIN = 360;   // 12,0 s
 
 const VERT = "#10b981";
-/* Relevement leger, et calcule : ce clip-ci sort a 113 de luminance (99 sur la
-   premiere seconde) — tourne en interieur, dans une fabrique de cigares. 118/113
-   donne 1,04, qu'on arrondit a 1,06 pour rattraper l'ouverture plus sombre que
-   la moyenne. Loin du plafond de 1,9 : on corrige, on ne repeint pas. */
-const RELEVE = "brightness(1.06) saturate(1.05)";
+/* Relevement modere, corrige APRES avoir regarde le rendu. Le plateau est
+   sombre — 68 de luminance moyenne sur les 19 s montrees, 50 sur la premiere
+   seconde — et la formule du projet demandait donc le plafond de 1,9. Applique
+   tel quel, le visage ressortait delave : cette moyenne est tiree vers le bas
+   par quelques plans tres sombres, alors que les plans du milieu, ceux qu'on
+   voit vraiment, sont deja corrects. 1,45 amene l'ensemble vers 99 sans cramer
+   les hautes lumieres — la formule donne un point de depart, pas un verdict. */
+const RELEVE = "brightness(1.45) saturate(1.06)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
@@ -100,12 +103,15 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 12/09 (480x816, 123,5 s) — filmee a la largeur EXACTE
- * de l'encart, donc affichee sans redimensionnement :
- *   2 s    la page du studio s'affiche
- *   13 s   l'analyse demarre
- *   116 s  la grille des clips apparait
- *   118 s  le clip s'ouvre        (fin a 123,5 s)
+ * Version TELEPHONE du 13/09, source Squeezie (480x816, 165,8 s) :
+ *   5 s    la page du studio s'affiche
+ *   16 s   l'analyse demarre
+ *   158 s  la grille des 10 clips apparait
+ *   160 s  le clip s'ouvre        (fin a 165,8 s)
+ *
+ * L'analyse a dure 2 min 22 sur 1 h 12 de source. On en montre les 90 DERNIERES
+ * secondes a x30 : on voit la barre avancer et SE TERMINER, le seul moment qui
+ * porte une information. Tout comprimer donnerait un clignotement.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -117,7 +123,7 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * APP_FIN - APP_DEB, et epousent les bornes de LEGENDES (44 / 135 / 240) : le
  * libelle affiche correspond donc toujours a ce qui est montre.
  *
- * L'analyse est vue a x34 : personne ne regarde une barre de progression en
+ * L'analyse est vue a x30 : personne ne regarde une barre de progression en
  * temps reel, mais on veut la voir parcourir toute sa course, pas sauter.
  */
 /* `layout="none"` sur chaque sequence : sans lui, Series.Sequence enveloppe ses
@@ -128,24 +134,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={44} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={60} playbackRate={7.5} muted />
+        trimBefore={150} playbackRate={7.5} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={91} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={390} playbackRate={34.0} muted />
+        trimBefore={2040} playbackRate={29.7} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={105} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={3480} playbackRate={2.14} muted />
+        trimBefore={4740} playbackRate={2.24} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     55 min   duree reelle de la source (3 323 s)
-     1 min 43 duree reelle de l'analyse (13 s -> 116 s dans l'enregistrement)
+     1 h 12    duree reelle de la source Squeezie (4 320 s)
+     2 min 22  duree reelle de l'analyse (16 s -> 158 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     32 s     duree du clip ouvert (01:04 -> 01:36), relevee par le script
+     59 s      duree du clip ouvert (10:40 -> 11:39), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -154,22 +160,26 @@ const ParcoursAccelere: React.FC = () => (
    Ce qui est constant, lui, est affiche : la duree de la source, celle de
    l'analyse, le format de sortie, la duree du clip.
 
-   Placement, et il n'y a que deux couloirs libres :
-     y = 8 %   au-dessus de l'encart, qui commence a 240 px
-     y = 62 %  entre le bas de l'encart (1 056 px) et le libelle d'etape
-   Un premier jet posait la rangee basse a 73 %, soit 1 402 px — exactement sur
-   le libelle, qui est ancre a 1 390. « 0 MONTAGE » recouvrait la moitie de
-   « L'IA analyse la video ». On alterne gauche et droite pour que l'oeil se
-   deplace, jamais sous 76 % ou l'interface de TikTok mange l'image. */
-const PASTILLES: Pastille[] = [
-  { debut: 128, duree: 34, valeur: "55 min", libelle: "DE VIDÉO", x: 30, y: 8, angle: -3 },
-  { debut: 166, duree: 36, valeur: "1 min 43", libelle: "D'ANALYSE", x: 70, y: 8, angle: 3 },
-  { debut: 236, duree: 40, valeur: "0", libelle: "MONTAGE", x: 33, y: 62, accent: true, angle: -2 },
-  { debut: 292, duree: 40, valeur: "9:16", libelle: "RECADRÉ TOUT SEUL", x: 66, y: 8, accent: true, angle: 3 },
-  { debut: 376, duree: 40, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 8, accent: true, angle: -2 },
-  { debut: 424, duree: 46, valeur: "32 s", libelle: "PRÊT À POSTER", x: 50, y: 62, accent: true, angle: 2 },
-];
+   PLACEMENT — c'est ce que la derniere version ratait. Les pastilles etaient
+   a 8 % de hauteur, donc DERRIERE la barre de recherche de TikTok : invisibles
+   la ou on croyait les avoir mises. Elles se tiennent desormais dans la zone
+   libre (16 %-78 %), et hors de la colonne de boutons de droite (x > 78 % des
+   que y depasse 45 %).
 
+   Tant que l'encart est a l'ecran (jusqu'a l'image 360), elles occupent les
+   marges laterales qu'il laisse libres : il fait 480 px de large et centre,
+   donc rien entre x = 0 et 28 %, ni entre 72 % et 100 %. Une fois l'encart
+   parti, le cadre est libre et elles se centrent. */
+const PASTILLES: Pastille[] = [
+  // Pendant l'encart : dans les marges gauche et droite.
+  { debut: 128, duree: 36, valeur: "1 h 12", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 170, duree: 36, valeur: "2 min 22", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 240, duree: 40, valeur: "0", libelle: "MONTAGE", x: 20, y: 44, accent: true, angle: -2 },
+  { debut: 296, duree: 40, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
+  // L'encart a disparu a l'image 360 : le cadre est libre, on se centre.
+  { debut: 380, duree: 42, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 26, accent: true, angle: -2 },
+  { debut: 430, duree: 46, valeur: "59 s", libelle: "PRÊT À POSTER", x: 50, y: 62, accent: true, angle: 2 },
+];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -208,9 +218,15 @@ export const Parcours: React.FC = () => {
 
         {vis > 0.01 ? (
           <>
-            {/* L'ecran occupe 13 % a 69 % de la hauteur : sous le hook du clip et
-                au-dessus du quart bas recouvert par l'interface TikTok. */}
-            <AbsoluteFill style={{ alignItems: "center", paddingTop: 240 }}>
+            {/* ZONES SURES DE TIKTOK, mesurees sur un cadre 1080x1920 :
+                  0 -> 16 %   barre d'etat, onglets « Pour toi / Abonnements », loupe
+                  16 -> 78 %  zone libre
+                  > 78 %      legende, pseudo, bandeau musical
+                  x > 78 % et y entre 45 % et 88 % : la colonne de boutons a droite
+                L'encart commencait a 12,5 % : son bandeau superieur passait donc
+                SOUS la barre de recherche. Il demarre maintenant a 16 % (307 px)
+                et finit a 58,5 % (1 123 px), entierement dans la zone libre. */}
+            <AbsoluteFill style={{ alignItems: "center", paddingTop: 307 }}>
               <div style={{
                 width: 480, borderRadius: 38, overflow: "hidden",
                 border: `3px solid ${VERT}`,
@@ -223,7 +239,7 @@ export const Parcours: React.FC = () => {
             </AbsoluteFill>
 
             {leg ? (
-              <AbsoluteFill style={{ justifyContent: "flex-start", padding: "1390px 60px 0" }}>
+              <AbsoluteFill style={{ justifyContent: "flex-start", padding: "1230px 60px 0" }}>
                 <Sequence from={leg[0]} durationInFrames={leg[1] - leg[0]} layout="none">
                   <div style={{ opacity: vis }}><Legende texte={leg[2]} /></div>
                 </Sequence>
