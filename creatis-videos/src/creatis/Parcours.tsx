@@ -7,6 +7,7 @@ import { POLICE } from "./police";
 import { Punch } from "./Punch";
 import { CartonBesoin } from "./posts/CartonBesoin";
 import { Pastille, Pastilles } from "./Pastilles";
+import { AVEC_REACTION, Reaction } from "./Reaction";
 
 /**
  * PARCOURS COMPLET — 1080x1920, 21,5 s.
@@ -182,15 +183,21 @@ const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
   { debut: 130, duree: 36, valeur: "39 min", libelle: "DE PODCAST", x: 21, y: 22, angle: -3 },
   { debut: 178, duree: 36, valeur: "2 min 35", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
-  { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 20, y: 44, accent: true, angle: -2 },
+  { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
   { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
      Un premier jet gardait ces deux pastilles a 26 % de hauteur, la ou elles
      etaient lisibles quand le telephone masquait le centre : elles tombaient
      desormais EN PLEIN VISAGE. Le recadrage 9:16 place la tete entre 15 % et
      45 % ; on descend donc sur le buste, decale a gauche puis a droite pour que
-     les deux ne se lisent pas comme une pile. */
-  { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 34, y: 55, accent: true, angle: -2 },
+     les deux ne se lisent pas comme une pile.
+
+     Depuis le 13/09 la colonne de GAUCHE est reservee a l'incrustation du
+     visage (voir Reaction.tsx) : « 0 MONTAGE » et « SOUS-TITRES » y tombaient
+     dessus, elles sont passees a droite. La marge gauche ne recoit plus de
+     pastille, meme quand l'incrustation est desactivee — sinon la mise en page
+     changerait selon qu'on filme une reaction ou non. */
+  { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
   { debut: 494, duree: 50, valeur: "31 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
@@ -267,6 +274,14 @@ export const Parcours: React.FC = () => {
       <Sequence durationInFrames={CLIP} name="Pastilles" layout="none">
         <Pastilles liste={PASTILLES} />
       </Sequence>
+
+      {/* Le visage. Inactif tant que public/reaction.mp4 n'existe pas : le
+          montage rend alors exactement comme avant, sans trou ni erreur. */}
+      {AVEC_REACTION ? (
+        <Sequence durationInFrames={CLIP} name="Réaction" layout="none">
+          <Reaction finEncart={APP_FIN} duree={CLIP} />
+        </Sequence>
+      ) : null}
 
       <Sequence from={CLIP} durationInFrames={DUREE_PARCOURS - CLIP} name="Créatis">
         <Punch><CartonBesoin /></Punch>
