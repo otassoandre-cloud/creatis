@@ -38,8 +38,17 @@ import { COULEURS } from "./theme";
  * (légende et pseudo).
  */
 
-/** Passe à true le jour où `public/reaction.mp4` existe. */
-export const AVEC_REACTION = false;
+/** Actif depuis le 13/09 : `public/reaction.mp4` existe.
+ *
+ * Source : IMG_2723.mov, 3,1 s filmees au telephone, 4K HEVC en portrait
+ * (rotation iPhone dans les metadonnees, d'ou une largeur annoncee de 3840).
+ * Reencode en H.264 506x900 — Remotion decode mal le HEVC 4K, et 900 px de haut
+ * suffisent largement pour une fenetre de 336 px.
+ *
+ * 3,1 s pour un montage de 19 s : la sequence boucle, d'ou `loop` sur la video.
+ * Une boucle courte se remarque d'autant moins que la fenetre est petite et que
+ * l'oeil est occupe ailleurs. */
+export const AVEC_REACTION = true;
 
 const FICHIER = "reaction.mp4";
 
@@ -51,25 +60,35 @@ const A_COTE: Place = { x: 16, y: 742, taille: 276 };
 const EN_BAS: Place = { x: 36, y: 1040, taille: 336 };
 
 export const Reaction: React.FC<{
+  /** Image où l'encart de l'application apparaît. */
+  debutEncart: number;
   /** Image où l'encart de l'application disparaît. */
   finEncart: number;
   /** Longueur de la séquence hôte, pour la sortie. */
   duree: number;
-}> = ({ finEncart, duree }) => {
+}> = ({ debutEncart, finEncart, duree }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  /* Le déplacement se fait en un mouvement amorti de 0,5 s, pas d'un saut :
-     une fenêtre qui se téléporte se lit comme un bug de montage. */
-  const t = interpolate(frame, [finEncart - 6, finEncart + 9], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.bezier(0.16, 1, 0.3, 1),
-  });
+  /* TROIS TEMPS, pas deux. Le cadre n'est occupe par l'encart qu'entre
+     `debutEncart` et `finEncart` : avant et apres, il est libre. La fenetre
+     tient donc sa place naturelle — en bas a gauche, grande — et ne se range
+     dans la marge que le temps ou l'encart a besoin du centre. Un premier jet
+     la laissait petite et a mi-hauteur du debut a la fin, y compris pendant les
+     quatre premieres secondes ou rien ne la genait.
+
+     Les deplacements sont amortis sur une demi-seconde : une fenetre qui se
+     teleporte se lit comme un bug de montage. */
+  const range = interpolate(
+    frame,
+    [debutEncart - 12, debutEncart + 3, finEncart - 6, finEncart + 9],
+    [0, 1, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.16, 1, 0.3, 1) },
+  );
   const place: Place = {
-    x: interpolate(t, [0, 1], [A_COTE.x, EN_BAS.x]),
-    y: interpolate(t, [0, 1], [A_COTE.y, EN_BAS.y]),
-    taille: interpolate(t, [0, 1], [A_COTE.taille, EN_BAS.taille]),
+    x: interpolate(range, [0, 1], [EN_BAS.x, A_COTE.x]),
+    y: interpolate(range, [0, 1], [EN_BAS.y, A_COTE.y]),
+    taille: interpolate(range, [0, 1], [EN_BAS.taille, A_COTE.taille]),
   };
 
   /* Entrée une demi-seconde après le début — le premier plan doit appartenir au

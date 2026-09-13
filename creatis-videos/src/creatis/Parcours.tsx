@@ -62,14 +62,11 @@ const APP_DEB = 120;   // 4,0 s
 const APP_FIN = 420;   // 12,0 s
 
 const VERT = "#10b981";
-/* Relevement LEGER, et volontairement en dessous de ce que la formule reclame.
-   Le clip mesure 46 de luminance moyenne : la formule demanderait x2,5, donc le
-   plafond de 1,9. Regarde a l'image, c'est un contresens — le studio a un fond
-   bleu sombre mais le VISAGE est correctement expose. La moyenne decrit le
-   decor, pas le sujet, et pousser la remonter delaverait la peau sans rien
-   gagner. Meme erreur evitee sur le plateau de Squeezie. 1,2 ouvre un peu les
-   noirs, rien de plus. */
-const RELEVE = "brightness(1.2) saturate(1.06)";
+/* Relevement minimal : 99 de luminance moyenne, mais 182 sur la premiere
+   seconde — l'ouverture est deja plus claire que la mediane du corpus, et c'est
+   elle qui decide de la retention. 1,12 ramene la moyenne vers 111 sans toucher
+   a une ouverture qui n'a besoin de rien. */
+const RELEVE = "brightness(1.12) saturate(1.05)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
@@ -104,23 +101,24 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Underscore_ (480x816, 186,7 s) :
+ * Version TELEPHONE du 13/09, source Yomi Denzel (480x816, 155,0 s) :
  *   5 s    la page du studio s'affiche
- *   17 s   l'analyse demarre
- *   172 s  la grille des 10 clips apparait, puis DEFILE
- *   181 s  le clip s'ouvre        (fin a 186,7 s)
+ *   16 s   l'analyse demarre
+ *   140 s  la grille des 10 clips apparait, puis DEFILE
+ *   150 s  le clip s'ouvre        (fin a 155,0 s)
  *
- * POURQUOI CETTE SOURCE. Un PODCAST de 39 minutes, et c'est exactement la cible
- * du produit — la note d'ICP dit « contenu LONG : podcasts, streams, coachs ».
- * Montrer 39 minutes devenir dix clips vaut mieux que n'importe quelle
- * formulation. 1,14 M de vues, studio insonorise : la transcription sort propre,
- * ce que ni le jeu televise de Squeezie (voix qui se chevauchent, quatre
- * fenetres transcrites en charabia) ni le bord de piscine de La Menace ne
- * permettaient.
+ * SOURCE. « 7 Machines a Acheter pour Gagner de l'Argent », 19 minutes. Choisie
+ * pour son public autant que pour son son : e-commerce et business, exactement
+ * les gens qui postent du court et qui paieraient pour en produire — c'est le
+ * createur que l'application cite elle-meme dans son champ de recherche vocale.
+ * Plan fixe face camera, voix seule : transcription propre, comme chez Amixem et
+ * Underscore_, et a l'oppose du jeu televise de Squeezie ou quatre fenetres
+ * transcrites sont revenues en charabia.
  *
  * LA GRILLE DEFILE : sur telephone elle est a deux colonnes, donc sans
  * defilement quatre vignettes sur dix sont visibles et le titre « 10 clips
- * viraux trouves » n'est jamais confirme par l'image.
+ * viraux trouves » n'est jamais confirme par l'image. Le troisieme temps dure
+ * 6,4 s et montre la grille entiere.
  *
  * LE NOMBRE DE CLIPS N'EST PLUS ANNONCE, et c'est un constat, pas une pudeur :
  * quatre analyses de la MEME video ont rendu 10, 8, 8 puis 4 clips. Ecrire un
@@ -143,24 +141,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={150} playbackRate={10.0} muted />
+        trimBefore={150} playbackRate={9.17} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={3000} playbackRate={30.0} muted />
+        trimBefore={2040} playbackRate={30.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={5160} playbackRate={2.30} muted />
+        trimBefore={4200} playbackRate={2.34} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     39 min    duree reelle du podcast Underscore_ (2 374 s)
-     2 min 35  duree reelle de l'analyse (17 s -> 172 s dans l'enregistrement)
+     19 min    duree reelle de la source Yomi Denzel (1 157 s)
+     2 min 04  duree reelle de l'analyse (16 s -> 140 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     31 s      duree du clip ouvert (00:00 -> 00:31), relevee par le script
+     32 s      duree du clip ouvert (03:55 -> 04:27), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -181,8 +179,8 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "39 min", libelle: "DE PODCAST", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "2 min 35", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "19 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "2 min 04", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
   { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
@@ -198,7 +196,7 @@ const PASTILLES: Pastille[] = [
      pastille, meme quand l'incrustation est desactivee — sinon la mise en page
      changerait selon qu'on filme une reaction ou non. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "31 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  { debut: 494, duree: 50, valeur: "32 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -279,7 +277,7 @@ export const Parcours: React.FC = () => {
           montage rend alors exactement comme avant, sans trou ni erreur. */}
       {AVEC_REACTION ? (
         <Sequence durationInFrames={CLIP} name="Réaction" layout="none">
-          <Reaction finEncart={APP_FIN} duree={CLIP} />
+          <Reaction debutEncart={APP_DEB} finEncart={APP_FIN} duree={CLIP} />
         </Sequence>
       ) : null}
 
