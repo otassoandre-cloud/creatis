@@ -3442,6 +3442,11 @@ const V2 = (() => {
         /* Renseigné par les interrogations du job de fond. Tant qu'il est nul, la barre avance
            à l'aveugle comme avant ; dès que le serveur répond, elle suit l'étape réelle. */
         let _reel = null;
+        /* Ce que le job a eu le temps de produire avant d'echouer. La transcription est la
+           partie chere — telechargement audio puis Whisper, ~2 min sur une heure de video —
+           alors que l'identification qui echoue tient en quelques secondes. La recuperer evite
+           au filet de tout refaire depuis le debut. */
+        let _recup = null;
         _tick = setInterval(() => {
           const s = (Date.now() - _t0) / 1000;
           if (_reel) {
@@ -3514,7 +3519,13 @@ const V2 = (() => {
                   if (++_echecsSuite < 10) continue;
                   throw e;
                 }
-                if (_job.status === 'error') throw new Error(_job.error || 'Analyse échouée');
+                if (_job.status === 'error') {
+                  if (_job.segments?.length && _job.video_id) {
+                    _recup = { segments: _job.segments, video_id: _job.video_id, duration: _job.duration || 0 };
+                    console.warn(`[clips] job échoué mais ${_job.segments.length} segments récupérés — le repli saute la transcription`);
+                  }
+                  throw new Error(_job.error || 'Analyse échouée');
+                }
                 if (_job.status === 'done') { data = _job; break; }
                 _reel = { pct: _job.pct, progress: _job.progress };
                 if ((_job.pct || 0) >= 70) setStep(3);
@@ -3531,13 +3542,20 @@ const V2 = (() => {
             console.warn('[clips] job de fond indisponible, repli synchrone :', eJob?.message);
             if (window.posthog) posthog.capture('analysis_job_fallback', { raison: String(eJob?.message || '').slice(0, 140) });
             _reel = null; _pct = Math.min(_pct, 60); _t0 = Date.now();
-            setMsg('Nouvelle tentative…');
+            setMsg(_recup ? 'Identification des meilleurs moments…' : 'Nouvelle tentative…');
           }
 
           if (!data) {
             let res;
             try {
-              const _corps = JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true });
+              /* Deux formes pour la meme route : avec `segments`, le serveur saute la
+               transcription et se contente d'identifier les clips (voir api/repurpose.js,
+               la branche `mode === 'clips' && body.segments`). C'est le chemin qu'emprunte
+               deja l'upload de fichier. */
+            const _corps = _recup
+              ? JSON.stringify({ mode: 'clips', segments: _recup.segments, video_id: _recup.video_id,
+                                 duration: _recup.duration, youtube_url: _ytUrl, n_clips: 10, include_segments: true })
+              : JSON.stringify({ mode: 'clips', url: _ytUrl, n_clips: 10, include_segments: true });
               const _appel = () => fetch('/api/repurpose', { method: 'POST', headers, body: _corps });
               try {
                 res = await _appel();

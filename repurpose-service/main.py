@@ -2815,6 +2815,10 @@ async def run_clips(
         if session_id in CLIPS:
             CLIPS[session_id].update({"progress": texte, "pct": pct})
 
+    # Hissees hors du `try` : le bloc d'erreur en a besoin pour sauver la transcription.
+    transcript = None
+    video_id = None
+
     try:
         video_id = _get_video_id(url)
         if not video_id:
@@ -2884,7 +2888,23 @@ async def run_clips(
 
     except Exception as e:
         logger.error(f"Clips {session_id[:8]} fatal: {e}")
-        CLIPS[session_id] = {"status": "error", "error": str(e), "_ts": _time.time()}
+        echec = {"status": "error", "error": str(e), "_ts": _time.time()}
+
+        # La transcription est la partie CHERE du travail : telechargement audio puis Whisper,
+        # environ deux minutes sur une video d'une heure. L'identification qui suit, elle, tient
+        # en quelques secondes — et c'est elle qui echoue quand Groq sature.
+        # Si on a la transcription, on la garde donc dans l'enregistrement d'echec : le client la
+        # renvoie telle quelle a la route synchrone de Vercel, qui saute alors toute cette etape
+        # et se contente d'identifier les clips avec sa propre cle et son repli Together AI.
+        # Sans ca le repli refaisait tout depuis le debut — mesure le 13/09 : 266 s au lieu des
+        # ~150 s qu'aurait pris la route synchrone seule.
+        if transcript and transcript.get("segments"):
+            echec["segments"] = transcript["segments"]
+            echec["duration"] = transcript.get("duration", 0)
+            echec["video_id"] = video_id
+            logger.info(f"Clips {session_id[:8]} : {len(transcript['segments'])} segments conserves pour le repli")
+
+        CLIPS[session_id] = echec
 
 
 # ── /clip-export — download + cut + crop a specific moment ────────────────────

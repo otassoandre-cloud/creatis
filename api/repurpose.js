@@ -1556,7 +1556,11 @@ ${JSON.stringify(textes, null, 0)}`;
       // l'utilisateur perdait son quota sur un écran d'erreur. C'est maintenant le client qui
       // confirme la réception, une fois les clips réellement affichés.
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
-        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}`, segments: body.segments }
+        /* `upload:<id>` etait code en dur : ce chemin ne servait qu'aux fichiers televerses.
+           Depuis le 13/09 il recoit aussi le repli d'une analyse YouTube dont le job a rendu
+           ses segments — et la generation enregistree doit alors porter la vraie URL, sinon
+           le bouton « Reprendre » de l'historique ne sait plus quoi rouvrir. */
+        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: body.youtube_url || `upload:${body.video_id}`, segments: body.segments }
       });
     } catch (err) {
       return res.status(502).json({ error: err.message });
