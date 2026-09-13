@@ -63,11 +63,10 @@ const APP_FIN = 420;   // 14,0 s — il disparait
 const OFFRE = 501;
 
 const VERT = "#10b981";
-/* Relevement minimal : 99 de luminance moyenne, mais 182 sur la premiere
-   seconde — l'ouverture est deja plus claire que la mediane du corpus, et c'est
-   elle qui decide de la retention. 1,12 ramene la moyenne vers 111 sans toucher
-   a une ouverture qui n'a besoin de rien. */
-const RELEVE = "brightness(1.12) saturate(1.05)";
+/* 91 de luminance moyenne mais 134 sur la premiere seconde : l ouverture est
+   deja au-dessus de la mediane du corpus, et c est elle qui decide. 1,2 remonte
+   l ensemble vers 109 sans toucher a une ouverture qui n en a pas besoin. */
+const RELEVE = "brightness(1.2) saturate(1.05)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
@@ -102,16 +101,23 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
  * (Le ffmpeg livre avec Remotion n'embarque pas `setpts`, de toute facon.)
  *
  * Repères mesures sur l'enregistrement, par ecart entre images successives.
- * Version TELEPHONE du 13/09, source Cyprien (480x816, 153,2 s) :
- *   2 s    la page du studio s'affiche
- *   14 s   l'analyse demarre
- *   139 s  la grille des 10 clips apparait, puis DEFILE
- *   148 s  le clip s'ouvre        (fin a 153,2 s)
+ * Version TELEPHONE du 13/09, source Cyprien (480x816, 124,1 s) :
+ *   3 s    la page du studio s'affiche
+ *   15 s   l'analyse demarre
+ *   109 s  la grille des 10 clips apparait, puis DEFILE
+ *   119 s  le clip s'ouvre        (fin a 124,1 s)
  *
- * SOURCE. 15 minutes, 1,95 M de vues. Un recit face camera : voix seule, micro
- * propre, donc transcription fiable — le critere qui a fait ecarter le jeu
- * televise de Squeezie, ou quatre fenetres transcrites sont revenues en
- * charabia.
+ * SOURCE. 15 minutes, 1,95 M de vues, un recit face camera : voix seule et micro
+ * propre, donc transcription fiable — le critere qui avait fait ecarter le jeu
+ * televise de Squeezie.
+ *
+ * LE CLIP MONTRE N'EST PAS LE MIEUX NOTE, et c'est deliberé. Le produit classait
+ * premier « Mon frere avait honte de moi », dont les 1,2 premieres secondes sont
+ * un plan de ville de NUIT : 36 de luminance, aucun visage. Comme c'est la
+ * premiere image de toute la video, elle decide de la retention. Trois fenetres
+ * ont ete mesurees avant de trancher — 36, 45 et 99 sur la premiere seconde — et
+ * on a pris celle qui ouvre a 99. Le score du produit juge le contenu, pas
+ * l'exposition.
  *
  * LA GRILLE DEFILE : sur telephone elle est a deux colonnes, donc sans
  * defilement quatre vignettes sur dix sont visibles et le titre « 10 clips
@@ -138,24 +144,24 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={36} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={60} playbackRate={10.0} muted />
+        trimBefore={90} playbackRate={10.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={72} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={2010} playbackRate={30.0} muted />
+        trimBefore={1110} playbackRate={30.0} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={192} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4170} playbackRate={2.21} muted />
+        trimBefore={3270} playbackRate={2.36} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
      15 min    duree reelle de la source Cyprien (927 s)
-     2 min 05  duree reelle de l'analyse (14 s -> 139 s dans l'enregistrement)
+     1 min 34  duree reelle de l'analyse (15 s -> 109 s dans l'enregistrement)
      9:16     ce que le clip montre au meme instant
-     40 s      duree du clip ouvert (06:50 -> 07:30), relevee par le script
+     34 s      duree du clip ouvert (09:29 -> 10:03), relevee par le script
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -177,7 +183,7 @@ const ParcoursAccelere: React.FC = () => (
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
   { debut: 130, duree: 36, valeur: "15 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "2 min 05", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 178, duree: 36, valeur: "1 min 34", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
   { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
@@ -193,7 +199,7 @@ const PASTILLES: Pastille[] = [
      elles ne genent rien, et les ramener a gauche rouvrirait le conflit le jour
      ou l'incrustation reprendra de la place. */
   { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "40 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  { debut: 494, duree: 50, valeur: "34 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
