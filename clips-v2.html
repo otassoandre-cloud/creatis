@@ -1320,7 +1320,12 @@ const V2 = (() => {
         if (el && user) el.textContent = user.email?.split('@')[0] || user.nom || '';
         if (user && window.posthog) posthog.identify(user.id || user.email, { email: user.email });
       }).catch(() => {});
-      Auth.getPlanDistant().then(data => {
+      /* UNE SECONDE CHANCE. `getPlanDistant()` peut rendre `null` — session pas encore
+         restauree, requete reseau qui echoue — et `_userPlan` restait alors « gratuit » POUR
+         TOUTE LA SESSION, puisque ce `then` est le seul declencheur. Un client Pro se
+         retrouvait devant les cadenas des clips 3 et suivants, sans rien pour l'en sortir :
+         constate sur mobile le 14/09/2026, compte `plan: pro` cote serveur. */
+      const _appliquerPlan = (data) => {
         if (data?.plan) _userPlan = data.plan;
         if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
         if (window.posthog && data?.plan) try { posthog.people?.set({ plan: data.plan }); } catch {}
@@ -1338,7 +1343,13 @@ const V2 = (() => {
              cache, la relancer ne retélécharge rien. */
           if (_userPlan !== 'gratuit') _prefetchYtSegments().catch(() => {});
         }
-      }).catch(() => {});
+      };
+      const _reessayerPlan = () => setTimeout(() => {
+        Auth.getPlanDistant().then(_appliquerPlan).catch(() => {});
+      }, 2500);
+      Auth.getPlanDistant()
+        .then(data => { if (data?.plan) _appliquerPlan(data); else _reessayerPlan(); })
+        .catch(_reessayerPlan);
     }
     // Watermark opacity display
     const wmOp = document.getElementById('opt-wm-opacity');

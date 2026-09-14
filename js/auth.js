@@ -283,13 +283,21 @@ const Auth = (() => {
     },
 
     /* ── Récupérer le plan et le compteur mensuel depuis Supabase ── */
+    /* `_session` n'est qu'une COPIE EN MEMOIRE, vide tant que `init()` n'a pas fini — le meme
+       piege que pour `getToken()`. Cette methode s'appuyait dessus SEULE : sur une connexion
+       lente, elle repartait `null` avant meme d'essayer, et l'appelant en concluait « gratuit ».
+       Constate sur mobile le 14/09/2026 : un compte Pro voyait les cadenas des clips 3 et
+       suivants, et rien ne relancait l'appel de toute la session.
+       `identite()` porte deja le bon ordre de confiance — memoire, puis session persistee par
+       Supabase, puis le miroir `creatis_user` — on s'en sert. */
     async getPlanDistant() {
-      if (!_session?.user?.id) return null;
+      const moi = this.identite();
+      if (!moi?.id) return null;
       try {
         const res = await fetch(CONFIG.USER_SYNC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get', userId: _session.user.id })
+          body: JSON.stringify({ action: 'get', userId: moi.id })
         });
         if (!res.ok) return null;
         const { user } = await res.json();
