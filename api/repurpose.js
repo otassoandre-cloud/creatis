@@ -877,15 +877,10 @@ function _dedupeClips(clips) {
   return kept;
 }
 
-function _uniformFallbackClips(segments, videoId, nClips, _dbg) {
-  const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-  return Array.from({ length: nClips }, (_, i) => {
-    const start = Math.floor((totalDur / (nClips + 1)) * (i + 1));
-    const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / nClips * segments.length)];
-    const s = seg ? seg.start : start;
-    return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70, _dbg };
-  });
-}
+/* `_uniformFallbackClips` a ete SUPPRIMEE le 14/09/2026. Elle decoupait la video en
+   tranches egales de 60 s notees 70 quand le LLM ne rendait rien, et ce faux resultat
+   partait a l'utilisateur sans le moindre signe. Ne pas la reintroduire : l'absence de
+   clip doit remonter comme une erreur, pas se deguiser en analyse. */
 
 // Identification des clips viraux via LLM (Groq → Gemini → Together), en plusieurs passes pour
 // couvrir toute la vidéo sur les contenus longs.
@@ -951,11 +946,31 @@ async function identifyViralClips(segments, videoId, title, nClips, energyPeaks 
   console.log(`[clips] ${allClips.length} candidats avant dédoublonnage, sample:`, JSON.stringify(allClips[0] || {}).slice(0, 200));
   let clips = _dedupeClips(allClips);
 
-  // Fallback : LLM n'a rien retourné d'utilisable sur AUCUN morceau → découpage uniforme
+  /* AUCUN morceau exploitable — les trois fournisseurs sont tombes.
+
+     Ce chemin servait un decoupage UNIFORME : dix tranches de 60 s reparties a
+     intervalles egaux, toutes notees 70, intitulees « Moment 1 » a « Moment 10 ».
+     Reproduit deux fois de suite le 14/09/2026 sur une source d'une heure, aux
+     memes secondes — donc pas un accident.
+
+     C'est pire que de ne rien rendre. L'utilisateur voit dix clips avec des
+     scores : rien ne lui dit qu'aucun n'a ete choisi, et il conclut que le
+     produit ne sait pas travailler. Une erreur franche lui permet de reessayer ;
+     un faux resultat lui fait perdre sa video ET sa confiance.
+
+     Pourquoi ca arrive : une source d'une heure produit ~10 morceaux, et le
+     plafond Groq est de 8 000 tokens PAR MINUTE. Quand le job de fond a deja
+     consomme ce budget juste avant, la cascade complete (Groq, Gemini, Together)
+     n'a plus rien a offrir — mesure ce jour-la, `gemini_status: 429` inclus.
+     Appelee seule quelques minutes plus tard, la meme requete rend 8 vrais clips
+     notes 96, 83, 80, 78 : le service marche, il etait sature. */
   if (clips.length === 0) {
     _dbg.provider = _dbg.provider + '_empty';
-    console.warn('[clips] 0 clips après parsing, découpage uniforme. debug:', JSON.stringify(_dbg));
-    return _uniformFallbackClips(segments, videoId, nClips, _dbg);
+    console.error('[clips] AUCUN clip identifié — les 3 fournisseurs ont échoué. debug:', JSON.stringify(_dbg));
+    const _err = new Error("Le service d'analyse est saturé — réessaie dans deux ou trois minutes, ta vidéo n'est pas perdue.");
+    _err.saturation = true;
+    _err._dbg = _dbg;
+    throw _err;
   }
 
   /* PLANCHER DE QUALITÉ. Sans lui, `slice(0, nClips)` rendait les dix premiers quel que soit leur
