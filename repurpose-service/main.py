@@ -1975,20 +1975,24 @@ def _reframe_vertical(in_path: str, out_path: str, aspect_ratio: str = "9:16", r
         else:
             logger.info(f"[reframe] mode={reframe_mode} — crop centré")
 
-        # Pre-scale pour tout contenu > 720p (évite OOM sur Railway avec gaming/1080p)
-        if src_w > 1280 or src_h > 720:
-            sx = min(1280 / src_w, 720 / src_h)
-            pw = int(src_w * sx / 2) * 2
-            ph = int(src_h * sx / 2) * 2
-            cw = max(2, int(crop_w * sx / 2) * 2)
-            ch = max(2, int(crop_h * sx / 2) * 2)
-            xc = max(0, min(pw - cw, int(x_crop * sx)))
-            yy = max(0, int(y0 * sx))
-            vf = f"{lb_prefix}scale={pw}:{ph}:flags=fast_bilinear,crop={cw}:{ch}:{xc}:{yy},scale=1080:1920"
-            logger.info(f"[reframe] pre-scale {src_w}x{src_h}→{pw}x{ph}, crop={cw}x{ch}@{xc},{yy}")
-        else:
-            vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=1080:1920"
-            logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 720x1280")
+        """ON RECADRE D'ABORD, ON AGRANDIT ENSUITE.
+
+        Il y avait ici une reduction prealable a 1280x720 « pour eviter les OOM sur Railway ».
+        Elle detruisait l'image : sur une source 1080p, le recadrage 9:16 ne prenait plus que
+        404 px de large, ensuite reetires a 1080. Mesure du 14/09/2026 sur un clip livre —
+        variance du laplacien 19 contre 211 dans la source, soit onze fois moins de detail.
+        C'est la vraie cause du « c'est flou », bien plus que le cache 360p corrige le matin.
+
+        Recadrer d'abord donne 607x1080 de matiere reelle au lieu de 404x720, et coute MOINS
+        de memoire, pas plus : la zone conservee (607x1080) est plus petite que l'image
+        pre-reduite entiere (1280x720). La reduction ne protegeait donc de rien — le decodeur
+        produit de toute facon l'image pleine avant que le moindre filtre ne s'applique.
+
+        On ne peut pas faire mieux que 607 px : un cadre 9:16 pris dans du 16:9 ne garde que
+        56 % de la largeur. Le reste de l'agrandissement est incompressible sans source plus
+        haute que 1080."""
+        vf = f"{lb_prefix}crop={crop_w}:{crop_h}:{x_crop}:{y0},scale=1080:1920:flags=lanczos"
+        logger.info(f"[reframe] {src_w}x{src_h} → crop={crop_w}x{crop_h}@{x_crop},{y0} → 1080x1920")
 
     _enc_tail = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                  "-pix_fmt", "yuv420p", "-threads", "2", "-movflags", "+faststart",
