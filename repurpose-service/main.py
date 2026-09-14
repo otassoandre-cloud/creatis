@@ -3850,6 +3850,42 @@ def _seg_r2_key(video_id: str, start: float, end: float) -> str:
     # le probleme de qualite « a chaque fois » malgre les correctifs successifs.
     return f"seg/{SEG_CACHE_VERSION}/{video_id}/{start:.1f}_{end:.1f}.mp4"
 
+
+def _hauteur_video(chemin) -> int:
+    """Hauteur reelle du flux video, 0 si illisible. Synchrone et court (~30 ms)."""
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=height", "-of", "csv=p=0", str(chemin)],
+            capture_output=True, timeout=15)
+        return int(r.stdout.decode().strip().split(",")[0])
+    except Exception:
+        return 0
+
+
+def _cache_utilisable(chemin, video_id: str, ou: str) -> bool:
+    """Le segment lu dans le cache tient-il la definition annoncee par la cle ?
+
+    La cle porte « v2-1080 », mais rien ne garantissait son contenu. Constate le 14/09/2026 :
+    `kCtDEpn3zOw` etait stocke en 640x360 sous cette cle, depose avant la correction du
+    selecteur de formats. Resultat, tous les exports de cette video — les miens comme ceux
+    des clients — repartaient en 360p etire sur 1080x1920, et le cache repondant avant
+    YouTube, le probleme ne pouvait plus se resorber tout seul.
+
+    Le verifier a la LECTURE (et pas seulement a l'ecriture) purge le cache de lui-meme :
+    la premiere personne qui retouche une video empoisonnee la fait retelecharger, et la
+    bonne version remplace l'ancienne. Aucune purge manuelle a faire.
+    """
+    _h = _hauteur_video(chemin)
+    if _h and _h < 720:
+        logger.warning(f"[{ou}] cache R2 en {_h}p pour {video_id} — ignore, on retelecharge")
+        try:
+            Path(chemin).unlink(missing_ok=True)
+        except Exception:
+            pass
+        return False
+    return True
+
 def _r2_get(key: str, dest_path) -> bool:
     """Récupère l'objet depuis R2 s'il existe. Fail-open : False si absent ou erreur."""
     try:
@@ -3937,6 +3973,9 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         if _r2_enabled():
             RAW_SEGMENTS[job_id]["progress"] = "Chargement (cache)…"
             _r2_hit = await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_get(_r2key, out_path))
+            if _r2_hit and not await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _cache_utilisable(out_path, video_id, "raw-segment")):
+                _r2_hit = False
             if _r2_hit:
                 logger.info(f"[raw-segment] ✓ cache R2 {_r2key}")
 
@@ -4295,11 +4334,19 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         # jobs suivants sur cette video, y compris ceux des clients, et le probleme devient
         # invisible puisque le cache repond avant meme d'atteindre YouTube. On ne met donc en
         # cache que ce qui tient la definition annoncee.
+        # `_degrade_livre` ne suffit pas : il ne couvre que le chemin de degradation connu.
+        # On mesure le fichier qu'on s'apprete a deposer — c'est la seule verification qui
+        # ne depende d'aucun drapeau.
         if not _r2_hit and _r2_enabled() and not _degrade_livre:
-            try:
-                await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_put(_r2key, out_path))
-            except Exception:
-                pass
+            _h_out = await asyncio.get_event_loop().run_in_executor(None, lambda: _hauteur_video(out_path))
+            if _h_out and _h_out < 720:
+                logger.error(f"[raw-segment] {job_id} PAS mis en cache : {_h_out}p sous une cle "
+                             f"« {SEG_CACHE_VERSION} ». Le cache reste propre pour {video_id}.")
+            else:
+                try:
+                    await asyncio.get_event_loop().run_in_executor(None, lambda: _r2_put(_r2key, out_path))
+                except Exception:
+                    pass
 
     except Exception as e:
         logger.error(f"[raw-segment] {job_id} error: {e}")
@@ -4722,6 +4769,9 @@ async def process_clip_endpoint(
             if _r2_enabled():
                 _yt_ok = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: _r2_get(_seg_r2_key(yt_video_id, yt_start, yt_end), in_path))
+                if _yt_ok and not await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _cache_utilisable(in_path, yt_video_id, "process-clip")):
+                    _yt_ok = False
             if _yt_ok:
                 logger.info(f"[process-clip] segment R2 {yt_video_id} {yt_start:.1f}→{yt_end:.1f}s "
                             f"({in_path.stat().st_size/1_048_576:.1f} MB)")
@@ -5066,8 +5116,25 @@ async def process_clip_endpoint(
                         _nb = _n1 + _n2
                         # Bornes de la page : début du 1er mot -> début du 1er mot de la page
                         # suivante (ou fin de la cue pour la dernière).
-                        _pt0 = _sm_t(_pos, t0 + (t1 - t0) * _pos / max(len(_liste), 1))
-                        _pt1 = (_sm_t(_pos + _nb, t1) if _pi < len(_pages) - 1 else t1)
+                        """Bornes de la page, avec un repli PROPORTIONNEL des deux cotes.
+
+                        Le repli de fin valait `t1` — la fin du segment ENTIER. Des qu'il n'y
+                        avait pas de timing mot par mot, chaque page se terminait donc a la fin
+                        du segment au lieu de la sienne, et toutes les pages d'un meme segment
+                        restaient affichees en meme temps, empilees au meme endroit. A l'ecran :
+                        des lettres superposees, de couleurs differentes puisque `_SM_CYCLE`
+                        tourne a chaque page.
+
+                        Ca ne se voyait pas sur un fichier televerse — Whisper rend des timings
+                        mot par mot, donc `_sm_t` avait une vraie valeur et le repli ne servait
+                        jamais. Mais une analyse YouTube part des sous-titres automatiques, qui
+                        n'ont QUE `start`/`end` : le repli etait alors systematique. Mesure sur
+                        un export reel du 14/09/2026 : 31 chevauchements sur 53 pages.
+                        """
+                        _defaut_debut = t0 + (t1 - t0) * _pos / max(len(_liste), 1)
+                        _defaut_fin = t0 + (t1 - t0) * (_pos + _nb) / max(len(_liste), 1)
+                        _pt0 = _sm_t(_pos, _defaut_debut)
+                        _pt1 = (_sm_t(_pos + _nb, _defaut_fin) if _pi < len(_pages) - 1 else t1)
                         _pt0 = max(t0, min(_pt0, t1 - 0.10))
                         _pt1 = max(_pt0 + 0.10, min(_pt1, t1))
                         _txt1 = " ".join(_ln[0])
@@ -5173,6 +5240,55 @@ async def process_clip_endpoint(
                             ass_lines.append(f"Dialogue: 0,{to_ass_time(wt0)},{to_ass_time(wt1)},Default,,0,0,0,,{_pos_tag}{''.join(parts)}")
                     else:
                         ass_lines.append(f"Dialogue: 0,{to_ass_time(t0)},{to_ass_time(t1)},Default,,0,0,0,,{_pos_tag}{txt}")
+            """DERNIER REMPART : aucun sous-titre ne doit en recouvrir un autre.
+
+            Chaque style calcule ses propres bornes, et la superposition est l'accident qui
+            revient — on la lit deja dans les commentaires de `shake` et de `wave`, et elle
+            s'est reproduite sur `submagic` le 14/09/2026 (repli de fin a `t1`). Plutot que de
+            compter sur la justesse de cinq calculs independants, on tronque ici toute ligne
+            qui deborde sur la suivante. Un sous-titre raccourci de quelques centiemes ne se
+            voit pas ; deux textes empiles rendent le clip inutilisable.
+
+            Seul le style `Default` est concerne : le hook vit sur `Hook`, a une autre
+            position, et doit pouvoir rester affiche pendant que les sous-titres defilent."""
+            def _sans_chevauchement(lignes):
+                def _t(v):
+                    h, m, r = v.split(":")
+                    return int(h) * 3600 + int(m) * 60 + float(r)
+
+                def _fmt(v):
+                    v = max(0.0, v)
+                    h = int(v // 3600)
+                    m = int((v % 3600) // 60)
+                    sec = v - h * 3600 - m * 60
+                    return "%d:%02d:%05.2f" % (h, m, sec)
+
+                idx = []
+                for k, l in enumerate(lignes):
+                    if not l.startswith("Dialogue:"):
+                        continue
+                    champs = l.split(",", 9)
+                    if len(champs) < 10 or champs[3] != "Default":
+                        continue
+                    try:
+                        idx.append([k, _t(champs[1]), _t(champs[2]), champs])
+                    except ValueError:
+                        continue
+
+                idx.sort(key=lambda e: (e[1], e[2]))
+                corriges = 0
+                for a, b in zip(idx, idx[1:]):
+                    if a[2] > b[1] + 1e-6:
+                        a[2] = max(b[1], a[1] + 0.04)
+                        a[3][2] = _fmt(a[2])
+                        lignes[a[0]] = ",".join(a[3])
+                        corriges += 1
+                if corriges:
+                    logger.warning("[subs] %d sous-titre(s) se chevauchaient — tronques" % corriges)
+                return lignes
+
+            ass_lines = _sans_chevauchement(ass_lines)
+
             with open(ass_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(ass_lines))
             overlay_vf = f"ass={str(ass_path)}"
