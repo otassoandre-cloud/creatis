@@ -2167,6 +2167,36 @@ def _reframe_split_timeline(in_path: str, out_path: str, src_w: int, src_h: int,
         _sh.rmtree(tmpdir, ignore_errors=True)
 
 
+def _deux_personnes(boites):
+    """Ramene une liste de detections a AU PLUS deux personnes reellement distinctes.
+
+    Le split duplique la meme personne en haut et en bas des qu'on lui annonce deux visages.
+    Constate le 14/09/2026 sur une interview LEGEND : les trois sections passees en split
+    etaient des GROS PLANS d'une seule personne, et le second « visage » etait le neon
+    vertical du decor — detecte de facon parfaitement stable sur douze echantillons d'affilee,
+    donc impossible a ecarter par un filtre temporel.
+
+    Deux criteres suffisent, et ils sont physiques :
+      - deux boites qui se recouvrent sont la MEME tete comptee deux fois ;
+      - deux personnes filmees par la meme camera ont des tetes de taille comparable. Un ecart
+        de plus de 1,8x trahit un decor pris pour un visage (ici ~120 px contre ~350).
+
+    On garde toujours la plus grande detection : en cas de doute, un seul ecran bien cadre
+    vaut mieux qu'un split qui montre deux fois la meme personne.
+    """
+    if not boites:
+        return []
+    tri = sorted(boites, key=lambda f: f[2] * f[3], reverse=True)
+    a = tri[0]
+    for b in tri[1:]:
+        if abs(b[0] - a[0]) < 0.9 * max(a[2], b[2]) and abs(b[1] - a[1]) < 0.9 * max(a[3], b[3]):
+            continue
+        if max(a[2], b[2]) > 1.8 * max(1, min(a[2], b[2])):
+            continue
+        return [a, b]
+    return [a]
+
+
 def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pill_png_path: Optional[str] = None, pill_y_px: int = 0) -> None:
     """
     Split screen 9:16 adaptatif :
@@ -2214,8 +2244,9 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
                 faces = det
                 if len(faces) >= 2:
                     break
-        return [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
-                 int(f[2] * inv), int(f[3] * inv)) for f in faces]
+        boites = [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
+                   int(f[2] * inv), int(f[3] * inv)) for f in faces]
+        return _deux_personnes(boites)
 
     # ── 1. Analyser chaque ~0.5s ──
     sample_step = max(1, int(fps * 0.5))
@@ -2391,18 +2422,37 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
             if n_faces >= 2:
                 # Split top/bottom : les 2 visages visibles simultanément, chacun centré dans
                 # sa moitié (visage gauche en haut, visage droit en bas). Pas d'auto-speaker.
-                vf_top = make_half_vf(face_A[0], face_A[1], face_A[2], face_A[3])
-                vf_bot = make_half_vf(face_B[0], face_B[1], face_B[2], face_B[3])
+                #
+                # Positions prises DANS cette section, pas sur la moyenne du clip entier. Un
+                # podcast est filme en multi-camera : la moyenne melange un plan large et des
+                # gros plans, et donne deux cadrages qui ne correspondent a aucun des deux.
+                # La moyenne globale ne sert plus que de repli.
+                _loc = [f for fi_, f in frame_data
+                        if t0 <= fi_ / fps <= t1 and len(f) >= 2]
+                if _loc:
+                    _fa, _fb = avg_faces([(0, f) for f in _loc])
+                else:
+                    _fa, _fb = face_A, face_B
+                vf_top = make_half_vf(_fa[0], _fa[1], _fa[2], _fa[3])
+                vf_bot = make_half_vf(_fb[0], _fb[1], _fb[2], _fb[3])
                 stack = (f"[0:v]split=2[va][vb];[va]{vf_top}[top];[vb]{vf_bot}[bot];"
                          f"[top][bot]vstack=inputs=2[st]")
                 fc = f"{stack};[st]{overlay_vf}[out]" if overlay_vf else f"{stack};[st]null[out]"
                 mode_str = "split-2"
             elif n_faces == 1:
                 # Trouver la face la plus proche de ce segment
+                # On cherche le visage dans TOUTE la section, pas seulement a son milieu.
+                # Avant, un echantillon central sans detection (tete de dos, coupe de plan)
+                # renvoyait au crop centre : sur un plan large, la personne se retrouvait
+                # collee au bord du cadre, hors champ. Mesure du 14/09 : les 5 premieres
+                # secondes du clip cadraient un tabouret.
                 seg_mid = (t0 + t1) / 2
-                closest = min(frame_data, key=lambda x: abs(x[0] / fps - seg_mid))
-                if closest[1]:
-                    f1 = closest[1][0]
+                _dans = [(fi_, f) for fi_, f in frame_data if t0 <= fi_ / fps <= t1 and f]
+                if not _dans:
+                    _dans = [(fi_, f) for fi_, f in frame_data if f]
+                if _dans:
+                    _pris = min(_dans, key=lambda x: abs(x[0] / fps - seg_mid))
+                    f1 = _pris[1][0]
                     vf = make_vf(f1[0], f1[1], f1[2], f1[3], 1080, 1920)
                 else:
                     vf = center_vf()
