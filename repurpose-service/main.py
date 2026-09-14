@@ -2226,6 +2226,44 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
         cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"),
     ]
+    # Confirmation d'un second visage : on y cherche des yeux. Voir `_confirme_yeux`.
+    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
+    # Seconde chance pour les porteurs de lunettes, que la cascade ci-dessus rate souvent.
+    # Verifie sur le corpus de reglage : elle n'a fait passer AUCUN parasite supplementaire.
+    eye_cascade_lunettes = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_eye_tree_eyeglasses.xml")
+
+    def _confirme_yeux(gray_petit, scale, cx, cy, w, h) -> bool:
+        """Y a-t-il des YEUX dans cette boite ?
+
+        Mesure du 14/09/2026 sur l'interview qui partait en split a tort : le detecteur de
+        visages de Haar retournait, a cote du vrai visage, un pan de MUR bleu uni de 459x459 —
+        exactement la taille d'un visage — puis la MAIN baguee du sujet. Ni la taille ni la
+        distance ne permettent de les ecarter : seul leur contenu les trahit.
+
+        Chercher des yeux est la confirmation standard pour ce detecteur. Verifie sur les
+        images reelles : 7 fausses boites sur 7 rejetees (0 oeil), 7 vrais visages sur 7
+        confirmes (1 a 2 yeux).
+
+        Un visage trop petit pour qu'on y distingue des yeux est aussi trop petit pour remplir
+        la moitie d'un ecran vertical : le rejeter est correct des deux points de vue.
+
+        On travaille sur l'image deja reduite pour la detection — aucun cout ajoute.
+        """
+        sx, sy = int(cx * scale), int(cy * scale)
+        sw, sh = int(w * scale), int(h * scale)
+        x1 = max(0, sx - sw // 2); x2 = min(gray_petit.shape[1], sx + sw // 2)
+        y1 = max(0, sy - sh // 2); y2 = min(gray_petit.shape[0], sy + sh // 4)
+        roi = gray_petit[y1:y2, x1:x2]
+        if roi.size == 0 or roi.shape[0] < 12 or roi.shape[1] < 12:
+            return False
+        m = max(6, sw // 10)
+        try:
+            if len(eye_cascade.detectMultiScale(roi, 1.1, 3, minSize=(m, m))) >= 1:
+                return True
+            return len(eye_cascade_lunettes.detectMultiScale(roi, 1.1, 3, minSize=(m, m))) >= 1
+        except Exception:
+            return True   # cascade indisponible : on ne bloque pas le split
 
     def detect_faces_scaled(frame):
         """Détection de VISAGES uniquement (position de tête précise). La détection haut-du-corps
@@ -2246,6 +2284,14 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
                     break
         boites = [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
                    int(f[2] * inv), int(f[3] * inv)) for f in faces]
+        if len(boites) > 1:
+            # La plus grande boite est conservee sans condition : elle ne sert qu'a placer le
+            # cadrage, et un visage de profil (sans yeux visibles) doit rester suivi. Ce sont
+            # les AUTRES qui doivent faire leurs preuves, puisque ce sont elles qui declenchent
+            # le split — et un split errone est bien plus visible qu'un cadrage approximatif.
+            boites.sort(key=lambda f: f[2] * f[3], reverse=True)
+            boites = [boites[0]] + [b for b in boites[1:]
+                                    if _confirme_yeux(gray, scale, b[0], b[1], b[2], b[3])]
         return _deux_personnes(boites)
 
     # ── 1. Analyser chaque ~0.5s ──
