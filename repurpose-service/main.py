@@ -2285,13 +2285,21 @@ def _reframe_split_dynamic(in_path: str, out_path: str, overlay_vf: str = "", pi
         boites = [(int((f[0] + f[2] // 2) * inv), int((f[1] + f[3] // 2) * inv),
                    int(f[2] * inv), int(f[3] * inv)) for f in faces]
         if len(boites) > 1:
-            # La plus grande boite est conservee sans condition : elle ne sert qu'a placer le
-            # cadrage, et un visage de profil (sans yeux visibles) doit rester suivi. Ce sont
-            # les AUTRES qui doivent faire leurs preuves, puisque ce sont elles qui declenchent
-            # le split — et un split errone est bien plus visible qu'un cadrage approximatif.
-            boites.sort(key=lambda f: f[2] * f[3], reverse=True)
-            boites = [boites[0]] + [b for b in boites[1:]
-                                    if _confirme_yeux(gray, scale, b[0], b[1], b[2], b[3])]
+            """La confirmation s'applique a TOUTES les boites, sans en privilegier aucune.
+
+            Premiere version : on gardait la plus grande sans condition, en se disant qu'elle
+            sert au cadrage et qu'un visage de profil doit rester suivi. Erreur — mesure du
+            14/09/2026 a 18,0 s : le pan de mur faisait 516 px, le visage 507. Le parasite
+            etait donc le plus grand, echappait au controle, et le visage confirme a cote de
+            lui portait le total a deux : split errone.
+
+            Regle correcte : quand au moins une boite montre des yeux, on ne garde que
+            celles-la. Quand AUCUNE n'en montre (visage de profil, plan lointain), on garde la
+            plus grande — une seule, donc jamais de split : le cadrage reste suivi, la
+            promotion en split ne se fait que sur preuve."""
+            confirmes = [b for b in boites
+                         if _confirme_yeux(gray, scale, b[0], b[1], b[2], b[3])]
+            boites = confirmes if confirmes else [max(boites, key=lambda f: f[2] * f[3])]
         return _deux_personnes(boites)
 
     # ── 1. Analyser chaque ~0.5s ──
