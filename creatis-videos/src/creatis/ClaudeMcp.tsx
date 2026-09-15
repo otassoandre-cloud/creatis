@@ -4,10 +4,9 @@ import {
   Easing,
   interpolate,
   Sequence,
-  spring,
+  Series,
   staticFile,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
 import { COULEURS } from "./theme";
 import { POLICE } from "./police";
@@ -26,9 +25,16 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
  * « Génération lancée — 3 clips demandés », l'identifiant en `j` + 8 signes,
  * « Analyse terminée », « 3 clips prêts » : tout sort de mcp_connecteur.py et a
  * été relu dans une vraie conversation avec le connecteur le 15/09/2026. Les
- * titres des clips sont ceux que l'IA a écrits pour CETTE génération-là, et le
- * clip montré à la fin en sort. Écrire une réponse plus belle que la vraie
- * ferait de cette vidéo une maquette, c'est-à-dire rien.
+ * titres des clips sont ceux que l'IA a écrits pour CETTE génération-là
+ * (jff80a786, sur « 99,9% de MALAISE » d'Amixem), et le clip montré à la fin en
+ * sort — c'est le troisième de la liste. Écrire une réponse plus belle que la
+ * vraie ferait de cette vidéo une maquette, c'est-à-dire rien.
+ *
+ * ── LA SOURCE EST DU DIVERTISSEMENT, ET C'EST UNE REGLE ──────────────────
+ * Jamais de politique, d'actualité ni d'enquête, même quand ces sources donnent
+ * de meilleurs chiffres. La cible est le créateur de contenu : un clip
+ * d'actualité fait juger la marque sur le sujet du clip et parle à une audience
+ * qui n'achète pas.
  *
  * ── CE QUE LA FENÊTRE N'EST PAS ──────────────────────────────────────────
  * Ce n'est pas une copie de l'interface de Claude et ça ne cherche pas à en
@@ -61,199 +67,75 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
 const FPS = 30;
 export const DUREE_MCP = 690; // 23 s
 
-const CLIP = "mcpclip.mp4";
+const CLIP = "amx3.mp4";
 
-/** Le clip démarre à 12,5 s et tourne jusqu'au bout. */
-const CLIP_DEB = Math.round(12.5 * FPS);
+/** Capture de la vraie fenêtre Claude Code, recadrée sur le terminal seul. */
+const REC = "rec-claude.mp4";
+
+const ECRAN = { width: "100%", display: "block" } as const;
+
+/** Le clip reprend tout l'écran à 14 s et tourne jusqu'au bout. */
+const CLIP_DEB = Math.round(14 * FPS);
 
 /** L'offre se pose à 18 s — 5 s de clip avant, 5 s avec l'offre. */
 const OFFRE_DEB = Math.round(18 * FPS);
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-/** Fondu-montée court : l'élément arrive et se pose, il ne flotte pas. */
-const arrivee = (frame: number, debut: number) => {
-  const t = interpolate(frame, [debut, debut + 9], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.bezier(0.16, 1, 0.3, 1),
-  });
-  return { opacity: t, transform: `translateY(${(1 - t) * 26}px)` };
-};
-
-/** Bulle de la conversation. `moi` la met à droite, en vert. */
-const Bulle: React.FC<{
-  moi?: boolean;
-  children: React.ReactNode;
-}> = ({ moi, children }) => {
-  const frame = useCurrentFrame();
-  return (
-    <div
-      style={{
-        ...arrivee(frame, 0),
-        alignSelf: moi ? "flex-end" : "flex-start",
-        maxWidth: "88%",
-        backgroundColor: moi ? COULEURS.vert : "rgba(255,255,255,0.055)",
-        color: moi ? "#04120B" : COULEURS.texte,
-        border: moi ? "none" : `1px solid ${COULEURS.ligne}`,
-        borderRadius: 30,
-        padding: "26px 30px",
-        fontSize: 40,
-        fontWeight: moi ? 800 : 600,
-        lineHeight: 1.34,
-        letterSpacing: "-0.015em",
-      }}
-    >
-      {children}
-    </div>
-  );
-};
-
 /**
- * L'appel d'outil, montré comme Claude le montre : le connecteur, le nom exact
- * de l'outil, et ce qu'on lui passe. C'est le cœur de la démonstration — si le
- * spectateur ne voit pas qu'un outil a été appelé tout seul, la vidéo ne dit
- * rien de plus qu'une capture d'écran du site.
+ * LA CONVERSATION — ce n'est plus une reconstitution, c'est l'enregistrement.
+ *
+ * `rec-claude.mp4` est la capture d'une vraie fenêtre Claude Code du 15/09/2026,
+ * avec le connecteur Créatis déclaré (`.mcp.json`, jeton OAuth du compte). On y
+ * voit la demande, Claude appeler l'outil, puis la réponse du connecteur avec
+ * les trois titres que l'IA a écrits. Rien n'est rejoué ni remis en page.
+ *
+ * ── POURQUOI UN ENREGISTREMENT ET PAS UNE MAQUETTE ───────────────────────
+ * La version précédente redessinait la conversation en HTML avec les vraies
+ * chaînes du connecteur. C'était exact, et ça ne prouvait rien : un spectateur
+ * ne distingue pas une maquette soignée d'une capture, donc il ne croit ni
+ * l'une ni l'autre. Une fenêtre de terminal avec sa barre d'onglets, son
+ * curseur qui clignote et ses temps d'attente, si.
+ *
+ * ── LES QUATRE VITESSES ──────────────────────────────────────────────────
+ * L'échange réel dure 66 secondes et on en dispose de 11. Une vitesse unique
+ * rendrait la question illisible et l'attente interminable :
+ *
+ *     x1,2   la demande s'affiche          (2 s réelles)
+ *     x14    l'attente pendant le travail  (37 s réelles → 2,6 s)
+ *     x3,5   la relance et la réponse      (7 s réelles → 2 s)
+ *     x1,5   les trois clips, à lire       (8 s réelles → 5,3 s)
+ *
+ * C'est le même principe que Parcours : on accélère ce qui n'apprend rien, on
+ * ralentit ce qui prouve.
  */
-const AppelOutil: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const e = spring({
-    frame,
-    fps,
-    config: { damping: 13, stiffness: 190, mass: 0.6 },
-  });
-  /* Pulsation lente pendant que l'outil « travaille » : c'est le seul endroit
-     où il ne se passe rien à l'écran, et deux secondes immobiles se lisent
-     comme un bug. */
-  const souffle = 0.55 + 0.45 * Math.sin(frame / 5);
-
-  return (
-    <div
-      style={{
-        alignSelf: "flex-start",
-        opacity: Math.min(1, e * 1.5),
-        transform: `scale(${interpolate(e, [0, 1], [0.9, 1])})`,
-        width: "100%",
-        backgroundColor: "rgba(16,185,129,0.10)",
-        border: `2px solid ${COULEURS.vert}`,
-        borderRadius: 26,
-        padding: "24px 28px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 999,
-            backgroundColor: COULEURS.vertClair,
-            opacity: souffle,
-          }}
-        />
-        <div
-          style={{
-            fontSize: 32,
-            fontWeight: 800,
-            color: COULEURS.vertClair,
-            letterSpacing: "0.02em",
-          }}
-        >
-          Créatis
-        </div>
-        <div style={{ fontSize: 30, fontWeight: 600, color: COULEURS.texteDoux }}>
-          creer_clips
-        </div>
-      </div>
-      <div
-        style={{
-          marginTop: 16,
-          fontSize: 30,
-          fontWeight: 600,
-          color: COULEURS.texteDoux,
-          lineHeight: 1.45,
-          wordBreak: "break-all",
-        }}
-      >
-        url: youtube.com/watch?v=65WcnNsAkL4
-        <br />
-        nombre: 3
-      </div>
-    </div>
-  );
-};
-
-/** Une ligne de résultat : le titre écrit par l'IA, et sa durée. */
-const LigneClip: React.FC<{
-  debut: number;
-  n: number;
-  titre: string;
-  duree: string;
-}> = ({ debut, n, titre, duree }) => {
-  const frame = useCurrentFrame();
-  return (
-    <div
-      style={{
-        ...arrivee(frame, debut),
-        /* Les lignes de résultat vivent DANS une bulle déjà montée : elles
-           n'ont pas de séquence à elles, d'où le décalage passé en argument. */
-        display: "flex",
-        alignItems: "center",
-        gap: 20,
-        marginTop: 16,
-      }}
-    >
-      <div
-        style={{
-          width: 52,
-          height: 52,
-          flexShrink: 0,
-          borderRadius: 14,
-          backgroundColor: COULEURS.vert,
-          color: "#04120B",
-          fontSize: 30,
-          fontWeight: 900,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {n}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 31, fontWeight: 800, lineHeight: 1.2 }}>{titre}</div>
-        <div style={{ fontSize: 26, fontWeight: 600, color: COULEURS.texteDoux }}>
-          {duree} · 1080×1920 · sous-titres incrustés
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/* ────────────────────────────────────────────────────────────────────────── */
-
-/** La conversation, du haut de l'écran jusqu'à ce que le clip prenne la place. */
 const Conversation: React.FC = () => {
   const frame = useCurrentFrame();
 
-
-  /* Le fond de la conversation se pose PROGRESSIVEMENT sur le clip : à 2,1 s il
-     est encore transparent, à 2,8 s il est opaque. Sans cette montée, on passe
-     d'une image vivante à un écran noir d'un coup, exactement à la seconde où
-     la série décroche. Sept dixièmes, pas plus : entre les deux, le fond sombre
-     à demi posé sur un visage donne un vert boueux qu'il ne faut pas laisser
-     s'installer. */
+  /* Le fond se pose progressivement sur le clip : à 2,1 s il est transparent,
+     à 2,8 s opaque. Sans cette montée on passe d'une image vivante à un écran
+     sombre d'un coup, exactement à la seconde où la série décroche. Sept
+     dixièmes, pas plus : entre les deux, le fond à demi posé sur un visage
+     donne un vert boueux qu'il ne faut pas laisser s'installer. */
   const fond = interpolate(frame, [63, 84], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
+  /* La fenêtre arrive à l'image 108, une fois la vignette de réaction partie :
+     elles occupent la même bande et, superposées, on ne lisait ni l'une ni
+     l'autre. La séquence qui la porte démarre au même moment, sinon les
+     premières secondes de l'enregistrement défileraient derrière un cadre
+     invisible et la question serait déjà écrite en apparaissant. */
+  const entree = interpolate(frame, [108, 126], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.bezier(0.16, 1, 0.3, 1),
+  });
+
   return (
     <AbsoluteFill style={{ fontFamily: POLICE }}>
       <AbsoluteFill style={{ backgroundColor: COULEURS.fond, opacity: fond }} />
-
-      {/* Halo vert très doux : la page du produit a le même, ça rattache la
-          vidéo à la marque sans poser de logo. */}
       <AbsoluteFill
         style={{
           background:
@@ -263,13 +145,11 @@ const Conversation: React.FC = () => {
       />
 
       {/* Bandeau : à qui on parle. Il n'apparaît qu'une fois la fenêtre de
-          réaction partie (image 112) — les deux occupent la même bande, et se
-          chevaucher rendrait les deux illisibles. Posé à 330 px, soit 17 % :
-          juste sous la barre de recherche de TikTok. */}
+          réaction partie (image 112) — les deux occupent la même bande. */}
       <div
         style={{
           position: "absolute",
-          top: 330,
+          top: 318,
           left: 0,
           right: 0,
           textAlign: "center",
@@ -287,73 +167,76 @@ const Conversation: React.FC = () => {
         Claude · connecteur Créatis
       </div>
 
-      {/* La colonne est ancrée EN BAS et se remplit vers le haut, comme un vrai
-          fil de discussion : les messages récents restent au centre de l'écran
-          et les anciens montent d'eux-mêmes. La première version empilait tout
-          depuis le haut avec un défilement calculé à la main — les bulles
-          passaient sous le bandeau et les deux tiers bas restaient vides.
-          Le bas s'arrête à 1450 px (75 %) : en dessous commence la zone des
-          légendes TikTok. */}
+      {/* 1000 px de large : la capture fait 592, donc un agrandissement de 1,69.
+          Au-delà le texte se délite ; en dessous il devient illisible sur un
+          téléphone. La capture est rognée à 496 px de haut — la moitié basse de
+          la fenêtre ne contient jamais rien, et la garder poussait le bloc dans
+          la zone des légendes TikTok. Résultat : 845 px de haut, posés entre
+          22 % et 66 % de la hauteur, loin des deux bandes d'interface. */}
+      <Sequence from={108} durationInFrames={CLIP_DEB - 108} layout="none">
       <div
         style={{
           position: "absolute",
-          top: 420,
-          bottom: 470,
-          left: 70,
-          right: 70,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          gap: 22,
+          top: 424,
+          left: 40,
+          width: 1000,
+          borderRadius: 22,
+          overflow: "hidden",
+          border: `1px solid ${COULEURS.ligne}`,
+          boxShadow: "0 40px 110px rgba(0,0,0,0.6)",
+          opacity: entree,
+          transform: `scale(${interpolate(entree, [0, 1], [0.94, 1])})`,
         }}
       >
-        {/* Chaque message a sa propre séquence : avant son heure il n'est pas
-            monté du tout, donc il n'occupe aucune place. C'est ce qui donne le
-            comportement d'un vrai fil — les messages poussent les précédents
-            vers le haut en arrivant. Avec une simple opacité, la mise en page
-            était figée dès la première image et rien ne bougeait. */}
-        <Sequence from={69} durationInFrames={CLIP_DEB - 69} layout="none">
-          <Bulle moi>Fais-moi 3 clips de cette vidéo YouTube</Bulle>
-        </Sequence>
-
-        <Sequence from={138} durationInFrames={CLIP_DEB - 138} layout="none">
-          <AppelOutil />
-        </Sequence>
-
-        <Sequence from={198} durationInFrames={CLIP_DEB - 198} layout="none">
-          <Bulle>
-            Génération lancée — 3 clips demandés.
-            <br />
-            <span style={{ color: COULEURS.texteDoux }}>Identifiant : j38211330</span>
-          </Bulle>
-        </Sequence>
-
-        <Sequence from={255} durationInFrames={CLIP_DEB - 255} layout="none">
-          <Bulle>
-            <div style={{ fontWeight: 800, color: COULEURS.vertClair }}>
-              3 clips prêts
-            </div>
-            <LigneClip
-              debut={15}
-              n={1}
-              titre="Bellingcat déchiffre le mystère du MH17"
-              duree="56 s"
+        <Series>
+          {/* Repères relevés image par image sur `rec-claude.mp4` :
+                 2,9 s  la demande s'affiche
+                44,0 s  Claude répond
+                46,5 s  la relance
+                53,0 s  les trois clips sont écrits
+             Les deux attentes sont les seuls passages qui n'apprennent rien :
+             ce sont les seuls qu'on accélère vraiment. */}
+          <Series.Sequence durationInFrames={45} layout="none">
+            <Video
+              src={staticFile(REC)}
+              trimBefore={Math.round(2.8 * FPS)}
+              style={ECRAN}
             />
-            <LigneClip
-              debut={30}
-              n={2}
-              titre="L’overdose qui n’était pas une overdose"
-              duree="62 s"
+          </Series.Sequence>
+          <Series.Sequence durationInFrames={55} layout="none">
+            <Video
+              src={staticFile(REC)}
+              trimBefore={Math.round(3.5 * FPS)}
+              playbackRate={22}
+              style={ECRAN}
             />
-            <LigneClip
-              debut={45}
-              n={3}
-              titre="Enquête massive qui tourne au néant"
-              duree="31 s"
+          </Series.Sequence>
+          <Series.Sequence durationInFrames={45} layout="none">
+            <Video
+              src={staticFile(REC)}
+              trimBefore={Math.round(43.8 * FPS)}
+              playbackRate={2.5}
+              style={ECRAN}
             />
-          </Bulle>
-        </Sequence>
+          </Series.Sequence>
+          <Series.Sequence durationInFrames={52} layout="none">
+            <Video
+              src={staticFile(REC)}
+              trimBefore={Math.round(47.5 * FPS)}
+              playbackRate={3.5}
+              style={ECRAN}
+            />
+          </Series.Sequence>
+          <Series.Sequence durationInFrames={115} layout="none">
+            <Video
+              src={staticFile(REC)}
+              trimBefore={Math.round(53.6 * FPS)}
+              style={ECRAN}
+            />
+          </Series.Sequence>
+        </Series>
       </div>
+      </Sequence>
     </AbsoluteFill>
   );
 };
@@ -369,8 +252,7 @@ const Conversation: React.FC = () => {
  * La première version mettait un fond noir à 80 % : l'image 0 mesurait 20 de
  * luminance, contre 116-118 pour la médiane des clips qui performent, et la
  * série TikTok dit toujours la même chose — arrêt massif à 0:02. Le clip tourne
- * donc DERRIÈRE dès la première image, relevé de 1,28 et voilé à 0,26 seulement —
- * les valeurs qui ramènent la première seconde de 70 à ~105, près de la cible.
+ * donc DERRIÈRE dès la première image, relevé de 1,45 et voilé à 0,20 seulement.
  *
  * Le texte tient sur ce fond mouvant grâce au contour noir, pas grâce au voile —
  * un voile assez opaque pour porter du texte blanc serait, par construction,
@@ -392,17 +274,18 @@ const Accroche: React.FC = () => {
     <AbsoluteFill style={{ opacity: sortie }}>
       {/* Relèvement mesuré. Avec un voile à 0,42 seul, la première seconde
           tombait à 70 de luminance, contre 116-118 pour la médiane du corpus.
-          Voile ramené à 0,26 et clip relevé de 1,28 : on remonte à ~105 sans
-          brûler les visages — au-delà de 1,45 la peau sature, mesuré le 14/09.
+          Voile à 0,20 et clip relevé de 1,45 — le plafond mesuré le 14/09, au-delà
+          duquel la peau sature. La source Amixem ouvre à 96 de luminance, plus
+          bas que la précédente, d'où un relèvement au maximum admissible.
           Le voile ne sert plus qu'à asseoir le texte ; c'est le contour noir
           qui le rend lisible, pas l'assombrissement. */}
       <AbsoluteFill
         style={{
-          backdropFilter: "brightness(1.28)",
-          WebkitBackdropFilter: "brightness(1.28)",
+          backdropFilter: "brightness(1.45)",
+          WebkitBackdropFilter: "brightness(1.45)",
         }}
       />
-      <AbsoluteFill style={{ backgroundColor: "rgba(4,10,7,0.26)" }} />
+      <AbsoluteFill style={{ backgroundColor: "rgba(4,10,7,0.20)" }} />
       <AbsoluteFill
         style={{
           fontFamily: POLICE,
@@ -473,7 +356,7 @@ export const ClaudeMcp: React.FC = () => {
       </Sequence>
 
       {AVEC_REACTION ? (
-        <Sequence durationInFrames={111} name="Réaction">
+        <Sequence durationInFrames={108} name="Réaction">
           <Reaction />
         </Sequence>
       ) : null}
