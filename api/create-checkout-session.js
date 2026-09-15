@@ -62,6 +62,30 @@ const ENGAGEMENT_MOIS = 12;
    Les essais annuels DEJA en cours ne sont pas touches : leur abonnement Stripe existe deja. */
 const PRO_ESSAI_JOURS = 7;
 
+/* Cette personne a-t-elle DEJA un abonnement en cours ?
+   Le 15/09, un client a paye, l'interface a continue de le traiter comme gratuit (son plan
+   n'etait pas remonte) et lui a represente le paywall : il a repaye deux minutes plus tard.
+   Resultat, deux abonnements Stripe et deux clients distincts pour un seul email, soit 28 EUR
+   au lieu de 14 au premier prelevement. Le correctif d'interface evite le cas nominal ; celui-ci
+   est le filet. Un serveur qui sait que l'abonnement existe ne doit pas en ouvrir un second. */
+async function abonnementDejaActif(userId, email) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const h = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+  try {
+    let id = userId && !userId.includes('@') ? userId : null;
+    if (!id && email) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`, { headers: h });
+      id = (await r.json().catch(() => []))?.[0]?.id || null;
+    }
+    if (!id) return null;
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/abonnements?user_id=eq.${id}&status=in.(active,trialing)&select=id,status,trial_ends_at&limit=1`,
+      { headers: h }
+    );
+    return (await r.json().catch(() => []))?.[0] || null;
+  } catch { return null; }
+}
+
 async function ugcSoumissionParJeton(jeton) {
   if (!SUPABASE_URL || !SUPABASE_KEY || !jeton) return null;
   const r = await fetch(
@@ -122,6 +146,23 @@ module.exports = async (req, res) => {
 
   if (!finalPriceId) {
     return res.status(400).json({ error: 'priceId manquant' });
+  }
+
+  /* Le jeton UGC est exclu de ce controle : son abonnement d'essai EST le but de l'operation,
+     et il est consomme une seule fois de toute facon. */
+  if (!essaiToken) {
+    const dejaActif = await abonnementDejaActif(
+      finalUserId,
+      userEmail || (userId && userId.includes('@') ? userId : null)
+    );
+    if (dejaActif) {
+      return res.status(409).json({
+        error: 'Tu as déjà un abonnement en cours — inutile de repayer.',
+        code: 'DEJA_ABONNE',
+        statut: dejaActif.status,
+        essai_jusqu_au: dejaActif.trial_ends_at || null,
+      });
+    }
   }
 
   // Calcule ici, pas dans le webhook : c'est le seul endroit ou trialDays est connu avec

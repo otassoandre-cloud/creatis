@@ -506,6 +506,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!reponse.ok) {
       const err = await reponse.json().catch(() => ({}));
+      /* Le serveur refuse d'ouvrir un second abonnement pour quelqu'un qui en a deja un.
+         Ce n'est PAS une erreur de paiement et ca ne doit pas en avoir l'air : la personne a
+         deja ce qu'elle est venue chercher, on la renvoie a ses clips. Sans ce cas particulier,
+         elle lisait « Erreur serveur » et pouvait retenter — exactement le comportement qui a
+         produit un double abonnement le 15/09. */
+      if (err.code === 'DEJA_ABONNE') {
+        const fin = err.essai_jusqu_au
+          ? new Date(err.essai_jusqu_au).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+          : null;
+        document.querySelector('.paiement-form-titre').textContent = 'Ton abonnement est déjà actif';
+        document.querySelector('.paiement-form-sous').textContent = fin
+          ? `Rien à repayer. Ton essai court jusqu'au ${fin}.`
+          : 'Rien à repayer — ton abonnement est en cours.';
+        const zone = document.getElementById('payment-element') || document.querySelector('.paiement-form');
+        if (zone) zone.innerHTML =
+          '<a href="/studio" style="display:block;text-align:center;background:#10b981;color:#04120b;'
+          + 'padding:16px;border-radius:10px;text-decoration:none;font-weight:800">Retourner à mes clips</a>';
+        if (window.posthog) posthog.capture('paiement_refuse_deja_abonne');
+        return;
+      }
       throw new Error(err.error || 'Erreur serveur');
     }
 

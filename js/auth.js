@@ -290,14 +290,28 @@ const Auth = (() => {
        suivants, et rien ne relancait l'appel de toute la session.
        `identite()` porte deja le bon ordre de confiance — memoire, puis session persistee par
        Supabase, puis le miroir `creatis_user` — on s'en sert. */
+    /* Trois tentatives, pas une. Cette fonction renvoie `null` quand le reseau echoue, et
+       l'appelant traite alors l'utilisateur comme GRATUIT faute de mieux. Un client qui venait
+       de payer s'est vu pour cette raison presenter le paywall cinq fois, puis a paye une
+       seconde fois (session du 15/09, angelo-2000). Une coupure d'une seconde ne doit pas
+       coûter un abonnement en double : on retente deux fois, a 600 ms puis 1,5 s. */
     async getPlanDistant() {
       const moi = this.identite();
       if (!moi?.id) return null;
+      for (let essai = 0; essai < 3; essai++) {
+        if (essai) await new Promise(r => setTimeout(r, essai === 1 ? 600 : 1500));
+        const r = await this._planUneFois(moi.id);
+        if (r !== null) return r;
+      }
+      return null;
+    },
+
+    async _planUneFois(id) {
       try {
         const res = await fetch(CONFIG.USER_SYNC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get', userId: moi.id })
+          body: JSON.stringify({ action: 'get', userId: id })
         });
         if (!res.ok) return null;
         const { user } = await res.json();

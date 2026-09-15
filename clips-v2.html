@@ -1234,6 +1234,15 @@ const V2 = (() => {
      téléchargements pour un revenu possible de zéro. L'aperçu complet des deux premiers reste
      offert : c'est ce qui donne envie de payer. */
   const APERCU_GRATUIT = 2;
+  /* Le plan est-il CONNU ? Distinct de sa valeur, et c'est tout l'enjeu. `_userPlan` vaut
+     « gratuit » par defaut, donc tant que le serveur n'a pas repondu on ne sait pas distinguer
+     « cet utilisateur est gratuit » de « on ne sait pas encore ». Le 15/09 un client a paye,
+     son plan n'est pas remonte, et l'interface l'a traite comme gratuit : huit clips
+     verrouilles et le paywall CINQ fois apres son paiement. Il a repaye.
+     Tant que ce temoin est faux on ne verrouille rien et on ne montre aucun paywall — laisser
+     passer un gratuit quelques secondes coute infiniment moins cher que de bloquer, et de
+     faire payer deux fois, quelqu'un qui vient de payer. */
+  let _planConnu = false;
   /* Plan avec lequel la grille a été dessinée. `_userPlan` arrive de Supabase de façon
      asynchrone : sans ce témoin, un client Pro qui charge la page voit des cadenas jusqu'au
      prochain rendu, et un gratuit les voit apparaître d'un coup. */
@@ -1326,7 +1335,7 @@ const V2 = (() => {
          retrouvait devant les cadenas des clips 3 et suivants, sans rien pour l'en sortir :
          constate sur mobile le 14/09/2026, compte `plan: pro` cote serveur. */
       const _appliquerPlan = (data) => {
-        if (data?.plan) _userPlan = data.plan;
+        if (data?.plan) { _userPlan = data.plan; _planConnu = true; }
         if (data?.repurpose_count) _repurposeCount = data.repurpose_count;
         if (window.posthog && data?.plan) try { posthog.people?.set({ plan: data.plan }); } catch {}
         /* Le plan arrive APRES le premier rendu. Si la grille a été dessinée avec un autre plan,
@@ -1344,9 +1353,19 @@ const V2 = (() => {
           if (_userPlan !== 'gratuit') _prefetchYtSegments().catch(() => {});
         }
       };
-      const _reessayerPlan = () => setTimeout(() => {
-        Auth.getPlanDistant().then(_appliquerPlan).catch(() => {});
-      }, 2500);
+      /* La reprise du 14/09 ne retentait QU'UNE FOIS : si ce second appel echouait aussi, le
+         plan restait inconnu pour toute la session. On insiste desormais jusqu'a six fois, en
+         espacant (2,5 s puis 4, 6, 8...), et on s'arrete des que le plan est connu. */
+      let _essaisPlan = 0;
+      const _reessayerPlan = () => {
+        if (_planConnu || _essaisPlan >= 6) return;
+        _essaisPlan++;
+        setTimeout(() => {
+          Auth.getPlanDistant()
+            .then(d => { if (d?.plan) _appliquerPlan(d); else _reessayerPlan(); })
+            .catch(_reessayerPlan);
+        }, 2500 + (_essaisPlan - 1) * 1500);
+      };
       Auth.getPlanDistant()
         .then(data => { if (data?.plan) _appliquerPlan(data); else _reessayerPlan(); })
         .catch(_reessayerPlan);
@@ -3860,7 +3879,7 @@ const V2 = (() => {
     document.getElementById('studio-title').textContent = `${_clips.length} clips viraux trouvés`;
     document.getElementById('studio-meta').textContent = `"${title.substring(0, 60)}"`;
     const banner = document.getElementById('studio-gratuit-banner');
-    if (banner) banner.style.display = _userPlan === 'gratuit' ? 'flex' : 'none';
+    if (banner) banner.style.display = (_planConnu && _userPlan === 'gratuit') ? 'flex' : 'none';
     renderClipsGrid();
     updateExportBtn();
     _stopScanAnim();
@@ -3963,7 +3982,7 @@ const V2 = (() => {
       const dur = Math.round((clip.end_time ?? clip.end) - (clip.start_time ?? clip.start));
       const tags = autoTags(clip);
       const captionPreview = escHtml((clip.hook || '').split(' ').slice(0, 4).join(' ').toUpperCase());
-      const locked = _userPlan === 'gratuit' && i >= APERCU_GRATUIT;
+      const locked = _planConnu && _userPlan === 'gratuit' && i >= APERCU_GRATUIT;
 
       if (locked) return `
       <div class="clip-card locked" id="clip-card-${i}" onclick="V2.showUpgradeModal()" style="cursor:pointer;">
@@ -4317,7 +4336,7 @@ const V2 = (() => {
        déjà showUpgradeModal, mais showModal est aussi atteignable autrement (clavier, reprise
        d'historique, export groupé). Sans cette garde, ces chemins déclencheraient le
        téléchargement qu'on cherche précisément à éviter. */
-    if (_userPlan === 'gratuit' && i >= APERCU_GRATUIT) {
+    if (_planConnu && _userPlan === 'gratuit' && i >= APERCU_GRATUIT) {
       if (window.posthog) posthog.capture('clip_verrouille_clic', { clip_index: i, plan: _userPlan });
       showUpgradeModal();
       return;
@@ -4826,7 +4845,7 @@ const V2 = (() => {
     // « À la demande » est une invitation à cliquer, donc à déclencher un téléchargement.
     // Sur un clip verrouillé ce serait une promesse qu'on refuse ensuite : la carte porte
     // déjà son cadenas, on n'ajoute rien.
-    if (_userPlan === 'gratuit' && i >= APERCU_GRATUIT) return;
+    if (_planConnu && _userPlan === 'gratuit' && i >= APERCU_GRATUIT) return;
     _setClipBadge(i, 'clip-failed-badge', 'rgba(0,0,0,.72)', '#fbbf24', 'À la demande');
   }
 
@@ -7188,11 +7207,22 @@ const V2 = (() => {
     // Gratuit : le SERVEUR est la source de vérité. On resynchronise le compteur AVANT d'autoriser
     // → empêche tout contournement (reload, nouvelle vidéo, plusieurs onglets, cache local).
     if (_userPlan === 'gratuit') {
+      let _reponsePlan = null;
       try {
-        const d = await Auth.getPlanDistant();
-        if (d?.plan) _userPlan = d.plan;
-        if (d?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, d.repurpose_count);
+        _reponsePlan = await Auth.getPlanDistant();
+        if (_reponsePlan?.plan) { _userPlan = _reponsePlan.plan; _planConnu = true; }
+        if (_reponsePlan?.repurpose_count !== undefined) _repurposeCount = Math.max(_repurposeCount, _reponsePlan.repurpose_count);
       } catch {}
+      /* Le serveur n'a pas repondu (trois tentatives) : on NE SAIT PAS si cette personne est
+         gratuite. Lui presenter le paywall serait le pire choix — c'est exactement ce qui a
+         fait payer deux fois un client le 15/09. On dit la verite : c'est la connexion qui a
+         lache, pas son abonnement. */
+      if (!_reponsePlan?.plan) {
+        toast('Connexion perdue — impossible de vérifier ton abonnement. Réessaie dans un instant.', 'erreur', 6000);
+        if (window.posthog) posthog.capture('plan_indetermine_export', { clip_index: _modalIdx });
+        _rendreBoutons();
+        return;
+      }
     }
     // Compte gratuit → paywall immédiat, AVANT tout traitement : aucun crédit consommé, aucune
     // attente infligée. La personne a déjà vu ses clips en aperçu, c'est le bon moment pour vendre.
