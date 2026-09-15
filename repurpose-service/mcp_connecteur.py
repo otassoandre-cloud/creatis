@@ -30,6 +30,9 @@ SHA-256 — une fuite de la base ne donne accès à aucun compte.
 import os
 import base64
 import hashlib
+import asyncio
+import json
+import re
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -55,6 +58,11 @@ ISSUER = (os.environ.get("MCP_ISSUER")
 
 PROTOCOLE = "2025-06-18"
 MAX_CLIPS = 5
+
+# Le connecteur tourne DANS le meme processus que le pipeline : on appelle
+# /process-clip par la boucle locale, sans sortir de la machine.
+PORT_LOCAL = os.environ.get("PORT", "8080")
+SERVICE_SECRET = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 DUREE_CODE = timedelta(minutes=10)
 DUREE_JETON = timedelta(days=30)
 
@@ -458,6 +466,104 @@ OUTILS = [
 QUOTAS = {"gratuit": (2, 0), "starter": (5, 20), "pro": (30, 150), "studio": (30, 150)}
 
 
+def _identifiant_video(url: str) -> str:
+    """L'identifiant a 11 caracteres, quelle que soit la forme du lien."""
+    m = re.search(r"(?:v=|youtu\.be/|/shorts/|/embed/)([A-Za-z0-9_-]{11})", url or "")
+    return m.group(1) if m else ""
+
+
+def _segments_du_clip(segments: list, debut: float, fin: float) -> list:
+    """Sous-titres recales sur le debut du clip, au format attendu par /process-clip.
+
+    Copie fidele de ce que fait clips-v2.html avant l'export : on ne garde que ce
+    qui chevauche le clip, et t0/t1 partent de zero. Les timings mot par mot sont
+    conserves quand Whisper les a fournis — sans eux le serveur redivise la phrase
+    en parts egales et le karaoke se desynchronise.
+    """
+    sortie = []
+    for sg in segments or []:
+        d = sg.get("start", 0.0)
+        f = sg.get("end", d + 2.0)
+        if d >= fin or f <= debut:
+            continue
+        texte = (sg.get("text") or "").strip()
+        if not texte:
+            continue
+        bloc = {"text": texte,
+                "t0": max(0.0, d - debut),
+                "t1": min(fin - debut, f - debut)}
+        mots = [{"word": m.get("word"),
+                 "start": max(0.0, (m.get("start", d)) - debut),
+                 "end": min(fin - debut, (m.get("end", f)) - debut)}
+                for m in (sg.get("words") or [])]
+        mots = [m for m in mots if m["word"] and m["end"] > m["start"]]
+        if mots:
+            bloc["words"] = mots
+        if bloc["t1"] > bloc["t0"]:
+            sortie.append(bloc)
+    return sortie
+
+
+async def _rendre_un_clip(video_id: str, debut: float, fin: float, segments: list) -> str:
+    """Produit UN clip fini et rend son URL.
+
+    Avant le 15/09/2026 le connecteur passait par `shorts_start`, qui rend le clip
+    recadre mais SANS sous-titres — sur le site c'est le navigateur qui les incruste.
+    Le connecteur n'a pas de navigateur : il livrait donc des clips nus tout en
+    annoncant « sous-titres incrustes ». /process-clip fait le recadrage ET
+    l'incrustation en une passe, avec les memes reglages par defaut que le studio.
+    """
+    donnees = {
+        "yt_video_id": video_id, "yt_start": str(debut), "yt_end": str(fin),
+        "segments": json.dumps(_segments_du_clip(segments, debut, fin)),
+        "style": "bold", "font_size": "55", "sub_y": "82", "sub_x": "50",
+        "color_text": "#ffffff", "color_bg": "#000000",
+        "reframe_mode": "center", "hook_enabled": "false", "plan": "pro",
+    }
+    # Le recadrage plus l'encodage d'une minute de video prennent une a deux minutes.
+    async with httpx.AsyncClient(timeout=420) as c:
+        r = await c.post(f"http://127.0.0.1:{PORT_LOCAL}/process-clip",
+                         headers={"Authorization": f"Bearer {SERVICE_SECRET}"},
+                         data=donnees)
+    if r.status_code >= 400:
+        raise RuntimeError((r.json() or {}).get("detail") or f"rendu {r.status_code}")
+    return (r.json() or {}).get("url") or ""
+
+
+async def _rendre_la_suite(ident: str, video_id: str, clips: list, segments: list):
+    """Rend les clips l'un apres l'autre et tient la ligne `mcp_jobs` a jour.
+
+    Sequentiel a dessein : deux encodages simultanes saturent la memoire du
+    conteneur. Le suivi passe par la base, pas par la memoire du processus, donc
+    `etat_clips` lit un etat juste meme si l'appel precedent a ete interrompu.
+    """
+    faits = []
+    for i, clip in enumerate(clips, 1):
+        d = float(clip.get("start_time", clip.get("start", 0)))
+        f = float(clip.get("end_time", clip.get("end", 0)))
+        await _patcher(f"mcp_jobs?id=eq.{ident}", {
+            "etape": f"Rendu du clip {i} sur {len(clips)}…",
+            "updated_at": _maintenant().isoformat()})
+        try:
+            url = await _rendre_un_clip(video_id, d, f, segments)
+        except Exception as e:
+            logger.warning(f"[mcp] clip {i} en echec: {e}")
+            continue
+        if not url:
+            continue
+        faits.append({"download_url": url,
+                      "meta": {"title": clip.get("title") or f"Clip {i}",
+                               "start": d, "end": f}})
+        await _patcher(f"mcp_jobs?id=eq.{ident}", {
+            "clips": faits, "updated_at": _maintenant().isoformat()})
+
+    await _patcher(f"mcp_jobs?id=eq.{ident}", {
+        "statut": "termine" if faits else "echec",
+        "erreur": None if faits else "aucun clip n'a pu etre rendu",
+        "etape": None, "clips": faits,
+        "updated_at": _maintenant().isoformat()})
+
+
 def _texte(t: str, erreur: bool = False) -> dict:
     return {"content": [{"type": "text", "text": t}], **({"isError": True} if erreur else {})}
 
@@ -517,13 +623,13 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
         except (TypeError, ValueError):
             nombre = 3
 
+        # Anciennement `shorts_start`, qui transcrivait la video DANS la requete : quand
+        # YouTube refuse ses sous-titres (429 sur l'IP Railway, 15/09/2026), le repli
+        # Whisper prend plusieurs minutes, Vercel coupe la fonction a 60 s et httpx
+        # abandonnait au meme instant — l'utilisateur ne lisait qu'« Erreur interne ».
+        # `clips_start` rend un session_id tout de suite et Railway analyse en tache de
+        # fond ; chaque appel HTTP redevient court.
         try:
-        # `shorts_start` transcrit la video dans la requete. Quand YouTube refuse ses
-        # sous-titres (429 sur l'IP Railway, 15/09/2026), le repli Whisper prend plusieurs
-        # minutes : au-dela de 60 s Vercel coupe la fonction ET httpx abandonne ici, et
-        # l'utilisateur ne lit qu'« Erreur interne ». On emprunte desormais le meme chemin
-        # que le site : `clips_start` rend un session_id tout de suite, Railway analyse en
-        # arriere-plan, et `etat_clips` enchaine sur le rendu une fois les clips connus.
             depart = await _pipeline(jeton_u, {"mode": "clips_start", "url": url,
                                                "n_clips": nombre})
         except RuntimeError as e:
@@ -630,70 +736,43 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                               "Essaie une vidéo où quelqu'un parle face caméra.",
                               erreur=True)
 
-            # Les clips sont connus : on demande le rendu des `nombre` meilleurs. Passer
-            # `clips` evite a `shorts_start` de retranscrire — c'est ce qui le ramene
-            # sous le budget de 60 s de Vercel.
+            # Les clips sont connus. On les rend ICI, pas via `shorts_start` : cette
+            # route-la produit un clip recadre mais SANS sous-titres — sur le site
+            # c'est le navigateur qui les incruste ensuite. Le connecteur n'a pas de
+            # navigateur, il livrait donc des clips nus en annoncant le contraire.
+            # /process-clip fait recadrage et incrustation en une passe.
             nombre = etat.get("nombre") or 3
-            try:
-                depart = await _pipeline(jeton_u, {"mode": "shorts_start",
-                                                   "url": job.get("url"),
-                                                   "n_clips": nombre,
-                                                   "clips": trouves[:nombre]})
-            except RuntimeError as e:
+            retenus = trouves[:nombre]
+            video_id = _identifiant_video(job.get("url") or "")
+            if not video_id:
                 await _patcher(f"mcp_jobs?id=eq.{ident}", {
-                    "statut": "echec", "erreur": str(e)[:400],
+                    "statut": "echec", "erreur": "URL YouTube illisible",
                     "updated_at": _maintenant().isoformat()})
-                return _texte(f"Le rendu n'a pas pu démarrer : {e}", erreur=True)
+                return _texte("L'URL de la vidéo n'a pas pu être relue.", erreur=True)
 
-            jobs = depart.get("job_ids") or []
-            attente = depart.get("pending_clips") or []
-            total = len(jobs) + len(attente)
-            etat = {"job_ids": jobs, "pending_clips": attente, "total_clips": total}
+            segments = ((vu.get("result") or {}).get("segments")) or []
             await _patcher(f"mcp_jobs?id=eq.{ident}", {
-                "etape": "Rendu du premier clip…", "etat": etat,
+                "etape": f"Rendu du clip 1 sur {len(retenus)}…",
+                "etat": {"phase": "rendu", "total_clips": len(retenus)},
                 "updated_at": _maintenant().isoformat()})
-            pluriel = "s" if total > 1 else ""
+            asyncio.create_task(_rendre_la_suite(ident, video_id, retenus, segments))
+
+            pluriel = "s" if len(retenus) > 1 else ""
             return _texte(
-                f"Analyse terminée — {total} clip{pluriel} en cours de rendu.\n\n"
+                f"Analyse terminée — {len(retenus)} clip{pluriel} en cours de rendu.\n\n"
                 "Rappelle `etat_clips` dans une trentaine de secondes.")
 
         # ── Phase 2 : rendu ────────────────────────────────────────────────
-        try:
-            suite = await _pipeline(jeton_u, {
-                "mode": "shorts_status",
-                "job_ids": etat.get("job_ids") or [],
-                "pending_clips": etat.get("pending_clips") or [],
-                "done_clips": job.get("clips") or [],
-                "total_clips": etat.get("total_clips") or 0,
-            })
-        except RuntimeError as e:
-            await _patcher(f"mcp_jobs?id=eq.{ident}", {
-                "statut": "echec", "erreur": str(e)[:400],
-                "updated_at": _maintenant().isoformat()})
-            return _texte(f"La génération a échoué : {e}", erreur=True)
-
-        fini = suite.get("status") == "done"
-        clips = suite.get("clips") if fini else (suite.get("done_clips") or job.get("clips") or [])
-        clips = clips or []
-        await _patcher(f"mcp_jobs?id=eq.{ident}", {
-            "statut": "termine" if fini else "en_cours",
-            "etape": suite.get("progress"),
-            "clips": clips,
-            "etat": etat if fini else {
-                "job_ids": suite.get("job_ids") or etat.get("job_ids") or [],
-                "pending_clips": suite.get("pending_clips", etat.get("pending_clips") or []),
-                "total_clips": suite.get("total_clips") or etat.get("total_clips") or 0,
-            },
-            "updated_at": _maintenant().isoformat(),
-        })
-        if fini:
-            return _texte(_rendu(clips))
+        # `_rendre_la_suite` travaille en arriere-plan et ecrit son avancement dans
+        # la ligne `mcp_jobs`. Ici on ne fait que la relire : aucun appel sortant,
+        # donc aucun risque de couper la reponse au milieu d'un encodage.
+        clips = job.get("clips") or []
+        total = etat.get("total_clips") or "?"
         pluriel = "s" if len(clips) > 1 else ""
         return _texte(
-            f"{suite.get('progress') or 'Rendu en cours…'}\n\n"
-            f"{len(clips)} clip{pluriel} terminé{pluriel} sur "
-            f"{etat.get('total_clips') or '?'}. Rappelle `etat_clips` dans une trentaine "
-            "de secondes.")
+            f"{job.get('etape') or 'Rendu en cours…'}\n\n"
+            f"{len(clips)} clip{pluriel} terminé{pluriel} sur {total}. Rappelle "
+            "`etat_clips` dans une trentaine de secondes.")
 
     if nom == "mon_quota":
         lignes = await _lire(
