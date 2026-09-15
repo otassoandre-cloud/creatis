@@ -403,19 +403,41 @@ module.exports = async (req, res) => {
 
         // Trouver l'utilisateur par stripe_customer_id
         const user = await supabaseGet('users', { stripe_customer_id: customerId });
-        if (user) {
-          await supabasePatch('users', { stripe_customer_id: customerId }, {
-            plan: 'gratuit',
-            stripe_subscription_id: null,
-            updated_at: new Date().toISOString()
-          });
-        }
 
+        // La ligne d'abonnement est marquee annulee AVANT de decider du plan : sinon le
+        // decompte ci-dessous compterait encore celui qu'on vient d'annuler.
         await supabasePatch('abonnements', { stripe_subscription_id: subscriptionId }, {
           status: 'canceled',
           canceled_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
+
+        /* NE PAS RETROGRADER S'IL RESTE UN ABONNEMENT ACTIF.
+           Ce bloc posait `plan: 'gratuit'` sans rien verifier. Or un meme compte peut porter
+           plusieurs abonnements — c'est arrive le 15/09, un client ayant paye deux fois parce
+           que l'interface le croyait encore gratuit. En annulant le doublon, on l'a
+           immediatement rendu gratuit alors que son premier abonnement, lui, etait toujours
+           actif : il perdait l'acces qu'il venait de payer. On compte donc ce qui reste. */
+        let resteActif = false;
+        if (user?.id && SUPABASE_URL && SUPABASE_KEY) {
+          try {
+            const r = await fetch(
+              `${SUPABASE_URL}/rest/v1/abonnements?user_id=eq.${user.id}&status=in.(active,trialing)&select=id&limit=1`,
+              { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+            );
+            resteActif = ((await r.json().catch(() => [])) || []).length > 0;
+          } catch { /* en cas de doute on ne retrograde pas : voir ci-dessous */ resteActif = true; }
+        }
+
+        if (user && !resteActif) {
+          await supabasePatch('users', { stripe_customer_id: customerId }, {
+            plan: 'gratuit',
+            stripe_subscription_id: null,
+            updated_at: new Date().toISOString()
+          });
+        } else if (user) {
+          console.log(`[Webhook] plan conserve — ${user.email} a encore un abonnement actif`);
+        }
 
         /* Alerte de résiliation. Sans elle, un départ passe totalement inaperçu : le compte est
            rétrogradé en silence et on ne l'apprend qu'en consultant Stripe. Le motif a été déposé
