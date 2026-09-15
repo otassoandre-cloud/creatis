@@ -1243,6 +1243,9 @@ const V2 = (() => {
      passer un gratuit quelques secondes coute infiniment moins cher que de bloquer, et de
      faire payer deux fois, quelqu'un qui vient de payer. */
   let _planConnu = false;
+  /* Une seule reprise automatique par session apres une saturation du service d'analyse :
+     au-dela, le probleme n'est plus passager et boucler ne ferait qu'user le quota. */
+  let _repriseSaturation = false;
   /* Plan avec lequel la grille a été dessinée. `_userPlan` arrive de Supabase de façon
      asynchrone : sans ce témoin, un client Pro qui charge la page voit des cadenas jusqu'au
      prochain rendu, et un gratuit les voit apparaître d'un coup. */
@@ -3829,6 +3832,32 @@ const V2 = (() => {
       };
       console.error('[analyse] échec —', _diag);
       if (window.posthog) { posthog.capture('analysis_error', _diag); posthog.capture('generation_failed', { ..._diag, reason: brut.substring(0, 100) }); }
+      /* SATURATION : on rejoue, on ne renvoie pas l'utilisateur au travail.
+         Le message disait « reessaie dans deux ou trois minutes ». Le 15/09, le client l'a lu
+         apres avoir deja paye deux fois, et n'a jamais reessaye. Or la cause est un plafond PAR
+         MINUTE cote Groq — souvent consomme par la propre analyse precedente de l'utilisateur —
+         donc l'attente suffit, et c'est a nous de la faire. Une seule reprise automatique : si
+         elle echoue aussi, le probleme n'est pas passager et il faut le dire. */
+      const _saturation = /satur/i.test(brut || '');
+      if (_saturation && !_repriseSaturation) {
+        _repriseSaturation = true;
+        let _reste = 90;
+        const _msg = document.getElementById('analyze-msg');
+        if (_msg) _msg.textContent = `Service saturé — nouvelle tentative dans ${_reste} s…`;
+        const _tick = setInterval(() => {
+          _reste--;
+          if (_msg) _msg.textContent = `Service saturé — nouvelle tentative dans ${_reste} s…`;
+          if (_reste <= 0) clearInterval(_tick);
+        }, 1000);
+        if (window.posthog) posthog.capture('analyse_reprise_saturation');
+        setTimeout(() => {
+          clearInterval(_tick);
+          const b = document.getElementById('btn-analyze');
+          if (b) b.click();
+        }, 90000);
+        return;
+      }
+
       toast(`❌ ${message}`, 'erreur', 8000);
       try { localStorage.removeItem('creatis_analysis_marker'); } catch {}
       _stopScanAnim();
@@ -5950,11 +5979,34 @@ const V2 = (() => {
          (0:53) et non du media, qui peut ne pas etre encore charge.
          On rejoue donc la cible des que le media est en mesure de l'honorer. */
       if (video.readyState < 1 || Math.abs(video.currentTime - cible) > 0.5) {
-        const rejouer = () => { try { video.currentTime = cible; } catch {} };
-        video.addEventListener('loadedmetadata', rejouer, { once: true });
-        video.addEventListener('canplay', rejouer, { once: true });
-        if (window.posthog && video.readyState < 1) {
-          posthog.capture('seek_media_non_pret', { readyState: video.readyState, plan: _userPlan });
+        /* UNE SEULE CIBLE EN ATTENTE, et un seul couple d'ecouteurs. `pointermove` appelle
+           `seekTo` a chaque pixel parcouru : la version precedente y ajoutait deux
+           `addEventListener` et un evenement PostHog A CHAQUE FOIS. Mesure sur la session du
+           15/09 : 130 evenements en 5 secondes pour un seul glissement, donc 260 ecouteurs
+           empiles qui se declenchaient tous au chargement. On memorise la derniere position
+           voulue et on la rejoue une fois. */
+        video._cibleSeek = cible;
+        if (!video._seekCable) {
+          video._seekCable = true;
+          const rejouer = () => {
+            if (video._cibleSeek == null) return;
+            try { video.currentTime = video._cibleSeek; } catch {}
+            video._cibleSeek = null;
+          };
+          video.addEventListener('loadedmetadata', rejouer);
+          video.addEventListener('canplay', rejouer);
+        }
+        /* Le media est a readyState 0 : il n'a AUCUNE donnee et, sans intervention, il peut le
+           rester indefiniment — c'est exactement ce que decrivent les 887 evenements mesures
+           sur sept jours, tous a readyState 0 et tous sur mobile. Attendre un chargement qui
+           n'a jamais ete demande ne sert a rien : on le demande. Une seule fois, sinon chaque
+           mouvement du doigt relancerait le telechargement. */
+        if (video.readyState < 1 && !video._chargementForce) {
+          video._chargementForce = true;
+          try { video.load(); } catch {}
+          if (window.posthog) {
+            posthog.capture('seek_media_non_pret', { readyState: video.readyState, plan: _userPlan });
+          }
         }
       }
     }
