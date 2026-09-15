@@ -1095,6 +1095,38 @@ async function transcribeViaRailway(youtubeUrl) {
   return r.json();
 }
 
+/* Sous-titres, puis Whisper si YouTube ne les donne pas.
+ *
+ * Le 15/09/2026, l'IP Railway s'est fait renvoyer des 429 par YouTube sur les deux
+ * methodes de sous-titres. Le site s'en sortait — sa branche d'analyse bascule sur
+ * Whisper — mais `shorts_start` levait l'erreur telle quelle : le connecteur MCP,
+ * qui passe exclusivement par la, echouait sur TOUTES les videos. Les deux chemins
+ * partagent desormais cette fonction pour ne plus pouvoir diverger.
+ *
+ * `marquer` est optionnel : la branche d'analyse s'en sert pour sa telemetrie. */
+async function obtenirSegments(videoId, url, marquer = () => {}) {
+  try {
+    const r = await getYouTubeTranscriptSegments(videoId);
+    if (r?.segments?.length) {
+      marquer('transcription');
+      console.log(`[clips] captions OK: ${r.segments.length} segments`);
+      return { ...r, source: 'sous-titres' };
+    }
+    throw new Error('Transcription vide');
+  } catch (e) {
+    marquer('sous_titres_echec');
+    console.warn('[clips] captions failed, fallback Railway Whisper:', e.message);
+    const r = await transcribeViaRailway(url);
+    if (!r.segments?.length) {
+      marquer('transcription_echec_total');
+      throw new Error('Transcription vide');
+    }
+    marquer('transcription');
+    console.log(`[clips] Railway Whisper OK: ${r.segments.length} segments`);
+    return { ...r, source: 'whisper-railway' };
+  }
+}
+
 async function transcribeWithCloudRun(url) {
   const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcribe`, {
     method: 'POST',
@@ -1774,7 +1806,7 @@ ${JSON.stringify(textes, null, 0)}`;
       if (!clips?.length) {
         if (isUploadUrl) throw new Error('Clips requis pour les vidéos uploadées');
         if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
-        const transcript = await getYouTubeTranscriptSegments(videoId);
+        const transcript = await obtenirSegments(videoId, url);
         clips = await identifyViralClips(transcript.segments, videoId, transcript.title, n_clips || 3);
       }
 
@@ -2068,26 +2100,12 @@ ${JSON.stringify(textes, null, 0)}`;
       }).catch(() => {});
 
       try {
-        const r = await getYouTubeTranscriptSegments(videoId);
+        const r = await obtenirSegments(videoId, url, _etape);
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
-        _temps.source_transcription = 'sous-titres';
-        _etape('transcription');
-        console.log(`[clips] captions OK: ${segments.length} segments`);
+        _temps.source_transcription = r.source;
       } catch (e) {
-        _etape('sous_titres_echec');
-        console.warn('[clips] captions failed, fallback Railway Whisper:', e.message);
-        try {
-          const r = await transcribeViaRailway(url);
-          if (!r.segments?.length) throw new Error('Transcription vide');
-          segments = r.segments; title = r.title || pageTitle; duration = r.duration;
-          _temps.source_transcription = 'whisper-railway';
-          _etape('transcription');
-          console.log(`[clips] Railway Whisper OK: ${segments.length} segments`);
-        } catch (e2) {
-          _etape('transcription_echec_total');
-          console.error(`[clips][${videoId}] ÉCHEC transcription — temps: ${JSON.stringify(_temps)}`);
-          throw new Error(`Transcription impossible — ${e2.message}. Utilise l'option "Uploader une vidéo" pour les vidéos sans sous-titres.`);
-        }
+        console.error(`[clips][${videoId}] ÉCHEC transcription — temps: ${JSON.stringify(_temps)}`);
+        throw new Error(`Transcription impossible — ${e.message}. Utilise l'option "Uploader une vidéo" pour les vidéos sans sous-titres.`);
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
