@@ -2889,7 +2889,13 @@ async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
         # bout d'une connexion ouverte. `attente` est un budget PARTAGE par tous les
         # morceaux : au-dela, on rend ce qu'on a plutot que de faire patienter sans fin.
         refus = {"n": 0, "attente": 0.0}
-        BUDGET_ATTENTE = 300.0
+        # Le budget suit la LONGUEUR de la video. A 300 s fixes, une video de 40 minutes
+        # l'epuisait exactement — dix morceaux qui attendent 30 s chacun font deja 300 s —
+        # et l'analyse repartait de zero en boucle. Un plafond fixe penalise precisement les
+        # videos longues, celles pour lesquelles ce produit existe. On compte donc 60 s par
+        # morceau, avec un plancher a 300 s et un plafond a 900 s (15 min) pour qu'un job ne
+        # puisse jamais tourner indefiniment.
+        BUDGET_ATTENTE = max(300.0, min(900.0, 60.0 * len(chunks)))
 
         async def analyze_chunk(chunk_segments: List[Dict]) -> List[Dict]:
             chunk_text = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in chunk_segments)
