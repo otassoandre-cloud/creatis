@@ -2944,6 +2944,20 @@ Transcription (extrait) :
                         )
                         if r.status_code == 429:
                             refus["n"] += 1
+                            # Groq dit dans ses en-tetes CE QUI est epuise : les requetes du
+                            # jour ou les tokens de la minute. Sans ca on ne peut que deviner,
+                            # et on a passe une demi-journee a croire a un probleme de cadence
+                            # alors que le budget etait deja a zero. Logue une fois sur trois
+                            # pour ne pas noyer le journal.
+                            if refus["n"] % 3 == 1:
+                                logger.warning(
+                                    "[identify_clips] 429 — requetes restantes "
+                                    f"{r.headers.get('x-ratelimit-remaining-requests', '?')}/"
+                                    f"{r.headers.get('x-ratelimit-limit-requests', '?')}, tokens "
+                                    f"{r.headers.get('x-ratelimit-remaining-tokens', '?')}/"
+                                    f"{r.headers.get('x-ratelimit-limit-tokens', '?')}, reset "
+                                    f"req {r.headers.get('x-ratelimit-reset-requests', '?')} / "
+                                    f"tok {r.headers.get('x-ratelimit-reset-tokens', '?')}")
                             if tentative < 3 and refus["attente"] < BUDGET_ATTENTE:
                                 # Une seule retentative, et courte. L'en-tete de Groq annonce
                                 # souvent 30 s : les attendre huit fois de suite ferait patienter
