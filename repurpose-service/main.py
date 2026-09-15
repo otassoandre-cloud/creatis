@@ -2878,7 +2878,18 @@ async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
         # route synchrone de Vercel — laquelle a sa PROPRE cle Groq (budget distinct) et un
         # repli Together AI. Autrement dit : echouer vite est la bonne strategie, parce que
         # l'autre chemin est reellement meilleur dans ce cas precis.
-        refus = {"n": 0}
+        # REECRIT LE 15/09/2026. Le paragraphe ci-dessus reposait sur une hypothese qui
+        # n'est plus vraie : « l'autre chemin est meilleur ». Mesure du jour — Together AI
+        # rend 402 (compte a sec) des deux cotes, Gemini 2.0 a ete retire en aout, et le
+        # connecteur MCP n'a aucun client pour operer un rattrapage. Abandonner vite ne
+        # renvoie donc plus vers rien : ca rend zero clip, point.
+        #
+        # On attend desormais vraiment. Groq annonce son delai dans `retry-after` (souvent
+        # 30 s) ; l'analyse tourne en tache de fond depuis le 13/09, donc personne n'est au
+        # bout d'une connexion ouverte. `attente` est un budget PARTAGE par tous les
+        # morceaux : au-dela, on rend ce qu'on a plutot que de faire patienter sans fin.
+        refus = {"n": 0, "attente": 0.0}
+        BUDGET_ATTENTE = 300.0
 
         async def analyze_chunk(chunk_segments: List[Dict]) -> List[Dict]:
             chunk_text = "\n".join(f"[{s['start']:.1f}s-{s['end']:.1f}s] {s['text']}" for s in chunk_segments)
@@ -2913,8 +2924,9 @@ Transcription (extrait) :
             # — constate en production ce jour-la : 8 morceaux, 8 refus 429, 0 candidat.
             # Groq indique combien de temps attendre dans l'en-tete `retry-after` ; on l'ecoute,
             # avec un repli sur une attente croissante quand il est absent.
-            for tentative in range(2):
-                if refus["n"] >= 3:
+            for tentative in range(4):
+                if refus["attente"] >= BUDGET_ATTENTE:
+                    logger.warning("[identify_clips] budget d'attente epuise, morceau abandonne")
                     return []
                 try:
                     async with httpx.AsyncClient(timeout=60) as c:
@@ -2926,17 +2938,20 @@ Transcription (extrait) :
                         )
                         if r.status_code == 429:
                             refus["n"] += 1
-                            if tentative == 0 and refus["n"] < 3:
+                            if tentative < 3 and refus["attente"] < BUDGET_ATTENTE:
                                 # Une seule retentative, et courte. L'en-tete de Groq annonce
                                 # souvent 30 s : les attendre huit fois de suite ferait patienter
                                 # l'utilisateur huit minutes AVANT le repli, soit bien pire
                                 # qu'avant le passage en tache de fond.
                                 try:
-                                    pause = min(float(r.headers.get("retry-after", 0)) or 0, 8.0)
+                                    pause = min(float(r.headers.get("retry-after", 0)) or 0, 45.0)
                                 except ValueError:
                                     pause = 0.0
-                                logger.info(f"[identify_clips] 429, une nouvelle tentative dans {pause or 5.0:.0f}s")
-                                await asyncio.sleep(pause or 5.0)
+                                pause = pause or min(20.0 * (tentative + 1), 45.0)
+                                refus["attente"] += pause
+                                logger.info(f"[identify_clips] 429, nouvelle tentative dans {pause:.0f}s "
+                                            f"(attente cumulee {refus['attente']:.0f}s)")
+                                await asyncio.sleep(pause)
                                 continue
                             secours = await _analyser_avec_together(prompt)
                             if secours:
@@ -2977,14 +2992,19 @@ Transcription (extrait) :
         # les 8 000 tokens/minute — verifie en production le 13/09, 429 a l'identique avec 1.
         # On garde 2 (rapide quand le budget le permet) et c'est le compteur `refus` ci-dessus
         # qui protege, en abandonnant vite.
-        sem = asyncio.Semaphore(2)
+        # Un seul morceau a la fois. A 2, les ~4 000 tokens de chaque appel depassent le
+        # plafond de 8 000/minute des le second : on payait ce parallelisme en 429 sur la
+        # totalite des morceaux suivants. Sequentiel + attente honnete tient dans le budget.
+        sem = asyncio.Semaphore(1)
 
         async def bounded(c_segs):
             async with sem:
                 return await analyze_chunk(c_segs)
 
         results = await asyncio.gather(*(bounded(c) for c in chunks))
-        if refus["n"] >= 3:
+        # On n'echoue que si l'attente a reellement ete epuisee ET que rien n'est sorti :
+        # quelques 429 absorbes par les pauses ne sont plus un motif d'echec.
+        if refus["attente"] >= BUDGET_ATTENTE and not any(results):
             raise RuntimeError("Service d'analyse saturé")
         all_clips = [clip for chunk_clips in results for clip in chunk_clips]
         logger.info(f"[identify_clips] {len(chunks)} morceau(x), {len(all_clips)} candidats avant dédoublonnage")
