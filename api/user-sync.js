@@ -207,7 +207,8 @@ module.exports = async (req, res) => {
   // construit lui-meme : il n'a aucun identifiant a recevoir dans le corps de la requete.
   const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer'
     || action === 'ugc_soumettre' || action === 'ugc_lister' || action === 'ugc_decider'
-    || action === 'rattrapage_impayes';
+    || action === 'rattrapage_impayes'
+    || action === 'annuler_abonnements_doubles';
   if (!sansIdentifiantCorps && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
@@ -638,6 +639,99 @@ module.exports = async (req, res) => {
                             jamais client. On les réinvite, avec l'essai de 7 jours en argument.
 
          `dry_run=1` renvoie exactement ce qui serait fait, sans rien annuler ni envoyer. */
+      /* ═══ Abonnements en double — on n'en garde qu'un, et on le dit ═══
+         Le 15/09, un client a paye, l'interface a continue de le traiter comme gratuit et lui a
+         represente le paywall : il a repaye deux minutes plus tard. Deux abonnements Stripe,
+         deux customers distincts pour un seul email, 28 EUR au lieu de 14 au premier
+         prelevement. La cause est corrigee (voir create-checkout-session.js et le temoin
+         `_planConnu` dans clips-v2.html) ; cette action repare les cas deja crees.
+
+         On garde le PLUS ANCIEN : c'est celui que la personne a choisi en connaissance de
+         cause, et son essai se termine en premier — garder le second rallongerait l'essai, donc
+         decalerait la facturation, ce que personne n'a demande.
+
+         `dry_run=1` renvoie ce qui serait fait sans rien annuler ni envoyer. */
+      case 'annuler_abonnements_doubles': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const simulation = String(req.query?.dry_run || req.body?.dry_run || '') === '1';
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const appUrl = (process.env.APP_URL || 'https://creatis.app').trim();
+
+        const actifs = await supabase(
+          `/abonnements?status=in.(active,trialing)&select=id,user_id,stripe_subscription_id,status,created_at,trial_ends_at&order=created_at.asc`
+        ).catch(() => []);
+
+        const parUser = new Map();
+        for (const a of (actifs || [])) {
+          if (!a.user_id) continue;
+          if (!parUser.has(a.user_id)) parUser.set(a.user_id, []);
+          parUser.get(a.user_id).push(a);
+        }
+
+        const rapport = [];
+        for (const [uid, liste] of parUser) {
+          if (liste.length < 2) continue;
+          const users = await supabase(`/users?id=eq.${uid}&select=email,nom`).catch(() => []);
+          const email = users?.[0]?.email;
+          const nom = users?.[0]?.nom || (email ? email.split('@')[0] : 'toi');
+          // `order=created_at.asc` plus haut : le premier de la liste est le plus ancien.
+          const garde = liste[0];
+          const aAnnuler = liste.slice(1);
+
+          const annules = [];
+          for (const dup of aAnnuler) {
+            if (!dup.stripe_subscription_id) continue;
+            if (!simulation) {
+              try {
+                await stripeLib.subscriptions.cancel(dup.stripe_subscription_id);
+                await supabase(`/abonnements?id=eq.${dup.id}`, 'PATCH', {
+                  status: 'canceled', canceled_at: new Date().toISOString(),
+                });
+              } catch (e) {
+                rapport.push({ email, erreur: `annulation ${dup.stripe_subscription_id}: ${e.message}` });
+                continue;
+              }
+            }
+            annules.push(dup.stripe_subscription_id);
+          }
+
+          let envoye = false;
+          if (annules.length && email && !simulation) {
+            const fin = garde.trial_ends_at
+              ? new Date(garde.trial_ends_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+              : null;
+            envoye = await ugcEnvoyerEmail({
+              sender: { name: 'André — Créatis', email: 'contact@creatis.app' },
+              to: [{ email, name: nom }],
+              subject: 'On a annulé ton abonnement en double',
+              htmlContent:
+                `<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:auto;color:#111;padding:26px">
+                   <p style="font-size:17px;margin:0 0 18px">Salut ${nom},</p>
+                   <p style="line-height:1.7;margin:0 0 16px">Tu as souscrit deux fois à Créatis en quelques minutes. Ce n'est pas de ta faute : après ton premier paiement, l'application a continué de t'afficher le paywall comme si tu n'avais rien payé. C'était un bug de notre côté, il est corrigé.</p>
+                   <p style="line-height:1.7;margin:0 0 16px"><strong>On a annulé l'abonnement en trop.</strong> Il ne t'en reste qu'un seul${fin ? `, avec ton essai gratuit jusqu'au ${fin}` : ''}. Tu ne seras prélevé qu'une fois, au tarif normal de 14 €/mois.</p>
+                   <p style="margin:0 0 20px"><a href="${appUrl}/studio" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px">Retrouver mes clips</a></p>
+                   <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Désolé pour le passage compliqué. Si quelque chose ne va toujours pas, réponds à ce mail — je lis tout.</p>
+                   <p style="color:#999;font-size:12px;margin:26px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p>
+                 </div>`,
+            }, 'annuler_abonnements_doubles');
+          }
+
+          rapport.push({
+            email,
+            total: liste.length,
+            garde: garde.stripe_subscription_id,
+            annules,
+            envoye,
+            simulation,
+          });
+        }
+
+        return res.status(200).json({ ok: true, simulation, comptes: rapport.length, rapport });
+      }
+
       case 'rattrapage_impayes': {
         const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
         if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {

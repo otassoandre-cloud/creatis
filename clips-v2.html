@@ -1587,11 +1587,29 @@ const V2 = (() => {
       // setBar/setStep sont locaux aux fonctions d'analyse — on pilote la barre directement.
       const _bar = document.getElementById('analyze-bar');
       if (_bar) _bar.style.width = '60%';
-      const r = await fetch('/api/repurpose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
-        body: JSON.stringify({ mode: 'get_generation', id })
-      });
+      /* Trois tentatives, parce que cet appel arrive au pire moment possible : juste apres le
+         retour de Stripe, quand le navigateur vient d'enchainer trois redirections. Le 15/09 il
+         a rendu « Load failed » (coupure reseau Safari) et le client, qui venait de payer, s'est
+         retrouve devant l'ecran d'upload avec ses clips inaccessibles. Il a cru que son paiement
+         n'avait pas marche et a repaye. Une coupure d'une seconde ne doit pas coûter une
+         generation. */
+      let r = null, _errReseau = null;
+      for (let _essai = 0; _essai < 3; _essai++) {
+        if (_essai) await new Promise(res => setTimeout(res, _essai === 1 ? 700 : 1800));
+        try {
+          r = await fetch('/api/repurpose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tok}` },
+            body: JSON.stringify({ mode: 'get_generation', id })
+          });
+          _errReseau = null;
+          break;
+        } catch (e) {
+          _errReseau = e;
+          if (_bar) _bar.style.width = `${60 + _essai * 8}%`;
+        }
+      }
+      if (_errReseau) throw _errReseau;
       const d = await _lireReponseJson(r, 'ouverture de la génération');
       const g = d?.generation;
       if (!g || !g.clips?.length) throw new Error('Génération introuvable ou expirée');
@@ -1628,7 +1646,16 @@ const V2 = (() => {
       }
     } catch (e) {
       setState('upload');
-      toast(`Impossible d'ouvrir cette génération (${e.message}) — relance une analyse.`, 'erreur', 7000);
+      /* « Relance une analyse » etait le pire conseil possible : la generation n'est PAS perdue,
+         elle est en base, et relancer consomme un quota pour rien. On dit ou elle est et on
+         propose de reessayer — un rechargement de la meme URL suffit. */
+      const _reseau = /load failed|failed to fetch|network|abort/i.test(e.message || '');
+      toast(
+        _reseau
+          ? 'Connexion interrompue — tes clips sont bien enregistrés. Recharge la page pour les retrouver.'
+          : `Impossible d'ouvrir cette génération (${e.message}) — tes clips restent accessibles depuis ton historique.`,
+        'erreur', 9000
+      );
       if (window.posthog) posthog.capture('generation_ouverte_echec', { message: e.message });
     }
   }
