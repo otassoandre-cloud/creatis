@@ -2247,7 +2247,14 @@ class AppCreatis {
         messages: [
           {
             role: 'system',
-            content: 'Tu es Créatis, un assistant IA expert en création de contenu YouTube pour créateurs francophones. Tu génères du contenu de haute qualité, optimisé pour YouTube et adapté au marché francophone. Réponds toujours en français.'
+            /* Ce prompt sert aux agents d'ECRITURE (titres, scripts, idees, analyses),
+               pas au chat : l'assistant conversationnel construit le sien dans
+               js/agents.js (`chat-libre`), avec toute la connaissance du produit.
+               Celui-ci reste volontairement generique — il ne doit affirmer NI tarif NI
+               fonctionnalite, sous peine de contredire l'assistant a chaque changement
+               de grille. Il disait encore que Creatis sert a "la creation de contenu
+               YouTube", ce qui n'est plus le produit vendu depuis longtemps. */
+            content: 'Tu es Créatis, un assistant IA pour créateurs de contenu francophones. Créatis sert avant tout à découper une vidéo longue en clips verticaux prêts à publier ; tu interviens ici sur l’écriture et l’analyse. Produis du contenu concret et directement utilisable, adapté au marché francophone. Réponds toujours en français.'
           },
           { role: 'user', content: prompt }
         ],
