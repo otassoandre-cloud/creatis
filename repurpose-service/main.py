@@ -2958,6 +2958,10 @@ Transcription (extrait) :
                                     f"{r.headers.get('x-ratelimit-limit-tokens', '?')}, reset "
                                     f"req {r.headers.get('x-ratelimit-reset-requests', '?')} / "
                                     f"tok {r.headers.get('x-ratelimit-reset-tokens', '?')}")
+                                # Les en-tetes ne montrent QUE les fenetres par minute. Quand
+                                # elles sont pleines et que Groq refuse quand meme, c'est une
+                                # limite journaliere — et seul le corps de la reponse la nomme.
+                                logger.warning(f"[identify_clips] 429 corps: {r.text[:300]}")
                             if tentative < 3 and refus["attente"] < BUDGET_ATTENTE:
                                 # Une seule retentative, et courte. L'en-tete de Groq annonce
                                 # souvent 30 s : les attendre huit fois de suite ferait patienter
