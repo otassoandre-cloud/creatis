@@ -585,9 +585,32 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                 return _texte(f"L'analyse a échoué : {e}", erreur=True)
 
             if vu.get("status") == "error":
-                raison = vu.get("error") or "raison inconnue"
+                raison = str(vu.get("error") or "raison inconnue")
+                # « Service d'analyse saturé » = un 429 de Groq, qui plafonne a 8 000
+                # tokens/minute. C'est passager : le site relance seul au bout de 90 s.
+                # Le connecteur classait ca en echec definitif, et la generation etait
+                # perdue alors que la video n'avait rien de fautif. On relance, au plus
+                # trois fois, exactement comme le site.
+                essais = int(etat.get("essais") or 0)
+                if "satur" in raison.lower() and essais < 3:
+                    try:
+                        neuf_depart = await _pipeline(jeton_u, {
+                            "mode": "clips_start", "url": job.get("url"),
+                            "n_clips": etat.get("nombre") or 3})
+                    except RuntimeError as e:
+                        neuf_depart = {}
+                    if neuf_depart.get("session_id"):
+                        await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                            "etape": "Service saturé — nouvelle tentative en cours…",
+                            "etat": {**etat, "session_id": neuf_depart["session_id"],
+                                     "essais": essais + 1},
+                            "updated_at": _maintenant().isoformat()})
+                        return _texte(
+                            "Le service d'analyse était saturé — la tentative "
+                            f"{essais + 2} vient de repartir. Ta vidéo n'est pas perdue. "
+                            "Rappelle `etat_clips` dans une minute.")
                 await _patcher(f"mcp_jobs?id=eq.{ident}", {
-                    "statut": "echec", "erreur": str(raison)[:400],
+                    "statut": "echec", "erreur": raison[:400],
                     "updated_at": _maintenant().isoformat()})
                 return _texte(f"L'analyse a échoué : {raison}", erreur=True)
 
