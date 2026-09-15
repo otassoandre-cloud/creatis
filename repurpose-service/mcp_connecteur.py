@@ -698,7 +698,15 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                 # perdue alors que la video n'avait rien de fautif. On relance, au plus
                 # trois fois, exactement comme le site.
                 essais = int(etat.get("essais") or 0)
-                if "satur" in raison.lower() and essais < 3:
+                # Deux pannes passageres, pas deux echecs :
+                #  - « saturé » = un 429 de Groq, qui plafonne a 8 000 tokens/minute ;
+                #  - « Session introuvable » = Railway a redemarre. Ses jobs d'analyse
+                #    vivent en MEMOIRE, donc tout redeploiement orphelin ce qui tourne.
+                #    Rien n'est casse cote utilisateur : il suffit de relancer.
+                passager = ("satur" in raison.lower()
+                            or "introuvable" in raison.lower()
+                            or "expir" in raison.lower())
+                if passager and essais < 3:
                     try:
                         neuf_depart = await _pipeline(jeton_u, {
                             "mode": "clips_start", "url": job.get("url"),
@@ -707,12 +715,12 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                         neuf_depart = {}
                     if neuf_depart.get("session_id"):
                         await _patcher(f"mcp_jobs?id=eq.{ident}", {
-                            "etape": "Service saturé — nouvelle tentative en cours…",
+                            "etape": "Nouvelle tentative d'analyse en cours…",
                             "etat": {**etat, "session_id": neuf_depart["session_id"],
                                      "essais": essais + 1},
                             "updated_at": _maintenant().isoformat()})
                         return _texte(
-                            "Le service d'analyse était saturé — la tentative "
+                            f"L'analyse a été interrompue ({raison.lower()}) — la tentative "
                             f"{essais + 2} vient de repartir. Ta vidéo n'est pas perdue. "
                             "Rappelle `etat_clips` dans une minute.")
                 await _patcher(f"mcp_jobs?id=eq.{ident}", {
