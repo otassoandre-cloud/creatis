@@ -9,6 +9,7 @@ import { DUREE_PUB_GTA, PubGta } from "./creatis/PubGta";
 import { DUREE_PUB_CLAIRE, PubClaire } from "./creatis/PubClaire";
 import { DUREE_PUB_MONTAGE, PubMontage } from "./creatis/PubMontage";
 import { DUREE_PARCOURS, Parcours } from "./creatis/Parcours";
+import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
 import { DUREE_ETAPES, Etapes } from "./creatis/Etapes";
@@ -112,6 +113,14 @@ export const RemotionRoot: React.FC = () => {
         height={1920}
       />
 
+        <Composition
+          id="ClaudeMcp"
+          component={ClaudeMcp}
+          durationInFrames={DUREE_MCP}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="Parcours"
           component={Parcours}
