@@ -1828,32 +1828,100 @@ def _make_hook_pill_png(text: str, fg_hex: str, bg_hex: str, font_size_pt: int, 
     fg = hex2rgba(fg_hex)
     bg = hex2rgba(bg_hex)
 
-    font = None
-    for fp in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-               "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]:
-        if os.path.exists(fp):
-            try: font = ImageFont.truetype(fp, font_size_pt); break
-            except: pass
-    if font is None:
-        font = ImageFont.load_default()
+    def _charger_police(taille_pt):
+        for fp in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                   "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]:
+            if os.path.exists(fp):
+                try:
+                    return ImageFont.truetype(fp, taille_pt)
+                except Exception:
+                    pass
+        return ImageFont.load_default()
 
+    """LA PASTILLE DOIT TENIR DANS LE CADRE.
+
+    Le texte etait dessine sur UNE ligne, sans jamais verifier sa largeur. Des que le
+    hook depassait la vingtaine de caracteres, `x0` devenait negatif et la pastille
+    sortait des deux cotes : a l'ecran, un hook tronque au ras du bord. Constate le
+    15/09/2026 avec « Nomme Premier ministre, il oublie de prevenir ses enfants », qui
+    s'affichait « ...ministre, il oublie de prev ». Or c'est une longueur ORDINAIRE —
+    l'IA du produit en ecrit de cette taille, et rien dans l'interface ne dissuade
+    l'utilisateur d'en taper autant.
+
+    On replie donc sur trois lignes au maximum, puis, si un mot reste trop large pour
+    la colonne, on reduit la taille par paliers de 10 % jusqu'a 22 pt. Une pastille
+    un peu plus petite reste lisible ; une pastille coupee ne veut plus rien dire."""
     tmp = Image.new("RGBA", (1, 1))
-    bbox = ImageDraw.Draw(tmp).textbbox((0, 0), text, font=font)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    mesure = ImageDraw.Draw(tmp)
 
-    pad_h = max(14, int(font_size_pt * 0.55))
-    pad_v = max(10, int(font_size_pt * 0.32))
-    pw = tw + pad_h * 2
+    MARGE = max(24, int(canvas_w * 0.05))      # air laisse de chaque cote du cadre
+    MAX_LIGNES = 3
+
+    def largeur(txt, f):
+        bb = mesure.textbbox((0, 0), txt, font=f)
+        return bb[2] - bb[0]
+
+    def replier(f, dispo):
+        """Coupe le texte aux espaces pour tenir dans `dispo`. None si impossible."""
+        lignes, courante = [], ""
+        for mot in text.split():
+            essai = (courante + " " + mot).strip()
+            if courante and largeur(essai, f) > dispo:
+                lignes.append(courante)
+                courante = mot
+            else:
+                courante = essai
+            # Un mot plus large que la colonne (URL collee, mot-valise) : on le coupe
+            # a l'interieur plutot que de le laisser sortir du cadre.
+            while largeur(courante, f) > dispo and len(courante) > 1:
+                coupe = len(courante) - 1
+                while coupe > 1 and largeur(courante[:coupe], f) > dispo:
+                    coupe -= 1
+                lignes.append(courante[:coupe])
+                courante = courante[coupe:]
+        if courante:
+            lignes.append(courante)
+        return lignes if len(lignes) <= MAX_LIGNES else None
+
+    taille = max(22, int(font_size_pt))
+    while True:
+        f = _charger_police(taille)
+        pad_h = max(14, int(taille * 0.55))
+        lignes = replier(f, canvas_w - MARGE * 2 - pad_h * 2)
+        if lignes is not None or taille <= 22:
+            break
+        taille = max(22, int(taille * 0.9))
+
+    font = _charger_police(taille)
+    pad_h = max(14, int(taille * 0.55))
+    pad_v = max(10, int(taille * 0.32))
+    if lignes is None:                          # cas extreme : un mot enorme, on le laisse
+        lignes = [text]
+
+    hauteurs, largeurs, decalages = [], [], []
+    for l in lignes:
+        bb = mesure.textbbox((0, 0), l, font=font)
+        largeurs.append(bb[2] - bb[0])
+        hauteurs.append(bb[3] - bb[1])
+        decalages.append((bb[0], bb[1]))
+
+    interligne = int(taille * 0.28)
+    tw = max(largeurs)
+    th = sum(hauteurs) + interligne * (len(lignes) - 1)
+
+    pw = min(tw + pad_h * 2, canvas_w - MARGE * 2)
     ph = th + pad_v * 2
-    radius = ph // 2  # pill complète
+    radius = min(ph // 2, int(taille * 0.9))
 
     img = Image.new("RGBA", (canvas_w, ph), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     x0 = (canvas_w - pw) // 2
     draw.rounded_rectangle([x0, 0, x0 + pw, ph - 1], radius=radius, fill=bg)
-    tx = (canvas_w - tw) // 2 - bbox[0]
-    ty = pad_v - bbox[1]
-    draw.text((tx, ty), text, font=font, fill=fg)
+
+    y = pad_v
+    for l, lw, hh, (dx, dy) in zip(lignes, largeurs, hauteurs, decalages):
+        draw.text(((canvas_w - lw) // 2 - dx, y - dy), l, font=font, fill=fg)
+        y += hh + interligne
 
     buf = io.BytesIO()
     img.save(buf, "PNG")
@@ -5406,13 +5474,26 @@ async def process_clip_endpoint(
         pill_y_px_final = 0
         if hook_bool and hook_text and hook_style == "pill":
             try:
-                _hook_y_px = int(max(0, min(100, hook_y)) / 100 * 1280)
-                pill_bytes, _pill_h = _make_hook_pill_png(hook_text, hook_color, hook_bg, hfs, canvas_w=720)
+                """DIMENSIONS DU CADRE DE SORTIE, PAS DE L'ANCIEN.
+
+                Ces deux valeurs etaient restees a 720x1280, la definition d'export
+                d'origine. La sortie est passee a 1080x1920 il y a longtemps sans que ce
+                bloc suive, et personne ne l'a vu parce que le hook en pastille est peu
+                utilise. Consequences mesurees le 15/09/2026 :
+                  - le PNG de 720 px etait compose a x=0 sur un cadre de 1080, donc la
+                    pastille apparaissait centree sur 360 au lieu de 540 — decalee d'un
+                    sixieme de largeur vers la gauche ;
+                  - hook_y=40 donnait 0,40 x 1280 = 512 px, soit 27 % d'un cadre de 1920
+                    au lieu des 40 % demandes.
+                Le style `pill` est le seul concerne : les styles ASS declarent leur
+                propre PlayRes et libass met a l'echelle tout seul."""
+                _hook_y_px = int(max(0, min(100, hook_y)) / 100 * 1920)
+                pill_bytes, _pill_h = _make_hook_pill_png(hook_text, hook_color, hook_bg, hfs, canvas_w=1080)
                 _pill_path = tmp_dir / "hook_pill.png"
                 _pill_path.write_bytes(pill_bytes)
                 pill_png_path_str = str(_pill_path)
                 pill_y_px_final = max(0, _hook_y_px)
-                logger.info(f"[hook-pill] PNG généré 720x{_pill_h} @y={pill_y_px_final}")
+                logger.info(f"[hook-pill] PNG généré 1080x{_pill_h} @y={pill_y_px_final}")
             except Exception as _pe:
                 logger.warning(f"[hook-pill] Pillow échoué ({_pe}), hook ignoré")
 
