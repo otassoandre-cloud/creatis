@@ -468,7 +468,10 @@ async def _pipeline(jeton_utilisateur: str, corps: dict) -> dict:
     C'est ce passage qui applique le plan et les quotas : on ne les réimplémente
     pas ici, sinon les deux copies divergeraient au premier changement de tarif.
     """
-    async with httpx.AsyncClient(timeout=60) as c:
+    # 75 s, pas 60 : Vercel coupe ses fonctions a 60 s exactement. A egalite, httpx
+    # abandonnait le premier et le connecteur repondait « Erreur interne » au lieu du
+    # vrai message. On laisse Vercel parler.
+    async with httpx.AsyncClient(timeout=75) as c:
         r = await c.post(f"{APP_URL}/api/repurpose",
                          headers={"Authorization": f"Bearer {jeton_utilisateur}",
                                   "Content-Type": "application/json"},
@@ -515,7 +518,13 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
             nombre = 3
 
         try:
-            depart = await _pipeline(jeton_u, {"mode": "shorts_start", "url": url,
+        # `shorts_start` transcrit la video dans la requete. Quand YouTube refuse ses
+        # sous-titres (429 sur l'IP Railway, 15/09/2026), le repli Whisper prend plusieurs
+        # minutes : au-dela de 60 s Vercel coupe la fonction ET httpx abandonne ici, et
+        # l'utilisateur ne lit qu'« Erreur interne ». On emprunte desormais le meme chemin
+        # que le site : `clips_start` rend un session_id tout de suite, Railway analyse en
+        # arriere-plan, et `etat_clips` enchaine sur le rendu une fois les clips connus.
+            depart = await _pipeline(jeton_u, {"mode": "clips_start", "url": url,
                                                "n_clips": nombre})
         except RuntimeError as e:
             code = getattr(e, "code", None)
@@ -526,22 +535,24 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                 return _texte(str(e), erreur=True)
             return _texte(f"La génération n'a pas pu démarrer : {e}", erreur=True)
 
-        jobs = depart.get("job_ids") or []
-        attente = depart.get("pending_clips") or []
-        total = len(jobs) + len(attente)
+        session = depart.get("session_id")
+        if not session:
+            return _texte("La génération n'a pas pu démarrer : le service d'analyse n'a rien "
+                          "renvoyé. Réessaie dans une minute.", erreur=True)
         ident = "j" + secrets.token_hex(4)
         await _inserer("mcp_jobs", {
             "id": ident, "user_id": user_id, "url": url, "statut": "en_cours",
-            "etape": "Premier clip en cours de rendu…",
-            "etat": {"job_ids": jobs, "pending_clips": attente, "total_clips": total},
+            "etape": "Analyse de la vidéo en cours…",
+            "etat": {"phase": "analyse", "session_id": session, "nombre": nombre},
             "clips": [],
         })
-        pluriel = "s" if total > 1 else ""
+        pluriel = "s" if nombre > 1 else ""
         return _texte(
-            f"Génération lancée — {total} clip{pluriel} en préparation.\n\n"
+            f"Génération lancée — {nombre} clip{pluriel} demandé{pluriel}.\n\n"
             f"Identifiant : {ident}\n\n"
-            "Le rendu prend en général 3 à 8 minutes. Appelle `etat_clips` avec cet "
-            "identifiant dans une trentaine de secondes pour suivre l'avancement.")
+            "L'analyse puis le rendu prennent en général 3 à 8 minutes. Appelle "
+            "`etat_clips` avec cet identifiant dans une trentaine de secondes pour "
+            "suivre l'avancement.")
 
     if nom == "etat_clips":
         ident = str(args.get("job_id") or "").strip()
@@ -557,6 +568,73 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                           erreur=True)
 
         etat = job.get("etat") or {}
+
+        # ── Phase 1 : analyse ──────────────────────────────────────────────
+        # Railway cherche les moments forts en arriere-plan. Tant qu'il n'a pas fini,
+        # il n'y a aucun rendu a suivre. Les generations creees avant le 15/09 n'ont
+        # pas de `phase` : elles sont deja en rendu, d'ou le defaut.
+        if etat.get("phase") == "analyse":
+            try:
+                vu = await _pipeline(jeton_u, {"mode": "clips_status",
+                                               "session_id": etat.get("session_id"),
+                                               "url": job.get("url")})
+            except RuntimeError as e:
+                await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                    "statut": "echec", "erreur": str(e)[:400],
+                    "updated_at": _maintenant().isoformat()})
+                return _texte(f"L'analyse a échoué : {e}", erreur=True)
+
+            if vu.get("status") == "error":
+                raison = vu.get("error") or "raison inconnue"
+                await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                    "statut": "echec", "erreur": str(raison)[:400],
+                    "updated_at": _maintenant().isoformat()})
+                return _texte(f"L'analyse a échoué : {raison}", erreur=True)
+
+            if vu.get("status") != "done":
+                etape = vu.get("progress") or vu.get("step") or "Analyse de la vidéo en cours…"
+                await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                    "etape": etape, "updated_at": _maintenant().isoformat()})
+                return _texte(f"{etape}\n\nRappelle `etat_clips` dans une trentaine "
+                              "de secondes.")
+
+            trouves = ((vu.get("result") or {}).get("clips")) or []
+            if not trouves:
+                await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                    "statut": "echec", "erreur": "aucun clip retenu",
+                    "updated_at": _maintenant().isoformat()})
+                return _texte("L'analyse s'est terminée sans retenir de moment fort. "
+                              "Essaie une vidéo où quelqu'un parle face caméra.",
+                              erreur=True)
+
+            # Les clips sont connus : on demande le rendu des `nombre` meilleurs. Passer
+            # `clips` evite a `shorts_start` de retranscrire — c'est ce qui le ramene
+            # sous le budget de 60 s de Vercel.
+            nombre = etat.get("nombre") or 3
+            try:
+                depart = await _pipeline(jeton_u, {"mode": "shorts_start",
+                                                   "url": job.get("url"),
+                                                   "n_clips": nombre,
+                                                   "clips": trouves[:nombre]})
+            except RuntimeError as e:
+                await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                    "statut": "echec", "erreur": str(e)[:400],
+                    "updated_at": _maintenant().isoformat()})
+                return _texte(f"Le rendu n'a pas pu démarrer : {e}", erreur=True)
+
+            jobs = depart.get("job_ids") or []
+            attente = depart.get("pending_clips") or []
+            total = len(jobs) + len(attente)
+            etat = {"job_ids": jobs, "pending_clips": attente, "total_clips": total}
+            await _patcher(f"mcp_jobs?id=eq.{ident}", {
+                "etape": "Rendu du premier clip…", "etat": etat,
+                "updated_at": _maintenant().isoformat()})
+            pluriel = "s" if total > 1 else ""
+            return _texte(
+                f"Analyse terminée — {total} clip{pluriel} en cours de rendu.\n\n"
+                "Rappelle `etat_clips` dans une trentaine de secondes.")
+
+        # ── Phase 2 : rendu ────────────────────────────────────────────────
         try:
             suite = await _pipeline(jeton_u, {
                 "mode": "shorts_status",
