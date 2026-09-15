@@ -2888,7 +2888,7 @@ async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
         # 30 s) ; l'analyse tourne en tache de fond depuis le 13/09, donc personne n'est au
         # bout d'une connexion ouverte. `attente` est un budget PARTAGE par tous les
         # morceaux : au-dela, on rend ce qu'on a plutot que de faire patienter sans fin.
-        refus = {"n": 0, "attente": 0.0}
+        refus = {"n": 0, "attente": 0.0, "jour": ""}
         # Le budget suit la LONGUEUR de la video. A 300 s fixes, une video de 40 minutes
         # l'epuisait exactement — dix morceaux qui attendent 30 s chacun font deja 300 s —
         # et l'analyse repartait de zero en boucle. Un plafond fixe penalise precisement les
@@ -2962,6 +2962,20 @@ Transcription (extrait) :
                                 # elles sont pleines et que Groq refuse quand meme, c'est une
                                 # limite journaliere — et seul le corps de la reponse la nomme.
                                 logger.warning(f"[identify_clips] 429 corps: {r.text[:300]}")
+
+                            # Limite du JOUR (TPD) : attendre ne sert a rien, elle se compte
+                            # en dizaines de minutes et chaque tentative consomme du budget
+                            # qu'il n'y a plus. Mesure du 15/09/2026 : plafond 200 000 tokens
+                            # par jour et par ORGANISATION — environ six a huit videos longues,
+                            # tous clients confondus. On s'arrete net et on le dit.
+                            corps = r.text or ""
+                            if "tokens per day" in corps or "TPD" in corps:
+                                import re as _re
+                                _m = _re.search(r"try again in ([0-9hms.]+)", corps)
+                                refus["jour"] = _m.group(1) if _m else "un moment"
+                                logger.error("[identify_clips] budget QUOTIDIEN Groq epuise — "
+                                             f"reprise dans {refus['jour']}")
+                                return []
                             if tentative < 3 and refus["attente"] < BUDGET_ATTENTE:
                                 # Une seule retentative, et courte. L'en-tete de Groq annonce
                                 # souvent 30 s : les attendre huit fois de suite ferait patienter
@@ -3028,6 +3042,10 @@ Transcription (extrait) :
         results = await asyncio.gather(*(bounded(c) for c in chunks))
         # On n'echoue que si l'attente a reellement ete epuisee ET que rien n'est sorti :
         # quelques 429 absorbes par les pauses ne sont plus un motif d'echec.
+        if refus["jour"] and not any(results):
+            raise RuntimeError(
+                "Le budget d'analyse du jour est épuisé — réessaie dans "
+                f"{refus['jour']}. Ta vidéo n'est pas perdue.")
         if refus["attente"] >= BUDGET_ATTENTE and not any(results):
             raise RuntimeError("Service d'analyse saturé")
         all_clips = [clip for chunk_clips in results for clip in chunk_clips]

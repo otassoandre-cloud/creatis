@@ -703,9 +703,12 @@ async def _appeler_outil(nom: str, args: dict, user: dict) -> dict:
                 #  - « Session introuvable » = Railway a redemarre. Ses jobs d'analyse
                 #    vivent en MEMOIRE, donc tout redeploiement orphelin ce qui tourne.
                 #    Rien n'est casse cote utilisateur : il suffit de relancer.
-                passager = ("satur" in raison.lower()
-                            or "introuvable" in raison.lower()
-                            or "expir" in raison.lower())
+                # Le budget QUOTIDIEN, lui, n'est pas passager : il se compte en
+                # dizaines de minutes et chaque relance le creuserait davantage.
+                # On rend la main avec le delai exact plutot que de tourner en rond.
+                bas = raison.lower()
+                passager = (("satur" in bas or "introuvable" in bas or "expir" in bas)
+                            and "budget d'analyse du jour" not in bas)
                 if passager and essais < 3:
                     try:
                         neuf_depart = await _pipeline(jeton_u, {
