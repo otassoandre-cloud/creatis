@@ -47,6 +47,11 @@ except Exception as _e:
 
 GEMINI_API_KEY        = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
+# Second fournisseur, deja utilise cote Vercel depuis toujours. Railway ne l'avait pas :
+# quand Groq saturait (8 000 tokens/minute), l'analyse en tache de fond rendait zero clip
+# et comptait sur le client pour refaire le travail par la route synchrone. Le connecteur
+# MCP n'a pas de client pour ce rattrapage — il echouait purement et simplement.
+TOGETHER_API_KEY      = os.environ.get("TOGETHER_API_KEY", "")
 SERVICE_SECRET        = os.environ.get("REPURPOSE_SERVICE_SECRET", "")
 WHISPER_MODEL         = os.environ.get("WHISPER_MODEL", "base")
 
@@ -2820,6 +2825,39 @@ def _chunk_segments(segments: List[Dict], chunk_chars: int = 7000, overlap: int 
     return chunks[:max_chunks]
 
 
+async def _analyser_avec_together(prompt: str) -> list:
+    """Meme prompt, autre fournisseur — appele seulement quand Groq refuse.
+
+    Groq plafonne a 8 000 tokens/minute et une video d'une quarantaine de minutes
+    depasse ce budget a elle seule : verifie le 15/09/2026, quatre analyses de suite
+    abandonnees sur la meme video. Vercel avait ce repli depuis toujours ; Railway,
+    qui porte l'analyse en tache de fond depuis le 13/09, ne l'avait jamais recu.
+    """
+    if not TOGETHER_API_KEY:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.post(
+                "https://api.together.xyz/v1/chat/completions",
+                headers={"Authorization": f"Bearer {TOGETHER_API_KEY}",
+                         "Content-Type": "application/json"},
+                json={"model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                      "messages": [
+                          {"role": "system",
+                           "content": "Tu es un expert YouTube Shorts. Réponds UNIQUEMENT "
+                                      "avec du JSON valide, sans aucun texte avant ou après."},
+                          {"role": "user", "content": prompt}],
+                      "temperature": 0.7, "max_tokens": 4096},
+            )
+        if r.status_code != 200:
+            logger.warning(f"[identify_clips/together] {r.status_code}")
+            return []
+        return _parse_json(r.json()["choices"][0]["message"]["content"].strip()).get("clips", [])
+    except Exception as e:
+        logger.warning(f"[identify_clips/together] echec: {e}")
+        return []
+
+
 async def _identify_clips(transcript: Dict, n: int) -> List[Dict]:
     if GROQ_API_KEY:
         segments = transcript["segments"]
@@ -2900,6 +2938,10 @@ Transcription (extrait) :
                                 logger.info(f"[identify_clips] 429, une nouvelle tentative dans {pause or 5.0:.0f}s")
                                 await asyncio.sleep(pause or 5.0)
                                 continue
+                            secours = await _analyser_avec_together(prompt)
+                            if secours:
+                                logger.info(f"[identify_clips] Groq sature — {len(secours)} clips via Together")
+                                return secours
                             logger.warning("[identify_clips] Groq sature — abandon, le client bascule sur Vercel")
                             return []
                         r.raise_for_status()
