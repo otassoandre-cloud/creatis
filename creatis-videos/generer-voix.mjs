@@ -162,6 +162,26 @@ export const REPLIQUES = [
     ton: "punchy",
     voix: VOIX_TIKTOK,
   },
+
+  /* ── Connecteur Claude (ClaudeMcp) ─────────────────────────────────────────
+     UNE SEULE PRISE, comme les posts : un fichier par plan laisse une amorce de
+     silence a chaque coupe, et ca s'entend. Le montage se cale ensuite sur les
+     frontieres de phrases mesurees dans la prise.
+
+     Ce texte EXPLIQUE, il ne slogane pas : c'est la demande. Un spectateur qui
+     n'a jamais entendu parler de MCP doit comprendre, en une ecoute, ce qu'on
+     branche, ou, et ce que ca lui evite de faire. D'ou l'ordre : ce que c'est,
+     ce qu'on fait une fois, ce qu'on fait ensuite, ce qu'on ne fait plus.
+
+     « creatis point app » en toutes lettres : « creatis.app » se lisait
+     « creatis point a p p » lettre par lettre. */
+  {
+    id: "mcp-claude",
+    texte:
+      "Claude peut maintenant fabriquer tes clips tout seul. Tu ajoutes Créatis comme connecteur, une seule fois, et c'est réglé. Ensuite tu lui donnes un lien YouTube, et tu ne touches plus à rien. Il lance l'analyse, il suit l'avancement, il te ramène les clips terminés. Sous-titres déjà incrustés, au format short, prêts à publier. Sept jours d'essai sur le plan Pro, sur créatis point app.",
+    ton: "punchy",
+    voix: VOIX_TIKTOK,
+  },
 ];
 
 const CLE = (process.env.GEMINI_API_KEY || "").trim();

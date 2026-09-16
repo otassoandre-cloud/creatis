@@ -1,4 +1,4 @@
-import { Video } from "@remotion/media";
+import { Audio, Video } from "@remotion/media";
 import {
   AbsoluteFill,
   Easing,
@@ -14,120 +14,204 @@ import { OffreEssai } from "./OffreEssai";
 import { AVEC_REACTION, Reaction } from "./Reaction";
 
 /**
- * CRÉATIS DANS CLAUDE — 1080x1920, 23 s.
+ * LE CONNECTEUR CLAUDE — 1080x1920, 32 s, avec voix off.
  *
- * Ce qu'on montre : on ne va plus sur le site, on demande à Claude. Créatis
- * s'ajoute comme connecteur, Claude appelle l'outil, les clips reviennent
- * finis dans la conversation.
+ * On branche Créatis dans Claude, on lui donne un lien YouTube, il rend les
+ * clips finis. La vidéo montre l'opération ENTIÈRE : la demande, l'appel de
+ * l'outil, l'attente, les clips qui reviennent, puis le clip lui-même.
  *
- * ── TOUT LE TEXTE AFFICHÉ EST CELUI DU PRODUIT ───────────────────────────
- * Les trois outils (`creer_clips`, `etat_clips`, `mon_quota`), la phrase
- * « Génération lancée — 3 clips demandés », l'identifiant en `j` + 8 signes,
- * « Analyse terminée », « 3 clips prêts » : tout sort de mcp_connecteur.py et a
- * été relu dans une vraie conversation avec le connecteur le 15/09/2026. Les
- * titres des clips sont ceux que l'IA a écrits pour CETTE génération-là
- * (jff80a786, sur « 99,9% de MALAISE » d'Amixem), et le clip montré à la fin en
- * sort — c'est le troisième de la liste. Écrire une réponse plus belle que la
- * vraie ferait de cette vidéo une maquette, c'est-à-dire rien.
+ * ── LA CONVERSATION EST UN ENREGISTREMENT D'ÉCRAN ────────────────────────
+ * `rec-claude.mp4` est filmé dans l'application Claude, sur téléphone. Deux
+ * versions ont été écartées avant d'en arriver là. La première redessinait
+ * l'échange en HTML avec les vraies chaînes du connecteur : exact, et ça ne
+ * prouvait rien — un spectateur ne distingue pas une maquette soignée d'une
+ * capture, donc il ne croit ni l'une ni l'autre. La seconde filmait une fenêtre
+ * Claude Code : authentique, mais un terminal ne dit rien à un créateur de
+ * contenu, qui ne reconnaît pas l'outil dont on lui parle.
  *
- * ── LA SOURCE EST DU DIVERTISSEMENT, ET C'EST UNE REGLE ──────────────────
- * Jamais de politique, d'actualité ni d'enquête, même quand ces sources donnent
- * de meilleurs chiffres. La cible est le créateur de contenu : un clip
- * d'actualité fait juger la marque sur le sujet du clip et parle à une audience
- * qui n'achète pas.
+ * L'interface de l'application est la seule que l'audience reconnaisse, et elle
+ * ne peut être filmée que depuis un vrai appareil : claude.ai renvoie un
+ * challenge Cloudflare à tout navigateur piloté.
  *
- * ── CE QUE LA FENÊTRE N'EST PAS ──────────────────────────────────────────
- * Ce n'est pas une copie de l'interface de Claude et ça ne cherche pas à en
- * être une : pas de logo emprunté, pas de reproduction de leur mise en page.
- * C'est notre conversation, avec notre charte, et le nom de Claude écrit parce
- * que c'est bien à Claude qu'on parle. Reproduire l'interface d'un tiers pour
- * faire croire à une capture serait malhonnête, et juridiquement stupide.
+ * ── LA VOIX EXPLIQUE, ELLE NE SLOGANE PAS ────────────────────────────────
+ * Une prise unique de 22,9 s (Gemini TTS, voix Puck), texte dans
+ * `generer-voix.mjs` sous l'identifiant `mcp-claude`. Elle est coupée en deux :
+ * les cinq premières phrases accompagnent l'action, la dernière — la seule qui
+ * vend — attend la fin et se pose avec l'offre. Diffuser le CTA au milieu le
+ * rendrait inaudible ; le laisser collé aux autres phrases le ferait tomber
+ * pendant que le clip démarre.
  *
- * ── LE DÉCOUPAGE, ET POURQUOI IL EST SERRÉ AU DÉBUT ──────────────────────
- * La série TikTok dit toujours la même chose : 81 % de spectateurs à 1 s, puis
- * un décrochage massif à 0:02. Donc l'accroche doit être lisible à l'image 0 —
- * pas d'animation d'entrée sur le titre — et il doit se passer quelque chose
- * avant la deuxième seconde. La demande est déjà tapée à 2,3 s, l'outil part à
- * 4,6 s, les clips arrivent à 9,5 s.
+ * Les frontières de phrases ne sont pas devinées : elles sont mesurées par
+ * Whisper sur la prise elle-même (0,0 / 5,0 / 9,0 / 12,3 / 16,5 / 20,2 s).
  *
- *     0,0 s  accroche, lisible immédiatement
- *     2,3 s  la demande apparaît dans la conversation
- *     4,6 s  Claude appelle `creer_clips` — l'outil est visible, nommé
- *     6,6 s  « Génération lancée », l'identifiant
- *     9,5 s  « 3 clips prêts » et leurs titres
- *    12,5 s  le clip, plein écran, celui de cette génération
- *    18,0 s  l'offre d'essai se pose PAR-DESSUS le clip qui continue
+ * ── LE SON DU CLIP PASSE DESSOUS ─────────────────────────────────────────
+ * Le clip tourne du début à la fin, mais son volume descend à 0,18 tant que la
+ * voix parle. Deux paroles à plein niveau ne se superposent pas : elles
+ * s'annulent, et on n'entend plus ni l'une ni l'autre.
  *
- * ── LA FIN ────────────────────────────────────────────────────────────────
- * Aucun carton final : le clip tourne jusqu'à la dernière image et l'offre se
- * pose dessus (voir l'en-tête d'OffreEssai). Une vidéo qui s'arrête sur une
- * affiche perd les secondes qui décident de la portée.
+ * ── LA SOURCE DES CLIPS EST DU DIVERTISSEMENT ────────────────────────────
+ * Amixem. Jamais de politique, d'actualité ni d'enquête, même quand ces sources
+ * mesurent mieux : la cible est le créateur de contenu, et un clip d'actualité
+ * fait juger la marque sur le sujet du clip.
  */
 
 const FPS = 30;
-export const DUREE_MCP = 690; // 23 s
+export const DUREE_MCP = 960; // 32 s
 
-const CLIP = "amx3.mp4";
+/** Le clip que le connecteur a rendu pendant l'enregistrement. */
+const CLIP = "mcp-clip.mp4";
 
-/** Capture de la vraie fenêtre Claude Code, recadrée sur le terminal seul. */
+/**
+ * Enregistrement d'écran de l'application Claude, en 9:16.
+ *
+ * ── POURQUOI PAS UNE CAPTURE FAITE ICI ───────────────────────────────────
+ * claude.ai renvoie un challenge Cloudflare à tout navigateur piloté : la page
+ * s'arrête sur « Un instant… » et ne se charge jamais. Il n'existe donc aucun
+ * moyen de filmer l'interface depuis cette machine. L'enregistrement vient du
+ * téléphone, ce qui est de toute façon la bonne image : c'est l'application que
+ * l'audience utilise, pas un terminal.
+ *
+ * Attendu : 1080x1920 (ou tout format 9:16), l'app Claude, le connecteur
+ * Créatis appelé, et les clips qui reviennent.
+ */
 const REC = "rec-claude.mp4";
 
-const ECRAN = { width: "100%", display: "block" } as const;
+/** Prise unique de voix off. */
+const VOIX = "voix/mcp-claude.mp3";
 
-/** Le clip reprend tout l'écran à 14 s et tourne jusqu'au bout. */
-const CLIP_DEB = Math.round(14 * FPS);
+const ECRAN = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+} as const;
 
-/** L'offre se pose à 18 s — 5 s de clip avant, 5 s avec l'offre. */
-const OFFRE_DEB = Math.round(18 * FPS);
+/** L'accroche tient 5 s — la durée de la première phrase de la voix. */
+const FIN_ACCROCHE = 150;
+
+/** La fenêtre de terminal occupe l'écran de 5 s à 19,6 s. */
+const REC_DEB = 150;
+const REC_FIN = 588;
+
+/** L'offre se pose à 26 s, sur le clip qui continue de tourner. */
+const OFFRE_DEB = 780;
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * LA CONVERSATION — ce n'est plus une reconstitution, c'est l'enregistrement.
+ * L'ACCROCHE. Lisible à l'image 0, sans animation d'entrée : la série TikTok dit
+ * toujours la même chose — 81 % de spectateurs à 1 s, puis un décrochage massif
+ * à 0:02. Ce qui décide, c'est ce que le spectateur a COMPRIS à la deuxième
+ * seconde, donc le texte doit être entier dès la première image.
  *
- * `rec-claude.mp4` est la capture d'une vraie fenêtre Claude Code du 15/09/2026,
- * avec le connecteur Créatis déclaré (`.mcp.json`, jeton OAuth du compte). On y
- * voit la demande, Claude appeler l'outil, puis la réponse du connecteur avec
- * les trois titres que l'IA a écrits. Rien n'est rejoué ni remis en page.
- *
- * ── POURQUOI UN ENREGISTREMENT ET PAS UNE MAQUETTE ───────────────────────
- * La version précédente redessinait la conversation en HTML avec les vraies
- * chaînes du connecteur. C'était exact, et ça ne prouvait rien : un spectateur
- * ne distingue pas une maquette soignée d'une capture, donc il ne croit ni
- * l'une ni l'autre. Une fenêtre de terminal avec sa barre d'onglets, son
- * curseur qui clignote et ses temps d'attente, si.
- *
- * ── LES QUATRE VITESSES ──────────────────────────────────────────────────
- * L'échange réel dure 66 secondes et on en dispose de 11. Une vitesse unique
- * rendrait la question illisible et l'attente interminable :
- *
- *     x1,2   la demande s'affiche          (2 s réelles)
- *     x14    l'attente pendant le travail  (37 s réelles → 2,6 s)
- *     x3,5   la relance et la réponse      (7 s réelles → 2 s)
- *     x1,5   les trois clips, à lire       (8 s réelles → 5,3 s)
- *
- * C'est le même principe que Parcours : on accélère ce qui n'apprend rien, on
- * ralentit ce qui prouve.
+ * Elle se pose SUR le clip qui tourne, pas sur du noir : avec un fond sombre, la
+ * première seconde tombait à 20 de luminance contre 116-118 pour la médiane du
+ * corpus. Clip relevé de 1,45 — le plafond au-delà duquel la peau sature — et
+ * voile à 0,20. C'est le contour noir qui rend le texte lisible, pas
+ * l'assombrissement : un voile assez opaque pour porter du blanc serait, par
+ * construction, assez opaque pour éteindre l'image.
  */
-const Conversation: React.FC = () => {
+const Accroche: React.FC = () => {
   const frame = useCurrentFrame();
-
-  /* Le fond se pose progressivement sur le clip : à 2,1 s il est transparent,
-     à 2,8 s opaque. Sans cette montée on passe d'une image vivante à un écran
-     sombre d'un coup, exactement à la seconde où la série décroche. Sept
-     dixièmes, pas plus : entre les deux, le fond à demi posé sur un visage
-     donne un vert boueux qu'il ne faut pas laisser s'installer. */
-  const fond = interpolate(frame, [63, 84], [0, 1], {
+  const sortie = interpolate(frame, [FIN_ACCROCHE - 12, FIN_ACCROCHE], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  /* La fenêtre arrive à l'image 108, une fois la vignette de réaction partie :
-     elles occupent la même bande et, superposées, on ne lisait ni l'une ni
-     l'autre. La séquence qui la porte démarre au même moment, sinon les
-     premières secondes de l'enregistrement défileraient derrière un cadre
-     invisible et la question serait déjà écrite en apparaissant. */
-  const entree = interpolate(frame, [108, 126], [0, 1], {
+  const contour = {
+    WebkitTextStroke: "10px rgba(0,0,0,0.58)",
+    paintOrder: "stroke fill" as const,
+  };
+
+  return (
+    <AbsoluteFill style={{ opacity: sortie }}>
+      <AbsoluteFill
+        style={{
+          backdropFilter: "brightness(1.45)",
+          WebkitBackdropFilter: "brightness(1.45)",
+        }}
+      />
+      <AbsoluteFill style={{ backgroundColor: "rgba(4,10,7,0.20)" }} />
+      <AbsoluteFill
+        style={{
+          fontFamily: POLICE,
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          textAlign: "center",
+          paddingLeft: 76,
+          paddingRight: 76,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 46,
+            fontWeight: 800,
+            color: COULEURS.vertClair,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: 22,
+            ...contour,
+          }}
+        >
+          Nouveau connecteur
+        </div>
+        <div
+          style={{
+            fontSize: 108,
+            fontWeight: 900,
+            color: "#ffffff",
+            lineHeight: 1.0,
+            letterSpacing: "-0.045em",
+            ...contour,
+          }}
+        >
+          Claude fait
+          <br />
+          mes clips
+        </div>
+        <div
+          style={{
+            marginTop: 16,
+            fontSize: 96,
+            fontWeight: 900,
+            color: COULEURS.vertClair,
+            lineHeight: 1.0,
+            letterSpacing: "-0.04em",
+            ...contour,
+          }}
+        >
+          tout seul
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * LA CAPTURE, ET SES QUATRE VITESSES.
+ *
+ * L'échange réel dure plusieurs minutes et on en dispose de 14,6 s. Une vitesse
+ * unique rendrait la demande illisible et l'attente interminable. Les repères
+ * sont relevés image par image sur `rec-claude.mp4` ; les attentes — les seuls
+ * passages qui n'apprennent rien — sont les seules vraiment accélérées, et la
+ * réponse finale tient en temps réel pour être lue. C'est le principe déjà
+ * appliqué dans Parcours.
+ */
+const Capture: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  /* Le fond se pose progressivement sur le clip : sans cette montée on passe
+     d'une image vivante à un écran sombre d'un coup. Sept dixièmes de seconde,
+     pas plus — entre les deux, le fond à demi posé sur un visage donne un vert
+     boueux qu'il ne faut pas laisser s'installer. */
+  const fond = interpolate(frame, [0, 21], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const entree = interpolate(frame, [18, 38], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.bezier(0.16, 1, 0.3, 1),
@@ -144,188 +228,54 @@ const Conversation: React.FC = () => {
         }}
       />
 
-      {/* Bandeau : à qui on parle. Il n'apparaît qu'une fois la fenêtre de
-          réaction partie (image 112) — les deux occupent la même bande. */}
-      <div
+      {/* L'enregistrement est déjà en 9:16 : il remplit le cadre au lieu d'être
+          posé dessus comme une fenêtre. Un écran de téléphone montré en entier
+          se lit sur un écran de téléphone — c'est le seul format qui n'oblige
+          pas à rapetisser le texte de l'application. */}
+      <AbsoluteFill
         style={{
-          position: "absolute",
-          top: 318,
-          left: 0,
-          right: 0,
-          textAlign: "center",
-          fontSize: 34,
-          fontWeight: 700,
-          color: COULEURS.texteDoux,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          opacity: interpolate(frame, [112, 130], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-        }}
-      >
-        Claude · connecteur Créatis
-      </div>
-
-      {/* 1000 px de large : la capture fait 592, donc un agrandissement de 1,69.
-          Au-delà le texte se délite ; en dessous il devient illisible sur un
-          téléphone. La capture est rognée à 496 px de haut — la moitié basse de
-          la fenêtre ne contient jamais rien, et la garder poussait le bloc dans
-          la zone des légendes TikTok. Résultat : 845 px de haut, posés entre
-          22 % et 66 % de la hauteur, loin des deux bandes d'interface. */}
-      <Sequence from={108} durationInFrames={CLIP_DEB - 108} layout="none">
-      <div
-        style={{
-          position: "absolute",
-          top: 424,
-          left: 40,
-          width: 1000,
-          borderRadius: 22,
-          overflow: "hidden",
-          border: `1px solid ${COULEURS.ligne}`,
-          boxShadow: "0 40px 110px rgba(0,0,0,0.6)",
           opacity: entree,
-          transform: `scale(${interpolate(entree, [0, 1], [0.94, 1])})`,
+          transform: `scale(${interpolate(entree, [0, 1], [1.04, 1])})`,
         }}
       >
-        <Series>
-          {/* Repères relevés image par image sur `rec-claude.mp4` :
-                 2,9 s  la demande s'affiche
-                44,0 s  Claude répond
-                46,5 s  la relance
-                53,0 s  les trois clips sont écrits
-             Les deux attentes sont les seuls passages qui n'apprennent rien :
-             ce sont les seuls qu'on accélère vraiment. */}
-          <Series.Sequence durationInFrames={45} layout="none">
-            <Video
-              src={staticFile(REC)}
-              trimBefore={Math.round(2.8 * FPS)}
-              style={ECRAN}
-            />
-          </Series.Sequence>
-          <Series.Sequence durationInFrames={55} layout="none">
-            <Video
-              src={staticFile(REC)}
-              trimBefore={Math.round(3.5 * FPS)}
-              playbackRate={22}
-              style={ECRAN}
-            />
-          </Series.Sequence>
-          <Series.Sequence durationInFrames={45} layout="none">
-            <Video
-              src={staticFile(REC)}
-              trimBefore={Math.round(43.8 * FPS)}
-              playbackRate={2.5}
-              style={ECRAN}
-            />
-          </Series.Sequence>
-          <Series.Sequence durationInFrames={52} layout="none">
-            <Video
-              src={staticFile(REC)}
-              trimBefore={Math.round(47.5 * FPS)}
-              playbackRate={3.5}
-              style={ECRAN}
-            />
-          </Series.Sequence>
-          <Series.Sequence durationInFrames={115} layout="none">
-            <Video
-              src={staticFile(REC)}
-              trimBefore={Math.round(53.6 * FPS)}
-              style={ECRAN}
-            />
-          </Series.Sequence>
-        </Series>
-      </div>
-      </Sequence>
-    </AbsoluteFill>
-  );
-};
-
-/* ────────────────────────────────────────────────────────────────────────── */
-
-/**
- * L'ACCROCHE. Lisible à l'image 0, sans animation d'entrée : c'est la seule
- * règle non négociable du format. Elle s'efface à 2,1 s, juste avant que la
- * demande n'apparaisse — deux textes forts en même temps s'annulent.
- *
- * ── ELLE SE POSE SUR LE CLIP, PAS SUR DU NOIR ────────────────────────────
- * La première version mettait un fond noir à 80 % : l'image 0 mesurait 20 de
- * luminance, contre 116-118 pour la médiane des clips qui performent, et la
- * série TikTok dit toujours la même chose — arrêt massif à 0:02. Le clip tourne
- * donc DERRIÈRE dès la première image, relevé de 1,45 et voilé à 0,20 seulement.
- *
- * Le texte tient sur ce fond mouvant grâce au contour noir, pas grâce au voile —
- * un voile assez opaque pour porter du texte blanc serait, par construction,
- * assez opaque pour éteindre l'image.
- */
-const Accroche: React.FC = () => {
-  const frame = useCurrentFrame();
-  const sortie = interpolate(frame, [54, 63], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  const contour = {
-    WebkitTextStroke: "10px rgba(0,0,0,0.58)",
-    paintOrder: "stroke fill" as const,
-  };
-
-  return (
-    <AbsoluteFill style={{ opacity: sortie }}>
-      {/* Relèvement mesuré. Avec un voile à 0,42 seul, la première seconde
-          tombait à 70 de luminance, contre 116-118 pour la médiane du corpus.
-          Voile à 0,20 et clip relevé de 1,45 — le plafond mesuré le 14/09, au-delà
-          duquel la peau sature. La source Amixem ouvre à 96 de luminance, plus
-          bas que la précédente, d'où un relèvement au maximum admissible.
-          Le voile ne sert plus qu'à asseoir le texte ; c'est le contour noir
-          qui le rend lisible, pas l'assombrissement. */}
-      <AbsoluteFill
-        style={{
-          backdropFilter: "brightness(1.45)",
-          WebkitBackdropFilter: "brightness(1.45)",
-        }}
-      />
-      <AbsoluteFill style={{ backgroundColor: "rgba(4,10,7,0.20)" }} />
-      <AbsoluteFill
-        style={{
-          fontFamily: POLICE,
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-          paddingLeft: 80,
-          paddingRight: 80,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 112,
-            fontWeight: 900,
-            color: "#ffffff",
-            lineHeight: 1.0,
-            letterSpacing: "-0.045em",
-            ...contour,
-          }}
-        >
-          J’ai arrêté
-          <br />
-          d’ouvrir le site
-        </div>
-        <div
-          style={{
-            marginTop: 30,
-            fontSize: 58,
-            fontWeight: 800,
-            color: COULEURS.vertClair,
-            lineHeight: 1.12,
-            letterSpacing: "-0.02em",
-            ...contour,
-          }}
-        >
-          je demande mes clips
-          <br />
-          à Claude
-        </div>
+        {/* La séquence démarre à l'image 18, au moment où la fenêtre apparaît :
+            sinon les premières secondes de l'enregistrement défileraient
+            derrière un cadre invisible et la demande serait déjà écrite en
+            apparaissant. */}
+        <Sequence from={18} durationInFrames={REC_FIN - REC_DEB - 18} layout="none">
+          <Series>
+            <Series.Sequence durationInFrames={60} layout="none">
+              <Video
+                src={staticFile(REC)}
+                trimBefore={Math.round(2.8 * FPS)}
+                style={ECRAN}
+              />
+            </Series.Sequence>
+            <Series.Sequence durationInFrames={90} layout="none">
+              <Video
+                src={staticFile(REC)}
+                trimBefore={Math.round(5 * FPS)}
+                playbackRate={16}
+                style={ECRAN}
+              />
+            </Series.Sequence>
+            <Series.Sequence durationInFrames={80} layout="none">
+              <Video
+                src={staticFile(REC)}
+                trimBefore={Math.round(53 * FPS)}
+                playbackRate={3}
+                style={ECRAN}
+              />
+            </Series.Sequence>
+            <Series.Sequence durationInFrames={190} layout="none">
+              <Video
+                src={staticFile(REC)}
+                trimBefore={Math.round(61 * FPS)}
+                style={ECRAN}
+              />
+            </Series.Sequence>
+          </Series>
+        </Sequence>
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -336,22 +286,22 @@ const Accroche: React.FC = () => {
 export const ClaudeMcp: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: COULEURS.fond }}>
-      {/* Le son du clip tourne du début à la fin : sans lui, les douze premières
-          secondes de conversation seraient muettes, et une vidéo muette sur les
-          deux premières secondes est jugée avant d'avoir commencé. */}
+      {/* Le clip tourne d'un bout à l'autre : il porte l'accroche au début,
+          reprend tout l'écran à la fin, et son propre son remplit les silences
+          de la voix. */}
       <Sequence durationInFrames={DUREE_MCP} name="Clip">
         <Video
           src={staticFile(CLIP)}
+          volume={(f) => (f < REC_FIN ? 0.18 : 1)}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
       </Sequence>
 
-      {/* La conversation recouvre le clip jusqu'à 12,5 s. */}
-      <Sequence durationInFrames={CLIP_DEB} name="Conversation">
-        <Conversation />
+      <Sequence from={REC_DEB} durationInFrames={REC_FIN - REC_DEB} name="Capture">
+        <Capture />
       </Sequence>
 
-      <Sequence durationInFrames={63} name="Accroche">
+      <Sequence durationInFrames={FIN_ACCROCHE} name="Accroche">
         <Accroche />
       </Sequence>
 
@@ -360,6 +310,20 @@ export const ClaudeMcp: React.FC = () => {
           <Reaction />
         </Sequence>
       ) : null}
+
+      {/* Voix, premier morceau : les cinq phrases qui expliquent. */}
+      <Sequence durationInFrames={Math.round(19.9 * FPS)} name="Voix — explication">
+        <Audio src={staticFile(VOIX)} trimAfter={Math.round(19.9 * FPS)} />
+      </Sequence>
+
+      {/* Voix, dernier morceau : l'offre, posée avec elle. */}
+      <Sequence
+        from={OFFRE_DEB}
+        durationInFrames={DUREE_MCP - OFFRE_DEB}
+        name="Voix — offre"
+      >
+        <Audio src={staticFile(VOIX)} trimBefore={Math.round(20.1 * FPS)} />
+      </Sequence>
 
       <Sequence from={OFFRE_DEB} durationInFrames={DUREE_MCP - OFFRE_DEB} name="Offre">
         <OffreEssai duree={DUREE_MCP - OFFRE_DEB} />
