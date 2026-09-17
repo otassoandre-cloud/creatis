@@ -52,13 +52,33 @@ import { COULEURS } from "./theme";
  * 3,1 s pour un montage de 19 s : la sequence boucle, d'ou `loop` sur la video.
  * Une boucle courte se remarque d'autant moins que la fenetre est petite et que
  * l'oeil est occupe ailleurs. */
-export const AVEC_REACTION = true;
+/* DESACTIVEE LE 18/09/2026, a la demande.
+ *
+ * La vignette occupait le haut gauche pendant les 3,7 premieres secondes —
+ * exactement la fenetre ou se joue desormais la demonstration de recadrage
+ * (voir Transformation.tsx). Deux choses a regarder au meme endroit, au moment
+ * precis ou il ne faut en regarder qu'une : le visage gagnait l'attention, et
+ * la seule image qui explique le produit la perdait.
+ *
+ * Le composant reste en place : remettre `true` suffit a la reactiver, et les
+ * mesures de placement consignees ci-dessus restent valables. */
+export const AVEC_REACTION = false;
 
 const FICHIER = "reaction.mp4";
 
-/** Bas a gauche. 408 px de cote, soit 38 % de la largeur : assez pour lire une
-    expression sur un ecran de telephone, ce que 276 ne permettait pas. */
-const PLACE = { x: 40, y: 940, taille: 408 };
+/** HAUT a gauche. 408 px de cote, soit 38 % de la largeur : assez pour lire une
+    expression sur un ecran de telephone, ce que 276 ne permettait pas.
+
+    Elle etait en BAS a gauche (y = 940), place calculee en supposant les
+    sous-titres incrustes a 74 % de hauteur. Ce n'est plus vrai : Andre a demande
+    le 13/09 que les sous-titres restent centres ou hauts, « sinon on voit pas en
+    bas » — l'interface de TikTok mange le quart inferieur. Ils sont donc a 50 %,
+    exactement ou se trouvait cette fenetre : au rendu du 14/09 elle coupait la
+    moitie gauche de chaque ligne.
+
+    Elle occupe maintenant 17 % a 38 % de la hauteur : sous la barre de recherche
+    de TikTok (16 %) et au-dessus des sous-titres (50 %). */
+const PLACE = { x: 40, y: 330, taille: 408 };
 
 /** Entree a l'image 8, sortie amorcee a 100, disparue a 112 (3,7 s). */
 const ENTREE_IMG = 8;

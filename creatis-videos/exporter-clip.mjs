@@ -125,6 +125,46 @@ function recaler(tout) {
   return sortie;
 }
 
+/**
+ * Recupere aussi le SEGMENT BRUT, en 16:9, tel que YouTube le sert.
+ *
+ * C'est la matiere premiere de l'ouverture : on montre d'abord la video
+ * d'origine — large, avec ses bandes noires en haut et en bas sur un ecran de
+ * telephone — puis ce que le produit en fait. Sans cette image-la, le
+ * spectateur voit un clip vertical et n'a aucune raison de deviner qu'il vient
+ * d'une video large : la transformation, qui est TOUT l'interet, reste
+ * invisible.
+ *
+ * `/raw-segment` sert exactement ce que l'application telecharge avant de
+ * recadrer, cache R2 compris — c'est donc la meme source, pas une re-extraction.
+ */
+async function segmentBrut({ railway_url, token }, chemin) {
+  const H = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const lance = await fetch(`${railway_url}/raw-segment`, {
+    method: "POST",
+    headers: H,
+    body: JSON.stringify({ video_id: VIDEO_ID, start: debut, end: fin, allow_api_fallback: true }),
+  }).then((r) => r.json());
+  if (!lance.job_id) throw new Error(`segment brut refusé : ${JSON.stringify(lance).slice(0, 200)}`);
+
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const etat = await fetch(`${railway_url}/raw-segment-status/${lance.job_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json()).catch(() => ({}));
+    if (etat.status === "done") {
+      const bin = await fetch(
+        `${railway_url}/raw-segment-file/${lance.job_id}/${etat.file || "clip.mp4"}?token=${encodeURIComponent(token)}`,
+      ).then((x) => x.arrayBuffer());
+      writeFileSync(chemin, Buffer.from(bin));
+      console.log(`· source brute : ${chemin}`);
+      return;
+    }
+    if (etat.status === "error") throw new Error(`segment brut en échec : ${etat.error || "?"}`);
+  }
+  throw new Error("segment brut : délai dépassé");
+}
+
 const jeton = await jetonUtilisateur();
 console.log("· connecté");
 const acces = await accesRailway(jeton);
@@ -178,6 +218,13 @@ if (type.includes("application/json")) {
   writeFileSync(SORTIE, bin);
 } else {
   writeFileSync(SORTIE, Buffer.from(await r.arrayBuffer()));
+}
+
+/* `SOURCE_BRUTE=chemin.mp4` demande en plus la video large d'origine, sur le
+   MEME intervalle : les deux sont alors le meme instant, donc le son ne saute
+   pas au passage de l'une a l'autre. */
+if (process.env.SOURCE_BRUTE) {
+  await segmentBrut(acces, process.env.SOURCE_BRUTE);
 }
 
 console.log(`\n✓ ${SORTIE}`);
