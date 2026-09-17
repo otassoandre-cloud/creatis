@@ -23,36 +23,56 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
  * sont le meme homme.
  *
  * TROIS VITESSES, parce qu'une seule ne marchait pas. La saisie du lien passe a
- * x2,7 pour rester lisible, l'analyse a x25 (76 secondes ramenees a 3 : personne
- * ne regarde une barre de progression en temps reel), la grille et le clic a x5
+ * x5,6 pour rester lisible, l'analyse a x67 (200 secondes ramenees a 3 : personne
+ * ne regarde une barre de progression en temps reel), la grille et le clic a x3
  * seulement — c'est le moment qui prouve le produit, il doit se lire.
  *
  * AUCUN SILENCE. Le son du clip tourne en continu au niveau de la composition et
  * l'image le rejoint a 12 s sans decalage. Sans ca, les 8 secondes d'interface
  * seraient muettes.
  *
- * SOURCE (12/09/2026). « J'ai cree ma propre marque de CIGARES » de La Menace,
- * publiee le 10/09. Mesuree avant de s'engager : 157 de luminance sur la source,
- * 135 sur le clip exporte — la source la plus lumineuse de toute la serie, loin
- * devant La Boiserie (136) qui occupait cette place.
+ * SOURCE (17/09/2026). Amixem, « ON TESTE DES TECHNOLOGIES DE FAINÉANT »,
+ * 25 minutes. L'analyse a rendu 8 clips en 3 min 08 ; le clip montré est le
+ * premier de la grille — « Lampe à eau salée : énergie surprise », 51 s, noté 89.
  *
- * Et surtout elle repare le defaut de la version precedente : La Boiserie filmait
- * des voitures et des plans larges, donc `reframe_mode=face` retombait sur le crop
- * centre et le suivi de visage n'etait jamais demontre. Ici le sujet est une
- * personne qui parle, DECENTREE dans le cadre 16:9 — le recadrage doit aller la
- * chercher, et ca se voit.
+ * LA SOURCE EST DU DIVERTISSEMENT, ET C'EST UNE REGLE. Jamais de politique,
+ * d'actualite ni d'enquete, meme quand ces sources mesurent mieux : la cible est
+ * le createur de contenu, et un clip d'actualite fait juger la marque sur le
+ * sujet du clip plutot que sur l'outil.
  *
- * La video fait 55 minutes. Le client s'accorde 15 minutes de sondage
- * (`_pollTranscribeJob`) : l'analyse en a pris 140 secondes, tout est passe.
+ * LUMINANCE : 116 de moyenne, exactement la mediane du corpus, et 201 sur la
+ * premiere seconde — le clip ouvre sur la fiche produit de la lampe, tres
+ * claire. Aucun relevement n'est applique : pour la premiere fois la source
+ * n'en demande pas. Les precedentes reclamaient entre x1,24 et x1,45, et LEGEND
+ * aurait demande x1,6, impossible sans bruler la peau.
  *
- * Le commentaire est continu — 452 mots en deux minutes — donc aucun trou de son
- * a combler : le creux tombe a -19,5 dB, la ou l'interview precedente descendait
- * a -37 et demandait un compresseur.
+ * LE CLIP EST PRODUIT PAR LE CHEMIN DU PRODUIT, pas par un raccourci :
+ * `exporter-clip.mjs` se connecte au compte, demande l'acces au service de
+ * rendu comme le fait le studio, puis appelle `/process-clip` avec les reglages
+ * par defaut (bold, 55, ligne a 82 %). Le segment demande — 1:40 a 2:31 — est
+ * exactement celui que la grille filmee montre en premiere position.
  *
- * Ce que cette source ne montre PAS : le suivi de visage. Le sujet filme, ce sont
- * des voitures et des plans larges ; `reframe_mode=face` retombe alors sur le
- * crop centre, ce qui est son comportement voulu. Les sous-titres et le passage
- * en 9:16, eux, sont bien demontres.
+ * CADRAGE CENTRE, et c'est un choix mesure. Le mode `split` a ete essaye sur le
+ * meme segment : il bascule bien en suivi de visage sur les gros plans, mais sur
+ * les plans a deux il elargit et coupe les deux tetes. Sur ce plateau-la, le
+ * defaut du studio rend mieux — et c'est de toute facon ce que verrait quelqu'un
+ * qui ne touche a rien.
+ *
+ * PAS DE HOOK SUR CETTE VERSION, et ce n'est pas un oubli. La version du 15/09
+ * activait `hook_enabled` avec la phrase que l'IA avait ecrite pour son clip —
+ * une capacite de plus, demontree en vrai. Ici le texte du hook n'a pas ete
+ * conserve : l'enregistrement lit le titre et la note dans la grille, pas le
+ * hook, et l'etat de la generation vit en memoire cote Railway. Plutot que
+ * d'ecrire une phrase a la place de l'IA, on s'en passe. A recuperer la
+ * prochaine fois en lisant `clips_status` pendant l'analyse.
+ *
+ * ── LA FENETRE MONTREE ────────────────────────────────────────────────────
+ * Le clip dure 51 s, la video en montre 21,5 depuis son debut. C'est l'ouverture
+ * qui a ete retenue : elle commence sur la fiche produit de la lampe a eau
+ * salee — l'objet dont il est question — et c'est aussi le passage le plus
+ * clair du clip. Les versions precedentes choisissaient leur fenetre sur le son,
+ * pour eviter un silence au milieu ; ici l'echange est continu du debut a la
+ * fin, la question ne se pose pas.
  */
 export const DUREE_PARCOURS = 645;
 
@@ -63,18 +83,18 @@ const APP_FIN = 420;   // 14,0 s — il disparait
 const OFFRE = 501;
 
 const VERT = "#10b981";
-/* Plateau sombre : 50 de luminance moyenne, 47 sur la premiere seconde. La
-   formule reclamerait le plafond de 1,9 ; comme sur le plateau de Squeezie ce
-   serait un contresens — les visages sont correctement exposes, c'est le fond
-   bleu nuit qui tire la moyenne vers le bas. 1,35 ouvre les noirs sans delaver
-   la peau. */
-const RELEVE = "brightness(1.35) saturate(1.05)";
+/* AUCUN RELEVEMENT. 137 de luminance moyenne, 145 sur la premiere seconde :
+   au-dessus des 116/121 du corpus. Toutes les sources anterieures a la veille
+   reclamaient entre x1,24 et x1,45, et LEGEND aurait demande x1,6 — impossible
+   sans bruler la peau. On garde une pointe de saturation, sans effet sur la
+   luminance. */
+const RELEVE = "saturate(1.04)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
-  [0, 36, "Tu colles le lien"],
-  [36, 108, "L’IA analyse la vidéo"],
-  [108, 300, "8 clips prêts"],
+  [0, 48, "Tu colles le lien"],
+  [48, 126, "L’IA analyse la vidéo"],
+  [126, 300, "Tes clips sont prêts"],
 ];
 
 const Legende: React.FC<{ texte: string }> = ({ texte }) => {
@@ -149,28 +169,63 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
    enfants dans un conteneur en position absolue qui ne contribue plus a la
    hauteur. L'encart, dimensionne par son contenu, s'effondrait alors a quelques
    pixels — au rendu on ne voyait qu'un trait vert. */
+/* Reperes releves image par image sur l'enregistrement du 15/09 (174,0 s) :
+     4,0 s    le studio s'affiche, le champ est vide
+     11,0 s   l'analyse demarre
+     158,0 s  « 10 clips viraux trouves » — la grille apparait
+     159,0 s  les vignettes sont chargees  <- c'est la qu'on entre
+     167,0 s  le clip s'ouvre
+
+   ATTENTION AU PIEGE : `trimBefore` compte en images de la COMPOSITION (30 i/s),
+   pas de l'enregistrement (25 i/s). Un premier jet avait converti avec 25, et la
+   phase « 10 clips prets » montrait encore l'ecran d'analyse — 36 secondes trop
+   tot. La conversion est donc : secondes x 30.
+
+   Les trois durees somment 300 images, soit APP_FIN - APP_DEB, et epousent les
+   bornes de LEGENDES (48 / 126 / 300).
+
+   Reperes releves image par image sur l'enregistrement du 17/09 (212,0 s, 25 i/s) :
+      8,5 s   le lien s'ecrit dans le champ
+     13,5 s   l'analyse demarre
+    202,0 s   la grille des clips apparait
+    206,0 s   le clip s'ouvre           (fin a 212,0 s)
+
+   Le premier jet demarrait a 10 s et allait jusqu'a 17 : le libelle « Tu colles
+   le lien » s'affichait donc deja sur l'ecran d'analyse. Chaque phase doit tenir
+   DANS son libelle, pas deborder sur le suivant. */
 const ParcoursAccelere: React.FC = () => (
   <Series>
-    <Series.Sequence durationInFrames={36} layout="none">
+    <Series.Sequence durationInFrames={48} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={90} playbackRate={9.17} muted />
+        trimBefore={255} playbackRate={3.13} muted />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={72} layout="none">
+    <Series.Sequence durationInFrames={78} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={1890} playbackRate={30.0} muted />
+        trimBefore={405} playbackRate={72.5} muted />
     </Series.Sequence>
-    <Series.Sequence durationInFrames={192} layout="none">
+    {/* La grille, en temps reel. C'est le seul plan qui PROUVE quelque chose :
+        des vignettes, des notes, des durees, en nombre. Un premier jet la
+        traversait a x1,85 avec l'ouverture du clip dans la meme sequence — elle
+        ne tenait qu'une seconde et demie a l'ecran, on n'avait pas le temps de
+        voir qu'il y en avait huit. Elle a desormais sa propre sequence, a
+        vitesse reelle, et l'ouverture du clip la sienne. */}
+    <Series.Sequence durationInFrames={126} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={4050} playbackRate={2.17} muted />
+        trimBefore={6060} playbackRate={1.0} muted />
+    </Series.Sequence>
+    <Series.Sequence durationInFrames={48} layout="none">
+      <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
+        trimBefore={6186} playbackRate={3.6} muted />
     </Series.Sequence>
   </Series>
 );
 
 /* Les pastilles. Chaque valeur vient de la generation filmee derriere :
-     26 min    duree reelle du podcast Underscore_ (1 554 s)
-     2 min 01  duree reelle de l'analyse (14 s -> 135 s dans l'enregistrement)
-     9:16     ce que le clip montre au meme instant
-     32 s      duree du clip ouvert (00:38 -> 01:10), relevee par le script
+     1 h 02    duree reelle du podcast
+     2 min 27  duree reelle de l'analyse (11 s -> 158 s dans l'enregistrement)
+     34 s      duree du clip ouvert, telle que la carte de la grille l'affiche
+               (« 26:04 · 34s ») — la video n'en montre que 19 secondes, choisies
+               sur le son, mais c'est bien ce que le produit a fabrique
      0        montage, au sens propre : aucune coupe faite a la main
 
    Ni le NOMBRE de clips ni le SCORE ne sont affiches. Les deux varient d'une
@@ -191,10 +246,13 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "26 min", libelle: "DE PODCAST", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "2 min 01", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "25 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "3 min 08", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
-  { debut: 330, duree: 42, valeur: "SPLIT", libelle: "AUTOMATIQUE", x: 78, y: 24, accent: true, angle: 3 },
+  /* « SPLIT AUTOMATIQUE » a saute : ce clip n'a qu'une personne a l'image, donc
+     aucun split — l'afficher serait promettre ce que la video ne montre pas.
+     Le recadrage, lui, est bien ce qu'on voit travailler. */
+  { debut: 330, duree: 42, valeur: "9:16", libelle: "RECADRÉ TOUT SEUL", x: 78, y: 24, accent: true, angle: 3 },
   /* L'encart a disparu a l'image 420 et le sujet occupe alors tout le cadre.
      Un premier jet gardait ces deux pastilles a 26 % de hauteur, la ou elles
      etaient lisibles quand le telephone masquait le centre : elles tombaient
@@ -207,8 +265,17 @@ const PASTILLES: Pastille[] = [
      plus que 3,7 s et ne les croise donc plus, mais on les laisse : a droite
      elles ne genent rien, et les ramener a gauche rouvrirait le conflit le jour
      ou l'incrustation reprendra de la place. */
-  { debut: 440, duree: 44, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 62, y: 50, accent: true, angle: -2 },
-  { debut: 494, duree: 50, valeur: "32 s", libelle: "PRÊT À POSTER", x: 66, y: 63, accent: true, angle: 2 },
+  /* Elles redescendent a 63 %. Sur LEGEND le gros plan faisait tenir la tete
+     jusqu'a 78 % de hauteur et il n'y avait de place qu'au-dessus ; ici le
+     cadrage du podcast laisse le buste et le micro libres sous les sous-titres
+     (50 %), ce qui est une bien meilleure place — au-dessus, elles empietaient
+     sur le haut du crane. */
+  /* Elles se partagent la seule fenetre ou le cadre est entierement libre :
+     l'encart disparait a 420, l'offre d'essai arrive a 501. Quatre-vingt-une
+     images pour deux pastilles. Au premier jet, « 51 s » commencait a 494 et
+     n'avait donc que sept images — elle n'apparaissait jamais. */
+  { debut: 426, duree: 36, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 63, accent: true, angle: -2 },
+  { debut: 466, duree: 35, valeur: "51 s", libelle: "PRÊT À POSTER", x: 50, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -227,14 +294,23 @@ export const Parcours: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#050a07", fontFamily: POLICE }}>
-      <Audio src={staticFile("clip-lamenace.mp4")} />
+      {/* La fenetre montree commence a 26 s du clip, pas a son debut. Mesure
+          seconde par seconde : le clip alterne des pages produit tres claires
+          (185-202 de luminance) et des plans de plateau (76-122). Le debut
+          ouvre a 201 — une belle accroche — mais la fenetre correspondante
+          faisait tomber l'offre d'essai sur une page produit blanche, ou le
+          texte blanc devenait illisible. A 26 s, l'ouverture est a 116, soit
+          exactement la mediane du corpus, et les cinq dernieres secondes se
+          tiennent entre 83 et 92 : l'offre se pose sur une image calme. */}
+      <Audio src={staticFile("clip-lampe.mp4")} trimBefore={780} />
 
       {/* Le clip tourne jusqu'a la DERNIERE image. Il s'arretait a CLIP pour
           laisser place a un carton plein ecran ; l'offre se pose maintenant
           par-dessus lui, donc plus rien ne doit l'interrompre. */}
       <Sequence durationInFrames={DUREE_PARCOURS} name="Clip">
         <Video
-          src={staticFile("clip-lamenace.mp4")}
+          src={staticFile("clip-lampe.mp4")}
+          trimBefore={780}
           style={{ width: "100%", height: "100%", filter: RELEVE }}
           objectFit="cover"
           muted
