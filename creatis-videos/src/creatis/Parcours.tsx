@@ -4,7 +4,7 @@ import {
   useCurrentFrame, useVideoConfig,
 } from "remotion";
 import { POLICE } from "./police";
-import { OffreEssai } from "./OffreEssai";
+import { AppelCommentaire } from "./AppelCommentaire";
 import { Pastille, Pastilles } from "./Pastilles";
 import { AVEC_REACTION, Reaction } from "./Reaction";
 
@@ -31,32 +31,32 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
  * l'image le rejoint a 12 s sans decalage. Sans ca, les 8 secondes d'interface
  * seraient muettes.
  *
- * SOURCE (17/09/2026). Amixem, « ON TESTE DES TECHNOLOGIES DE FAINÉANT »,
- * 25 minutes. L'analyse a rendu 8 clips en 3 min 08 ; le clip montré est le
- * premier de la grille — « Lampe à eau salée : énergie surprise », 51 s, noté 89.
+ * SOURCE (17/09/2026, 2e). Amixem, « ON CONSTRUIT UNE MAISON EN SCOTCH »,
+ * 36 minutes. L'analyse a rendu 10 clips en 3 min 01 ; le clip montre est le
+ * premier de la grille — « Technique pour demander une augmentation », 46 s,
+ * note 87.
  *
  * LA SOURCE EST DU DIVERTISSEMENT, ET C'EST UNE REGLE. Jamais de politique,
  * d'actualite ni d'enquete, meme quand ces sources mesurent mieux : la cible est
  * le createur de contenu, et un clip d'actualite fait juger la marque sur le
  * sujet du clip plutot que sur l'outil.
  *
- * LUMINANCE : 116 de moyenne, exactement la mediane du corpus, et 201 sur la
- * premiere seconde — le clip ouvre sur la fiche produit de la lampe, tres
- * claire. Aucun relevement n'est applique : pour la premiere fois la source
- * n'en demande pas. Les precedentes reclamaient entre x1,24 et x1,45, et LEGEND
- * aurait demande x1,6, impossible sans bruler la peau.
+ * UNE SOURCE A ETE ESSAYEE PUIS ECARTEE le meme jour : « LES PIRES MOTS DANS LE
+ * CARNET », ou l'analyse a bien trouve 6 clips mais dont le meilleur — note 91 —
+ * est une lettre d'exclusion filmee en gros plan. 234 de luminance, aucun visage,
+ * aucun mouvement : un document blanc plein cadre, sur lequel un appel a l'action
+ * en blanc devient invisible. Le score de l'IA dit ce qui se raconte, pas ce qui
+ * se REGARDE ; il faut regarder le clip avant de le monter.
+ *
+ * LUMINANCE : 77 de moyenne sur le clip entier, 83 sur la fenetre retenue
+ * (19 s -> 41,5 s, la plus claire des 22,5 s disponibles). Relevement x1,40,
+ * juste sous le plafond de 1,45 au-dela duquel la peau sature.
  *
  * LE CLIP EST PRODUIT PAR LE CHEMIN DU PRODUIT, pas par un raccourci :
  * `exporter-clip.mjs` se connecte au compte, demande l'acces au service de
  * rendu comme le fait le studio, puis appelle `/process-clip` avec les reglages
- * par defaut (bold, 55, ligne a 82 %). Le segment demande — 1:40 a 2:31 — est
+ * par defaut (bold, 55, ligne a 82 %). Le segment demande — 9:40 a 10:26 — est
  * exactement celui que la grille filmee montre en premiere position.
- *
- * CADRAGE CENTRE, et c'est un choix mesure. Le mode `split` a ete essaye sur le
- * meme segment : il bascule bien en suivi de visage sur les gros plans, mais sur
- * les plans a deux il elargit et coupe les deux tetes. Sur ce plateau-la, le
- * defaut du studio rend mieux — et c'est de toute facon ce que verrait quelqu'un
- * qui ne touche a rien.
  *
  * PAS DE HOOK SUR CETTE VERSION, et ce n'est pas un oubli. La version du 15/09
  * activait `hook_enabled` avec la phrase que l'IA avait ecrite pour son clip —
@@ -74,13 +74,16 @@ import { AVEC_REACTION, Reaction } from "./Reaction";
  * pour eviter un silence au milieu ; ici l'echange est continu du debut a la
  * fin, la question ne se pose pas.
  */
-export const DUREE_PARCOURS = 645;
+export const DUREE_PARCOURS = 675;
 
 const APP_DEB = 120;   // 4,0 s  — l'encart de l'application apparait
 const APP_FIN = 420;   // 14,0 s — il disparait
-/* 16,7 s : l'offre d'essai se pose sur le clip, qui continue de tourner
-   derriere elle jusqu'a la derniere image. */
-const OFFRE = 501;
+/* 16,5 s : l'appel a commenter se pose sur le clip, qui continue de tourner
+   derriere lui jusqu'a la derniere image. Six secondes, et pas moins : il
+   demande un GESTE, pas une lecture. Le spectateur doit avoir le temps de lire
+   le mot, de descendre au champ de commentaire et de le taper sans que la video
+   ait boucle entre-temps. */
+const OFFRE = 495;
 
 const VERT = "#10b981";
 /* AUCUN RELEVEMENT. 137 de luminance moyenne, 145 sur la premiere seconde :
@@ -88,7 +91,7 @@ const VERT = "#10b981";
    reclamaient entre x1,24 et x1,45, et LEGEND aurait demande x1,6 — impossible
    sans bruler la peau. On garde une pointe de saturation, sans effet sur la
    luminance. */
-const RELEVE = "saturate(1.04)";
+const RELEVE = "brightness(1.40) saturate(1.04)";
 
 /* Ce que l'on est en train de voir, aligne sur les trois vitesses du parcours. */
 const LEGENDES: [number, number, string][] = [
@@ -184,11 +187,11 @@ const Legende: React.FC<{ texte: string }> = ({ texte }) => {
    Les trois durees somment 300 images, soit APP_FIN - APP_DEB, et epousent les
    bornes de LEGENDES (48 / 126 / 300).
 
-   Reperes releves image par image sur l'enregistrement du 17/09 (212,0 s, 25 i/s) :
-      8,5 s   le lien s'ecrit dans le champ
-     13,5 s   l'analyse demarre
-    202,0 s   la grille des clips apparait
-    206,0 s   le clip s'ouvre           (fin a 212,0 s)
+   Reperes releves image par image sur l'enregistrement (207,2 s, 25 i/s) :
+      7,0 s   le lien s'ecrit dans le champ
+     10,5 s   l'analyse demarre
+    191,0 s   « 10 clips viraux trouves » — la grille apparait, puis DEFILE
+    201,0 s   le clip s'ouvre           (fin a 207,2 s)
 
    Le premier jet demarrait a 10 s et allait jusqu'a 17 : le libelle « Tu colles
    le lien » s'affichait donc deja sur l'ecran d'analyse. Chaque phase doit tenir
@@ -197,11 +200,11 @@ const ParcoursAccelere: React.FC = () => (
   <Series>
     <Series.Sequence durationInFrames={48} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={255} playbackRate={3.13} muted />
+        trimBefore={210} playbackRate={2.19} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={78} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={405} playbackRate={72.5} muted />
+        trimBefore={315} playbackRate={69.4} muted />
     </Series.Sequence>
     {/* La grille, en temps reel. C'est le seul plan qui PROUVE quelque chose :
         des vignettes, des notes, des durees, en nombre. Un premier jet la
@@ -211,11 +214,11 @@ const ParcoursAccelere: React.FC = () => (
         vitesse reelle, et l'ouverture du clip la sienne. */}
     <Series.Sequence durationInFrames={126} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={6060} playbackRate={1.0} muted />
+        trimBefore={5730} playbackRate={2.38} muted />
     </Series.Sequence>
     <Series.Sequence durationInFrames={48} layout="none">
       <Video src={staticFile("parcours.mp4")} style={{ width: "100%", display: "block" }}
-        trimBefore={6186} playbackRate={3.6} muted />
+        trimBefore={6030} playbackRate={3.9} muted />
     </Series.Sequence>
   </Series>
 );
@@ -246,8 +249,8 @@ const ParcoursAccelere: React.FC = () => (
    parti, le cadre est libre et elles se centrent. */
 const PASTILLES: Pastille[] = [
   // Pendant l'encart : dans les marges gauche et droite.
-  { debut: 130, duree: 36, valeur: "25 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
-  { debut: 178, duree: 36, valeur: "3 min 08", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
+  { debut: 130, duree: 36, valeur: "36 min", libelle: "DE VIDÉO", x: 21, y: 22, angle: -3 },
+  { debut: 178, duree: 36, valeur: "3 min 01", libelle: "D'ANALYSE", x: 78, y: 31, angle: 3 },
   { debut: 252, duree: 42, valeur: "0", libelle: "MONTAGE", x: 76, y: 41, accent: true, angle: -2 },
   /* « SPLIT AUTOMATIQUE » a saute : ce clip n'a qu'une personne a l'image, donc
      aucun split — l'afficher serait promettre ce que la video ne montre pas.
@@ -275,7 +278,7 @@ const PASTILLES: Pastille[] = [
      images pour deux pastilles. Au premier jet, « 51 s » commencait a 494 et
      n'avait donc que sept images — elle n'apparaissait jamais. */
   { debut: 426, duree: 36, valeur: "SOUS-TITRES", libelle: "INCRUSTÉS", x: 50, y: 63, accent: true, angle: -2 },
-  { debut: 466, duree: 35, valeur: "51 s", libelle: "PRÊT À POSTER", x: 50, y: 63, accent: true, angle: 2 },
+  { debut: 466, duree: 35, valeur: "46 s", libelle: "PRÊT À POSTER", x: 50, y: 63, accent: true, angle: 2 },
 ];
 export const Parcours: React.FC = () => {
   const frame = useCurrentFrame();
@@ -302,15 +305,15 @@ export const Parcours: React.FC = () => {
           texte blanc devenait illisible. A 26 s, l'ouverture est a 116, soit
           exactement la mediane du corpus, et les cinq dernieres secondes se
           tiennent entre 83 et 92 : l'offre se pose sur une image calme. */}
-      <Audio src={staticFile("clip-lampe.mp4")} trimBefore={780} />
+      <Audio src={staticFile("clip-scotch.mp4")} trimBefore={570} />
 
       {/* Le clip tourne jusqu'a la DERNIERE image. Il s'arretait a CLIP pour
           laisser place a un carton plein ecran ; l'offre se pose maintenant
           par-dessus lui, donc plus rien ne doit l'interrompre. */}
       <Sequence durationInFrames={DUREE_PARCOURS} name="Clip">
         <Video
-          src={staticFile("clip-lampe.mp4")}
-          trimBefore={780}
+          src={staticFile("clip-scotch.mp4")}
+          trimBefore={570}
           style={{ width: "100%", height: "100%", filter: RELEVE }}
           objectFit="cover"
           muted
@@ -372,9 +375,13 @@ export const Parcours: React.FC = () => {
         </Sequence>
       ) : null}
 
-      {/* L'offre par-dessus le clip, sur les 4,8 dernieres secondes. */}
-      <Sequence from={OFFRE} durationInFrames={DUREE_PARCOURS - OFFRE} name="Offre d’essai">
-        <OffreEssai duree={DUREE_PARCOURS - OFFRE} />
+      {/* L'appel a commenter, par-dessus le clip, sur les 6 dernieres secondes.
+          Il remplace « creatis.app » : une adresse oblige a sortir de
+          l'application pour agir, un commentaire se tape sans quitter l'ecran —
+          et il pousse la video a d'autres spectateurs par-dessus le marche.
+          Voir l'en-tete d'AppelCommentaire. */}
+      <Sequence from={OFFRE} durationInFrames={DUREE_PARCOURS - OFFRE} name="Appel a commenter">
+        <AppelCommentaire duree={DUREE_PARCOURS - OFFRE} />
       </Sequence>
 
     </AbsoluteFill>
