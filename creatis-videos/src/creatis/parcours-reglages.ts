@@ -36,6 +36,24 @@ import type { ReglageParcours } from "./Parcours";
  */
 export const PARCOURS: { id: string; reglage: ReglageParcours }[] = [
   {
+    /* Amixem, « 99,9% de MALAISE », 23 min. 4 clips en 2 min 23.
+       Clip retenu : « Stratégie de blague anti-malaise » (2:20, 30 s, noté 67) —
+       le seul des quatre en plan serré d'un bout à l'autre, les trois autres
+       alternent avec des plans larges de plateau.
+       Luminance 90 sur toute sa durée : relèvement x1,31.
+       Sert a la video « Arrête de créer tes clips comme ça ». */
+    id: "Parcours-Blague",
+    reglage: {
+      enregistrement: "parcours-malaise.mp4",
+      clip: "clip-blague.mp4",
+      source: "src-blague.mp4",
+      clipDebut: 1,
+      releve: "brightness(1.31) saturate(1.04)",
+      reperes: { lien: 13, analyse: 16, grille: 159, modale: 165, fin: 170.7 },
+      chiffres: { source: "23 min", analyse: "2 min 23", clip: "30 s" },
+    },
+  },
+  {
     /* Amixem, « J'ai acheté tous les objets des pubs TikTok », 40 min.
        10 clips en 5 min 04. Clip retenu : « Cocktail IRM magique » (5:14, 43 s,
        noté 83). Le mieux noté, « Antivirus NordVPN », est l'encart sponsorisé.
