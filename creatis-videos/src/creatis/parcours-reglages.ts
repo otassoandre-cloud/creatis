@@ -1,11 +1,10 @@
 import type { ReglageParcours } from "./Parcours";
 
 /**
- * LES TROIS VIDÉOS DU 18/09/2026.
+ * LES VIDÉOS DU 21/09/2026.
  *
- * Trois générations réelles, faites le même jour sur trois vidéos d'Amixem.
- * Tout ce qui change d'une vidéo à l'autre tient ici ; le montage, lui, est
- * partagé.
+ * Deux générations réelles, faites le même jour sur deux vidéos d'Amixem.
+ * Tout ce qui change d'une vidéo à l'autre tient ici ; le montage est partagé.
  *
  * ── COMMENT CES NOMBRES SONT OBTENUS ─────────────────────────────────────
  *   1. `enregistrer-parcours.mjs <url>` filme le parcours et liste les clips ;
@@ -18,67 +17,58 @@ import type { ReglageParcours } from "./Parcours";
  *
  * ── LE CLIP MONTRÉ N'EST PAS TOUJOURS LE PREMIER DE LA LISTE ─────────────
  * Le script ouvre toujours le clip le mieux noté, mais le score dit ce qui se
- * RACONTE, pas ce qui se REGARDE : sur « Promesses de publicités », le clip noté
- * 89 est un téléviseur filmé pendant une minute, sans un seul visage. On choisit
- * donc dans la grille celui qui montre quelqu'un — et la section application
- * s'arrête sur la grille, justement pour ne rien prétendre sur lequel on ouvre.
+ * RACONTE, pas ce qui se REGARDE — ni ce qu'on a envie de montrer. Sur « Objets
+ * des pubs TikTok », le clip noté 90 est l'encart sponsorisé de la vidéo :
+ * exact, bien découpé, et c'est la publicité de quelqu'un d'autre. On choisit
+ * donc dans la grille, et la section application s'arrête sur la grille
+ * justement pour ne rien prétendre sur lequel on ouvre.
  *
  * ── RELÈVEMENT ────────────────────────────────────────────────────────────
  * Cible : 116-118 sur la première seconde. `saturate(1.04)` seul quand la source
  * est déjà au-dessus ; sinon `brightness()` jusqu'à 1,45, jamais au-delà — la
  * peau sature (0,4 % de pixels brûlés à 1,35, 2,0 % à 1,50).
+ *
+ * ── POURQUOI DEUX ET PAS TROIS ───────────────────────────────────────────
+ * Quatre analyses ont été lancées ce jour-là. L'une a dépassé le délai de
+ * 15 minutes du client (source de 36 min), une autre s'est heurtée au budget
+ * quotidien de Groq — 200 000 tokens pour tout le compte, consommés à 198 374.
+ * Voir la note « Budget Groq quotidien ».
  */
 export const PARCOURS: { id: string; reglage: ReglageParcours }[] = [
   {
-    /* Amixem, « ON TESTE LES PROMESSES DE PUBLICITÉS #6 », 32 min.
-       4 clips en 3 min 02. Clip retenu : « Découvre tes ancêtres célèbres »
-       (0:30, 73 s, noté 84) — le mieux noté, « Blendtec broie tout ! », ne
-       filme qu'un écran de télévision.
-       Luminance 144 de moyenne, 127 sur la fenêtre retenue : aucun relèvement,
-       la source est déjà au-dessus de la cible. */
-    id: "Parcours-Ancetres",
+    /* Amixem, « J'ai acheté tous les objets des pubs TikTok », 40 min.
+       10 clips en 5 min 04. Clip retenu : « Cocktail IRM magique » (5:14, 43 s,
+       noté 83). Le mieux noté, « Antivirus NordVPN », est l'encart sponsorisé.
+       Luminance 80 de moyenne, 82 sur la fenêtre retenue (17 s -> 43 s, la
+       seule des trois possibles où les plans serrés dominent les plans larges) :
+       relèvement x1,44, juste sous le plafond. */
+    id: "Parcours-Irm",
     reglage: {
-      enregistrement: "parcours-T0aGmpVzFKg.mp4",
-      clip: "clip-ancetres.mp4",
-      source: "src-ancetres.mp4",
-      clipDebut: 1,
+      enregistrement: "parcours-IUn6P8RSsOg.mp4",
+      clip: "clip-irm.mp4",
+      source: "src-irm.mp4",
+      clipDebut: 17,
+      releve: "brightness(1.44) saturate(1.04)",
+      reperes: { lien: 14, analyse: 17, grille: 321, modale: 330, fin: 335.2 },
+      chiffres: { source: "40 min", analyse: "5 min 04", clip: "43 s" },
+    },
+  },
+  {
+    /* Amixem, « ON MANGE 73 PETITS-DÉJ D'AFFILÉE », 39 min.
+       4 clips en 1 min 32 — la plus rapide de la série, YouTube ayant servi ses
+       sous-titres sans passer par Whisper. Clip retenu : « Avis cash sur le
+       maté » (15:04, 44 s, noté 87), le premier de la liste.
+       Luminance 118 de moyenne et 127 sur la fenêtre retenue : aucun
+       relèvement, la source est déjà au-dessus de la cible. */
+    id: "Parcours-Mate",
+    reglage: {
+      enregistrement: "parcours-F8NpbQ3YOjA.mp4",
+      clip: "clip-mate.mp4",
+      source: "src-mate.mp4",
+      clipDebut: 12,
       releve: "saturate(1.04)",
-      reperes: { lien: 15, analyse: 18, grille: 200, modale: 207, fin: 212 },
-      chiffres: { source: "32 min", analyse: "3 min 02", clip: "73 s" },
-    },
-  },
-  {
-    /* Amixem, « ON OUVRE DES COFFRES-FORTS DE 1 € À 10 000 € », 42 min.
-       6 clips en 3 min 45. Clip retenu : « Accusé de plagiat en vidéo »
-       (1:25, 34 s, noté 80) — le premier de la liste, et il montre quelqu'un.
-       Luminance 88 de moyenne, 99 sur la première seconde : relèvement x1,32. */
-    id: "Parcours-Plagiat",
-    reglage: {
-      enregistrement: "parcours-Sh8POK7p74k.mp4",
-      clip: "clip-plagiat.mp4",
-      source: "src-plagiat.mp4",
-      clipDebut: 5,
-      releve: "brightness(1.32) saturate(1.04)",
-      reperes: { lien: 10, analyse: 13, grille: 238, modale: 244, fin: 249.8 },
-      chiffres: { source: "42 min", analyse: "3 min 45", clip: "34 s" },
-    },
-  },
-  {
-    /* Amixem, « J'AI ACHETÉ L'ASTON MARTIN LA MOINS CHÈRE », 42 min.
-       4 clips en 3 min 27. Clip retenu : « La touche cachée James Bond dans
-       l'Aston » (7:12, 51 s, noté 87) — le premier de la liste.
-       Luminance 82 de moyenne et 53 sur la toute première seconde : la fenêtre
-       démarre donc à 5 s, où elle remonte à 86, et le relèvement est poussé à
-       1,45 — le plafond. */
-    id: "Parcours-Aston",
-    reglage: {
-      enregistrement: "parcours-EbBZCJKW9ds.mp4",
-      clip: "clip-aston.mp4",
-      source: "src-aston.mp4",
-      clipDebut: 5,
-      releve: "brightness(1.45) saturate(1.04)",
-      reperes: { lien: 9, analyse: 12, grille: 219, modale: 226, fin: 231.2 },
-      chiffres: { source: "42 min", analyse: "3 min 27", clip: "51 s" },
+      reperes: { lien: 11, analyse: 14, grille: 106, modale: 113, fin: 118.2 },
+      chiffres: { source: "39 min", analyse: "1 min 32", clip: "44 s" },
     },
   },
 ];
