@@ -1,8 +1,10 @@
+import { Video } from "@remotion/media";
 import {
   AbsoluteFill,
   Easing,
   interpolate,
   random,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
@@ -42,6 +44,13 @@ const GRIS_PANNEAU = "#24272e";
 const GRIS_LIGNE = "#33373f";
 const GRIS_TEXTE = "#7d838f";
 
+/* Le moniteur : 16:9 pose dans le panneau de 300 px de haut. Le cadre de
+   recadrage fait 9:16 de cette hauteur — 169 px pour 300, soit les 31,6 % de
+   largeur qu'un 9:16 garde d'un 16:9. Le meme chiffre que partout ailleurs. */
+const MONITEUR_H = 300;
+const MONITEUR_L = Math.round((MONITEUR_H * 16) / 9);
+const CADRE_L = Math.round((MONITEUR_H * 9) / 16);
+
 /** Les pistes de la timeline. Les largeurs sont tirées d'une suite stable :
     deux rendus successifs donnent la même image, ce qui rend la vidéo
     reproductible. */
@@ -51,7 +60,10 @@ const PISTES = [
   { nom: "A1", couleur: "#8a6d3b", n: 6, onde: true },
 ];
 
-export const MontageALaMain: React.FC<{ duree: number }> = ({ duree }) => {
+export const MontageALaMain: React.FC<{ duree: number; source: string }> = ({
+  duree,
+  source,
+}) => {
   const frame = useCurrentFrame();
   const { width } = useVideoConfig();
 
@@ -87,6 +99,22 @@ export const MontageALaMain: React.FC<{ duree: number }> = ({ duree }) => {
   });
 
   const largeurUtile = width - 96;
+
+  /* Le cadre se deplace PAR A-COUPS, pas en glissant. Un mouvement continu se
+     lit comme une animation automatique — donc comme le contraire de ce qu'on
+     veut montrer. Des paliers de quelques images donnent le geste d'une souris
+     qu'on tire, qu'on relache, qu'on reprend parce qu'on a depasse. La
+     sequence ci-dessous fait exactement ca : trois corrections, dont une qui
+     revient en arriere. */
+  const PALIERS = [0.40, 0.29, 0.31, 0.22, 0.24, 0.17, 0.19];
+  const pas = Math.min(
+    PALIERS.length - 1,
+    Math.floor(interpolate(frame, [10, duree - 8], [0, PALIERS.length], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    })),
+  );
+  const cadreX = MONITEUR_L * PALIERS[pas];
 
   return (
     <AbsoluteFill style={{ fontFamily: POLICE }}>
@@ -131,6 +159,12 @@ export const MontageALaMain: React.FC<{ duree: number }> = ({ duree }) => {
 
           {/* Le moniteur et le chronomètre. */}
           <div style={{ display: "flex", borderBottom: `1px solid ${GRIS_LIGNE}` }}>
+            {/* LE MONITEUR MONTRE LA VIDEO, pas un rectangle vide.
+                Premiere version : un cadre en pointilles avec « recadrer a la
+                main » ecrit dedans. On lisait la legende, on ne voyait rien se
+                passer — or c'est precisement le geste qu'on reproche au montage
+                manuel qu'il faut VOIR. La source large tourne donc ici, et le
+                cadre 9:16 se deplace dessus par a-coups. */}
             <div
               style={{
                 flex: 1,
@@ -140,26 +174,58 @@ export const MontageALaMain: React.FC<{ duree: number }> = ({ duree }) => {
                 alignItems: "center",
                 justifyContent: "center",
                 borderRight: `1px solid ${GRIS_LIGNE}`,
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <div
-                style={{
-                  width: 148,
-                  height: 264,
-                  border: `2px dashed ${GRIS_LIGNE}`,
-                  borderRadius: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: GRIS_TEXTE,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  textAlign: "center",
-                  padding: 12,
-                }}
-              >
-                recadrer
-                <br />à la main
+              <div style={{ position: "relative", width: MONITEUR_L, height: MONITEUR_H }}>
+                <Video
+                  src={staticFile(source)}
+                  muted
+                  objectFit="cover"
+                  style={{ width: MONITEUR_L, height: MONITEUR_H, display: "block" }}
+                />
+
+                {/* Ce que le cadre laisse dehors s'assombrit : sans ce contraste
+                    on ne comprend pas qu'on est en train de JETER de l'image. */}
+                <div style={{
+                  position: "absolute", top: 0, bottom: 0, left: 0,
+                  width: cadreX, backgroundColor: "rgba(6,8,12,0.66)",
+                }} />
+                <div style={{
+                  position: "absolute", top: 0, bottom: 0,
+                  left: cadreX + CADRE_L, right: 0,
+                  backgroundColor: "rgba(6,8,12,0.66)",
+                }} />
+
+                {/* Le cadre lui-meme, avec ses poignees : c'est l'objet qu'on
+                    tire a la souris, image par image. */}
+                <div style={{
+                  position: "absolute", top: 0, height: MONITEUR_H,
+                  left: cadreX, width: CADRE_L,
+                  border: "2px solid rgba(255,255,255,0.92)",
+                  boxSizing: "border-box",
+                }}>
+                  {[[-5, -5], [-5, "calc(100% - 5px)"], ["calc(100% - 5px)", -5],
+                    ["calc(100% - 5px)", "calc(100% - 5px)"]].map(([l, t], i) => (
+                    <div key={i} style={{
+                      position: "absolute", left: l as number, top: t as number,
+                      width: 10, height: 10, backgroundColor: "#fff",
+                    }} />
+                  ))}
+                </div>
+
+                {/* Le curseur, pose sur la poignee de droite. */}
+                <div style={{
+                  position: "absolute",
+                  left: cadreX + CADRE_L + 2,
+                  top: MONITEUR_H / 2 - 2,
+                  width: 0, height: 0,
+                  borderLeft: "12px solid #fff",
+                  borderTop: "7px solid transparent",
+                  borderBottom: "7px solid transparent",
+                  filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.8))",
+                }} />
               </div>
             </div>
             <div

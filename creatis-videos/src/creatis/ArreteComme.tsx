@@ -295,7 +295,7 @@ export const ArreteComme: React.FC<{ reglage: ReglageParcours }> = ({ reglage })
       </Sequence>
 
       <Sequence from={MONTAGE_DEB} durationInFrames={MONTAGE_FIN - MONTAGE_DEB} name="Montage a la main">
-        <MontageALaMain duree={MONTAGE_FIN - MONTAGE_DEB} />
+        <MontageALaMain duree={MONTAGE_FIN - MONTAGE_DEB} source={reglage.source} />
       </Sequence>
 
       <Sequence from={MONTAGE_FIN} durationInFrames={BASCULE_FIN - MONTAGE_FIN} name="Bascule">
