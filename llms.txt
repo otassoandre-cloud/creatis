@@ -22,6 +22,9 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Campagnes de clipping rémunérées](https://creatis.app/blog/campagnes-clipping-remunerees.html): budget fermé, vue vérifiée, CPM annoncé
 - [Plateformes de clipping en France](https://creatis.app/blog/plateformes-clipping-france.html): Whop, PostRoyalty, Clip.farm, NF Clipping, Reachcat
 - [Combien paye 1 000 vues en clipping](https://creatis.app/blog/combien-paye-1000-vues-clipping.html): taux annoncés 0,40-2 €, et ce qui les sépare du revenu réel
+- [Clips depuis un stream gaming](https://creatis.app/blog/clips-stream-gaming.html): signal jeu vs signal parole, cadrage webcam + jeu
+- [Vidéo floue après export](https://creatis.app/blog/video-floue-apres-export.html): source basse définition, crop 9:16 à 31,6 %, export 1080x1920, recompression plateforme
+- [Sous-titres décalés](https://creatis.app/blog/sous-titres-decales.html): décalage constant vs dérive progressive, deux causes et deux remèdes
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
