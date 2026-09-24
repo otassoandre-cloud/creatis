@@ -351,7 +351,46 @@ module.exports = async (req, res) => {
       case 'get': {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
         const users = await supabase(`/users?${identifier}&select=*`, 'GET');
-        return res.status(200).json({ user: users?.[0] || null });
+        const u = users?.[0] || null;
+
+        /* L'ABONNEMENT FAIT FOI, PAS LA COLONNE `plan`.
+         *
+         * `users.plan` est une copie, ecrite par le webhook Stripe. Entre le
+         * paiement et cette ecriture il s'ecoule un delai — et pendant ce
+         * delai, le client lit « gratuit » et montre le paywall a quelqu'un qui
+         * vient de payer. Mesure du 23/09/2026 : `auzannet0374` paie a 11:48:57,
+         * le paywall lui revient a 11:50:14 — soit 77 secondes apres. Elle
+         * reclique trois fois sur « passer au Pro », le serveur lui repond
+         * qu'elle est deja abonnee, et elle ouvre le formulaire de resiliation
+         * le lendemain matin. Deux autres comptes ont vecu la meme chose en
+         * quinze jours ; l'un d'eux a resilie.
+         *
+         * On ne fait donc plus confiance a la copie : des qu'un abonnement
+         * `active` ou `trialing` existe, c'est lui qui donne le plan. Et on
+         * repare la colonne au passage, pour que tout le reste du systeme —
+         * quotas, bandeaux, verrous — reparte sur la bonne valeur.
+         *
+         * Le cout est d'une requete supplementaire sur une route deja rapide.
+         * Le cout de l'erreur inverse est un client qui paie et ne peut pas
+         * s'en servir. */
+        if (u?.id && (!u.plan || u.plan === 'gratuit')) {
+          const abos = await supabase(
+            `/abonnements?user_id=eq.${u.id}&status=in.(active,trialing)&select=plan,status&order=created_at.desc&limit=1`,
+            'GET',
+          ).catch(() => null);
+          const vrai = abos?.[0]?.plan;
+          if (vrai && vrai !== 'gratuit') {
+            console.warn(`[get] ${u.email || u.id} : plan "${u.plan}" corrige en "${vrai}" — abonnement ${abos[0].status}`);
+            u.plan = vrai;
+            /* Reparation silencieuse : si elle echoue, la reponse reste juste,
+               et le prochain appel retentera. On ne bloque pas la lecture. */
+            supabase(`/users?id=eq.${u.id}`, 'PATCH', {
+              plan: vrai, updated_at: new Date().toISOString(),
+            }).catch((e) => console.warn('[get] reparation du plan echouee:', e.message));
+          }
+        }
+
+        return res.status(200).json({ user: u });
       }
 
       case 'upsert': {

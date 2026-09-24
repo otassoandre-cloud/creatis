@@ -523,7 +523,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (zone) zone.innerHTML =
           '<a href="/studio" style="display:block;text-align:center;background:#10b981;color:#04120b;'
           + 'padding:16px;border-radius:10px;text-decoration:none;font-weight:800">Retourner à mes clips</a>';
-        if (window.posthog) posthog.capture('paiement_refuse_deja_abonne');
+        /* Le serveur vient de remettre `users.plan` d'aplomb (voir
+           create-checkout-session). On note quel plan, pour que le studio le
+           relise au lieu de repartir sur sa valeur en cache : sans ca, la
+           personne revient a ses clips et retrouve le meme paywall — c'est
+           exactement la boucle qui a fait resilier un client le 23/09. */
+        try {
+          if (err.plan) sessionStorage.setItem('creatis_plan_repare', err.plan);
+        } catch {}
+        if (window.posthog) posthog.capture('paiement_refuse_deja_abonne', { plan: err.plan || null });
         return;
       }
       throw new Error(err.error || 'Erreur serveur');

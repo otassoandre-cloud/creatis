@@ -1359,6 +1359,19 @@ const V2 = (() => {
       /* La reprise du 14/09 ne retentait QU'UNE FOIS : si ce second appel echouait aussi, le
          plan restait inconnu pour toute la session. On insiste desormais jusqu'a six fois, en
          espacant (2,5 s puis 4, 6, 8...), et on s'arrete des que le plan est connu. */
+      /* SORTIE DE SECOURS. Si le paiement vient de repondre « tu es deja
+         abonne », il a depose le vrai plan ici avant de renvoyer la personne a
+         ses clips. On l'applique tout de suite, sans attendre le reseau : c'est
+         precisement le moment ou l'ancienne version reaffichait le paywall a
+         quelqu'un qui venait de payer. La lecture distante suit et fait foi. */
+      try {
+        const repare = sessionStorage.getItem('creatis_plan_repare');
+        if (repare && repare !== 'gratuit') {
+          _appliquerPlan({ plan: repare });
+          sessionStorage.removeItem('creatis_plan_repare');
+        }
+      } catch {}
+
       let _essaisPlan = 0;
       const _reessayerPlan = () => {
         if (_planConnu || _essaisPlan >= 6) return;

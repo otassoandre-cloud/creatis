@@ -79,11 +79,31 @@ async function abonnementDejaActif(userId, email) {
     }
     if (!id) return null;
     const r = await fetch(
-      `${SUPABASE_URL}/rest/v1/abonnements?user_id=eq.${id}&status=in.(active,trialing)&select=id,status,trial_ends_at&limit=1`,
+      `${SUPABASE_URL}/rest/v1/abonnements?user_id=eq.${id}&status=in.(active,trialing)&select=id,status,plan,trial_ends_at&limit=1`,
       { headers: h }
     );
-    return (await r.json().catch(() => []))?.[0] || null;
+    const abo = (await r.json().catch(() => []))?.[0] || null;
+    /* L'identifiant du compte remonte avec : l'appelant en a besoin pour
+       reparer la colonne `plan`, et il ne l'a pas toujours (l'appel peut venir
+       avec un email seul). */
+    return abo ? { ...abo, user_id: id } : null;
   } catch { return null; }
+}
+
+/* Remet `users.plan` d'aplomb. Volontairement silencieuse : si elle echoue, le
+   refus reste juste et la route `get` de user-sync repare au prochain passage. */
+async function reparerPlan(userId, plan) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !userId || !plan) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ plan, updated_at: new Date().toISOString() }),
+  });
 }
 
 async function ugcSoumissionParJeton(jeton) {
@@ -156,10 +176,30 @@ module.exports = async (req, res) => {
       userEmail || (userId && userId.includes('@') ? userId : null)
     );
     if (dejaActif) {
+      /* ON REPARE AVANT DE REFUSER.
+       *
+       * Quelqu'un qui arrive ici a un abonnement actif ET vient de recliquer
+       * sur « passer au Pro » : s'il l'a fait, c'est que l'application lui
+       * montre encore le paywall, donc que sa colonne `plan` est restee a
+       * « gratuit ». Refuser sans corriger le laisse exactement dans l'etat qui
+       * l'a amene ici — et il recommence. Mesure du 23/09/2026 : trois
+       * personnes, trois a quatre tentatives chacune, une resiliation.
+       *
+       * On remet donc la colonne d'aplomb au passage. Le refus reste, il
+       * protege du double debit ; ce qu'on ajoute, c'est la sortie. */
+      if (dejaActif.plan && dejaActif.plan !== 'gratuit' && dejaActif.user_id) {
+        try {
+          await reparerPlan(dejaActif.user_id, dejaActif.plan);
+          console.warn(`[checkout] plan de ${dejaActif.user_id} remis a "${dejaActif.plan}" — il voyait encore le paywall`);
+        } catch (e) {
+          console.warn('[checkout] reparation du plan echouee:', e.message);
+        }
+      }
       return res.status(409).json({
         error: 'Tu as déjà un abonnement en cours — inutile de repayer.',
         code: 'DEJA_ABONNE',
         statut: dejaActif.status,
+        plan: dejaActif.plan || null,
         essai_jusqu_au: dejaActif.trial_ends_at || null,
       });
     }
