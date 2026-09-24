@@ -18,6 +18,7 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Qu'est-ce que le repurposing vidéo ?](https://creatis.app/blog/repurposing-video-definition.html)
 - [Qu'est-ce qu'un hook vidéo ?](https://creatis.app/blog/hook-video-definition.html)
 - [Comment découper une vidéo en Shorts automatiquement](https://creatis.app/blog/decouper-video-shorts-automatiquement.html)
+- [Clipper GTA 6 (sortie le 19 novembre 2026)](https://creatis.app/blog/clipper-gta-6.html): campagnes de clipping rémunérées, taux annoncés par les plateformes francophones, contrainte de volume
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
