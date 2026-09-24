@@ -11,6 +11,7 @@ import { DUREE_PUB_MONTAGE, PubMontage } from "./creatis/PubMontage";
 import { DUREE_PARCOURS, Parcours } from "./creatis/Parcours";
 import { PARCOURS } from "./creatis/parcours-reglages";
 import { ArreteComme, DUREE_ARRETE } from "./creatis/ArreteComme";
+import { DUREE_MUR, MurDeClips } from "./creatis/MurDeClips";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -128,6 +129,15 @@ export const RemotionRoot: React.FC = () => {
             se déduisent des repères, il n'y a que des secondes à relever. */}
         {/* Meme matiere que le Parcours — meme enregistrement, meme clip —
             mais la demonstration est precedee de ce qu'elle remplace. */}
+        {/* Une vidéo entre, neuf clips sortent — montré, pas raconté. */}
+        <Composition
+          id="MurDeClips"
+          component={MurDeClips}
+          durationInFrames={DUREE_MUR}
+          fps={FPS}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="ArreteComme"
           component={ArreteComme}

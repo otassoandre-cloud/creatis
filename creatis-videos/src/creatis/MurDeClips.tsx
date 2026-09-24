@@ -1,0 +1,339 @@
+import { Audio, Video } from "@remotion/media";
+import {
+  AbsoluteFill, interpolate, Sequence, spring, staticFile,
+  useCurrentFrame, useVideoConfig,
+} from "remotion";
+import { POLICE } from "./police";
+import { COULEURS } from "./theme";
+import { AppelCommentaire } from "./AppelCommentaire";
+
+/**
+ * LE MUR — 1080x1920, 26 s.
+ *
+ * ── CE QUE LES VERSIONS PRÉCÉDENTES RATAIENT ─────────────────────────────
+ * Soixante-huit vidéos ont été produites, toutes bâties pareil : une accroche,
+ * l'application qui travaille dans un téléphone, un clip, un appel à l'action.
+ * Elles plafonnent à 800 vues, et aucune inscription ne leur est attribuée.
+ *
+ * Le défaut n'est pas l'exécution — luminance, cadrage et zones sûres ont été
+ * mesurés et corrigés — c'est ce qu'elles montrent. Elles montrent un PROCESSUS :
+ * un lien qu'on colle, une barre qui avance, une grille dans une maquette de
+ * téléphone pendant quatre secondes. Or la chose impressionnante que fait le
+ * produit n'est pas de travailler, c'est de MULTIPLIER : une vidéo entre, neuf
+ * clips finis sortent.
+ *
+ * Cette vidéo ne montre que ça, et sans le dire : une image large qui éclate en
+ * neuf clips verticaux qui jouent tous en même temps, sous-titres compris. Il
+ * n'y a rien à lire pour comprendre.
+ *
+ * ── LE MUR EST RÉEL ──────────────────────────────────────────────────────
+ * Les neuf vignettes sont les neuf clips qu'une seule analyse a produits le
+ * 21/09 sur « J'ai acheté tous les objets des pubs TikTok » d'Amixem, 40 minutes.
+ * Ce sont les fichiers exportés par le produit, sans retouche : le recadrage, le
+ * suivi de visage et les sous-titres sont les siens. Une grille de vignettes
+ * décoratives dirait exactement la même chose et ne prouverait rien.
+ *
+ * Le dixième clip de cette génération est l'encart sponsorisé de la vidéo
+ * d'origine. On n'affiche donc que neuf vignettes et on annonce neuf — la grille
+ * se compte à l'écran, et un chiffre qui ne correspond pas à ce qu'on voit est
+ * la seule chose qu'un spectateur vérifie vraiment.
+ *
+ * ── LE DÉCOUPAGE ─────────────────────────────────────────────────────────
+ *    0,0 s   la vidéo large, telle qu'elle est sur YouTube
+ *    1,5 s   elle éclate en neuf clips qui jouent tous
+ *    4,0 s   « 9 clips · 3 minutes »
+ *    7,0 s   une vignette prend tout l'écran
+ *   20,0 s   « Commente CLIP »
+ */
+
+const FPS = 30;
+export const DUREE_MUR = 780; // 26 s
+
+/** Les neuf clips d'UNE SEULE analyse. L'ordre suit la luminance d'ouverture
+    mesurée : les plus claires au centre et en haut, là où l'œil se pose. */
+const CLIPS = [
+  { f: "mur/08-caoscillator.mp4", t: 2 },
+  { f: "mur/03-quiz-luxe.mp4", t: 4 },
+  { f: "mur/07-carpette.mp4", t: 3 },
+  { f: "mur/05-melon.mp4", t: 5 },
+  { f: "mur/04-r5-alpine.mp4", t: 8 },
+  { f: "mur/06-devoilement.mp4", t: 6 },
+  { f: "mur/01-bernabeu.mp4", t: 10 },
+  { f: "mur/09-cocktail-irm.mp4", t: 12 },
+  { f: "mur/02-aliexpress.mp4", t: 7 },
+];
+
+/** La vignette qui prend ensuite tout l'écran : la plus claire des neuf,
+    140 de luminance sur sa première seconde. */
+const HEROS = CLIPS[0];
+
+const SOURCE = "src-irm.mp4";
+
+const ECLAT = 45;   // 1,5 s — le mur se forme
+const PLEIN = 210;  // 7,0 s — une vignette prend l'écran
+const APPEL = DUREE_MUR - 180;
+
+/* RACCORD. La vignette retenue joue déjà dans le mur depuis l'image ECLAT ;
+   quand elle prend tout l'écran, elle doit reprendre EXACTEMENT où elle en est,
+   sinon la coupe saute en arrière. Un premier jet repartait 5 secondes plus tôt
+   et le plein écran tombait sur un plan de mains. La position se calcule donc
+   au lieu d'être choisie : début de la vignette + le temps écoulé depuis. */
+const PLEIN_IMAGE = PLEIN + 24;
+const HEROS_A_PLEIN = HEROS.t + (PLEIN_IMAGE - ECLAT) / FPS;
+
+/* Le son suit la même horloge : décalé pour qu'à l'image PLEIN_IMAGE il soit
+   pile sur HEROS_A_PLEIN. Sans ça, l'image reprend au bon endroit et la voix a
+   une seconde et demie d'avance. */
+const AUDIO_DEPART = HEROS.t - ECLAT / FPS;
+
+const contour = {
+  WebkitTextStroke: "10px rgba(0,0,0,0.6)",
+  paintOrder: "stroke fill" as const,
+};
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * LE MUR. Neuf vidéos qui jouent en même temps, en 3x3 — 360x640 chacune, soit
+ * exactement 1080x1920. Les vignettes arrivent en quinconce depuis le centre,
+ * avec un décalage par rangée : toutes ensemble, le mouvement se lit comme une
+ * transition ; décalées, il se lit comme une multiplication.
+ */
+const Mur: React.FC<{ depart: number }> = ({ depart }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#04060a" }}>
+      {CLIPS.map((c, i) => {
+        const col = i % 3;
+        const ligne = Math.floor(i / 3);
+        /* Le décalage part du centre du mur et gagne les bords : la vignette
+           centrale existe déjà quand les coins arrivent. */
+        const distance = Math.abs(col - 1) + Math.abs(ligne - 1);
+        const e = spring({
+          frame: frame - depart - distance * 4,
+          fps,
+          config: { damping: 15, stiffness: 190, mass: 0.55 },
+        });
+
+        return (
+          <div
+            key={c.f}
+            style={{
+              position: "absolute",
+              left: col * 360,
+              top: ligne * 640,
+              width: 360,
+              height: 640,
+              overflow: "hidden",
+              opacity: Math.min(1, e * 1.6),
+              transform: `scale(${interpolate(e, [0, 1], [0.55, 1])})`,
+              border: "2px solid rgba(4,6,10,0.9)",
+              boxSizing: "border-box",
+            }}
+          >
+            <Video
+              src={staticFile(c.f)}
+              trimBefore={Math.round(c.t * FPS)}
+              objectFit="cover"
+              muted
+              style={{ width: "100%", height: "100%" }}
+            />
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+export const MurDeClips: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  /* La vidéo large occupe toute la largeur et flotte au milieu : c'est ce que
+     voit quelqu'un qui regarde YouTube sur son téléphone, et c'est l'image
+     qu'il doit reconnaître avant que tout se multiplie. */
+  const hauteurSource = (1080 * 9) / 16;
+
+  /* La vignette retenue s'agrandit jusqu'à remplir l'écran. Elle part de sa
+     place dans la grille — coin haut gauche — donc l'échelle et le décalage
+     sont liés : à 3x, son coin supérieur gauche doit venir sur l'origine. */
+  const zoom = spring({
+    frame: frame - PLEIN,
+    fps,
+    config: { damping: 19, stiffness: 120, mass: 0.9 },
+  });
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: "#04060a", fontFamily: POLICE }}>
+      {/* Le son du clip retenu tourne d'un bout à l'autre. Les neuf vignettes
+          sont muettes : neuf pistes simultanées ne donnent pas du volume, elles
+          donnent du bruit. */}
+      <Audio src={staticFile(HEROS.f)} trimBefore={Math.round(AUDIO_DEPART * FPS)} />
+
+      {/* ── 0 à 1,5 s : la vidéo d'origine ───────────────────────────────── */}
+      <Sequence durationInFrames={ECLAT + 12} name="La video d’origine">
+        {/* Le même plan, agrandi et flou, remplit les bandes noires. Avec de
+            vraies bandes, la première seconde tombait à 30-45 de luminance —
+            44 % du cadre en noir — contre 116-118 pour la médiane du corpus, et
+            c'est la seconde où se joue la rétention. `objectFit` est une PROP
+            de ce composant : dans `style` il est ignoré et la vidéo garde son
+            16:9 au lieu de couvrir.
+
+            ASSOMBRI, pas éclairci. Un premier jet le relevait à 1,5 pour gagner
+            de la luminance : le fond devenait plus clair que le sujet et la
+            bande nette se perdait dedans. Un fond doit rester en dessous de ce
+            qu'il entoure. */}
+        <AbsoluteFill>
+          <Video
+            src={staticFile(SOURCE)}
+            objectFit="cover"
+            muted
+            style={{
+              width: "100%",
+              height: "100%",
+              filter: "blur(46px) brightness(0.72) saturate(1.15)",
+              transform: "scale(1.15)",
+            }}
+          />
+        </AbsoluteFill>
+
+        <AbsoluteFill style={{ justifyContent: "center" }}>
+          <Video
+            src={staticFile(SOURCE)}
+            objectFit="cover"
+            muted
+            style={{
+              width: 1080,
+              height: hauteurSource,
+              boxShadow: "0 0 90px rgba(0,0,0,0.55)",
+            }}
+          />
+        </AbsoluteFill>
+
+        {/* Les deux textes se posent DANS les bandes libres, au-dessus et en
+            dessous de l'image — pas dessus. Un premier jet les centrait sur la
+            vidéo : ils tombaient en plein sur le titre incrusté de la source et
+            les deux se rendaient illisibles. */}
+        <AbsoluteFill style={{ alignItems: "center" }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 420,
+              fontSize: 116,
+              fontWeight: 900,
+              color: "#ffffff",
+              letterSpacing: "-0.045em",
+              lineHeight: 1,
+              ...contour,
+            }}
+          >
+            1 vidéo
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              top: 1370,
+              fontSize: 52,
+              fontWeight: 800,
+              color: "rgba(255,255,255,0.92)",
+              letterSpacing: "-0.01em",
+              ...contour,
+            }}
+          >
+            40 minutes
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/* ── 1,5 s : le mur ───────────────────────────────────────────────── */}
+      <Sequence from={ECLAT} durationInFrames={DUREE_MUR - ECLAT} name="Le mur">
+        <AbsoluteFill
+          style={{
+            transform: `scale(${interpolate(zoom, [0, 1], [1, 3])})`,
+            transformOrigin: "180px 320px",
+          }}
+        >
+          <Mur depart={0} />
+        </AbsoluteFill>
+      </Sequence>
+
+      {/* Le chiffre, posé sur le mur une fois qu'il est formé. Il ne sert pas à
+          expliquer — la grille se compte toute seule — mais à donner la durée,
+          qui est la seule chose que l'image ne peut pas montrer. */}
+      <Sequence from={ECLAT + 30} durationInFrames={PLEIN - ECLAT - 20} name="Le chiffre">
+        <AbsoluteFill
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          {/* Assombrissement RADIAL, pas uniforme : à 0,34 partout, le chiffre
+              se perdait sur la vignette centrale, qui est la plus contrastée du
+              mur. Concentrer l'ombre au centre garde les huit autres vignettes
+              lisibles — ce sont elles qui portent la démonstration. */}
+          <AbsoluteFill style={{
+            background:
+              "radial-gradient(52% 34% at 50% 50%, rgba(4,6,10,0.88) 0%, rgba(4,6,10,0.64) 55%, rgba(4,6,10,0.12) 100%)",
+          }} />
+          <div style={{ position: "relative" }}>
+            <div
+              style={{
+                fontSize: 178,
+                fontWeight: 900,
+                color: COULEURS.vertClair,
+                lineHeight: 0.92,
+                letterSpacing: "-0.05em",
+                ...contour,
+              }}
+            >
+              9
+            </div>
+            <div
+              style={{
+                fontSize: 62,
+                fontWeight: 900,
+                color: "#ffffff",
+                letterSpacing: "-0.03em",
+                marginTop: 2,
+                ...contour,
+              }}
+            >
+              clips prêts
+            </div>
+            <div
+              style={{
+                marginTop: 14,
+                fontSize: 40,
+                fontWeight: 800,
+                color: "rgba(255,255,255,0.9)",
+                ...contour,
+              }}
+            >
+              en 3 minutes
+            </div>
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/* ── 7 s : la vignette retenue occupe l'écran ──────────────────────── */}
+      <Sequence from={PLEIN_IMAGE} durationInFrames={DUREE_MUR - PLEIN_IMAGE} name="Le clip">
+        <Video
+          src={staticFile(HEROS.f)}
+          trimBefore={Math.round(HEROS_A_PLEIN * FPS)}
+          objectFit="cover"
+          muted
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Sequence>
+
+      <Sequence from={APPEL} durationInFrames={DUREE_MUR - APPEL} name="Appel a commenter">
+        <AppelCommentaire duree={DUREE_MUR - APPEL} />
+      </Sequence>
+    </AbsoluteFill>
+  );
+};
