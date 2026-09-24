@@ -30,6 +30,8 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Publier ses clips en anglais](https://creatis.app/blog/sous-titres-anglais-clips.html): sous-titres traduits FR/EN, l'audio reste en français
 - [Clips pour LinkedIn](https://creatis.app/blog/clips-pour-linkedin.html): le texte du post compte autant que la vidéo
 - [Recycler ses anciennes vidéos](https://creatis.app/blog/recycler-anciennes-videos.html): trier sur l'intemporel, pas sur la performance passée
+- [Clips sans montrer son visage](https://creatis.app/blog/clips-sans-montrer-son-visage.html): le clipping resout le probleme par construction
+- [Combien coute de faire clipper ses videos](https://creatis.app/blog/combien-coute-faire-clipper-ses-videos.html): prestataire, forfait ou outil, seuils de bascule
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
