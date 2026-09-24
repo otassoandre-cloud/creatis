@@ -138,3 +138,6 @@ supabase-prospects-table.sql
 
 .playwright-profile-submagic/
 .scratch-submagic/
+
+# Clé du compte de service Google Search Console — ne jamais committer
+gsc-service-account.json
