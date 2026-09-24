@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyser la performance de ses clips : les 3 chiffres utiles | Créatis</title>
+<meta name="description" content="Les vues ne disent rien d'exploitable. Le taux de complétion, la courbe de rétention et le rapport partages/vues disent quoi corriger, et à quel endroit du clip.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://creatis.app/blog/analyser-performance-clips.html">
+<meta property="og:title" content="Analyser ses clips : les 3 chiffres qui servent vraiment">
+<meta property="og:description" content="Les vues ne disent rien d'exploitable. Le taux de complétion, la courbe de rétention et le rapport partages/vues disent quoi corriger, et à quel endroit du clip.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://creatis.app/blog/analyser-performance-clips.html">
+<meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Analyser ses clips : les 3 chiffres qui servent vraiment",
+  "author": {
+    "@type": "Organization",
+    "name": "Équipe Rédaction Créatis"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Créatis",
+    "url": "https://creatis.app"
+  },
+  "datePublished": "2026-09-24",
+  "dateModified": "2026-09-24",
+  "description": "Les vues ne disent rien d'exploitable. Le taux de complétion, la courbe de rétention et le rapport partages/vues disent quoi corriger, et à quel endroit du clip.",
+  "mainEntityOfPage": "https://creatis.app/blog/analyser-performance-clips.html"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Quelle statistique regarder en priorité sur un clip ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Le taux de complétion, c'est-à-dire la proportion de spectateurs qui vont jusqu'au bout. C'est le signal le plus fortement corrélé à la distribution : une plateforme qui voit les gens regarder en entier montre la vidéo à plus de monde."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pourquoi le nombre de vues est-il une mauvaise mesure ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Parce qu'il agrège tout — distribution, hook, montage, sujet, heure, chance — sans rien isoler. Deux clips à 50 000 vues peuvent être des objets opposés : l'un montré à 60 000 personnes qui l'ont regardé, l'autre à 500 000 qui l'ont ignoré. Le second est un échec déguisé en succès."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Que signifie une chute de rétention dans les deux premières secondes ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Un problème de hook : le clip commence trop tôt, sur une mise en place au lieu du contenu. La correction est de décaler les bornes de départ. Une chute vers 5-10 secondes signale autre chose — le hook a tenu mais la promesse du début n'est pas honorée."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pourquoi le taux de partage est-il un bon indicateur ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Parce que le partage est le seul geste qui coûte quelque chose au spectateur : il engage son image auprès de quelqu'un d'autre, alors qu'un like est gratuit. C'est donc le meilleur signal de la valeur intrinsèque du clip, et celui qui prédit le mieux ce qui est reproductible."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "À partir de combien de clips peut-on tirer des conclusions ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Une vingtaine au minimum. La variance est énorme sur les formats courts : en dessous, on lit du bruit. Compare ensuite les cinq meilleurs aux cinq pires sur la complétion plutôt que sur les vues, et ne change qu'une variable à la fois."
+      }
+    }
+  ]
+}
+</script>
+<link rel="stylesheet" href="/css/blog.css">
+  <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
+</head>
+<body>
+<nav class="blog-nav">
+  <a href="/" class="logo"><span>C</span> Créatis</a>
+  <a href="/clips-v2.html" class="blog-cta">Essayer gratuitement</a>
+</nav>
+
+<article>
+  <h1>Analyser ses clips : les 3 chiffres qui servent vraiment</h1>
+  <div class="meta">Publié le 24 septembre 2026 · 6 min de lecture</div>
+
+  <div class="answer-box">
+    <p>Le nombre de vues est la statistique la moins utile qui soit : il te dit qu'un clip a marché, jamais <strong>pourquoi</strong>, donc il ne t'apprend rien de reproductible. Trois chiffres, eux, sont directement actionnables : le <strong>taux de complétion</strong> (le clip est-il trop long ?), la <strong>courbe de rétention</strong> (à quelle seconde exacte ils partent) et le <strong>rapport partages sur vues</strong> (le clip a-t-il une valeur sociale ?). Chacun pointe vers une correction précise, au lieu d'une satisfaction ou d'une déception.</p>
+  </div>
+
+  <h2>Pourquoi les vues ne t’apprennent rien</h2>
+<p>Deux clips à 50 000 vues peuvent être des objets totalement différents : l'un a été montré à 60 000 personnes qui l'ont presque toutes regardé, l'autre à 500 000 personnes qui l'ont presque toutes ignoré. Le second est un échec déguisé en succès, et si tu en tires des leçons, tu reproduiras l'échec.</p>
+  <p>Le nombre de vues est un <strong>résultat</strong>, pas un diagnostic. Il arrive en bout de chaîne et agrège tout : la distribution, le hook, le montage, le sujet, l'heure de publication, la chance. Impossible d'en isoler quoi que ce soit.</p>
+  <p>Les trois chiffres qui suivent, eux, isolent chacun un problème précis.</p>
+
+  <h2>1. Le taux de complétion — le clip est-il trop long ?</h2>
+<p>La proportion de spectateurs qui vont jusqu'au bout. C'est le signal le plus fortement corrélé à la distribution sur tous les formats courts : une plateforme qui voit les gens regarder en entier montre la vidéo à plus de monde.</p>
+  <p>Ce qu'il te dit, concrètement :</p>
+  <ul>
+    <li><strong>Complétion faible, rétention correcte au début</strong> → le clip est trop long. Coupe la fin, presque toujours du délayage après la chute.</li>
+    <li><strong>Complétion élevée</strong> → tu peux te permettre plus long sur ce type de sujet. C'est une autorisation, pas une obligation.</li>
+  </ul>
+  <p>C'est aussi le seul argument sérieux en faveur des clips courts : un clip de 25 secondes a structurellement une meilleure complétion qu'un clip de 90. Voir <a href="/blog/ameliorer-retention-short.html">améliorer la rétention d'un Short</a>.</p>
+
+  <h2>2. La courbe de rétention — à quelle seconde ils partent</h2>
+<p>C'est le chiffre le plus riche, et le moins regardé. Il ne te dit pas seulement <em>combien</em> partent, mais <strong>quand</strong> — et le « quand » désigne directement le défaut.</p>
+  <ul>
+    <li><strong>Chute dans les 2 premières secondes</strong> → problème de hook. Le clip commence trop tôt, sur une mise en place plutôt que sur le contenu. Décale les bornes. Voir <a href="/blog/hook-3-secondes.html">le hook de 3 secondes</a>.</li>
+    <li><strong>Chute vers 5-10 secondes</strong> → le hook a tenu mais la promesse n'est pas honorée. Le début annonce quelque chose que la suite ne donne pas.</li>
+    <li><strong>Chute progressive régulière</strong> → c'est normal, c'est la respiration naturelle de l'audience. Rien à corriger.</li>
+    <li><strong>Chute brutale en milieu de clip</strong> → il y a un trou : un silence, une digression, un changement de sujet. Coupe à cet endroit précis.</li>
+  </ul>
+  <p>Un seul clip analysé sérieusement de cette façon t'apprend plus que cinquante clips jugés aux vues.</p>
+
+  <h2>3. Partages sur vues — le clip a-t-il une valeur sociale ?</h2>
+<p>Le partage est le seul geste qui coûte quelque chose au spectateur : il engage son image auprès de quelqu'un d'autre. Un like est gratuit, un partage non.</p>
+  <p>C'est donc le meilleur indicateur de la <strong>valeur intrinsèque</strong> du clip, et celui qui prédit le mieux la reproductibilité. Un clip très partagé a trouvé quelque chose ; un clip très vu mais peu partagé a surtout été bien distribué.</p>
+  <p>À regarder en rapport, jamais en absolu : compare le taux de partage entre tes propres clips, et cherche ce que les trois meilleurs ont en commun. C'est souvent une caractéristique nette — un type d'extrait, un format de hook, un sujet.</p>
+
+  <h2>Le rythme d’analyse qui fonctionne</h2>
+<ol>
+    <li><strong>N'analyse jamais un clip isolé.</strong> La variance est énorme sur les formats courts ; un clip seul ne prouve rien, ni dans un sens ni dans l'autre.</li>
+    <li><strong>Attends au moins vingt clips</strong> avant de tirer la moindre conclusion. En dessous, tu lis du bruit.</li>
+    <li><strong>Compare les cinq meilleurs aux cinq pires</strong> sur la complétion, pas sur les vues. La différence saute presque toujours aux yeux.</li>
+    <li><strong>Change une chose à la fois.</strong> Si tu modifies la durée, le style de sous-titres et le type d'extrait en même temps, tu ne sauras jamais ce qui a joué.</li>
+  </ol>
+  <p>Et si tu clipes pour des campagnes rémunérées, garde en tête que ces chiffres et ceux de la campagne ne mesurent pas la même chose — voir <a href="/blog/combien-paye-1000-vues-clipping.html">combien paye 1 000 vues en clipping</a>.</p>
+
+  <div class="faq-section">
+    <h2>Questions fréquentes</h2>
+    <details>
+      <summary>Quelle statistique regarder en priorité sur un clip ?</summary>
+      <p>Le taux de complétion, c'est-à-dire la proportion de spectateurs qui vont jusqu'au bout. C'est le signal le plus fortement corrélé à la distribution : une plateforme qui voit les gens regarder en entier montre la vidéo à plus de monde.</p>
+    </details>
+    <details>
+      <summary>Pourquoi le nombre de vues est-il une mauvaise mesure ?</summary>
+      <p>Parce qu'il agrège tout — distribution, hook, montage, sujet, heure, chance — sans rien isoler. Deux clips à 50 000 vues peuvent être des objets opposés : l'un montré à 60 000 personnes qui l'ont regardé, l'autre à 500 000 qui l'ont ignoré. Le second est un échec déguisé en succès.</p>
+    </details>
+    <details>
+      <summary>Que signifie une chute de rétention dans les deux premières secondes ?</summary>
+      <p>Un problème de hook : le clip commence trop tôt, sur une mise en place au lieu du contenu. La correction est de décaler les bornes de départ. Une chute vers 5-10 secondes signale autre chose — le hook a tenu mais la promesse du début n'est pas honorée.</p>
+    </details>
+    <details>
+      <summary>Pourquoi le taux de partage est-il un bon indicateur ?</summary>
+      <p>Parce que le partage est le seul geste qui coûte quelque chose au spectateur : il engage son image auprès de quelqu'un d'autre, alors qu'un like est gratuit. C'est donc le meilleur signal de la valeur intrinsèque du clip, et celui qui prédit le mieux ce qui est reproductible.</p>
+    </details>
+    <details>
+      <summary>À partir de combien de clips peut-on tirer des conclusions ?</summary>
+      <p>Une vingtaine au minimum. La variance est énorme sur les formats courts : en dessous, on lit du bruit. Compare ensuite les cinq meilleurs aux cinq pires sur la complétion plutôt que sur les vues, et ne change qu'une variable à la fois.</p>
+    </details>
+  </div>
+
+  <div class="cta-box" style="margin-top:48px">
+    <h3>Produis assez de clips pour que les chiffres veuillent dire quelque chose</h3>
+    <p>Analyse gratuite · Sans carte bancaire · Vois tes clips avant de payer</p>
+    <a href="/clips-v2.html" class="btn">⚡ Essayer Créatis gratuitement</a>
+  </div>
+</article>
+
+<footer class="blog-footer">
+  <p>© 2026 Créatis · <a href="/blog.html">Blog</a> · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@creatis.app">Contact</a></p>
+</footer>
+</body>
+</html>
