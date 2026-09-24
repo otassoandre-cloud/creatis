@@ -24,7 +24,10 @@ const { exec } = require('child_process');
 const ENV = path.join(__dirname, '..', '.env');
 const PORT = 53682; // port de bouclage — autorisé d'office pour un client « bureau »
 const REDIRECT = `http://localhost:${PORT}`;
-const SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly';
+// Portee complete (lecture + soumission de sitemap). La lecture seule suffirait a
+// scripts/gsc.js, mais soumettre un sitemap exige l'ecriture — autant l'obtenir
+// en une fois plutot que de refaire passer l'utilisateur par le navigateur.
+const SCOPE = 'https://www.googleapis.com/auth/webmasters';
 
 function lireEnv() {
   if (!fs.existsSync(ENV)) return {};
