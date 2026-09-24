@@ -2,9 +2,12 @@
 /**
  * Lecture Search Console — zéro dépendance npm.
  *
- * Prérequis : le fichier JSON du compte de service Google Cloud, déposé à la racine
- * du repo sous `gsc-service-account.json` (déjà dans .gitignore), et son email
- * ajouté comme utilisateur dans Search Console.
+ * Deux authentifications possibles, essayées dans cet ordre :
+ *   1. OAuth personnel — GSC_CLIENT_ID / GSC_CLIENT_SECRET / GSC_REFRESH_TOKEN dans .env
+ *      (voir scripts/gsc-auth.js, à lancer une seule fois). C'est la voie à utiliser
+ *      quand `iam.disableServiceAccountKeyCreation` interdit les clés de compte de service.
+ *   2. Compte de service — `gsc-service-account.json` à la racine (déjà dans .gitignore),
+ *      son client_email ajouté comme utilisateur dans Search Console.
  *
  * Usage :
  *   node scripts/gsc.js                  → requêtes + pages, 90 derniers jours
@@ -31,7 +34,40 @@ const drapeau = (nom) => process.argv.includes('--' + nom);
 const b64url = (buf) =>
   Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-/** Échange la clé du compte de service contre un jeton d'accès (JWT RS256). */
+/** Lit .env sans dépendance (dotenv n'est pas installé dans ce projet). */
+function lireEnv() {
+  const p = path.join(RACINE, '.env');
+  if (!fs.existsSync(p)) return {};
+  const vars = {};
+  for (const ligne of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
+    const m = ligne.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (m) vars[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+  }
+  return vars;
+}
+
+/** Voie 1 : échange le jeton de rafraîchissement personnel contre un jeton d'accès. */
+async function jetonOAuth(env) {
+  const rep = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.GSC_CLIENT_ID,
+      client_secret: env.GSC_CLIENT_SECRET,
+      refresh_token: env.GSC_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await rep.json();
+  if (!rep.ok)
+    throw new Error(
+      `Jeton refusé (${rep.status}) — ${JSON.stringify(data)}\n` +
+        'Relance `node scripts/gsc-auth.js` pour réautoriser.'
+    );
+  return data.access_token;
+}
+
+/** Voie 2 : échange la clé du compte de service contre un jeton d'accès (JWT RS256). */
 async function jeton(compte) {
   const maintenant = Math.floor(Date.now() / 1000);
   const entete = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
@@ -93,23 +129,30 @@ function tableau(titre, lignes) {
 }
 
 (async () => {
-  if (!fs.existsSync(CLE)) {
+  const env = lireEnv();
+  const aOAuth = env.GSC_CLIENT_ID && env.GSC_CLIENT_SECRET && env.GSC_REFRESH_TOKEN;
+
+  if (!aOAuth && !fs.existsSync(CLE)) {
     console.error(
-      `Clé introuvable : ${CLE}\n` +
-        `Dépose le JSON du compte de service à la racine sous « gsc-service-account.json »,\n` +
-        `puis ajoute son client_email comme utilisateur dans Search Console.`
+      'Aucune authentification disponible.\n\n' +
+        'Voie recommandée (OAuth, passe outre la règle iam.disableServiceAccountKeyCreation) :\n' +
+        '  1. Google Cloud → Identifiants → ID client OAuth → Application de bureau\n' +
+        '  2. Colle GSC_CLIENT_ID et GSC_CLIENT_SECRET dans .env\n' +
+        '  3. node scripts/gsc-auth.js\n\n' +
+        `Voie compte de service : dépose le JSON à la racine sous « gsc-service-account.json ».`
     );
     process.exit(1);
   }
 
-  const compte = JSON.parse(fs.readFileSync(CLE, 'utf8'));
   const jours = parseInt(arg('jours', '90'), 10);
   const limite = parseInt(arg('limite', '30'), 10);
   // GSC a ~2 jours de latence : on ne demande jamais aujourd'hui.
   const fin = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
   const debut = new Date(Date.now() - (jours + 2) * 864e5).toISOString().slice(0, 10);
 
-  const acces = await jeton(compte);
+  const acces = aOAuth
+    ? await jetonOAuth(env)
+    : await jeton(JSON.parse(fs.readFileSync(CLE, 'utf8')));
   const dims = drapeau('dim') ? [arg('dim', 'query')] : null;
 
   if (drapeau('json')) {
