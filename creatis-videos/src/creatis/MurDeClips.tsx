@@ -5,7 +5,7 @@ import {
 } from "remotion";
 import { POLICE } from "./police";
 import { COULEURS } from "./theme";
-import { AppelCommentaire } from "./AppelCommentaire";
+import { OffreEssai } from "./OffreEssai";
 
 /**
  * LE MUR — 1080x1920, 26 s.
@@ -42,12 +42,12 @@ import { AppelCommentaire } from "./AppelCommentaire";
  *    0,0 s   la vidéo large, telle qu'elle est sur YouTube
  *    1,5 s   elle éclate en neuf clips qui jouent tous
  *    4,0 s   « 9 clips · 3 minutes »
- *    7,0 s   une vignette prend tout l'écran
- *   20,0 s   « Commente CLIP »
+ *    7,0 s   une vignette prend tout l'écran — trois secondes, pas plus
+ *   10,8 s   l'offre d'essai, posée sur le clip qui continue
  */
 
 const FPS = 30;
-export const DUREE_MUR = 780; // 26 s
+export const DUREE_MUR = 480; // 16 s
 
 /** Les neuf clips d'UNE SEULE analyse. L'ordre suit la luminance d'ouverture
     mesurée : les plus claires au centre et en haut, là où l'œil se pose. */
@@ -71,7 +71,14 @@ const SOURCE = "src-irm.mp4";
 
 const ECLAT = 45;   // 1,5 s — le mur se forme
 const PLEIN = 210;  // 7,0 s — une vignette prend l'écran
-const APPEL = DUREE_MUR - 180;
+
+/* L'offre se pose à 10,8 s, sur le clip qui continue de tourner derrière elle.
+   TROIS SECONDES DE CLIP PLEIN ÉCRAN, pas davantage : la démonstration est
+   faite au moment où le mur se forme, et un clip qu'on laisse tourner dix-huit
+   secondes après ça n'ajoute rien — il fait juste sortir la vidéo du format.
+   Les trois secondes servent à montrer qu'une vignette du mur est un vrai clip
+   fini, et c'est tout ce qu'elles ont à faire. */
+const OFFRE = 324;
 
 /* RACCORD. La vignette retenue joue déjà dans le mur depuis l'image ECLAT ;
    quand elle prend tout l'écran, elle doit reprendre EXACTEMENT où elle en est,
@@ -331,8 +338,8 @@ export const MurDeClips: React.FC = () => {
         />
       </Sequence>
 
-      <Sequence from={APPEL} durationInFrames={DUREE_MUR - APPEL} name="Appel a commenter">
-        <AppelCommentaire duree={DUREE_MUR - APPEL} />
+      <Sequence from={OFFRE} durationInFrames={DUREE_MUR - OFFRE} name="Offre d’essai">
+        <OffreEssai duree={DUREE_MUR - OFFRE} />
       </Sequence>
     </AbsoluteFill>
   );
