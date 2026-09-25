@@ -103,65 +103,59 @@ async function postTweet(text, mediaId, creds) {
 }
 
 // ── Rotation des thèmes (7 jours) ────────────────────────────────
+/* Réécrits le 25/09/2026. Les sept thèmes précédents vendaient le produit d'avant —
+   script YouTube, miniature, 30 idées — alors que l'activité porte sur Clips Viraux
+   depuis des mois. Et le bloc « lancement Product Hunt » se déclenchait sur une date
+   de mai 2026, depuis longtemps passée : il est supprimé.
+
+   Chaque thème porte un LIEN TRAÇABLE distinct (creatis.app/x/<code>). C'est ce qui
+   permet à scripts/social-brief.js de dire quel angle amène des inscrits — sans ça,
+   on publie sans jamais savoir lequel fonctionne, ce qui est exactement ce qui s'est
+   passé pendant 68 vidéos.
+
+   Les chiffres sont vérifiés (suivi public des paiements Whop Content Rewards) et ne
+   doivent jamais être arrondis à la hausse : c'est leur exactitude qui les rend
+   partageables. */
 const THEMES = [
-  { // Dimanche
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Script YouTube en 30 secondes. Miniature en 45 secondes. 30 idées de vidéos en 10 secondes. Créatis fait le travail, tu crées. creatis.app" — Réponds uniquement avec le texte du tweet, aucun ajout.`,
-    image: 'images/higgsfield/thumbnail-youtube.png'
-  },
-  { // Lundi
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Tu remplis 3 champs. Tu cliques. Ton script YouTube est prêt en 30 secondes. C'est ça Créatis. creatis.app" — Ton direct, pas de jargon marketing. Réponds uniquement avec le texte du tweet.`,
+  { // Dimanche — le chiffre qui dérange
+    code: 'taux',
+    prompt: `Formate en tweet percutant (max 230 caractères, français, 2 emojis max) : "Les campagnes de clipping affichent 1 à 5 $ pour 1000 vues. Le taux réellement versé, mesuré sur 6,6 milliards de vues : 0,39 $. Trois à treize fois moins. creatis.app/x/taux" — Ne change aucun chiffre. Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/hero-landing.png'
   },
-  { // Mardi
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Chaîne manga dessin, 6 600 abonnés. Short de 18 secondes → 2,6 millions de vues. Créatis a généré le script. creatis.app" — Garde les chiffres exacts. Réponds uniquement avec le texte du tweet.`,
+  { // Lundi — l'échelle du marché
+    code: 'marche',
+    prompt: `Formate en tweet percutant (max 230 caractères, français, 2 emojis max) : "887 000 $ versés à des clippeurs sur le seul mois de février. 2,58 M$ au total, 8 466 gagnants. Le marché est réel — le taux affiché, lui, ne l'est pas. creatis.app/x/marche" — Ne change aucun chiffre. Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/thumbnail-youtube.png'
   },
-  { // Mercredi
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Avant : 2h pour écrire un script YouTube. Maintenant : 30 secondes avec Créatis. Script + miniature + 30 idées. creatis.app" — Garde les chiffres exacts. Réponds uniquement avec le texte du tweet.`,
+  { // Mardi — le mécanisme, démontré
+    code: 'crop',
+    prompt: `Formate en tweet percutant (max 230 caractères, français, 2 emojis max) : "Un recadrage 9:16 dans une vidéo 1920x1080 ne garde que 607 pixels de large. Tu jettes 68 % de l'image. C'est pour ça que tes clips sont mous. creatis.app/x/crop" — Ne change aucun chiffre. Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/hero-landing.png'
   },
-  { // Jeudi
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Miniature YouTube professionnelle générée en 45 secondes. Format 16:9 ou Short 9:16. Téléchargement en 1 clic. Créatis. creatis.app" — Garde les chiffres exacts. Réponds uniquement avec le texte du tweet.`,
+  { // Mercredi — l'échéance datée
+    code: 'gta',
+    prompt: `Formate en tweet percutant (max 230 caractères, français, 2 emojis max) : "GTA 6 sort le 19 novembre. Les comptes qui capteront la vague sont ceux qui publient déjà aujourd'hui — un compte créé le jour J passe l'événement en distribution minimale. creatis.app/x/gta" — Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/thumbnail-youtube.png'
   },
-  { // Vendredi
-    prompt: `Formate ce message en tweet percutant (max 230 caractères, français, 2 emojis max) : "Ton contenu YouTube du weekend ? Créatis génère 30 idées personnalisées pour ta niche en 10 secondes. Tu choisis, tu tournes. creatis.app" — Garde les chiffres exacts. Réponds uniquement avec le texte du tweet.`,
+  { // Jeudi — le plafond du métier
+    code: 'volume',
+    prompt: `Formate en tweet percutant (max 230 caractères, français, 2 emojis max) : "À la main, un clippeur sort 10 à 15 clips par jour, en y passant la journée. Payé à la vue, le volume est le seul facteur qu'il contrôle. C'est là que ça bloque. creatis.app/x/volume" — Ne change aucun chiffre. Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/hero-landing.png'
   },
-  { // Samedi
-    prompt: `Formate ce message en tweet engageant (max 230 caractères, français, 2 emojis max) : "C'est quoi ton plus grand blocage en tant que créateur YouTube ? Idées / Scripts / Miniatures / Shorts — Créatis fait les 4 en secondes. creatis.app" — Réponds uniquement avec le texte du tweet.`,
+  { // Vendredi — l'outil gratuit, sans argumentaire
+    code: 'calc',
+    prompt: `Formate en tweet utile (max 230 caractères, français, 2 emojis max) : "Calculateur gratuit : combien de clips par jour pour atteindre ton objectif de revenu en clipping. Basé sur le taux réellement versé, pas sur celui affiché. creatis.app/x/calc" — Ton factuel, aucune promesse de gain. Réponds uniquement avec le texte du tweet.`,
     image: 'images/higgsfield/thumbnail-youtube.png'
+  },
+  { // Samedi — question ouverte
+    code: 'question',
+    prompt: `Formate en tweet engageant (max 230 caractères, français, 2 emojis max) : "Clippeurs : c'est quoi qui vous prend le plus de temps ? Trouver les bons passages / recadrer en vertical / caler les sous-titres / publier. Je demande sérieusement." — Pas de lien, pas de promotion, c'est une vraie question. Réponds uniquement avec le texte du tweet.`,
+    image: 'images/higgsfield/hero-landing.png'
   }
 ];
 
-const PH_URL = 'https://www.producthunt.com/posts/creatis';
-
-function getPHLaunchTweet() {
-  const hour = new Date().getUTCHours();
-  if (hour <= 8) {
-    return {
-      text: `🚀 Créatis est en live sur @ProductHunt aujourd'hui !\n\nL'IA qui génère ton script YouTube, tes titres et ta miniature en 30 secondes.\n→ Plan gratuit, sans CB\n→ Fait par un créateur, pour les créateurs\n\nSoutenez le lancement 👇 ${PH_URL}`,
-      image: 'images/higgsfield/thumbnail-youtube.png'
-    };
-  } else if (hour <= 11) {
-    return {
-      text: `Ma chaîne manga a fait 2,6M de vues grâce à un short dont le script a été généré en 30 sec par une IA.\n\nJ'ai transformé ça en produit → Créatis\n\nAujourd'hui on est sur @ProductHunt 🎯\nUn vote compte énormément pour un solo founder 🙏\n\n${PH_URL}`,
-      image: 'images/higgsfield/card-producthunt.png'
-    };
-  } else {
-    return {
-      text: `Il reste quelques heures pour voter pour Créatis sur @ProductHunt 🔥\n\nSi t'es créateur YouTube et que t'en as marre de passer 3h sur un script :\n→ creatis.app — 50 crédits gratuits, sans CB\n\nMerci à tous ceux qui ont déjà voté 🙏\n\n${PH_URL}`,
-      image: 'images/higgsfield/hero-landing.png'
-    };
-  }
-}
-
 async function generateTweet(forcedDay = null) {
   const now = new Date();
-  if (now.getFullYear() === 2026 && now.getMonth() === 4 && now.getDate() === 19 && forcedDay === null) {
-    return getPHLaunchTweet();
-  }
-
   const day = forcedDay !== null ? forcedDay : now.getDay();
   const theme = THEMES[day];
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -177,7 +171,7 @@ async function generateTweet(forcedDay = null) {
     })
   });
   const data = await res.json();
-  return { text: data.choices?.[0]?.message?.content?.trim() || '', image: theme.image };
+  return { text: data.choices?.[0]?.message?.content?.trim() || '', image: theme.image, code: theme.code };
 }
 
 // ── Handler Vercel ────────────────────────────────────────────────
