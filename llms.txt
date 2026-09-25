@@ -34,6 +34,8 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Combien coute de faire clipper ses videos](https://creatis.app/blog/combien-coute-faire-clipper-ses-videos.html): prestataire, forfait ou outil, seuils de bascule
 - [Musique sur un clip](https://creatis.app/blog/musique-clips-droits.html): son de l'app, musique incrustee, musique deja dans la source — trois statuts
 - [Analyser ses clips](https://creatis.app/blog/analyser-performance-clips.html): completion, courbe de retention, partages/vues — les vues ne disent rien
+- [Lancer une campagne de clipping](https://creatis.app/blog/lancer-campagne-clipping.html): cote annonceur — taux, brief, garde-fous
+- [Podcast audio sans video](https://creatis.app/blog/clips-depuis-podcast-audio.html): pourquoi les audiogrammes performent mal, et les 3 options
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
