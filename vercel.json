@@ -207,6 +207,76 @@
       "dest": "/blog/geo-shorts-video.html"
     },
     {
+      "src": "/tiktok",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/t/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/insta",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/i/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/x",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=x&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/x/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=x&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/yt",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/y/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/li",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=linkedin&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/l/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=linkedin&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
