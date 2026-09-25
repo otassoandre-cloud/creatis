@@ -291,6 +291,62 @@
       }
     },
     {
+      "src": "/t1",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=compte1"
+      }
+    },
+    {
+      "src": "/t1/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=compte1-$1"
+      }
+    },
+    {
+      "src": "/t2",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=compte2"
+      }
+    },
+    {
+      "src": "/t2/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=compte2-$1"
+      }
+    },
+    {
+      "src": "/g1",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=compte1"
+      }
+    },
+    {
+      "src": "/g1/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=compte1-$1"
+      }
+    },
+    {
+      "src": "/g2",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=compte2"
+      }
+    },
+    {
+      "src": "/g2/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=compte2-$1"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
