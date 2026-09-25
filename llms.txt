@@ -36,6 +36,8 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Analyser ses clips](https://creatis.app/blog/analyser-performance-clips.html): completion, courbe de retention, partages/vues — les vues ne disent rien
 - [Lancer une campagne de clipping](https://creatis.app/blog/lancer-campagne-clipping.html): cote annonceur — taux, brief, garde-fous
 - [Podcast audio sans video](https://creatis.app/blog/clips-depuis-podcast-audio.html): pourquoi les audiogrammes performent mal, et les 3 options
+- [Clips sur Facebook Reels](https://creatis.app/blog/clips-pour-facebook-reels.html): recyclage accepte, audience plus agee, moins sature
+- [Video trop lourde ou refusee](https://creatis.app/blog/video-trop-lourde-tiktok.html): duree, debit, codec, cadence — dans cet ordre
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
