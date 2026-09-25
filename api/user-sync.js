@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
 
   // Crons Vercel envoient GET — autoriser GET pour les actions cron
   const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
-  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires', 'relance_essai_annuel_j5'].includes(actionFromQuery)) {
+  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires', 'relance_essai_annuel_j5', 'rattrapage_impayes'].includes(actionFromQuery)) {
     req.body = { action: actionFromQuery };
   } else if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
