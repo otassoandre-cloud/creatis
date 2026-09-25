@@ -590,6 +590,11 @@ module.exports = async (req, res) => {
         const origin = 'https://creatis.app';
         const now = new Date();
         const dry = req.query?.dry === '1';
+        /* `?rattrapage=1` traite l'arriere et RIEN D'AUTRE. Sans ce drapeau, les deux
+           sequences quotidiennes ci-dessous s'executaient aussi — et comme le cron de 9h
+           les a deja envoyees, l'appel manuel produisait un doublon chez le destinataire.
+           Erreur commise le 25/09/2026 : ~20 personnes ont recu deux messages le meme jour. */
+        const modeRattrapage = req.query?.rattrapage === '1';
         let totalSent = 0;
         const cronLog = [];
 
@@ -630,7 +635,7 @@ module.exports = async (req, res) => {
             body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Si tu n'as pas encore testé, l'offre Pro s'essaie <strong>7 jours sans prélèvement</strong> — tu peux arrêter avant la fin de l'essai sans rien payer.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0 0 12px;font-weight:700;font-size:16px">Les formules</p><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, tous les outils<br><strong>Pro annuel — 139 €/an</strong> · deux mois offerts</p></div>${bouton('Démarrer l\'essai Pro →', origin + '/#tarifs')}`) },
         ];
 
-        for (const seq of SEQ_JAMAIS) {
+        for (const seq of (modeRattrapage ? [] : SEQ_JAMAIS)) {
           try {
             const [from, to] = bornesJour(seq.days);
             const users = await supabase(`/users?select=id,email,nom&created_at=gte.${from.toISOString()}&created_at=lte.${to.toISOString()}&plan=eq.gratuit`);
@@ -661,7 +666,7 @@ module.exports = async (req, res) => {
             body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Un clip isolé ne dit rien. Les plateformes distribuent prudemment pendant les deux premières semaines, le temps d'évaluer à qui te montrer — il faut une trentaine de clips avant que les chiffres veuillent dire quelque chose.</p><p style="line-height:1.7;margin:0 0 20px">C'est le vrai intérêt d'une formule : produire assez pour que la régularité joue. Le détail est ici : <a href="${origin}/blog/combien-de-temps-avant-resultats-clips.html" style="color:#111">combien de temps avant d'avoir des résultats</a>.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, essai 7 jours sans prélèvement</p></div>${bouton('Voir les formules →', origin + '/#tarifs')}`) },
         ];
 
-        for (const seq of SEQ_UNE_FOIS) {
+        for (const seq of (modeRattrapage ? [] : SEQ_UNE_FOIS)) {
           try {
             const [from, to] = bornesJour(seq.days);
             const candidats = [];
@@ -697,7 +702,7 @@ module.exports = async (req, res) => {
            Garde-fous volontaires : simulation par defaut (il faut `&go=1` pour envoyer),
            plafond de 60 destinataires par appel, fenetre bornee a 45 jours pour ne pas
            reveiller des comptes froids depuis des mois. */
-        if (req.query?.rattrapage === '1') {
+        if (modeRattrapage) {
           const envoiReel = req.query?.go === '1';
           const plafond = Math.min(parseInt(req.query?.max || '60', 10) || 60, 200);
           const borneMin = now.getTime() - 45 * 864e5;
