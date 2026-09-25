@@ -5,6 +5,7 @@ import {
 } from "remotion";
 import { POLICE } from "./police";
 import { COULEURS } from "./theme";
+import { DUREE_MARCHE, LeMarche } from "./LeMarche";
 import { OffreEssai } from "./OffreEssai";
 
 /**
@@ -47,30 +48,48 @@ import { OffreEssai } from "./OffreEssai";
  */
 
 const FPS = 30;
-export const DUREE_MUR = 480; // 16 s
+/* L'ouverture par l'argent precede tout le reste : les 68 videos d'avant
+   ouvraient sur le produit et plafonnaient a 800 vues, zero inscrit attribue.
+   Un outil n'interesse personne tant qu'on n'a pas dit a quoi il sert de
+   gagner. Voir l'en-tete de LeMarche. */
+export const DUREE_MUR = DUREE_MARCHE + 480; // 19 s
 
 /** Les neuf clips d'UNE SEULE analyse. L'ordre suit la luminance d'ouverture
     mesurée : les plus claires au centre et en haut, là où l'œil se pose. */
 const CLIPS = [
-  { f: "mur/08-caoscillator.mp4", t: 2 },
-  { f: "mur/03-quiz-luxe.mp4", t: 4 },
-  { f: "mur/07-carpette.mp4", t: 3 },
-  { f: "mur/05-melon.mp4", t: 5 },
-  { f: "mur/04-r5-alpine.mp4", t: 8 },
-  { f: "mur/06-devoilement.mp4", t: 6 },
-  { f: "mur/01-bernabeu.mp4", t: 10 },
-  { f: "mur/09-cocktail-irm.mp4", t: 12 },
-  { f: "mur/02-aliexpress.mp4", t: 7 },
+  { f: "mur/01-millionnaire.mp4", t: 2 },
+  { f: "mur/02-esport-foot.mp4", t: 4 },
+  { f: "mur/03-chiffres.mp4", t: 2 },
+  { f: "mur/04-ronaldo.mp4", t: 3 },
+  { f: "mur/05-arene.mp4", t: 6 },
+  { f: "mur/06-duel.mp4", t: 8 },
+  { f: "mur/07-mystery.mp4", t: 5 },
+  { f: "mur/08-athletes.mp4", t: 4 },
 ];
+
+/* LE CHIFFRE OCCUPE LA CASE CENTRALE, il ne se pose plus par-dessus.
+ *
+ * Une grille 3x3 fait exactement 1080x1920 en tuiles 9:16 — c'est le seul
+ * decoupage qui respecte le format des clips. Mais une analyse ne rend pas
+ * toujours neuf clips : celle-ci en a rendu huit. Plutot que de laisser une
+ * case noire ou de repeter un clip, la case du milieu porte le compte.
+ *
+ * On y gagne deux fois : le nombre s'adapte a ce que la generation a
+ * reellement produit, et il n'a plus besoin d'un assombrissement radial pour
+ * rester lisible sur la vignette la plus contrastee du mur. */
+const CASE_CHIFFRE = 4;
 
 /** La vignette qui prend ensuite tout l'écran : la plus claire des neuf,
     140 de luminance sur sa première seconde. */
 const HEROS = CLIPS[0];
 
-const SOURCE = "src-irm.mp4";
+/** Ce que la generation a reellement produit. */
+const NB_CLIPS = CLIPS.length;
 
-const ECLAT = 45;   // 1,5 s — le mur se forme
-const PLEIN = 210;  // 7,0 s — une vignette prend l'écran
+const SOURCE = "src-esport.mp4";
+
+const ECLAT = DUREE_MARCHE + 45;   // le mur se forme
+const PLEIN = DUREE_MARCHE + 210;  // une vignette prend l'écran
 
 /* L'offre se pose à 10,8 s, sur le clip qui continue de tourner derrière elle.
    TROIS SECONDES DE CLIP PLEIN ÉCRAN, pas davantage : la démonstration est
@@ -78,7 +97,7 @@ const PLEIN = 210;  // 7,0 s — une vignette prend l'écran
    secondes après ça n'ajoute rien — il fait juste sortir la vidéo du format.
    Les trois secondes servent à montrer qu'une vignette du mur est un vrai clip
    fini, et c'est tout ce qu'elles ont à faire. */
-const OFFRE = 324;
+const OFFRE = DUREE_MARCHE + 324;
 
 /* RACCORD. La vignette retenue joue déjà dans le mur depuis l'image ECLAT ;
    quand elle prend tout l'écran, elle doit reprendre EXACTEMENT où elle en est,
@@ -110,36 +129,81 @@ const Mur: React.FC<{ depart: number }> = ({ depart }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
+  /* Neuf cases, huit clips et le compte au milieu. `cases` place chaque clip
+     en sautant la case centrale, quel que soit le nombre de clips rendus. */
+  const cases: (typeof CLIPS[number] | null)[] = [];
+  let k = 0;
+  for (let c = 0; c < 9; c++) cases.push(c === CASE_CHIFFRE ? null : CLIPS[k++] ?? null);
+
+  const arrivee = (i: number) => {
+    const col = i % 3;
+    const ligne = Math.floor(i / 3);
+    /* Le décalage part du centre et gagne les bords : le compte est déjà là
+       quand les coins arrivent, donc on lit le chiffre avant les images. */
+    const distance = Math.abs(col - 1) + Math.abs(ligne - 1);
+    return spring({
+      frame: frame - depart - distance * 4,
+      fps,
+      config: { damping: 15, stiffness: 190, mass: 0.55 },
+    });
+  };
+
   return (
-    <AbsoluteFill style={{ backgroundColor: "#04060a" }}>
-      {CLIPS.map((c, i) => {
-        const col = i % 3;
-        const ligne = Math.floor(i / 3);
-        /* Le décalage part du centre du mur et gagne les bords : la vignette
-           centrale existe déjà quand les coins arrivent. */
-        const distance = Math.abs(col - 1) + Math.abs(ligne - 1);
-        const e = spring({
-          frame: frame - depart - distance * 4,
-          fps,
-          config: { damping: 15, stiffness: 190, mass: 0.55 },
-        });
+    <AbsoluteFill style={{ backgroundColor: "#04060a", fontFamily: POLICE }}>
+      {cases.map((c, i) => {
+        const e = arrivee(i);
+        const commun = {
+          position: "absolute" as const,
+          left: (i % 3) * 360,
+          top: Math.floor(i / 3) * 640,
+          width: 360,
+          height: 640,
+          overflow: "hidden" as const,
+          opacity: Math.min(1, e * 1.6),
+          transform: `scale(${interpolate(e, [0, 1], [0.55, 1])})`,
+          border: "2px solid rgba(4,6,10,0.9)",
+          boxSizing: "border-box" as const,
+        };
+
+        if (!c) {
+          return (
+            <div
+              key="compte"
+              style={{
+                ...commun,
+                backgroundColor: "#04120b",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+                border: `3px solid ${COULEURS.vert}`,
+              }}
+            >
+              <div style={{
+                fontSize: 136, fontWeight: 900, color: COULEURS.vertClair,
+                lineHeight: 0.92, letterSpacing: "-0.05em",
+              }}>
+                {NB_CLIPS}
+              </div>
+              <div style={{
+                fontSize: 44, fontWeight: 900, color: "#ffffff",
+                letterSpacing: "-0.02em", marginTop: 2,
+              }}>
+                clips prêts
+              </div>
+              <div style={{
+                fontSize: 28, fontWeight: 700, color: "rgba(255,255,255,0.72)",
+                marginTop: 10,
+              }}>
+                en 3 minutes
+              </div>
+            </div>
+          );
+        }
 
         return (
-          <div
-            key={c.f}
-            style={{
-              position: "absolute",
-              left: col * 360,
-              top: ligne * 640,
-              width: 360,
-              height: 640,
-              overflow: "hidden",
-              opacity: Math.min(1, e * 1.6),
-              transform: `scale(${interpolate(e, [0, 1], [0.55, 1])})`,
-              border: "2px solid rgba(4,6,10,0.9)",
-              boxSizing: "border-box",
-            }}
-          >
+          <div key={c.f} style={commun}>
             <Video
               src={staticFile(c.f)}
               trimBefore={Math.round(c.t * FPS)}
@@ -153,6 +217,7 @@ const Mur: React.FC<{ depart: number }> = ({ depart }) => {
     </AbsoluteFill>
   );
 };
+
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
@@ -181,7 +246,12 @@ export const MurDeClips: React.FC = () => {
           donnent du bruit. */}
       <Audio src={staticFile(HEROS.f)} trimBefore={Math.round(AUDIO_DEPART * FPS)} />
 
-      {/* ── 0 à 1,5 s : la vidéo d'origine ───────────────────────────────── */}
+      {/* LA VIDEO D'ORIGINE TOURNE DES L'IMAGE 0, sous l'ouverture par l'argent.
+          Un premier jet ne la demarrait qu'apres : les trois premieres secondes
+          etaient un ecran noir a 10 de luminance, contre 116-118 pour la mediane
+          du corpus — exactement la seconde ou la serie decroche. Les chiffres se
+          posent donc sur une image qui bouge, et ses propres libelles
+          n'apparaissent qu'une fois l'ouverture passee. */}
       <Sequence durationInFrames={ECLAT + 12} name="La video d’origine">
         {/* Le même plan, agrandi et flou, remplit les bandes noires. Avec de
             vraies bandes, la première seconde tombait à 30-45 de luminance —
@@ -190,10 +260,11 @@ export const MurDeClips: React.FC = () => {
             de ce composant : dans `style` il est ignoré et la vidéo garde son
             16:9 au lieu de couvrir.
 
-            ASSOMBRI, pas éclairci. Un premier jet le relevait à 1,5 pour gagner
-            de la luminance : le fond devenait plus clair que le sujet et la
-            bande nette se perdait dedans. Un fond doit rester en dessous de ce
-            qu'il entoure. */}
+            Le fond reste EN DESSOUS de ce qu'il entoure — un premier jet le
+            relevait a 1,5 et la bande nette se perdait dedans. Ici la source est
+            un hall d'e-sport, sombre par nature : les deux couches sont relevees
+            ensemble (1,05 pour le fond, 1,40 pour l'image nette) en gardant
+            l'ecart. Plafond a 1,45, au-dela la peau sature. */}
         <AbsoluteFill>
           <Video
             src={staticFile(SOURCE)}
@@ -202,7 +273,7 @@ export const MurDeClips: React.FC = () => {
             style={{
               width: "100%",
               height: "100%",
-              filter: "blur(46px) brightness(0.72) saturate(1.15)",
+              filter: "blur(46px) brightness(1.05) saturate(1.2)",
               transform: "scale(1.15)",
             }}
           />
@@ -216,6 +287,7 @@ export const MurDeClips: React.FC = () => {
             style={{
               width: 1080,
               height: hauteurSource,
+              filter: "brightness(1.40) saturate(1.06)",
               boxShadow: "0 0 90px rgba(0,0,0,0.55)",
             }}
           />
@@ -225,6 +297,7 @@ export const MurDeClips: React.FC = () => {
             dessous de l'image — pas dessus. Un premier jet les centrait sur la
             vidéo : ils tombaient en plein sur le titre incrusté de la source et
             les deux se rendaient illisibles. */}
+        <Sequence from={DUREE_MARCHE} durationInFrames={ECLAT - DUREE_MARCHE + 12} layout="none">
         <AbsoluteFill style={{ alignItems: "center" }}>
           <div
             style={{
@@ -254,9 +327,19 @@ export const MurDeClips: React.FC = () => {
             40 minutes
           </div>
         </AbsoluteFill>
+        </Sequence>
       </Sequence>
 
       {/* ── 1,5 s : le mur ───────────────────────────────────────────────── */}
+      {/* L'OUVERTURE PAR L'ARGENT SE POSE APRES la video d'origine dans l'ordre
+          du JSX, donc AU-DESSUS d'elle a l'ecran. Placee avant, elle passait
+          dessous et disparaissait completement : les trois premieres secondes
+          ne montraient qu'un plan d'arene, sans un chiffre. Dans Remotion comme
+          en CSS, c'est le dernier ecrit qui peint par-dessus. */}
+      <Sequence durationInFrames={DUREE_MARCHE} name="Le marche" layout="none">
+        <LeMarche />
+      </Sequence>
+
       <Sequence from={ECLAT} durationInFrames={DUREE_MUR - ECLAT} name="Le mur">
         <AbsoluteFill
           style={{
@@ -265,65 +348,6 @@ export const MurDeClips: React.FC = () => {
           }}
         >
           <Mur depart={0} />
-        </AbsoluteFill>
-      </Sequence>
-
-      {/* Le chiffre, posé sur le mur une fois qu'il est formé. Il ne sert pas à
-          expliquer — la grille se compte toute seule — mais à donner la durée,
-          qui est la seule chose que l'image ne peut pas montrer. */}
-      <Sequence from={ECLAT + 30} durationInFrames={PLEIN - ECLAT - 20} name="Le chiffre">
-        <AbsoluteFill
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-          }}
-        >
-          {/* Assombrissement RADIAL, pas uniforme : à 0,34 partout, le chiffre
-              se perdait sur la vignette centrale, qui est la plus contrastée du
-              mur. Concentrer l'ombre au centre garde les huit autres vignettes
-              lisibles — ce sont elles qui portent la démonstration. */}
-          <AbsoluteFill style={{
-            background:
-              "radial-gradient(52% 34% at 50% 50%, rgba(4,6,10,0.88) 0%, rgba(4,6,10,0.64) 55%, rgba(4,6,10,0.12) 100%)",
-          }} />
-          <div style={{ position: "relative" }}>
-            <div
-              style={{
-                fontSize: 178,
-                fontWeight: 900,
-                color: COULEURS.vertClair,
-                lineHeight: 0.92,
-                letterSpacing: "-0.05em",
-                ...contour,
-              }}
-            >
-              9
-            </div>
-            <div
-              style={{
-                fontSize: 62,
-                fontWeight: 900,
-                color: "#ffffff",
-                letterSpacing: "-0.03em",
-                marginTop: 2,
-                ...contour,
-              }}
-            >
-              clips prêts
-            </div>
-            <div
-              style={{
-                marginTop: 14,
-                fontSize: 40,
-                fontWeight: 800,
-                color: "rgba(255,255,255,0.9)",
-                ...contour,
-              }}
-            >
-              en 3 minutes
-            </div>
-          </div>
         </AbsoluteFill>
       </Sequence>
 
