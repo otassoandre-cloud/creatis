@@ -128,6 +128,16 @@
       font-size: 14px; color: #f87171; display: none;
     }
 
+    /* Ton informatif, jamais alarmant : c'est une etape annoncee, pas un avertissement. */
+    .paiement-3ds {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.22);
+      border-radius: 12px; padding: 13px 15px; margin-bottom: 18px;
+      font-size: 13.5px; line-height: 1.55; color: #d1d5db;
+    }
+    .paiement-3ds svg { flex-shrink: 0; margin-top: 2px; color: var(--vert); }
+    .paiement-3ds strong { color: #fff; font-weight: 700; }
+
     /* Continuite avec l'ecran d'ou vient la personne : elle a clique sur « telecharger mes
        clips », pas sur « souscrire un abonnement ». Le rappel se fait ici, en haut du recap. */
     .recap-continuite {
@@ -277,6 +287,17 @@
       </div>
 
       <div class="paiement-error" id="paiement-error"></div>
+
+      <!-- Annonce de l'etape 3D Secure. Mesure a l'origine de ce bloc (25/09/2026) :
+           68 personnes atteignent cette page sur 30 jours, 19 seulement arrivent a
+           success.html — et `requires_action`, c'est-a-dire une authentification
+           bancaire abandonnee, est le premier motif d'echec dans paiements_echoues.
+           Une fenetre de banque qui surgit sans prevenir se lit comme un bug ; annoncee,
+           elle se lit comme une etape. -->
+      <div class="paiement-3ds">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span><strong>Ta banque va demander une confirmation</strong> — SMS ou application bancaire. C'est la dernière étape : ne ferme pas la page tant qu'elle n'est pas validée.</span>
+      </div>
 
       <div id="checkout-container">
         <div class="paiement-loading" id="paiement-loading">
