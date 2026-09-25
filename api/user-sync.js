@@ -567,7 +567,18 @@ module.exports = async (req, res) => {
       }
 
       case 'email_cron': {
-        // Cron serveur-side : envoie J2/J5/J10/J14 aux utilisateurs gratuits
+        /* Deux pistes distinctes, et c'est tout l'objet de la refonte du 25/09/2026.
+
+           Avant : une seule séquence, ciblée sur `repurpose_count = 0`. Or ce champ est
+           mort — 830 comptes à 0 alors que 409 ont réellement généré (table
+           clip_generations, seule source de vérité). Conséquence : on envoyait « tu n'as
+           pas encore créé ton premier clip » à des gens qui en avaient déjà fait.
+
+           Après :
+             Piste A « jamais généré »  — la séquence d'origine, sur le bon signal.
+             Piste B « généré une fois » — nouvelle, et c'est là qu'est l'argent : sur
+               30 jours, 132 comptes font UNE génération puis disparaissent et convertissent
+               à 3 %, contre 10,5 % dès la deuxième. Il leur reste une analyse gratuite. */
         const authHeader = req.headers['authorization'] || '';
         const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || authHeader.replace('Bearer ', '');
         if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
@@ -578,30 +589,56 @@ module.exports = async (req, res) => {
 
         const origin = 'https://creatis.app';
         const now = new Date();
+        const dry = req.query?.dry === '1';
         let totalSent = 0;
         const cronLog = [];
 
-        const EMAIL_SEQS = [
-          { key: 'j1', days: 1, subject: 'Ton clip viral t\'attend — 2 minutes suffisent',
-            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:22px;margin:0 0 16px">Salut ${n} 👋</h2><p style="line-height:1.7;margin:0 0 16px">Tu t'es inscrit sur Créatis hier mais tu n'as pas encore créé ton premier clip viral.</p><p style="line-height:1.7;margin:0 0 20px">C'est simple : <strong>uploade une vidéo YouTube</strong>, l'IA détecte les 10 meilleurs moments et les coupe en Shorts 9:16 prêts à poster sur TikTok, Instagram et YouTube.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px"><p style="margin:0 0 10px;font-weight:700;font-size:15px">Ce que tu obtiens en 2 minutes :</p><p style="margin:0;line-height:2;color:#333">✂️ Clips découpés automatiquement<br>📝 Sous-titres brûlés dans la vidéo<br>🎯 Hooks percutants générés par IA<br>📐 Format 9:16 prêt à publier</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Créer mes clips maintenant →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
-          { key: 'j3', days: 3, subject: 'Comment transformer 1 vidéo en 10 clips viraux',
-            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une vidéo YouTube de 10 minutes = 10 clips TikTok potentiels. La plupart des créateurs ne le font pas parce que ça prend des heures à la main.</p><p style="line-height:1.7;margin:0 0 20px">Créatis le fait en 2 minutes. L'IA analyse ta vidéo, identifie les moments les plus forts, les coupe et ajoute les sous-titres automatiquement.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px;border-left:4px solid #000"><p style="margin:0;font-style:italic;line-height:1.7;color:#333">"Une seule vidéo = un mois de contenu court format. C'est exactement ce que fait Créatis."</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Essayer gratuitement →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
-          { key: 'j7', days: 7, subject: 'Tu n\'as pas encore essayé — je t\'offre un accès guidé',
-            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Ça fait une semaine que tu es inscrit sur Créatis. Si tu n'as pas encore testé, c'est peut-être qu'il manque quelque chose.</p><p style="line-height:1.7;margin:0 0 20px">Dis-moi si je peux t'aider — réponds directement à cet email. En attendant, voici les 3 étapes pour créer ton premier clip :</p><div style="margin:0 0 24px"><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">1</div><p style="margin:0;line-height:1.6"><strong>Upload ta vidéo</strong> — depuis ton ordinateur ou colle une URL YouTube</p></div><div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">2</div><p style="margin:0;line-height:1.6"><strong>L'IA analyse</strong> — 2 minutes, elle détecte les 10 meilleurs moments</p></div><div style="display:flex;align-items:flex-start;gap:12px"><div style="background:#000;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px">3</div><p style="margin:0;line-height:1.6"><strong>Télécharge tes clips</strong> — sous-titres inclus, format 9:16 prêt à poster</p></div></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 24px">Commencer maintenant →</a><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
-          { key: 'j14', days: 14, subject: '-50% le 1er mois — offre de lancement',
-            body: n => `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Tu fais partie des premiers utilisateurs de Créatis. En tant qu'early adopter, je te réserve une offre spéciale.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px;text-align:center"><p style="font-size:28px;font-weight:900;margin:0 0 8px">-50% le 1er mois</p><p style="color:#666;margin:0 0 16px;font-size:15px">Créatis Pro à 9,95€ au lieu de 19,90€</p><p style="margin:0;line-height:2;color:#333;font-size:14px">✂️ Clips viraux illimités · 📝 Sous-titres automatiques<br>🎯 Hooks IA · 🎬 Scripts YouTube · 🖼️ Miniatures</p></div><a href="${origin}/app" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 16px">Profiter de l'offre →</a><p style="color:#999;font-size:13px;margin:0 0 24px">Offre valable 7 jours.</p><p style="color:#999;font-size:12px;margin:0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>` },
+        /* Vérité d'usage : la table des générations, pas un compteur sur users.
+           677 lignes aujourd'hui — on charge tout et on compte en mémoire, c'est
+           largement moins coûteux qu'une requête par utilisateur. */
+        const toutesGen = await supabase('/clip_generations?select=user_id,created_at&limit=20000');
+        const nbParUser = new Map();
+        const premiereParUser = new Map();
+        for (const g of (Array.isArray(toutesGen) ? toutesGen : [])) {
+          nbParUser.set(g.user_id, (nbParUser.get(g.user_id) || 0) + 1);
+          const t = new Date(g.created_at).getTime();
+          if (!premiereParUser.has(g.user_id) || t < premiereParUser.get(g.user_id)) premiereParUser.set(g.user_id, t);
+        }
+
+        const bornesJour = (joursAvant) => {
+          const d = new Date(now); d.setDate(d.getDate() - joursAvant);
+          const from = new Date(d); from.setHours(0, 0, 0, 0);
+          const to = new Date(d); to.setHours(23, 59, 59, 999);
+          return [from, to];
+        };
+
+        const enveloppe = (corps) =>
+          `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">${corps}` +
+          `<p style="color:#999;font-size:12px;margin:24px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`;
+        const bouton = (txt, href) =>
+          `<a href="${href}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 8px">${txt}</a>`;
+
+        /* ---------- Piste A : inscrits qui n'ont JAMAIS généré ---------- */
+        const SEQ_JAMAIS = [
+          { key: 'a-j1', days: 1, subject: 'Ton premier clip prend 2 minutes',
+            body: n => enveloppe(`<h2 style="font-size:22px;margin:0 0 16px">Salut ${n} 👋</h2><p style="line-height:1.7;margin:0 0 16px">Tu t'es inscrit hier sur Créatis mais tu n'as pas encore lancé d'analyse.</p><p style="line-height:1.7;margin:0 0 20px">Le principe : tu donnes une vidéo longue, l'IA repère les meilleurs moments, les découpe en 9:16 et brûle les sous-titres. Tu vois les clips avant de payer quoi que ce soit.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px"><p style="margin:0;line-height:2;color:#333">✂️ Découpage automatique<br>📝 Sous-titres incrustés<br>📐 Format 9:16 prêt à publier</p></div>${bouton('Lancer ma première analyse →', origin + '/app')}`) },
+          { key: 'a-j3', days: 3, subject: 'Une vidéo d\'une heure = une série de clips',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une vidéo longue contient presque toujours de quoi faire une dizaine de formats courts. La plupart des créateurs ne le font pas — à la main, repérer les passages prend plus de temps que le montage.</p><p style="line-height:1.7;margin:0 0 20px">C'est exactement cette étape que Créatis automatise : l'IA lit ce qui est dit, repère les moments forts et découpe autour.</p>${bouton('Essayer sur une de tes vidéos →', origin + '/app')}`) },
+          { key: 'a-j7', days: 7, subject: 'Quelque chose bloque ?',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une semaine sans lancer d'analyse, c'est souvent qu'un détail coince. Réponds directement à cet email, je lis tout.</p><p style="line-height:1.7;margin:0 0 20px">En attendant, les trois étapes :</p><p style="line-height:2;margin:0 0 24px;color:#333"><strong>1.</strong> Upload une vidéo, ou colle une URL YouTube<br><strong>2.</strong> L'IA analyse et propose les meilleurs moments<br><strong>3.</strong> Tu regardes les clips avant de décider</p>${bouton('Reprendre où j\'en étais →', origin + '/app')}`) },
+          { key: 'a-j14', days: 14, subject: 'Pro pendant 7 jours, sans prélèvement',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Si tu n'as pas encore testé, l'offre Pro s'essaie <strong>7 jours sans prélèvement</strong> — tu peux arrêter avant la fin de l'essai sans rien payer.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0 0 12px;font-weight:700;font-size:16px">Les formules</p><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, tous les outils<br><strong>Pro annuel — 139 €/an</strong> · deux mois offerts</p></div>${bouton('Démarrer l\'essai Pro →', origin + '/#tarifs')}`) },
         ];
 
-        for (const seq of EMAIL_SEQS) {
+        for (const seq of SEQ_JAMAIS) {
           try {
-            const d = new Date(now);
-            d.setDate(d.getDate() - seq.days);
-            const from = new Date(d); from.setHours(0,0,0,0);
-            const to = new Date(d); to.setHours(23,59,59,999);
-            const users = await supabase(`/users?select=id,email,nom,plan&created_at=gte.${from.toISOString()}&created_at=lte.${to.toISOString()}&plan=eq.gratuit&repurpose_count=eq.0`);
+            const [from, to] = bornesJour(seq.days);
+            const users = await supabase(`/users?select=id,email,nom&created_at=gte.${from.toISOString()}&created_at=lte.${to.toISOString()}&plan=eq.gratuit`);
             if (!Array.isArray(users)) continue;
             for (const u of users) {
+              if (nbParUser.has(u.id)) continue;           // il a généré → piste B, pas celle-ci
               const nom = u.nom || u.email?.split('@')[0] || 'Créateur';
+              if (dry) { cronLog.push(`[dry] ${seq.key} → ${u.email}`); continue; }
               const r = await fetch('https://api.brevo.com/v3/smtp/email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
@@ -609,10 +646,92 @@ module.exports = async (req, res) => {
               });
               if (r.ok) { totalSent++; cronLog.push(`${seq.key} → ${u.email}`); }
             }
-          } catch(e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
+          } catch (e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
         }
+
+        /* ---------- Piste B : UNE génération, jamais revenu ---------- */
+        /* Le déclencheur est la date de la PREMIÈRE génération, pas celle de l'inscription :
+           quelqu'un peut s'inscrire en juin et générer en septembre. */
+        const SEQ_UNE_FOIS = [
+          { key: 'b-j2', days: 2, subject: 'Il te reste une analyse gratuite ce mois-ci',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Tu as lancé une analyse il y a deux jours. <strong>Il t'en reste une, gratuite, ce mois-ci</strong> — elle expire à la fin du mois si tu ne t'en sers pas.</p><p style="line-height:1.7;margin:0 0 20px">Un conseil qui vient de nos chiffres : les clips d'une même vidéo se ressemblent forcément. C'est en passant une <em>deuxième</em> source — un autre épisode, un autre live — qu'on voit ce que l'outil sait vraiment faire.</p>${bouton('Utiliser ma seconde analyse →', origin + '/app')}`) },
+          { key: 'b-j6', days: 6, subject: 'Le clip que tu n\'as pas encore choisi',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Sur une vidéo longue, l'IA propose une dizaine d'extraits. Le premier n'est presque jamais le meilleur — c'est souvent le troisième ou le septième qui tourne.</p><p style="line-height:1.7;margin:0 0 20px">Si tu n'as regardé que les premiers, il reste probablement quelque chose dans ta liste. Et ton analyse gratuite du mois est toujours disponible.</p>${bouton('Revoir mes clips →', origin + '/app')}`) },
+          { key: 'b-j12', days: 12, subject: 'Ce qui change quand on publie en série',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Un clip isolé ne dit rien. Les plateformes distribuent prudemment pendant les deux premières semaines, le temps d'évaluer à qui te montrer — il faut une trentaine de clips avant que les chiffres veuillent dire quelque chose.</p><p style="line-height:1.7;margin:0 0 20px">C'est le vrai intérêt d'une formule : produire assez pour que la régularité joue. Le détail est ici : <a href="${origin}/blog/combien-de-temps-avant-resultats-clips.html" style="color:#111">combien de temps avant d'avoir des résultats</a>.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, essai 7 jours sans prélèvement</p></div>${bouton('Voir les formules →', origin + '/#tarifs')}`) },
+        ];
+
+        for (const seq of SEQ_UNE_FOIS) {
+          try {
+            const [from, to] = bornesJour(seq.days);
+            const candidats = [];
+            for (const [uid, nb] of nbParUser) {
+              if (nb !== 1) continue;                       // exactement une génération
+              const t = premiereParUser.get(uid);
+              if (t < from.getTime() || t > to.getTime()) continue;
+              candidats.push(uid);
+            }
+            if (!candidats.length) continue;
+            const liste = candidats.map(encodeURIComponent).join(',');
+            const users = await supabase(`/users?select=id,email,nom&plan=eq.gratuit&id=in.(${liste})`);
+            if (!Array.isArray(users)) continue;
+            for (const u of users) {
+              const nom = u.nom || u.email?.split('@')[0] || 'Créateur';
+              if (dry) { cronLog.push(`[dry] ${seq.key} → ${u.email}`); continue; }
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Créatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: seq.subject, htmlContent: seq.body(nom) })
+              });
+              if (r.ok) { totalSent++; cronLog.push(`${seq.key} → ${u.email}`); }
+            }
+          } catch (e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
+        }
+
+        /* ---------- Rattrapage du stock ----------
+           Les pistes ci-dessus ne regardent qu'un jour precis. Or il existe un arriere
+           de comptes qui ont genere une seule fois il y a des semaines et n'ont jamais
+           recu le bon message, puisque le ciblage etait casse. `?rattrapage=1` les traite
+           en une passe.
+
+           Garde-fous volontaires : simulation par defaut (il faut `&go=1` pour envoyer),
+           plafond de 60 destinataires par appel, fenetre bornee a 45 jours pour ne pas
+           reveiller des comptes froids depuis des mois. */
+        if (req.query?.rattrapage === '1') {
+          const envoiReel = req.query?.go === '1';
+          const plafond = Math.min(parseInt(req.query?.max || '60', 10) || 60, 200);
+          const borneMin = now.getTime() - 45 * 864e5;
+          const borneMax = now.getTime() - 13 * 864e5;   // au-dela de b-j12, donc jamais couvert
+
+          const candidats = [];
+          for (const [uid, nb] of nbParUser) {
+            if (nb !== 1) continue;
+            const t = premiereParUser.get(uid);
+            if (t < borneMin || t > borneMax) continue;
+            candidats.push(uid);
+          }
+          const retenus = candidats.slice(0, plafond);
+          let rattrapes = 0;
+          if (retenus.length) {
+            const liste = retenus.map(encodeURIComponent).join(',');
+            const users = await supabase(`/users?select=id,email,nom&plan=eq.gratuit&id=in.(${liste})`);
+            for (const u of (Array.isArray(users) ? users : [])) {
+              const nom = u.nom || u.email?.split('@')[0] || 'Createur';
+              if (!envoiReel) { cronLog.push(`[simulation] rattrapage -> ${u.email}`); continue; }
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Creatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: SEQ_UNE_FOIS[0].subject, htmlContent: SEQ_UNE_FOIS[0].body(nom) })
+              });
+              if (r.ok) { rattrapes++; totalSent++; cronLog.push(`rattrapage -> ${u.email}`); }
+            }
+          }
+          console.log('[EmailCron/rattrapage]', cronLog);
+          return res.status(200).json({ ok: true, rattrapage: true, simulation: !envoiReel, candidats: candidats.length, traites: retenus.length, envoyes: rattrapes, log: cronLog });
+        }
+
         console.log('[EmailCron]', cronLog);
-        return res.status(200).json({ ok: true, sent: totalSent, log: cronLog });
+        return res.status(200).json({ ok: true, sent: totalSent, dry, log: cronLog });
       }
 
       /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'a
