@@ -277,6 +277,20 @@
       }
     },
     {
+      "src": "/tk",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/ig",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
