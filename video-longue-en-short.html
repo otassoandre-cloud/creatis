@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transformer une vidéo longue en Shorts — automatique | Créatis</title>
+  <meta name="description" content="Une vidéo d'une heure contient de quoi faire une dizaine de formats courts. L'IA repère les passages, découpe, recadre en 9:16 et sous-titre.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://creatis.app/video-longue-en-short.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Une vidéo longue, une série de Shorts">
+  <meta property="og:description" content="Une vidéo d'une heure contient de quoi faire une dizaine de formats courts. L'IA repère les passages, découpe, recadre en 9:16 et sous-titre.">
+  <meta property="og:url" content="https://creatis.app/video-longue-en-short.html">
+  <meta property="og:locale" content="fr_FR">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Une vidéo longue, une série de Shorts",
+  "description": "Une vidéo d'une heure contient de quoi faire une dizaine de formats courts. L'IA repère les passages, découpe, recadre en 9:16 et sous-titre.",
+  "url": "https://creatis.app/video-longue-en-short.html",
+  "applicationCategory": "MultimediaApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "inLanguage": "fr"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Combien de Shorts peut-on tirer d'une vidéo longue ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cela dépend de la densité plus que de la durée. Un podcast ou une interview est le format le plus rentable, chaque réponse étant autonome. Une conférence de 45 minutes donne raisonnablement trois à six extraits solides."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Quelle est l'étape qui prend le plus de temps ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Le repérage : 45 à 90 minutes pour une vidéo de deux heures. C'est le poste le plus lourd et le plus invisible, puisqu'il ne produit aucun fichier tout en décidant de la qualité de tout le reste. C'est celui qui est automatisé ici."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-on utiliser d'anciennes vidéos ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, et c'est souvent le stock le plus rentable : une vidéo ancienne n'a été vue que par ton audience de l'époque, et les plateformes courtes n'ont aucune mémoire de son origine. Trie sur le caractère intemporel plutôt que sur la performance passée."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Faut-il refaire les clips pour chaque plateforme ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Non. Le même fichier vertical 1080×1920 part sur TikTok, Reels et Shorts sans retouche. Seule la légende mérite d'être réécrite selon la plateforme, en particulier sur LinkedIn où le texte compte autant que la vidéo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Les sous-titres sont-ils inclus ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Oui, calés mot par mot et incrustés dans l'image. Ce n'est pas une option : l'essentiel des vues en format court se fait son coupé, et un clip sans sous-titres perd son audience dans les deux premières secondes."
+      }
+    }
+  ]
+}
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <style>
+    .outil-page { max-width: 880px; margin: 0 auto; padding: 52px 24px 80px; }
+    .outil-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--vert, #10b981); padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+    .outil-page h1 { font-size: clamp(27px, 5vw, 40px); line-height: 1.15; margin: 0 0 14px; }
+    .outil-page h1 span { color: var(--vert, #10b981); }
+    .outil-sub { color: #9ca3af; font-size: 17px; line-height: 1.7; margin: 0 0 30px; max-width: 640px; }
+    .outil-form { display: flex; gap: 8px; flex-wrap: wrap; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 8px; margin-bottom: 10px; }
+    .outil-form input { flex: 1 1 260px; background: none; border: none; outline: none; color: #fff; font-size: 15px; font-family: inherit; padding: 12px 14px; }
+    .outil-form button { background: var(--vert, #10b981); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; }
+    .outil-hint { font-size: 13px; color: #f97316; margin: 0 0 18px; display: none; }
+    .outil-rassure { font-size: 13px; color: #6b7280; margin: 0 0 44px; }
+    .outil-page h2 { font-size: 23px; margin: 40px 0 14px; }
+    .outil-page h3 { font-size: 17px; margin: 26px 0 8px; color: var(--vert, #10b981); }
+    .outil-page p, .outil-page li { color: #d1d5db; line-height: 1.8; }
+    .etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 22px 0; }
+    .etape { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; padding: 18px; }
+    .etape b { display: block; color: #fff; margin-bottom: 6px; }
+    .etape span { font-size: 14px; color: #9ca3af; line-height: 1.6; }
+    .outil-faq details { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 14px 0; }
+    .outil-faq summary { cursor: pointer; font-weight: 600; color: #fff; }
+    .outil-faq p { margin: 10px 0 0; font-size: 14.5px; }
+    .outil-cta { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); border-radius: 16px; padding: 28px; text-align: center; margin-top: 44px; }
+    .outil-cta h3 { margin: 0 0 8px; font-size: 20px; color: #fff; }
+    .outil-cta p { color: #9ca3af; margin: 0 0 18px; font-size: 14.5px; }
+    .outil-cta a { display: inline-block; background: var(--vert, #10b981); color: #000; padding: 14px 30px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08);max-width:1100px;margin:0 auto">
+  <a href="/" style="color:#fff;text-decoration:none;font-weight:800">Créatis</a>
+  <a href="/outils.html" style="color:#9ca3af;text-decoration:none;font-size:14px">Tous les outils</a>
+</nav>
+
+<main class="outil-page">
+  <div class="outil-badge">📐 Format 9:16 · sous-titres inclus</div>
+  <h1>Une vidéo longue, <span>une série de Shorts</span></h1>
+  <p class="outil-sub">Une vidéo d'une heure contient presque toujours de quoi tenir plusieurs semaines en format court. Le travail qui coûte n'est pas le montage, c'est de trouver les passages — et c'est exactement ce que l'outil fait à ta place.</p>
+
+  <form class="outil-form" onsubmit="return demarrer(event)">
+    <input type="text" id="lien" placeholder="Colle un lien YouTube" inputmode="url"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button type="submit">Transformer ⚡</button>
+  </form>
+  <p class="outil-hint" id="hint"></p>
+  <p class="outil-rassure">Analyse gratuite · sans carte bancaire · tu vois les clips avant de payer</p>
+
+<h2>Combien de Shorts dans une vidéo longue ?</h2>
+  <p>La réponse dépend beaucoup moins de la durée que de la <strong>densité</strong>. Un podcast dense donne plus qu'un stream de six heures où il ne se passe rien.</p>
+  <div class="etapes">
+    <div class="etape"><b>Podcast ou interview</b><span>Format le plus rentable : chaque réponse à une question est structurellement autonome.</span></div>
+    <div class="etape"><b>Conférence</b><span>Trois à six extraits solides pour 45 minutes. La densité d'affirmations autonomes y est faible.</span></div>
+    <div class="etape"><b>Stream commenté</b><span>Très variable. Ce sont les réactions qui font les clips, pas l'action elle-même.</span></div>
+  </div>
+  <p>Le calcul détaillé est dans <a href="/blog/combien-shorts-extraire-video-youtube.html">combien de Shorts extraire d'une vidéo YouTube</a>.</p>
+
+  <h2>Le vrai coût n'est pas le montage</h2>
+  <p>Sur une vidéo de deux heures, le repérage — regarder, noter les bons moments — prend 45 à 90 minutes. C'est le poste le plus lourd, et le plus invisible : il ne produit aucun fichier alors qu'il décide de la qualité de tout le reste.</p>
+  <p>C'est cette étape qui est automatisée ici. Le montage, lui, est la partie facile une fois qu'on sait où couper.</p>
+
+  <h2>Ton archive vaut probablement plus que ta prochaine vidéo</h2>
+  <p>Une vidéo publiée il y a deux ans n'a été vue que par ton audience d'il y a deux ans — beaucoup plus petite qu'aujourd'hui. Et les plateformes courtes n'ont aucune mémoire de son origine : pour TikTok, un extrait d'une vieille vidéo est un contenu neuf.</p>
+  <p>Le tri se fait sur le caractère intemporel, pas sur la performance passée. Voir <a href="/blog/recycler-anciennes-videos.html">recycler ses anciennes vidéos en clips</a>.</p>
+
+  <h2>Où publier ensuite</h2>
+  <p>Le même fichier vertical part sur TikTok, Reels et Shorts sans retouche. Deux plateformes méritent une attention particulière : <a href="/blog/clips-pour-linkedin.html">LinkedIn</a>, où le texte du post compte autant que la vidéo, et <a href="/blog/clips-pour-facebook-reels.html">Facebook Reels</a>, nettement moins saturé parce que presque personne n'y publie.</p>
+
+  <h2>Questions fréquentes</h2>
+  <div class="outil-faq">
+    <details>
+      <summary>Combien de Shorts peut-on tirer d'une vidéo longue ?</summary>
+      <p>Cela dépend de la densité plus que de la durée. Un podcast ou une interview est le format le plus rentable, chaque réponse étant autonome. Une conférence de 45 minutes donne raisonnablement trois à six extraits solides.</p>
+    </details>
+    <details>
+      <summary>Quelle est l'étape qui prend le plus de temps ?</summary>
+      <p>Le repérage : 45 à 90 minutes pour une vidéo de deux heures. C'est le poste le plus lourd et le plus invisible, puisqu'il ne produit aucun fichier tout en décidant de la qualité de tout le reste. C'est celui qui est automatisé ici.</p>
+    </details>
+    <details>
+      <summary>Peut-on utiliser d'anciennes vidéos ?</summary>
+      <p>Oui, et c'est souvent le stock le plus rentable : une vidéo ancienne n'a été vue que par ton audience de l'époque, et les plateformes courtes n'ont aucune mémoire de son origine. Trie sur le caractère intemporel plutôt que sur la performance passée.</p>
+    </details>
+    <details>
+      <summary>Faut-il refaire les clips pour chaque plateforme ?</summary>
+      <p>Non. Le même fichier vertical 1080×1920 part sur TikTok, Reels et Shorts sans retouche. Seule la légende mérite d'être réécrite selon la plateforme, en particulier sur LinkedIn où le texte compte autant que la vidéo.</p>
+    </details>
+    <details>
+      <summary>Les sous-titres sont-ils inclus ?</summary>
+      <p>Oui, calés mot par mot et incrustés dans l'image. Ce n'est pas une option : l'essentiel des vues en format court se fait son coupé, et un clip sans sous-titres perd son audience dans les deux premières secondes.</p>
+    </details>
+  </div>
+
+  <div class="outil-cta">
+    <h3>Ce que tu as déjà tourné vaut plus que ce que tu vas tourner</h3>
+    <p>Analyse gratuite · sans carte bancaire</p>
+    <a href="/clips-v2.html">⚡ Essayer maintenant</a>
+  </div>
+</main>
+
+<footer style="text-align:center;padding:32px 24px;color:#6b7280;font-size:13px;border-top:1px solid rgba(255,255,255,0.08);margin-top:40px">
+  © 2026 Créatis · <a href="/outils.html" style="color:#9ca3af">Outils</a> · <a href="/blog.html" style="color:#9ca3af">Blog</a> · <a href="/cgu.html" style="color:#9ca3af">CGU</a>
+</footer>
+
+<script>
+/* Meme comportement que le hero de l'accueil : on memorise le lien puis on passe par
+   l'inscription. Le lien n'est pas perdu en route, c'est tout l'interet. */
+function demarrer(e) {
+  e.preventDefault();
+  var champ = document.getElementById('lien');
+  var hint = document.getElementById('hint');
+  var v = (champ && champ.value || '').trim();
+  var estYT = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\//i.test(v);
+  if (v && !estYT) {
+    hint.textContent = "Ce lien n'est pas une URL YouTube — exemple : https://youtu.be/xxxxxxxxxxx";
+    hint.style.display = 'block';
+    champ.focus();
+    return false;
+  }
+  hint.style.display = 'none';
+  if (v) { try { localStorage.setItem('creatis_pending_yt', JSON.stringify({ url: v, ts: Date.now() })); } catch (_) {} }
+  window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+  return false;
+}
+</script>
+</body>
+</html>

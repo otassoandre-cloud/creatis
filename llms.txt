@@ -41,6 +41,9 @@ Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et info
 - [Creatives publicitaires](https://creatis.app/blog/clips-pour-publicite.html): la creative qualifie, le clip retient — et tester dix angles
 - [Combien de temps avant des resultats](https://creatis.app/blog/combien-de-temps-avant-resultats-clips.html): 3 phases, 6 semaines, 30 clips
 - [Calculateur de revenus clipping](https://creatis.app/calculateur-revenus-clipping.html): combien de clips/jour pour un objectif, au taux REELLEMENT verse (0,39 $/1000, pas 1-5 $)
+- [Montage video par IA](https://creatis.app/montage-video-ia.html): decoupage a partir de la transcription, pas de l'image
+- [Couper une video YouTube](https://creatis.app/couper-video-youtube.html): les bornes sont proposees, pas a chercher
+- [Video longue en Shorts](https://creatis.app/video-longue-en-short.html): combien d'extraits selon le type de source
 - [Blog complet](https://creatis.app/blog.html): tous les guides
 
 ## Comparatifs
