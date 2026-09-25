@@ -197,6 +197,18 @@ module.exports = [
   <p>Conséquence pratique : le compteur public de ton clip et le compteur de la campagne ne coïncideront pas. L'écart est structurel. Anticipe-le au lieu de le découvrir au moment du paiement.</p>`,
       },
       {
+        titre: 'Ce que Whop verse réellement',
+        corps: `  <p>Le suivi public des paiements de Content Rewards donne des repères qu'aucune page de vente ne met en avant :</p>
+  <ul>
+    <li><strong>887 000 $ versés sur le seul mois de février 2026</strong> ;</li>
+    <li><strong>2,58 millions de dollars au total, à 8 466 gagnants, pour 6,6 milliards de vues</strong> ;</li>
+    <li>soit un <strong>taux effectif d'environ 0,39 $ pour 1 000 vues</strong>, là où les campagnes affichent couramment 1 à 5 $ ;</li>
+    <li>et <strong>environ 305 $ de gains cumulés en moyenne par clippeur</strong> — une moyenne tirée vers le haut par une minorité, donc la majorité est nettement en dessous.</li>
+  </ul>
+  <p>Deux lectures, et il faut tenir les deux. Le marché est <strong>réel et actif</strong> : près de neuf cent mille dollars en un mois ne sont pas une illusion. Et l'écart entre le taux affiché et le taux versé est <strong>d'un facteur trois à treize</strong>, parce que le taux annoncé ne s'applique qu'aux vues validées, dans la fenêtre de comptage, et tant que le budget tient.</p>
+  <p>Le détail de ces trois filtres est dans <a href="/blog/combien-paye-1000-vues-clipping.html">combien paye 1 000 vues en clipping</a>.</p>`,
+      },
+      {
         titre: 'Le point qui change tout pour un clippeur français',
         corps: `  <p>La majorité des campagnes actives portent sur du contenu anglophone — créateurs américains, streamers internationaux, marques anglo-saxonnes. Pour un clippeur francophone, ça pose deux questions concrètes.</p>
   <p><strong>Sur quelle audience publies-tu ?</strong> Un clip anglophone publié depuis un compte configuré en français sera distribué à une audience mixte, souvent moins bien. Si tu prends des campagnes anglophones, assume l'anglais jusqu'au bout : compte, description, sous-titres.</p>
