@@ -1735,7 +1735,12 @@ async def _gemini(prompt: str) -> str:
                 f"https://generativelanguage.googleapis.com/v1beta/models/{modele}:generateContent?key={GEMINI_API_KEY}",
                 json={
                     "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
+                    # 24576 et non 8192 : les modeles Gemini 3 paient leur
+                    # raisonnement sur ce meme budget. A 8192, la reponse JSON
+                    # se coupait en plein milieu — « Expecting ',' delimiter:
+                    # line 1 column 1685 » sur une analyse reelle du 26/09 — et
+                    # un JSON tronque est indistinguable d'une panne.
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 24576},
                 },
             )
             # 429 quota epuise, 404 modele retire, 5xx surcharge passagere :
@@ -3117,13 +3122,21 @@ Transcription (extrait) :
     # 26/09/2026 chemin de SECOURS quand Groq est a bout de budget. C'est le
     # dernier recours : s'il tombe aussi, alors seulement on dit au client que
     # le service est sature, parce que cette fois c'est vrai.
-    try:
-        highlights = await get_highlights(transcript, n)
-    except Exception as e:
-        logger.error(f"[identify_clips] Gemini a echoue apres Groq: {e}")
-        raise RuntimeError(
-            "Le service d'analyse est saturé — réessaie dans quelques minutes, "
-            "ta vidéo n'est pas perdue.")
+    # TROIS ESSAIS, PAS UN. Un modele qui rend du JSON le rend parfois mal —
+    # tronque, precede d'un preambule, une virgule manquante. Mesure du
+    # 26/09/2026 : le premier appel a casse sur un JSON coupe, le suivant a
+    # rendu 20 clips avec la meme source et le meme prompt. Abandonner au
+    # premier defaut, c'est transformer un hoquet en panne pour le client.
+    highlights = None
+    for essai in range(3):
+        try:
+            highlights = await get_highlights(transcript, n)
+            if highlights:
+                break
+        except Exception as e:
+            logger.warning(f"[identify_clips] Gemini essai {essai + 1}/3 en echec: {e}")
+            if essai < 2:
+                await asyncio.sleep(2.0 * (essai + 1))
     if not highlights:
         raise RuntimeError(
             "Le service d'analyse est saturé — réessaie dans quelques minutes, "
