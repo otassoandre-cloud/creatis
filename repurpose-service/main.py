@@ -3042,22 +3042,53 @@ Transcription (extrait) :
         results = await asyncio.gather(*(bounded(c) for c in chunks))
         # On n'echoue que si l'attente a reellement ete epuisee ET que rien n'est sorti :
         # quelques 429 absorbes par les pauses ne sont plus un motif d'echec.
-        if refus["jour"] and not any(results):
-            raise RuntimeError(
-                "Le budget d'analyse du jour est épuisé — réessaie dans "
-                f"{refus['jour']}. Ta vidéo n'est pas perdue.")
-        if refus["attente"] >= BUDGET_ATTENTE and not any(results):
-            raise RuntimeError("Service d'analyse saturé")
-        all_clips = [clip for chunk_clips in results for clip in chunk_clips]
-        logger.info(f"[identify_clips] {len(chunks)} morceau(x), {len(all_clips)} candidats avant dédoublonnage")
+        # GROQ EPUISE N'EST PLUS UN ECHEC — GEMINI PREND LE RELAIS.
+        #
+        # Jusqu'au 26/09/2026 ces deux cas levaient une exception et le client
+        # lisait « Le service d'analyse est saturé ». Un abonné a 14 EUR/mois l'a
+        # eu plusieurs jours d'affilee avant d'ecrire. Or le repli Gemini existe
+        # une vingtaine de lignes plus bas, configure et avec son propre quota :
+        # il ne servait que si Groq n'avait AUCUNE cle, c'est-a-dire jamais en
+        # production. Le seul cas ou il aurait servi a quelque chose — Groq
+        # present mais a bout de budget — etait precisement celui ou on
+        # abandonnait. On tombe dedans au lieu de renvoyer une erreur.
+        #
+        # Le plafond derriere tout ca : 8 000 tokens/minute et 200 000 par JOUR
+        # pour toute l'organisation au palier gratuit de Groq, soit six a huit
+        # videos longues pour TOUS les clients reunis. Ce repli fait tenir le
+        # service ; il ne remplace pas le passage au palier payant.
+        epuise = (bool(refus["jour"]) or refus["attente"] >= BUDGET_ATTENTE) and not any(results)
+        if epuise:
+            logger.error(
+                "[identify_clips] Groq epuise ("
+                + (f"budget du jour, reprise dans {refus['jour']}" if refus["jour"]
+                   else "attente epuisee")
+                + ") — bascule sur Gemini")
+        else:
+            all_clips = [clip for chunk_clips in results for clip in chunk_clips]
+            logger.info(f"[identify_clips] {len(chunks)} morceau(x), {len(all_clips)} candidats avant dédoublonnage")
 
-        # Garde-fou anti-chevauchement en code (pas seulement dans le prompt) — nécessaire dès que
-        # plusieurs morceaux sont fusionnés, et rattrape aussi le cas où le modèle suit mal la consigne.
-        deduped = _dedupe_highlights(all_clips)
-        return deduped[:n]
+            # Garde-fou anti-chevauchement en code (pas seulement dans le prompt) — nécessaire dès que
+            # plusieurs morceaux sont fusionnés, et rattrape aussi le cas où le modèle suit mal la consigne.
+            deduped = _dedupe_highlights(all_clips)
+            return deduped[:n]
 
-    # fallback Gemini
-    highlights = await get_highlights(transcript, n)
+    # REPLI GEMINI — chemin normal quand Groq n'a pas de cle, et depuis le
+    # 26/09/2026 chemin de SECOURS quand Groq est a bout de budget. C'est le
+    # dernier recours : s'il tombe aussi, alors seulement on dit au client que
+    # le service est sature, parce que cette fois c'est vrai.
+    try:
+        highlights = await get_highlights(transcript, n)
+    except Exception as e:
+        logger.error(f"[identify_clips] Gemini a echoue apres Groq: {e}")
+        raise RuntimeError(
+            "Le service d'analyse est saturé — réessaie dans quelques minutes, "
+            "ta vidéo n'est pas perdue.")
+    if not highlights:
+        raise RuntimeError(
+            "Le service d'analyse est saturé — réessaie dans quelques minutes, "
+            "ta vidéo n'est pas perdue.")
+    logger.info(f"[identify_clips] {len(highlights)} clips via Gemini")
     return [
         {"start_time": h["start_time"], "end_time": h["end_time"],
          "title": h.get("title", ""), "hook": h.get("hook_sentence", ""),
