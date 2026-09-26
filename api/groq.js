@@ -154,6 +154,7 @@ module.exports = async (req, res) => {
 
   const groqKey     = process.env.GROQ_API_KEY;
   const togetherKey = process.env.TOGETHER_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   if (!groqKey) return res.status(500).json({ error: 'Groq API non configurée' });
 
   const { model, messages, temperature, max_tokens } = req.body || {};
@@ -234,6 +235,58 @@ module.exports = async (req, res) => {
       console.error('[Together] Erreur:', togetherRes.status, errData);
     } catch (err) {
       console.error('[Together] Erreur réseau:', err.message);
+    }
+  }
+
+  /* ── Dernier filet : Gemini ──────────────────────────────────────────────
+     Together est a 402 depuis le 15/09 (compte a sec), donc le filet precedent
+     ne rattrapait plus rien : quand le budget Groq du jour etait consomme —
+     200 000 tokens pour TOUTE l'organisation, soit quelques heures de trafic —
+     l'assistant renvoyait « Impossible de joindre Groq » a tout le monde. Un
+     abonne l'a signale le 26/09 : « je ne peux meme pas joindre Creatis IA ».
+
+     Gemini a son propre quota, independant de Groq. Son API ne parle pas le
+     dialecte OpenAI : on traduit a l'aller (roles -> `contents`, le message
+     systeme devenant `system_instruction`) et au retour (texte -> `choices`),
+     pour que le client ne voie aucune difference. */
+  if (geminiKey) {
+    try {
+      const systeme = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+      const contents = messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+      const corps = {
+        contents: contents.length ? contents : [{ role: 'user', parts: [{ text: systeme || 'Bonjour' }] }],
+        generationConfig: { temperature: params.temperature, maxOutputTokens: params.max_tokens },
+      };
+      if (systeme && contents.length) corps.system_instruction = { parts: [{ text: systeme }] };
+
+      const gRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) },
+      );
+      if (gRes.ok) {
+        const data = await gRes.json();
+        const texte = (data?.candidates?.[0]?.content?.parts || [])
+          .map((part) => part.text || '')
+          .join('')
+          .trim();
+        if (texte) {
+          console.warn('[Gemini] Filet active — Groq et Together indisponibles');
+          return res.status(200).json({
+            id: 'gemini-' + Date.now(),
+            object: 'chat.completion',
+            model: 'gemini-3.6-flash',
+            choices: [{ index: 0, message: { role: 'assistant', content: texte }, finish_reason: 'stop' }],
+            usage: data?.usageMetadata || {},
+          });
+        }
+        console.error('[Gemini] Reponse vide');
+      } else {
+        console.error('[Gemini] Erreur:', gRes.status, (await gRes.text().catch(() => '')).slice(0, 200));
+      }
+    } catch (err) {
+      console.error('[Gemini] Erreur reseau:', err.message);
     }
   }
 
