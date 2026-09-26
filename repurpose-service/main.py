@@ -1704,19 +1704,59 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 {{"highlights":[{{"title":"string","start_time":float,"end_time":float,"score":int,"hook_sentence":"string","virality_reason":"string"}}]}}"""
 
 
+# PLUSIEURS MODELES, PAS UN SEUL.
+#
+# Les quotas gratuits de Google se comptent PAR MODELE. Le 26/09/2026,
+# `gemini-3.6-flash` renvoyait 429 « You exceeded your current quota » pendant
+# que `gemini-3.5-flash` et les `flash-lite` repondaient normalement avec la
+# meme cle. Tant qu'un seul modele etait code en dur, son quota epuise
+# suffisait a couper tout le repli — c'est-a-dire a annuler la protection au
+# moment precis ou elle devait servir.
+#
+# L'ordre va du plus capable au plus econome : le premier qui repond gagne. Un
+# 429 ou un 404 (modele retire — c'est arrive a gemini-2.0-flash le 21/08) fait
+# passer au suivant sans bruit ; toute autre erreur est remontee, elle ne se
+# repare pas en changeant de modele.
+MODELES_GEMINI = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
+
+
 async def _gemini(prompt: str) -> str:
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY manquant")
+    dernier = None
     async with httpx.AsyncClient(timeout=120) as c:
-        r = await c.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}",
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
-            },
-        )
-        r.raise_for_status()
-        return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        for modele in MODELES_GEMINI:
+            r = await c.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{modele}:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
+                },
+            )
+            # 429 quota epuise, 404 modele retire, 5xx surcharge passagere :
+            # trois raisons d'essayer le suivant plutot que d'abandonner.
+            if r.status_code in (429, 404) or r.status_code >= 500:
+                # Jamais la cle dans le journal : elle voyage dans l'URL, et
+                # `raise_for_status()` la recopiait telle quelle dans le message
+                # d'erreur — elle s'est retrouvee en clair dans les logs Railway.
+                logger.warning(f"[gemini] {modele} indisponible ({r.status_code}), modele suivant")
+                dernier = r.status_code
+                continue
+            if r.status_code >= 400:
+                # SURTOUT PAS `raise_for_status()` : httpx recopie l'URL dans le
+                # message, et la cle Gemini voyage DANS l'URL. Le 26/09/2026 elle
+                # s'est retrouvee en clair dans les journaux Railway par ce
+                # chemin exact. On ne remonte que le code et le debut du corps.
+                raise RuntimeError(f"Gemini {modele} a repondu {r.status_code}: {r.text[:200]}")
+            if modele != MODELES_GEMINI[0]:
+                logger.info(f"[gemini] repondu par {modele}")
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raise RuntimeError(f"Aucun modele Gemini disponible (dernier code {dernier})")
 
 
 def _parse_json(raw: str) -> Dict:

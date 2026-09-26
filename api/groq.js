@@ -257,33 +257,56 @@ module.exports = async (req, res) => {
         .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
       const corps = {
         contents: contents.length ? contents : [{ role: 'user', parts: [{ text: systeme || 'Bonjour' }] }],
-        generationConfig: { temperature: params.temperature, maxOutputTokens: params.max_tokens },
+        /* Les modeles Gemini 3 raisonnent AVANT de repondre et paient ce
+           raisonnement sur le meme budget de sortie. Recopier `max_tokens` tel
+           quel rendait des reponses coupees au premier mot : un essai a 120
+           jetons a renvoye « Bonjour » et rien d'autre. On ajoute donc une
+           reserve pour la reflexion, et un plancher pour les petites demandes. */
+        generationConfig: {
+          temperature: params.temperature,
+          maxOutputTokens: Math.max(params.max_tokens, 1024) + 2048,
+        },
       };
       if (systeme && contents.length) corps.system_instruction = { parts: [{ text: systeme }] };
 
-      const gRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) },
-      );
-      if (gRes.ok) {
+      /* Les quotas gratuits de Google se comptent PAR MODELE : le 26/09/2026,
+         gemini-3.6-flash renvoyait 429 pendant que gemini-3.5-flash repondait
+         avec la MEME cle. Un seul modele code en dur, c'est un filet qui cede
+         au moment ou il doit servir. Du plus capable au plus econome, le
+         premier qui repond gagne ; 429 et 404 passent au suivant. */
+      const MODELES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+      for (const modele of MODELES) {
+        const gRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent?key=${geminiKey}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) },
+        );
+        /* 429 quota epuise, 404 modele retire, 5xx surcharge passagere : trois
+           raisons d'essayer le suivant. Un 503 faisait auparavant abandonner
+           toute la chaine alors que les modeles d'apres etaient disponibles.
+           On ne s'arrete que sur une 4xx de contenu — un prompt refuse le sera
+           par tous les modeles, changer de cheval n'y changerait rien. */
+        if (gRes.status === 429 || gRes.status === 404 || gRes.status >= 500) {
+          console.warn(`[Gemini] ${modele} indisponible (${gRes.status}), modele suivant`);
+          continue;
+        }
+        if (!gRes.ok) {
+          console.error('[Gemini] Erreur:', gRes.status, (await gRes.text().catch(() => '')).slice(0, 200));
+          break;
+        }
         const data = await gRes.json();
         const texte = (data?.candidates?.[0]?.content?.parts || [])
           .map((part) => part.text || '')
           .join('')
           .trim();
-        if (texte) {
-          console.warn('[Gemini] Filet active — Groq et Together indisponibles');
-          return res.status(200).json({
-            id: 'gemini-' + Date.now(),
-            object: 'chat.completion',
-            model: 'gemini-3.6-flash',
-            choices: [{ index: 0, message: { role: 'assistant', content: texte }, finish_reason: 'stop' }],
-            usage: data?.usageMetadata || {},
-          });
-        }
-        console.error('[Gemini] Reponse vide');
-      } else {
-        console.error('[Gemini] Erreur:', gRes.status, (await gRes.text().catch(() => '')).slice(0, 200));
+        if (!texte) { console.error('[Gemini] Reponse vide de', modele); continue; }
+        console.warn(`[Gemini] Filet active via ${modele} — Groq et Together indisponibles`);
+        return res.status(200).json({
+          id: 'gemini-' + Date.now(),
+          object: 'chat.completion',
+          model: modele,
+          choices: [{ index: 0, message: { role: 'assistant', content: texte }, finish_reason: 'stop' }],
+          usage: data?.usageMetadata || {},
+        });
       }
     } catch (err) {
       console.error('[Gemini] Erreur reseau:', err.message);
