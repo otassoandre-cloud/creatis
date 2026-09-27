@@ -14,46 +14,76 @@ import { COULEURS } from "./theme";
 /**
  * TUTORIEL YOUTUBE — 1920x1080, 45 s.
  *
- * Le premier format 16:9 du projet : toutes les autres compositions sont en
- * 1080x1920. Il existe parce que YouTube n'est pas un fil vertical — on y vient
- * pour APPRENDRE quelque chose, et on accepte d'y rester une minute.
+ * ── CE QUI A ÉTÉ CORRIGÉ, ET POURQUOI ────────────────────────────────────
+ * La première version posait l'enregistrement VERTICAL d'un téléphone dans un
+ * coin du cadre, avec un titre de 76 px à côté. C'est un réflexe de format
+ * court appliqué à YouTube, et aucun créateur ne travaille comme ça. Sur un
+ * écran d'ordinateur le spectateur est à cinquante centimètres d'une grande
+ * dalle : il veut VOIR l'écran, pas lire une affiche.
  *
- * ── CE QUE CETTE VIDÉO FAIT, ET QUE LES 68 AUTRES NE FAISAIENT PAS ───────
- * Elle enseigne. Le décrochage mesuré à 0:02 sur les précédentes était le moment
- * où le spectateur reconnaissait une publicité. Un tutoriel ne déclenche pas ce
- * réflexe : on y regarde quelqu'un faire une chose qu'on voudrait savoir faire.
- * Le produit apparaît parce qu'il est l'outil de la démonstration, pas parce
- * qu'on le vend.
+ * Les règles appliquées ici sont celles du format, pas des préférences :
  *
- * ── LA MISE EN PAGE ──────────────────────────────────────────────────────
- * L'enregistrement de l'application est vertical (1080x1920, c'est un écran de
- * téléphone). Le poser dans un cadre 16:9 laisse deux tiers de vide : ce vide
- * porte l'étape en cours, en texte. La vidéo garde donc sa taille native — pas
- * d'agrandissement, pas de recadrage — et la place perdue devient utile.
+ *  1. PLEIN CADRE. L'enregistrement occupe 100 % de l'image. Il est filmé en
+ *     1920x1080 par `enregistrer-parcours.mjs YOUTUBE=1` — une vraie fenêtre de
+ *     bureau, donc la disposition de bureau du site et du texte d'interface à sa
+ *     taille native. Rien n'est agrandi, donc rien ne se délave.
  *
- * ── LA DURÉE EST DICTÉE PAR LA VOIX ──────────────────────────────────────
- * Mesuré sur la voix « Charon » : 166 mots/minute. 45 s tiennent donc environ
- * 124 mots. Écrire plus long oblige à accélérer la lecture, et une voix pressée
- * est le premier signal qu'on regarde une publicité.
+ *  2. ZOOM PROGRESSIF sur ce qui compte. C'est LE geste du tutoriel : au lieu
+ *     d'une flèche ou d'un cercle rouge, la caméra se rapproche doucement de la
+ *     zone active. Le regard suit sans qu'on lui demande.
  *
- * ── DÉPENDANCES ──────────────────────────────────────────────────────────
- * `rec-complet.mp4` est produit par `enregistrer-parcours.mjs` et n'est JAMAIS
- * réutilisé d'une vidéo à l'autre : chaque tutoriel montre une vraie analyse,
- * faite ce jour-là, sur une vraie source. La voix vient de `generer-voix.mjs`.
+ *  3. TEXTE EN TIERS INFÉRIEUR, jamais au centre. Il ANNOTE, il ne raconte pas —
+ *     c'est la voix qui raconte. Deux lignes maximum, et il disparaît.
+ *
+ *  4. TYPOGRAPHIE MESURÉE. Titre 48 px, corps 30 px sur 1080 de haut. La version
+ *     précédente était à 76 et 36 : des tailles de format vertical, où l'on lit
+ *     à bout de bras sur un écran de six pouces.
+ *
+ *  5. ZONES INTERDITES. Les 12 % du bas sont couverts par la barre de progression
+ *     dès que la souris bouge, et le coin haut-droit par les fiches et l'écran de
+ *     fin. Rien d'important n'y est posé.
+ *
+ * ── LA DURÉE VIENT DE LA VOIX ────────────────────────────────────────────
+ * Mesuré sur « Charon » : 166 mots/minute. 45 s tiennent ~124 mots. Écrire plus
+ * long obligerait à accélérer, et une voix pressée est le premier signal qu'on
+ * regarde une publicité.
  */
 
 const FPS = 30;
 export const DUREE_TUTO = 45 * FPS; // 1350 images
 
-/** Les étapes, calées sur ce que montre l'enregistrement au même instant. */
-export type EtapeTuto = { debut: number; titre: string; detail: string };
+/** Marge de sécurité YouTube : rien d'important sous 88 % ni dans le coin haut-droit. */
+const BAS_SUR = 0.88;
+
+/**
+ * Une étape = un moment de l'enregistrement, une annotation, et une zone à
+ * regarder. `zoom` vaut 1 quand on montre l'écran entier ; au-delà, la caméra se
+ * rapproche de `cible` (coordonnées en fraction de l'image).
+ */
+export type EtapeTuto = {
+  debut: number;
+  titre: string;
+  detail: string;
+  zoom?: number;
+  cible?: { x: number; y: number };
+};
 
 export const ETAPES_DEFAUT: EtapeTuto[] = [
-  { debut: 0, titre: "1. Prends une vidéo longue", detail: "Un podcast, un live, une interview. Ce que tu as déjà publié fait l'affaire." },
-  { debut: 8, titre: "2. Colle le lien", detail: "Pas de téléchargement, pas de logiciel à installer." },
-  { debut: 16, titre: "3. L'IA lit ce qui est dit", detail: "Elle repère les passages qui tiennent tout seuls, pas les plus bruyants." },
-  { debut: 26, titre: "4. Tu choisis", detail: "Une dizaine de propositions. Le tri reste ton travail — c'est là qu'est la valeur." },
-  { debut: 34, titre: "5. Tu publies", detail: "Format 9:16, sous-titres incrustés. Prêt pour TikTok, Reels et Shorts." },
+  { debut: 0,  titre: "Une vidéo que tu as déjà publiée",
+    detail: "Podcast, live, interview — la source existe, elle ne coûte rien à produire.",
+    zoom: 1 },
+  { debut: 8,  titre: "Colle le lien",
+    detail: "Rien à télécharger, rien à installer.",
+    zoom: 1.5, cible: { x: 0.5, y: 0.34 } },
+  { debut: 17, titre: "L'IA lit ce qui est dit",
+    detail: "Elle cherche les passages qui se comprennent seuls, pas les plus bruyants.",
+    zoom: 1.25, cible: { x: 0.5, y: 0.45 } },
+  { debut: 27, titre: "Tu choisis",
+    detail: "Une dizaine de propositions. Le tri reste ton travail — c'est là qu'est la valeur.",
+    zoom: 1.15, cible: { x: 0.5, y: 0.52 } },
+  { debut: 36, titre: "Publie",
+    detail: "Format 9:16, sous-titres incrustés. TikTok, Reels, Shorts.",
+    zoom: 1.35, cible: { x: 0.5, y: 0.58 } },
 ];
 
 export type ReglageTuto = {
@@ -64,120 +94,58 @@ export type ReglageTuto = {
 };
 
 export const TUTO_DEFAUT: ReglageTuto = {
-  enregistrement: "rec-complet.mp4",
+  enregistrement: "rec-youtube.mp4",
   voix: "tuto-du-jour.mp3",
-  titre: "Transformer une vidéo longue en Shorts",
-};
-
-/** Apparition franche mais pas sèche — le texte doit se lire, pas surgir. */
-const entree = (frame: number, debut: number, fps: number) => {
-  const s = spring({ frame: frame - debut, fps, config: { damping: 200 }, durationInFrames: 12 });
-  return { opacity: s, transform: `translateY(${interpolate(s, [0, 1], [14, 0])}px)` };
+  titre: "Une vidéo longue → des Shorts",
 };
 
 export const TutoYouTube: React.FC<{ reglage?: ReglageTuto }> = ({
   reglage = TUTO_DEFAUT,
 }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const etapes = reglage.etapes ?? ETAPES_DEFAUT;
   const seconde = frame / fps;
 
-  // Dernière étape dont le début est passé : une seule est affichée à la fois.
-  const active = etapes.reduce((acc, e, i) => (seconde >= e.debut ? i : acc), 0);
-  const etape = etapes[active];
+  const iActive = etapes.reduce((acc, e, i) => (seconde >= e.debut ? i : acc), 0);
+  const etape = etapes[iActive];
+  const precedente = etapes[Math.max(0, iActive - 1)];
   const debutImages = etape.debut * fps;
 
-  /* L'enregistrement fait 20,4 s pour une vidéo de 45 s. Plutôt que de le geler
-     à la fin — ce qui donne l'impression d'un plantage — on le ralentit pour
-     qu'il couvre toute la durée. playbackRate < 1 : le geste reste lisible. */
+  /* Le zoom ne saute pas d'une étape à l'autre : il glisse sur une seconde et
+     demie. Un changement d'échelle brutal se lit comme une coupe, et une coupe
+     au milieu d'une démonstration donne l'impression qu'on a caché quelque chose. */
+  const t = interpolate(frame - debutImages, [0, 45], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const zoom = interpolate(t, [0, 1], [precedente.zoom ?? 1, etape.zoom ?? 1]);
+  const cible = etape.cible ?? { x: 0.5, y: 0.5 };
+  const cibleAv = precedente.cible ?? { x: 0.5, y: 0.5 };
+  const cx = interpolate(t, [0, 1], [cibleAv.x, cible.x]);
+  const cy = interpolate(t, [0, 1], [cibleAv.y, cible.y]);
+
+  /* L'enregistrement dure moins que la vidéo : on l'étale plutôt que de le geler
+     à la fin, un gel se lisant comme un plantage. */
   const cadence = 612 / DUREE_TUTO;
 
+  /* Le texte entre, tient, puis SORT avant l'étape suivante. Une annotation qui
+     reste affichée en permanence cesse d'être lue. */
+  const apparition = spring({ frame: frame - debutImages, fps, config: { damping: 200 }, durationInFrames: 10 });
+  const finEtape = (etapes[iActive + 1]?.debut ?? 45) * fps;
+  const sortie = interpolate(frame, [finEtape - 20, finEtape - 6], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const visible = Math.min(apparition, sortie);
+
   return (
-    <AbsoluteFill style={{ backgroundColor: COULEURS.fond, fontFamily: POLICE }}>
-      {/* Halo discret, repris de la charte du site. */}
+    <AbsoluteFill style={{ backgroundColor: "#000", fontFamily: POLICE }}>
+      {/* ── L'écran, plein cadre, avec la caméra qui se rapproche ── */}
       <AbsoluteFill
         style={{
-          background: `radial-gradient(900px 500px at 78% 40%, rgba(16,185,129,0.14), transparent 70%)`,
-        }}
-      />
-
-      {/* ── Colonne gauche : ce qu'on est en train de faire ── */}
-      <div
-        style={{
-          position: "absolute",
-          left: 96,
-          top: 0,
-          width: 900,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          gap: 28,
-        }}
-      >
-        <div
-          style={{
-            alignSelf: "flex-start",
-            padding: "8px 18px",
-            borderRadius: 999,
-            border: `1px solid rgba(16,185,129,0.3)`,
-            background: "rgba(16,185,129,0.1)",
-            color: COULEURS.vert,
-            fontSize: 26,
-            fontWeight: 700,
-          }}
-        >
-          {reglage.titre ?? "Tutoriel"}
-        </div>
-
-        <div key={active} style={entree(frame, debutImages, fps)}>
-          <div
-            style={{
-              fontSize: 76,
-              fontWeight: 800,
-              lineHeight: 1.08,
-              color: COULEURS.texte,
-              marginBottom: 22,
-            }}
-          >
-            {etape.titre}
-          </div>
-          <div style={{ fontSize: 36, lineHeight: 1.5, color: COULEURS.texteDoux, maxWidth: 800 }}>
-            {etape.detail}
-          </div>
-        </div>
-
-        {/* Progression : cinq traits, celui en cours en vert. Dit où on en est
-            sans prendre de place ni demander de lecture. */}
-        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-          {etapes.map((_, i) => (
-            <div
-              key={i}
-              style={{
-                width: 84,
-                height: 6,
-                borderRadius: 3,
-                background: i <= active ? COULEURS.vert : "rgba(255,255,255,0.14)",
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* ── Colonne droite : l'application, à sa taille native ── */}
-      <div
-        style={{
-          position: "absolute",
-          right: 110,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: 506,          // 900 de haut au ratio 9:16
-          height: 900,
-          borderRadius: 26,
-          overflow: "hidden",
-          border: `1px solid ${COULEURS.ligne}`,
-          boxShadow: "0 30px 90px rgba(0,0,0,0.55)",
+          transform: `scale(${zoom}) translate(${(0.5 - cx) * 100}%, ${(0.5 - cy) * 100}%)`,
+          transformOrigin: "center center",
         }}
       >
         <Video
@@ -187,6 +155,67 @@ export const TutoYouTube: React.FC<{ reglage?: ReglageTuto }> = ({
           objectFit="cover"
           muted
         />
+      </AbsoluteFill>
+
+      {/* Dégradé bas : sans lui, un texte clair posé sur une interface claire
+          devient illisible dès que le contenu de l'écran change. */}
+      <AbsoluteFill
+        style={{
+          background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 14%, transparent 30%)",
+        }}
+      />
+
+      {/* ── Tiers inférieur : l'annotation ── */}
+      <div
+        style={{
+          position: "absolute",
+          left: width * 0.05,
+          bottom: height * (1 - BAS_SUR) + 26,
+          maxWidth: width * 0.62,
+          opacity: visible,
+          transform: `translateY(${interpolate(visible, [0, 1], [12, 0])}px)`,
+        }}
+      >
+        <div
+          style={{
+            display: "inline-block",
+            padding: "5px 13px",
+            borderRadius: 6,
+            background: COULEURS.vert,
+            color: "#04150d",
+            fontSize: 20,
+            fontWeight: 800,
+            letterSpacing: 0.4,
+            marginBottom: 12,
+          }}
+        >
+          ÉTAPE {iActive + 1} / {etapes.length}
+        </div>
+        <div style={{ fontSize: 48, fontWeight: 800, color: "#fff", lineHeight: 1.12, marginBottom: 8 }}>
+          {etape.titre}
+        </div>
+        <div style={{ fontSize: 30, lineHeight: 1.45, color: "rgba(255,255,255,0.82)" }}>
+          {etape.detail}
+        </div>
+      </div>
+
+      {/* Bandeau de titre en haut-GAUCHE : le coin haut-droit reçoit les fiches
+          YouTube et l'écran de fin, on n'y met jamais rien. */}
+      <div
+        style={{
+          position: "absolute",
+          left: width * 0.05,
+          top: height * 0.06,
+          padding: "7px 16px",
+          borderRadius: 8,
+          background: "rgba(0,0,0,0.55)",
+          border: `1px solid rgba(255,255,255,0.14)`,
+          color: "rgba(255,255,255,0.9)",
+          fontSize: 24,
+          fontWeight: 700,
+        }}
+      >
+        {reglage.titre ?? "Tutoriel"} · creatis.app
       </div>
 
       {reglage.voix ? (
@@ -194,21 +223,6 @@ export const TutoYouTube: React.FC<{ reglage?: ReglageTuto }> = ({
           <Audio src={staticFile(`voix/${reglage.voix}`)} />
         </Sequence>
       ) : null}
-
-      {/* Adresse en bas, discrète et constante : sur YouTube le lien vit dans la
-          description, celui-ci n'est qu'un rappel visuel. */}
-      <div
-        style={{
-          position: "absolute",
-          left: 96,
-          bottom: 56,
-          fontSize: 28,
-          fontWeight: 600,
-          color: COULEURS.texteDoux,
-        }}
-      >
-        creatis.app
-      </div>
     </AbsoluteFill>
   );
 };

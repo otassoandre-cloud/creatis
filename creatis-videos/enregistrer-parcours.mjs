@@ -27,6 +27,7 @@
  * · La fenêtre est en 1080x1920 : on filme déjà au format de sortie, ce qui
  *   évite un recadrage au montage.
  */
+import "./env-local.mjs";
 import { chromium, devices } from "playwright";
 import fs from "fs";
 import path from "path";
@@ -36,6 +37,10 @@ const EMAIL = process.env.CREATIS_EMAIL;
 const MDP = process.env.CREATIS_MDP;
 const SORTIE = path.resolve("public");
 const SITE = process.env.CREATIS_URL || "https://creatis.app";
+
+/* Nom du film produit. Une meme prise ne sert pas toujours la meme composition,
+   et `parcours.mp4` se faisait ecraser d'une video a l'autre. */
+const NOM = process.env.SORTIE_REC || "parcours.mp4";
 
 if (!URL_VIDEO || !EMAIL || !MDP) {
   console.error(
@@ -68,9 +73,42 @@ const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
  *
  * Passer BUREAU=1 revient a l'ancien cadrage si besoin de comparer. */
 const BUREAU = process.env.BUREAU === "1";
+
+/* GRAND=1 — pour une video ou l'enregistrement occupe TOUT l'ecran.
+   480x817 suffit tant que le film vit dans un encart de la composition ; en
+   plein cadre il faut l'agrandir 2,25x jusqu'a 1080 et le texte de l'interface
+   se delave. 576x1024 est exactement du 9:16, en nombres pairs (H.264 les
+   exige), et reste sous le seuil de 600 px du site : la disposition telephone
+   s'applique donc toujours, pour 1,875x d'agrandissement seulement.
+   Le defaut ne change pas : les compositions deja faites cadrent du 480x817. */
+/* YOUTUBE=1 — VRAI PAYSAGE 1920x1080.
+ *
+ * `BUREAU=1` filme en 1080x1920 : une LARGEUR de bureau dans un cadre vertical.
+ * Utile pour comparer, inutilisable pour YouTube — un tutoriel qu'on regarde sur
+ * un ecran d'ordinateur doit montrer un ecran d'ordinateur, en paysage.
+ *
+ * 1920x1080 avec deviceScaleFactor 1 donne exactement ce que voit un visiteur sur
+ * son PC : la disposition de bureau du site, six vignettes par rangee, et du texte
+ * d'interface a sa taille native. Aucun agrandissement au montage, donc aucun
+ * delavage — c'est la difference entre un tutoriel et une capture etiree.
+ *
+ * Attention : ce mode n'est PAS interchangeable avec les autres. Les reperes de
+ * frames releves pendant le tournage valent pour un parcours donne, et la
+ * disposition bureau n'a pas le meme nombre d'etapes visibles que le telephone. */
+const YOUTUBE = process.env.YOUTUBE === "1";
+
+const GRAND = process.env.GRAND === "1";
+const L = GRAND ? 576 : 480;
+const H = GRAND ? 1024 : 817;
 const tel = devices["iPhone 13"];
 const ctx = await (await chromium.launch({ headless: true })).newContext(
-  BUREAU
+  YOUTUBE
+    ? {
+        viewport: { width: 1920, height: 1080 },
+        deviceScaleFactor: 1,
+        recordVideo: { dir: SORTIE, size: { width: 1920, height: 1080 } },
+      }
+    : BUREAU
     ? {
         viewport: { width: 1080, height: 1920 },
         deviceScaleFactor: 1,
@@ -78,13 +116,27 @@ const ctx = await (await chromium.launch({ headless: true })).newContext(
       }
     : {
         ...tel,
-        viewport: { width: 480, height: 817 },
+        viewport: { width: L, height: H },
         deviceScaleFactor: 2,
-        recordVideo: { dir: SORTIE, size: { width: 480, height: 817 } },
+        recordVideo: { dir: SORTIE, size: { width: L, height: H } },
       },
 );
 const nav = ctx.browser();
 const page = await ctx.newPage();
+
+/* LES REPERES S'ECRIVENT PENDANT LE TOURNAGE, ILS NE SE DEVINENT PLUS APRES.
+   Jusqu'ici il fallait rouvrir l'enregistrement et chercher a l'oeil la seconde
+   ou la grille apparait, ou bien la faire deviner par la luminance. Le script,
+   lui, SAIT quand chaque etape arrive : il attend chacune d'elles. On releve
+   donc l'horloge a chaque passage et on ecrit le tout a cote du film.
+   L'origine est la creation de la page, c'est-a-dire le debut de la capture ;
+   la derive mesuree est inferieure a la demi-seconde. */
+const T0 = Date.now();
+const reperes = {};
+const marquer = (nom) => {
+  reperes[nom] = Math.round((Date.now() - T0) / 100) / 10;
+  console.log(`  [${reperes[nom]}s] ${nom}`);
+};
 page.on("console", (m) => {
   if (m.type() === "error") console.log("  [page]", m.text().slice(0, 140));
 });
@@ -115,18 +167,21 @@ try {
      x2,7, et un `fill()` instantané ne donnerait rien à accélérer. */
   console.log("· saisie du lien");
   const champ = page.locator("#yt-url-input");
+  marquer("lien");
   await champ.click();
   await champ.type(URL_VIDEO, { delay: 55 });
   await attendre(900);
 
   console.log("· lancement de l'analyse");
   await page.click("#btn-analyze");
+  marquer("analyse");
 
   /* 15 min : c'est la limite que s'impose le client lui-même. On la suit plutôt
      que d'inventer la nôtre — dépasser ici ne servirait à rien, la page aurait
      déjà abandonné. */
   console.log("· analyse en cours (jusqu'à 15 min)");
   await page.waitForSelector(".clip-card", { timeout: 15 * 60 * 1000 });
+  marquer("grille");
   await attendre(2500);
 
   /* On RELEVE la grille au lieu d'aller la relire en pixels plus tard.
@@ -223,8 +278,46 @@ try {
   console.log(`· ouverture du clip ${iClip} — ${releve.clips[iClip]?.titre || "?"}`);
   await page.locator(".clip-card").nth(iClip).click();
   await page.waitForSelector("#modal-player-wrap", { timeout: 60000 });
-  await attendre(6000);
+  marquer("fiche");
+  await attendre(5000);
 
+  /* JUSQU'AU CLIP RENDU, pas jusqu'a l'ouverture de la fiche.
+     Le parcours s'arretait quand la fiche du clip s'affichait — donc avant la
+     seule etape qui produit quelque chose. Filmer l'export change ce que la
+     video demontre : on ne montre plus une interface, on montre un fichier qui
+     sort. Le bouton d'en-tete `#modal-dl-btn` est masque sous 600 px de large ;
+     sur telephone c'est `#mob-dl-btn` qui porte l'action, et son libelle affiche
+     la progression. */
+  if (process.env.SANS_EXPORT !== "1") {
+    console.log("· export du clip");
+    const attente = page.waitForEvent("download", { timeout: 420000 }).catch(() => null);
+    await page.locator("#mob-dl-btn").click();
+    marquer("rendu");
+    const fichier = await attente;
+    if (fichier) {
+      /* ON GARDE LE FICHIER. Dans le lecteur du telephone le clip fini occupe
+         192 x 336 pixels : l'agrandir jusqu'a 1080 de large demanderait un
+         facteur 5,6 et donnerait une bouillie. Le MP4 que l'export vient de
+         produire fait 1080x1920 — c'est lui qu'on montre en plein cadre a la
+         fin, et c'est exactement le meme fichier que celui vu a l'ecran. */
+      const rendu = path.join(SORTIE, process.env.SORTIE_CLIP || "clip-rendu.mp4");
+      await fichier.saveAs(rendu);
+      marquer("fini");
+      console.log(`  clip rendu : ${path.basename(rendu)} (${await fichier.suggestedFilename()})`);
+      /* Quelques secondes de plus : le rendu se termine, la barre atteint 100 %
+         et le telephone affiche sa confirmation. C'est cette image-la qui clot
+         la demonstration. */
+      await attendre(9000);
+    } else {
+      console.log("  AUCUN telechargement en sept minutes — l'export n'a pas abouti");
+    }
+  }
+
+  marquer("bout");
+  fs.writeFileSync(
+    path.join(SORTIE, NOM.replace(/\.mp4$/, "") + "-reperes.json"),
+    JSON.stringify({ reperes, nbClips: releve.clips.length, titre: releve.titre }, null, 2),
+  );
   console.log("· fin du parcours");
 } catch (e) {
   console.error("ÉCHEC :", e.message);
@@ -247,12 +340,12 @@ try {
     if (process.exitCode) {
       console.log(`
 échec — enregistrement partiel : ${provisoire} (${mo} Mo)`);
-      console.log("  parcours.mp4 n'a PAS été touché.");
+      console.log(`  ${NOM} n'a PAS été touché.`);
     } else {
-      fs.renameSync(provisoire, path.join(SORTIE, "parcours.mp4"));
+      fs.renameSync(provisoire, path.join(SORTIE, NOM));
       console.log(`
-OK — public/parcours.mp4 (${mo} Mo)`);
-      console.log("  Vérifier la durée réelle et recaler les repères de Parcours.tsx.");
+OK — public/${NOM} (${mo} Mo)`);
+      console.log(`  repères : public/${NOM.replace(/\.mp4$/, "")}-reperes.json`);
     }
   }
 }
