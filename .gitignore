@@ -141,3 +141,9 @@ supabase-prospects-table.sql
 
 # Clé du compte de service Google Search Console — ne jamais committer
 gsc-service-account.json
+social/
+!social/registre.json
+!social/briefs/
+
+# Profil Chrome dedie aux sessions sociales — jamais versionne
+.chrome-social/
