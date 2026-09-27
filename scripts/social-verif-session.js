@@ -24,6 +24,8 @@ const CIBLES = [
   ['TikTok', 'https://www.tiktok.com/foryou'],
   ['Instagram', 'https://www.instagram.com/'],
   ['LinkedIn', 'https://www.linkedin.com/feed/'],
+  // YouTube : la page du studio exige une session Google valide.
+  ['YouTube', 'https://studio.youtube.com/'],
 ];
 
 (async () => {
