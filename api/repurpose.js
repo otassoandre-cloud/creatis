@@ -21,6 +21,56 @@ const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
 const GROQ_MODEL   = process.env.GROQ_MODEL   || 'openai/gpt-oss-120b';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
+/* LES QUOTAS GRATUITS DE GOOGLE SE COMPTENT PAR MODELE.
+ *
+ * Le 27/09/2026, un abonne Pro restait bloque sur « service saturé » alors que
+ * le repli pose la veille cote Railway fonctionnait. Son chemin n'etait pas
+ * celui-la : l'upload de FICHIER est analyse ici, sur Vercel, par une seconde
+ * cascade (Groq -> Gemini -> Together) qui a sa propre panne. Les trois etages
+ * etaient a terre en meme temps — Groq au plafond du jour, Together a 402
+ * depuis le 15/09, et Gemini fige sur `gemini-3.6-flash`, le SEUL modele en 429
+ * ce jour-la. `gemini-3.5-flash` et les `flash-lite` repondaient 200 avec la
+ * meme cle, au meme instant. D'ou l'echec en neuf secondes.
+ *
+ * On parcourt donc une liste, du plus capable au plus econome. 429 (quota),
+ * 404 (modele retire — c'est arrive a gemini-2.0-flash) et 5xx (surcharge
+ * passagere) font passer au suivant ; une 4xx de contenu est rendue telle
+ * quelle, changer de modele n'y changerait rien.
+ *
+ * Le premier de la liste reste `GEMINI_MODEL`, pour qu'une variable
+ * d'environnement garde la main. */
+const GEMINI_MODELES = [...new Set([
+  GEMINI_MODEL,
+  ...(process.env.GEMINI_MODELS || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite')
+    .split(',').map(m => m.trim()).filter(Boolean),
+])];
+
+async function appelGemini(corps, timeoutMs = 30000) {
+  let derniere = null;
+  for (const modele of GEMINI_MODELES) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent?key=${GEMINI_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps), signal: AbortSignal.timeout(timeoutMs) },
+      );
+      if (r.ok) {
+        if (modele !== GEMINI_MODELES[0]) console.warn(`[gemini] servi par ${modele}`);
+        return r;
+      }
+      derniere = r;
+      if (r.status === 429 || r.status === 404 || r.status >= 500) {
+        console.warn(`[gemini] ${modele} indisponible (${r.status}), modele suivant`);
+        continue;
+      }
+      return r;
+    } catch (e) {
+      console.warn(`[gemini] ${modele} injoignable : ${e.message}`);
+    }
+  }
+  return derniere || new Response(JSON.stringify({ error: 'aucun modele Gemini disponible' }),
+    { status: 503, headers: { 'Content-Type': 'application/json' } });
+}
+
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
@@ -720,15 +770,10 @@ async function _classifyContentType(sampleText) {
        analyse, et l'adaptation du prompt au type de contenu — un extrait de tutoriel ne se juge
        pas comme un extrait de débat — a disparu sans que rien ne l'indique. */
     if (!GEMINI_KEY) return null;
-    const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const g = await appelGemini({
         contents: [{ parts: [{ text: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 200, responseMimeType: 'application/json' },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
+    }, 10000);
     if (!g.ok) return null;
     const gd = await g.json();
     return JSON.parse(gd.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '');
@@ -759,12 +804,13 @@ async function _callClipLLM(prompt, _dbg) {
   if (r.ok) _dbg.provider = 'groq';
 
   if (!r.ok && GEMINI_KEY) {
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
-      signal: AbortSignal.timeout(30000),
-    });
+    /* 12288 et non 4096 : les modeles Gemini 3 paient leur raisonnement sur le
+       budget de SORTIE, et un JSON de clips coupe en plein milieu est
+       indistinguable d'une panne — mesure cote Railway le 26/09. */
+    const geminiRes = await appelGemini(
+      { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 12288, responseMimeType: 'application/json' } },
+      30000,
+    );
     _dbg.gemini_status = geminiRes.status;
     if (geminiRes.ok) {
       const gd = await geminiRes.json();
@@ -1015,12 +1061,10 @@ async function rankClipsVisual(candidates, frames, nFinal) {
     parts.push({ text: `Candidat ${c.i} — titre: "${c.title}", hook: "${c.hook}", score texte: ${c.text_score ?? 'N/A'}` });
     parts.push({ inline_data: { mime_type: 'image/jpeg', data } });
   }
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json' } }),
-    signal: AbortSignal.timeout(30000),
-  });
+  const r = await appelGemini(
+    { contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096, responseMimeType: 'application/json' } },
+    30000,
+  );
   if (!r.ok) { console.warn('[rank_clips_visual] Gemini', r.status, (await r.text().catch(() => '')).slice(0, 200)); return null; }
   const gd = await r.json();
   const raw = gd?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1176,11 +1220,7 @@ Réponds directement sans introduction. Tout en français.`;
   });
   if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
     console.warn(`[content] Groq ${r.status}, fallback Gemini Flash`);
-    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 4096 } })
-    });
+    const gr = await appelGemini({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 8192 } });
     if (!gr.ok) throw new Error('Erreur génération contenu');
     const gd = await gr.json();
     return gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1525,11 +1565,10 @@ ${JSON.stringify(textes, null, 0)}`;
 
       if (GEMINI_KEY) {
         console.warn(`[translate] Groq ${r.status} → repli Gemini Flash`);
-        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } }),
-          signal: AbortSignal.timeout(45000)
-        });
+        const g = await appelGemini(
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } },
+          45000,
+        );
         if (g.ok) {
           const gd = await g.json();
           const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
