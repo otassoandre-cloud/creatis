@@ -12,6 +12,8 @@ import { DUREE_PARCOURS, Parcours } from "./creatis/Parcours";
 import { PARCOURS } from "./creatis/parcours-reglages";
 import { ArreteComme, DUREE_ARRETE } from "./creatis/ArreteComme";
 import { DUREE_MUR, MurDeClips } from "./creatis/MurDeClips";
+import { DUREE_REC, DuDebutALaFin, REC_DEFAUT } from "./creatis/DuDebutALaFin";
+import { DUREE_TUTO, TutoYouTube, TUTO_DEFAUT } from "./creatis/TutoYouTube";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -130,6 +132,28 @@ export const RemotionRoot: React.FC = () => {
         {/* Meme matiere que le Parcours — meme enregistrement, meme clip —
             mais la demonstration est precedee de ce qu'elle remplace. */}
         {/* Une vidéo entre, neuf clips sortent — montré, pas raconté. */}
+        {/* Une seule prise de l'application, en plein cadre, jusqu'au fichier
+            obtenu. Les reperes se relevent sur l'enregistrement. */}
+        {/* Seule composition en 16:9 : YouTube n'est pas un fil vertical, on y
+            vient pour apprendre. Toutes les autres restent en 1080x1920. */}
+        <Composition
+          id="TutoYouTube"
+          component={TutoYouTube}
+          durationInFrames={DUREE_TUTO}
+          fps={FPS}
+          width={1920}
+          height={1080}
+          defaultProps={{ reglage: TUTO_DEFAUT }}
+        />
+        <Composition
+          id="DuDebutALaFin"
+          component={DuDebutALaFin}
+          durationInFrames={DUREE_REC}
+          fps={FPS}
+          width={1080}
+          height={1920}
+          defaultProps={{ reglage: REC_DEFAUT }}
+        />
         <Composition
           id="MurDeClips"
           component={MurDeClips}
