@@ -37,7 +37,13 @@ const publier = process.argv.includes('--publier');
 
 const VIDEO = arg('video', '');
 const TITRE = arg('titre', '');
-const DESCRIPTION = arg('description', '');
+/* La description peut venir d'un FICHIER. Un texte de quinze lignes avec
+   apostrophes, accents et chevrons passe mal en argument de ligne de commande :
+   selon le shell il est tronque, re-decoupe ou partiellement interprete. Le
+   fichier supprime la question. */
+const DESCRIPTION = process.argv.includes('--description-fichier')
+  ? fs.readFileSync(arg('description-fichier', ''), 'utf8').trim()
+  : arg('description', '');
 
 (async () => {
   if (!VIDEO || !fs.existsSync(VIDEO)) {
