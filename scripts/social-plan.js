@@ -39,6 +39,9 @@ const COMPTES = [
   { id: 't2', nom: 'TikTok secondaire',     plateforme: 'tiktok',    abonnes: 7 },
   { id: 'g1', nom: 'Instagram principal',   plateforme: 'instagram', abonnes: 90 },
   { id: 'g2', nom: 'Instagram secondaire',  plateforme: 'instagram', abonnes: 9 },
+  /* YouTube accepte les liens en description des le premier abonne : c est le seul
+     des trois ou le trafic peut sortir sans condition. */
+  { id: 'y1', nom: 'YouTube',               plateforme: 'youtube',   abonnes: 0 },
 ];
 
 /* Les angles sont des SUJETS, pas des montages. On fait varier ce qu'on raconte, parce
