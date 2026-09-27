@@ -291,7 +291,14 @@ try {
   if (process.env.SANS_EXPORT !== "1") {
     console.log("· export du clip");
     const attente = page.waitForEvent("download", { timeout: 420000 }).catch(() => null);
-    await page.locator("#mob-dl-btn").click();
+    /* LE BON BOUTON DEPEND DE LA LARGEUR, et se tromper coute un enregistrement
+       entier : en paysage 1920 px `#mob-dl-btn` existe dans le DOM mais reste
+       invisible, donc le clic expire au bout de 30 s apres 2 min 40 d analyse
+       deja consommee. On prend celui qui est VISIBLE plutot que de deviner. */
+    const bureau = page.locator("#modal-dl-btn");
+    const mobile = page.locator("#mob-dl-btn");
+    const cible = (await bureau.isVisible().catch(() => false)) ? bureau : mobile;
+    await cible.click();
     marquer("rendu");
     const fichier = await attente;
     if (fichier) {
