@@ -1,49 +1,93 @@
 /* ================================================================
  * OUVRE UNE FENÊTRE DE CONNEXION AUX COMPTES SOCIAUX
  *
- * Une fenêtre Chrome visible, avec profil persistant : tu te connectes à la
- * main, et la session est conservée dans `.playwright-profile-social/` pour que
- * les scripts suivants s'en servent sans jamais manipuler ton mot de passe.
+ *   node scripts/open-social-login.js            → Chrome réel, drapeaux retirés
+ *   node scripts/open-social-login.js --cdp      → se rattache à TON Chrome
  *
- *   node scripts/open-social-login.js
+ * ── LE PROBLÈME QUE CE SCRIPT RÉSOUT ─────────────────────────────────────
+ * Google et Meta refusent la connexion dans un navigateur piloté : « ce
+ * navigateur n'est peut-être pas sécurisé ». Ils le détectent à trois signes —
+ * le Chromium de Playwright (qui n'est pas Chrome), le drapeau
+ * `--enable-automation`, et `navigator.webdriver` à true.
  *
- * ── POURQUOI C'EST TOI QUI TE CONNECTES ──────────────────────────────────
- * Les trois plateformes imposent une authentification à deux facteurs. Aucun
- * script ne peut la franchir, et c'est très bien ainsi : ton mot de passe ne
- * transite nulle part, il est tapé dans une vraie fenêtre de navigateur.
+ * On retire les trois :
+ *   · `channel: "chrome"` lance le Chrome installé sur la machine, pas le
+ *     Chromium livré avec Playwright ;
+ *   · `ignoreDefaultArgs` enlève `--enable-automation` ;
+ *   · un script d'init remet `navigator.webdriver` à false avant tout chargement.
  *
- * ── CE QUI SERA FAIT DE CES SESSIONS ─────────────────────────────────────
- * Lire les statistiques de chaque compte (vues, rétention) et publier. Sans
- * elles, la boucle « produire → mesurer → corriger » ne peut pas se fermer :
- * on publierait sans jamais savoir ce qui a marché, ce qui est exactement ce
- * qui s'est passé pendant les 68 vidéos précédentes.
+ * TikTok passait déjà sans ça ; Instagram et YouTube non — c'est Google et Meta
+ * qui vérifient, pas les plateformes en général.
  *
- * ── VÉRIFIER APRÈS COUP ──────────────────────────────────────────────────
- *   node scripts/social-verif-session.js
- * qui juge sur un marqueur du DOM et non sur l'URL — une redirection vers le
- * fil d'accueil ne prouve PAS qu'on est connecté, TikTok y renvoie aussi les
- * visiteurs anonymes.
+ * ── SI ÇA REFUSE QUAND MÊME : LE MODE --cdp ──────────────────────────────
+ * Google durcit ses contrôles régulièrement. Le repli indiscutable est de se
+ * RATTACHER à un Chrome que tu as lancé toi-même : il n'y a alors plus rien à
+ * détecter, c'est ton navigateur. Dans un terminal :
+ *
+ *   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" ^
+ *     --remote-debugging-port=9222 ^
+ *     --user-data-dir="%CD%\\.chrome-social"
+ *
+ * puis `node scripts/open-social-login.js --cdp`. Les sessions vivent alors dans
+ * `.chrome-social/`, et les scripts suivants s'y rattachent de la même façon.
+ *
+ * Dans les deux cas, ton mot de passe est tapé dans une vraie fenêtre et ne
+ * transite par aucun script.
  * ================================================================ */
 const { chromium } = require('playwright');
 const path = require('path');
+const fs = require('fs');
+
+const cdp = process.argv.includes('--cdp');
+const PROFIL_PW = path.join(__dirname, '..', '.playwright-profile-social');
+const PROFIL_CHROME = path.join(__dirname, '..', '.chrome-social');
 
 const ONGLETS = [
   ['TikTok', 'https://www.tiktok.com/login'],
   ['Instagram', 'https://www.instagram.com/accounts/login/'],
-  // YouTube passe par le compte Google : c'est la même connexion que Gmail.
   ['YouTube', 'https://accounts.google.com/ServiceLogin?service=youtube'],
 ];
 
 (async () => {
-  const profil = path.join(__dirname, '..', '.playwright-profile-social');
-  const ctx = await chromium.launchPersistentContext(profil, {
-    headless: false,
-    viewport: { width: 1280, height: 900 },
-    // Sans un UA crédible, TikTok et Instagram servent une page dégradée où la
-    // connexion échoue sans dire pourquoi.
-    userAgent:
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-  });
+  let ctx;
+
+  if (cdp) {
+    try {
+      const nav = await chromium.connectOverCDP('http://localhost:9222');
+      ctx = nav.contexts()[0] || (await nav.newContext());
+      console.log('Rattaché à ton Chrome (port 9222).\n');
+    } catch (e) {
+      console.error('Aucun Chrome à écouter sur le port 9222.\n');
+      console.error('Lance-le d\'abord, dans un terminal séparé :\n');
+      console.error('  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" ^');
+      console.error('    --remote-debugging-port=9222 ^');
+      console.error(`    --user-data-dir="${PROFIL_CHROME}"`);
+      console.error('\npuis relance cette commande.');
+      process.exit(1);
+    }
+  } else {
+    fs.mkdirSync(PROFIL_PW, { recursive: true });
+    ctx = await chromium.launchPersistentContext(PROFIL_PW, {
+      channel: 'chrome',                              // le Chrome installé, pas Chromium
+      headless: false,
+      viewport: null,                                  // fenêtre réelle, pas un cadre imposé
+      args: ['--disable-blink-features=AutomationControlled'],
+      ignoreDefaultArgs: ['--enable-automation'],
+    }).catch(async (e) => {
+      console.error('Chrome introuvable — repli sur Chromium (Google refusera peut-être).');
+      console.error('  ' + e.message.split('\n')[0]);
+      return chromium.launchPersistentContext(PROFIL_PW, {
+        headless: false,
+        args: ['--disable-blink-features=AutomationControlled'],
+        ignoreDefaultArgs: ['--enable-automation'],
+      });
+    });
+
+    // Dernier signe visible depuis la page : on l'efface avant tout chargement.
+    await ctx.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
+  }
 
   for (const [nom, url] of ONGLETS) {
     const page = await ctx.newPage();
@@ -52,14 +96,18 @@ const ONGLETS = [
   }
 
   console.log('');
-  console.log('Fenêtre Chrome ouverte avec 3 onglets : TikTok, Instagram, YouTube.');
-  console.log('Connecte-toi dans chacun. La session est enregistrée au fur et à mesure —');
-  console.log('tu peux fermer la fenêtre une fois les trois faits, rien ne sera perdu.');
+  console.log('Connecte-toi dans les trois onglets. La session est enregistrée au fur');
+  console.log('et à mesure : tu peux fermer la fenêtre une fois terminé.');
   console.log('');
-  console.log('Ensuite, pour confirmer :  node scripts/social-verif-session.js');
+  console.log('Vérifier ensuite :  node scripts/social-verif-session.js');
   console.log('');
-  console.log('(ce script reste actif tant que la fenêtre est ouverte — Ctrl+C pour le quitter)');
+  if (!cdp) {
+    console.log('Si Google refuse encore (« navigateur non sécurisé »), le repli sûr :');
+    console.log('  node scripts/open-social-login.js --cdp');
+    console.log('  (les instructions s\'affichent si Chrome n\'écoute pas encore)');
+    console.log('');
+  }
+  console.log('(ce script reste actif tant que la fenêtre est ouverte — Ctrl+C pour quitter)');
 
-  // On garde le processus vivant : fermer le contexte fermerait la fenêtre.
   await new Promise(() => {});
 })();
