@@ -1,5 +1,15 @@
 # Créatis — Instructions pour Claude Code
 
+## AVANT TOUT — `CONSIGNES.md`
+**Lire `CONSIGNES.md` EN ENTIER au début de chaque session, et le relire avant
+chaque publication.** Il contient toutes les consignes permanentes sur la
+production et la publication de contenu : rythme horaire, vidéo longue
+quotidienne et ses Shorts de promotion, règle du son, interdiction de republier,
+sources autorisées, pièges déjà payés, et ce qui reste bloqué côté utilisateur.
+
+Il existe parce que ces consignes étaient oubliées d'une session à l'autre.
+Toute nouvelle consigne s'y ajoute AU MOMENT où elle est donnée.
+
 ## PRIORITÉ ABSOLUE — Lire en premier
 **Lis toujours `PROJECT_MAP.md` en premier avant de lire n'importe quel fichier du projet.**
 Il contient la structure complète, les fonctions clés, les variables config et les 10 agents.
