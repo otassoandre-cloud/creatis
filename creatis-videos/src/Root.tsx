@@ -14,6 +14,8 @@ import { ArreteComme, DUREE_ARRETE } from "./creatis/ArreteComme";
 import { DUREE_MUR, MurDeClips } from "./creatis/MurDeClips";
 import { DUREE_REC, DuDebutALaFin, REC_DEFAUT } from "./creatis/DuDebutALaFin";
 import { DUREE_TUTO, TutoYouTube, TUTO_DEFAUT } from "./creatis/TutoYouTube";
+import { DUREE_LE_TRI, LeTri, LE_TRI_DEFAUT } from "./creatis/LeTri";
+import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/ShortVersYouTube";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -136,6 +138,28 @@ export const RemotionRoot: React.FC = () => {
             obtenu. Les reperes se relevent sur l'enregistrement. */}
         {/* Seule composition en 16:9 : YouTube n'est pas un fil vertical, on y
             vient pour apprendre. Toutes les autres restent en 1080x1920. */}
+        {/* Short compagnon de la video longue du jour : il enseigne un critere
+            utilisable sans l'outil, le demontre, puis renvoie au tutoriel. */}
+        <Composition
+          id="ShortVersYouTube"
+          component={ShortVersYouTube}
+          durationInFrames={DUREE_SHORT_YT}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{ reglage: SHORT_YT_DEFAUT }}
+        />
+        {/* Reel vertical du 28/09 : l'angle du TRI, pris a rebours des 69 posts
+            precedents du compte qui promettent tous l'automatisation totale. */}
+        <Composition
+          id="LeTri"
+          component={LeTri}
+          durationInFrames={DUREE_LE_TRI}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{ reglage: LE_TRI_DEFAUT }}
+        />
         <Composition
           id="TutoYouTube"
           component={TutoYouTube}
