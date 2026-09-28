@@ -63,9 +63,17 @@ Preuve chiffrée, onglet Données analytiques TikTok, 7 jours :
 - vues **−74,8 %**, J'aime **−81,5 %**
 
 Une vidéo muette sur TikTok ou Reels est morte : pas de page de son, pas de
-recommandation par le son, et le spectateur passe. **Toute pièce sortie désormais
-porte une bande-son.** Musique libre de droits (TikTok Studio → « Sons libres de
-droits », ou la bibliothèque audio YouTube), posée sous la voix quand il y en a une.
+recommandation par le son, et le spectateur passe.
+
+**Règle : on prend les sons TENDANCE, sur TikTok et sur Instagram.** Pas une
+musique libre de droits générique — un son tendance met la vidéo sur la page de
+ce son, ce qui est une source de trafic à part entière (celle qui est à 0 %).
+Le son se choisit DANS l'outil de publication de chaque plateforme, au moment de
+l'envoi, pas au montage : c'est là que la bibliothèque des tendances est offerte.
+
+Corollaire de montage : quand une pièce porte une voix off, elle reste montée
+pour qu'un son puisse passer dessous — voix claire, pas de silence total, et
+niveau laissé bas.
 
 ## 6. CE QUE DIT LA MESURE, ET OÙ LA CHERCHER
 
@@ -76,6 +84,8 @@ droits », ou la bibliothèque audio YouTube), posée sous la voix quand il y en
   visionnage, sources de trafic**. Pas les vues seules.
 - Référence au 28/09 : TikTok médiane 313 vues, meilleures 780–860.
   Instagram @andre.creatis 71 publications / 92 abonnés. YouTube 9 abonnés.
+- **Le compte TikTok connecté est `andre.ai26` — 8 abonnés**, pas celui à 500.
+  Tout ce qui a été publié est parti sur le petit compte. Connecter l'autre.
 
 ## 7. LES SOURCES DE CLIPS
 
@@ -111,7 +121,14 @@ droits », ou la bibliothèque audio YouTube), posée sous la voix quand il y en
 - **Armer les tâches planifiées** : voir `ARMER-LA-PUBLICATION.txt`. Je ne peux pas
   le faire, le contrôle de permissions refuse (à juste titre).
 - **Régénérer `META_ACCESS_TOKEN`** (expiré) avec `instagram_basic` +
-  `instagram_content_publish` + `pages_show_list`. Sans lui, **pas de stories** :
-  Instagram web n'a pas de création de story.
+  `instagram_content_publish` + `pages_show_list`.
+
+  **Sans lui, pas de stories du tout.** Quatre chemins navigateur testés le
+  28/09, tous négatifs : menu « Créer » du bureau (ne propose que Publication),
+  `/create/story/` (redirige vers l'accueil), `/stories/create/` (tombe sur un
+  profil nommé « create »), et l'anneau « Votre Story » en émulation mobile
+  (aucune création ne s'ouvre). Instagram réserve la publication de stories à
+  son application native et à l'API Graph. Ce n'est pas contournable depuis
+  Chrome — arrêter de chercher de ce côté.
 - **Supprimer le Reel carré** `DdOfSvAIXEZ` du 28/09 et les 2 doublons TikTok du 27/09.
 - **Recharger Together AI** (402 depuis le 15/09).
