@@ -16,7 +16,7 @@ import { DUREE_REC, DuDebutALaFin, REC_DEFAUT } from "./creatis/DuDebutALaFin";
 import { DUREE_TUTO, TutoYouTube, TUTO_DEFAUT } from "./creatis/TutoYouTube";
 import { DUREE_LE_TRI, LeTri, LE_TRI_DEFAUT } from "./creatis/LeTri";
 import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/ShortVersYouTube";
-import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT } from "./creatis/ShortPleinCadre";
+import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT, calculerDuree } from "./creatis/ShortPleinCadre";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -146,6 +146,7 @@ export const RemotionRoot: React.FC = () => {
           id="ShortPleinCadre"
           component={ShortPleinCadre}
           durationInFrames={DUREE_PLEIN}
+          calculateMetadata={calculerDuree}
           fps={30}
           width={1080}
           height={1920}

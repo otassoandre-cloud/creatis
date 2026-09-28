@@ -42,11 +42,29 @@ import { COULEURS } from "./theme";
  */
 
 const FPS = 30;
+/** Durée par défaut. Réglable par pièce via `reglage.duree` — voir plus bas. */
 export const DUREE_PLEIN = 18 * FPS; // 540 images
+
+/**
+ * La durée doit pouvoir CHANGER par pièce.
+ *
+ * Avec 18 s figées, impossible de démarrer sur un plan clair situé tard dans la
+ * source : il ne restait pas assez de matière derrière, et la vidéo se figeait
+ * à la fin. Or le plan d'ouverture est ce qui décide de tout — le 28/09, les
+ * deux meilleurs Reels du compte s'ouvraient sur une image claire et pleine,
+ * les miens sur un intérieur sombre, avec un facteur douze entre les deux.
+ *
+ * On préfère donc raccourcir la pièce que mal l'ouvrir.
+ */
+export const calculerDuree = ({ props }: { props: { reglage?: { duree?: number } } }) => ({
+  durationInFrames: Math.round((props?.reglage?.duree ?? 18) * FPS),
+});
 
 export type Temps = { a: number; texte: string; accent?: boolean };
 
 export type ReglagePlein = {
+  /** Durée de la pièce en secondes. Défaut 18. */
+  duree?: number;
   /** Clip vertical exporté le jour même — c'est lui, le fond. */
   clip: string;
   clipA: number;
@@ -72,7 +90,7 @@ export const ShortPleinCadre: React.FC<{ reglage?: ReglagePlein }> = ({
   reglage = PLEIN_DEFAUT,
 }) => {
   const frame = useCurrentFrame();
-  const { fps, height } = useVideoConfig();
+  const { fps, height, durationInFrames } = useVideoConfig();
   const s = frame / fps;
 
   const temps = reglage.temps;
@@ -92,7 +110,9 @@ export const ShortPleinCadre: React.FC<{ reglage?: ReglagePlein }> = ({
     : 1;
   const visible = Math.min(entree, sortie);
 
-  const finChute = DUREE_PLEIN / fps;
+  /* La chute se cale sur la durée RÉELLE de la composition, pas sur la
+     constante : avec une durée réglable, la constante ne vaut plus rien. */
+  const finChute = durationInFrames / fps;
   const chute = interpolate(s, [finChute - 3.4, finChute - 3.0], [0, 1], {
     extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
