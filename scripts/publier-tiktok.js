@@ -2,7 +2,7 @@
 /**
  * Publie une vidéo sur TikTok, depuis la session déjà ouverte.
  *
- *   node scripts/publier-tiktok.js --video <chemin> --legende "..." [--publier]
+ *   node scripts/publier-tiktok.js --video <chemin> --legende "..." [--son "lofi"] [--publier]
  *
  * SANS `--publier`, le script va jusqu'au formulaire rempli et S'ARRÊTE : il
  * dépose le fichier, écrit la légende, prend une capture, et laisse la fenêtre
@@ -33,6 +33,8 @@ const publier = process.argv.includes('--publier');
 
 const VIDEO = arg('video', '');
 const LEGENDE = arg('legende', '');
+/** Terme de recherche pour le son. Vide = premier son de l'onglet « Pour toi ». */
+const SON = arg('son', '');
 
 (async () => {
   if (!VIDEO || !fs.existsSync(VIDEO)) {
@@ -134,6 +136,100 @@ const LEGENDE = arg('legende', '');
     await page.waitForTimeout(1500);
     await fermerModales();   // une modale peut en cacher une autre
     await shot('modales-fermees');
+
+    /* ── LE SON — MESURÉ COMME LE DÉFAUT LE PLUS COÛTEUX ─────────────────
+       Données analytiques TikTok au 28/09, 7 jours : la source de trafic
+       « Son » est à 0 %, les vues à -74,8 %, les J'aime à -81,5 %. Les vidéos
+       partaient MUETTES : pas de page de son, donc pas de recommandation par
+       le son, et le spectateur passe.
+
+       L'éditeur web de TikTok a un panneau « Sons » avec un onglet « Pour toi »
+       — les sons recommandés au compte, c'est-à-dire les tendances. On en pose
+       un, puis on enregistre pour revenir au formulaire.
+
+       Si ça échoue, on PUBLIE QUAND MÊME mais on le dit fort : une vidéo sans
+       son vaut mieux que pas de vidéo, mais il faut le savoir pour le reprendre
+       à la main. */
+    const poserUnSon = async () => {
+      const entree = page.locator(':text-is("Sons"), :text-is("Sound")').first();
+      if (!(await entree.isVisible().catch(() => false))) return 'entrée « Sons » introuvable';
+      await entree.click({ timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(6000);
+
+      // L'éditeur salue avec « Phone mode ».
+      /* Surtout PAS « Mode de base » : ce bouton n'est pas une fermeture, il
+         OUVRE le choix d'aperçu téléphone/complet. Un premier essai le cliquait
+         et se retrouvait avec une boîte de plus à l'écran. */
+      for (const l of ["J'ai compris", 'Got it']) {
+        const b = page.locator(`button:has-text("${l}")`).first();
+        if (await b.isVisible().catch(() => false)) {
+          await b.click({ timeout: 4000 }).catch(() => {});
+          await page.waitForTimeout(1500);
+        }
+      }
+
+      if (SON) {
+        const rech = page.locator('input[placeholder*="ercher"], input[placeholder*="earch"]').first();
+        if (await rech.isVisible().catch(() => false)) {
+          await rech.click();
+          await page.keyboard.type(SON, { delay: 40 });
+          await page.keyboard.press('Enter');
+          await page.waitForTimeout(5000);
+        }
+      }
+
+      /* Les « + » de la liste sont des ICÔNES, pas du texte : `has-text("+")`
+         ne les trouve jamais. On les repère à leur géométrie — petits boutons
+         ronds alignés à droite du panneau des sons, donc x entre 350 et 430 —
+         et on clique aux coordonnées. L'onglet actif est « Pour toi », le
+         premier de la liste est donc le plus recommandé au compte. */
+      const point = await page.evaluate(() => {
+        for (const e of document.querySelectorAll('div,button,span,svg')) {
+          const r = e.getBoundingClientRect();
+          if (r.width > 22 && r.width < 48 && Math.abs(r.width - r.height) < 10
+              && r.x > 350 && r.x < 440 && r.y > 200 && r.y < 700) {
+            return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
+        }
+        return null;
+      }).catch(() => null);
+      if (!point) return 'aucun bouton d ajout de son trouvé';
+      /* Relever le NOM du son avant de le poser. Sans ça on ne sait pas ce
+         qu'on attache : le premier essai a mis « Highway To Hell » sous un
+         tutoriel calme, et rien dans les journaux ne l'aurait dit. */
+      const nomSon = await page.evaluate((p) => {
+        const e = document.elementFromPoint(p.x, p.y);
+        let n = e;
+        for (let i = 0; i < 8 && n; i++) {
+          const t = (n.innerText || '').trim();
+          if (t && t.length > 3 && t.length < 90) return t.split(String.fromCharCode(10))[0];
+          n = n.parentElement;
+        }
+        return '';
+      }, point).catch(() => '');
+      await page.mouse.click(point.x, point.y);
+      await page.waitForTimeout(4000);
+      if (nomSon) console.log(`  son choisi : « ${nomSon} »`);
+
+      await shot('son-pose');
+      const enreg = page.locator('button:has-text("Enregistrer"), button:has-text("Save")').first();
+      if (!(await enreg.isVisible().catch(() => false))) return 'bouton « Enregistrer » introuvable après le son';
+      await enreg.click({ timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(12000);
+      await fermerModales();
+      return null;
+    };
+
+    const soucis = await poserUnSon().catch((e) => String(e.message || e).split(String.fromCharCode(10))[0]);
+    if (soucis) {
+      console.warn('');
+      console.warn('SANS SON — ' + soucis);
+      console.warn('La vidéo part muette : 0 % de trafic par le son, mesuré le 28/09.');
+      console.warn('À reprendre à la main dans TikTok, ou relancer avec --son "<recherche>".');
+      console.warn('');
+    } else {
+      console.log('  son ajouté' + (SON ? ` (recherche : « ${SON} »)` : ' depuis l onglet « Pour toi »'));
+    }
 
     if (LEGENDE) {
       console.log('· légende');

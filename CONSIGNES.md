@@ -84,8 +84,10 @@ niveau laissé bas.
   visionnage, sources de trafic**. Pas les vues seules.
 - Référence au 28/09 : TikTok médiane 313 vues, meilleures 780–860.
   Instagram @andre.creatis 71 publications / 92 abonnés. YouTube 9 abonnés.
-- **Le compte TikTok connecté est `andre.ai26` — 8 abonnés**, pas celui à 500.
-  Tout ce qui a été publié est parti sur le petit compte. Connecter l'autre.
+- **Le compte TikTok est `andre.ai26` — 8 abonnés. C'est un CHOIX, tranché le
+  28/09 : on garde ce compte.** Ne plus proposer de basculer sur celui à 500
+  abonnés. Le petit nombre d'abonnés n'est d'ailleurs pas le frein — 99 % des
+  vues viennent de « Pour toi », pas des abonnés.
 
 ## 7. LES SOURCES DE CLIPS
 
