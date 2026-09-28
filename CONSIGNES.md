@@ -86,6 +86,33 @@ J'aime. Ne pas prétendre le contraire.
   niveau ou sous la médiane**. « Le clipping en 3 étapes simple » → 6 vues.
   Les dix meilleures n'ont aucune légende commerciale.
 
+## 3 ter. CE QUI MARCHE VRAIMENT SUR CE COMPTE — relevé le 28/09
+
+Comparaison des vignettes, vues à l'appui :
+
+| Vues | Ce que montre l'image d'ouverture |
+|---|---|
+| **1 229** | Gros plan d'un visage, **GTA 6**. « Ce que Rockstar a montré » |
+| **1 228** | Une voiture dans Vice City, **GTA 6**. « GTA 6 — la route de Vice City » |
+| 99 | Un couple avec un téléphone, plein cadre (gabarit ShortPleinCadre) |
+| 58 | Fond noir, texte centré, capture de l'app (gabarit LeTri) |
+| 54 | Fond noir, texte centré, capture de l'app (gabarit LeTri) |
+
+**Trois leçons, dans l'ordre d'importance :**
+
+1. **Le SUJET pèse plus que le gabarit.** Les deux meilleures ne parlent pas de
+   Créatis : elles parlent de GTA 6. Un sujet à forte demande porte la vidéo,
+   quel que soit son habillage. Facteur douze entre les deux extrêmes.
+2. **Image pleine, colorée, avec un visage ou du mouvement.** Les deux
+   meilleures remplissent le cadre d'une scène. Mes fonds noirs à texte centré
+   sont à 54-58 vues — le plein cadre à 99, soit deux fois mieux. C'est le
+   premier signal exploitable, et il valide le gabarit `ShortPleinCadre`.
+3. **Texte court en haut, deux lignes maximum**, pas un paragraphe centré.
+
+**Conséquence : arrêter les fonds noirs à texte centré.** Et chercher des
+sujets qui ont une demande propre, où Créatis n'est que l'outil montré en
+passant — pas le sujet.
+
 ## 3 bis. VISUELLEMENT DIFFÉRENT, PAS SEULEMENT TEXTUELLEMENT
 
 Consigne du 28/09 : **les publications doivent être différentes AUSSI à l'œil.**
