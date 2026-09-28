@@ -4,6 +4,18 @@ Ce fichier existe parce que je fais répéter les mêmes choses. Il est la sourc
 vérité. Si une consigne n'est pas ici, elle sera oubliée : l'ajouter au moment où
 elle est donnée, pas plus tard.
 
+**Ce fichier ne suffit pas, et c'est prouvé.** Le 28/09 j'y ai écrit que chaque
+vidéo longue doit être promue par des Shorts, en la marquant « la consigne la
+plus souvent oubliée » — puis j'ai publié la vidéo longue le jour même sans
+faire les Shorts. Un texte ne force rien.
+
+**Donc : toute consigne vérifiable devient une VÉRIFICATION qui refuse**, dans
+`scripts/controle-avant-publication.js`, appelé par le planificateur avant
+chaque publication. Il bloque sur le doublon, sur deux gabarits identiques
+d'affilée, et sur une vidéo longue sans Shorts qui y renvoient. Quand une
+nouvelle consigne arrive : l'écrire ici ET, si elle est contrôlable, l'ajouter
+au contrôle.
+
 **Réflexe d'ouverture de session :**
 1. Lire ce fichier en entier.
 2. `node scripts/tiktok-stats.js` — les vues et J'aime par publication.

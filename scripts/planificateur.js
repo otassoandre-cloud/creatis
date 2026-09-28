@@ -124,6 +124,22 @@ const ecrirePlan = (p) => fs.writeFileSync(PLAN, JSON.stringify(p, null, 2));
     return;
   }
 
+  /* ── LE CONTRÔLE BLOQUE, IL NE RAPPELLE PAS ──────────────────────────
+     `CONSIGNES.md` est de la prose, et la prose ne force rien : le 28/09 j'y
+     ai écrit que chaque vidéo longue doit être promue par des Shorts, en la
+     marquant « la consigne la plus souvent oubliée », puis j'ai publié la
+     vidéo longue le jour même sans faire les Shorts.
+     Une consigne qui compte devient donc une vérification qui REFUSE. */
+  try {
+    execFileSync(process.execPath, [path.join(__dirname, 'controle-avant-publication.js')], {
+      cwd: RACINE, encoding: 'utf8', stdio: 'pipe',
+    });
+  } catch (e) {
+    noter('CONTRÔLE BLOQUANT — rien n est publié :');
+    for (const l of String(e.stdout || '').split(String.fromCharCode(10))) if (l.trim()) noter('  ' + l);
+    return;
+  }
+
   const cible = CIBLES[du.cible];
   if (!cible) {
     du.statut = 'erreur';
