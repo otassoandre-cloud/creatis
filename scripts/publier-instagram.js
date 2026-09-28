@@ -157,8 +157,56 @@ const STRATEGIES = [
     await champ.waitFor({ state: 'attached', timeout: 20000 });
     await champ.setInputFiles(path.resolve(VIDEO));
     await page.waitForTimeout(9000);
-    // « Les vidéos sont désormais partagées en tant que reels »
-    await cliquer(['OK', 'Suivant', 'Next'], 'avis vidéo');
+    /* L'avis « Les vidéos sont désormais partagées en tant que reels » se ferme
+       par OK. On ne propose PAS « Suivant » ici : ce bouton appartient à l'écran
+       de recadrage qui suit, et le cliquer à l'aveugle est exactement la faute
+       décrite ci-dessous. */
+    await cliquer(['OK', "J'ai compris", 'Got it'], 'avis vidéo', false, 5);
+
+    /* ── LE RECADRAGE : NE JAMAIS LE TRAVERSER À L'AVEUGLE ────────────────
+       Le flux « Publication » impose une étape de recadrage dont le défaut est
+       CARRÉ. Un 1080x1920 y perd le haut et le bas.
+       Le 28/09 la première publication est partie comme ça : le titre
+       « L'IA met une note à chaque clip » a été coupé en deux, sur une vidéo
+       dont le sujet était précisément ce titre. Rien dans les journaux ne le
+       signalait — le script avait « réussi ».
+       On sélectionne donc explicitement « Original ». Si le sélecteur est
+       introuvable, on S'ARRÊTE : publier au mauvais format est pire que ne pas
+       publier, parce que ça se voit et que ça ne se corrige qu'en supprimant. */
+    console.log('· format d origine');
+    /* « Sélectionner un format », relevé en listant les aria-label de l'écran.
+       Attention au piège : « Rogner » est le TITRE de la fenêtre, pas le bouton
+       — s'y fier ouvrait un clic dans le vide. On remonte au bouton qui porte
+       l'icône, celle-ci n'étant pas toujours cliquable elle-même. */
+    const FORMAT = 'svg[aria-label="Sélectionner un format"], svg[aria-label="Select crop"]';
+    const selecteurRecadrage = page.locator(
+      `button:has(${FORMAT}), [role="button"]:has(${FORMAT}), ${FORMAT}`,
+    ).first();
+    if (await selecteurRecadrage.isVisible().catch(() => false)) {
+      await selecteurRecadrage.click({ timeout: 6000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      const pris = await cliquer(['Original', '9:16'], 'format', false, 6);
+      if (!pris) {
+        await shot('recadrage-sans-original');
+        throw new Error('« Original » introuvable dans le menu de recadrage');
+      }
+      await page.waitForTimeout(1500);
+    } else {
+      await shot('recadrage-introuvable');
+      /* Dire CE QU'ON VOIT plutôt que de laisser deviner. Les libellés d'accès
+         d'Instagram changent avec la langue et les versions ; un sélecteur en
+         dur périme sans prévenir, et l'erreur seule n'aide pas à le réparer. */
+      const vus = await page.evaluate(() =>
+        [...document.querySelectorAll('[aria-label]')]
+          .filter((e) => e.getBoundingClientRect().width > 0)
+          .map((e) => e.getAttribute('aria-label'))
+          .filter((v, i, t) => v && t.indexOf(v) === i)
+          .slice(0, 40),
+      ).catch(() => []);
+      console.error('Libellés visibles sur cet écran :');
+      for (const v of vus) console.error('   · ' + v);
+      throw new Error('sélecteur de recadrage introuvable — on ne publie pas sans avoir choisi le format');
+    }
     await shot('apres-depot');
 
     /* ── NE PAS COMPTER LES ÉTAPES ───────────────────────────────────────
