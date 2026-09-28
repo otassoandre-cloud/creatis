@@ -40,6 +40,26 @@ elle est donnée, pas plus tard.
   niveau ou sous la médiane**. « Le clipping en 3 étapes simple » → 6 vues.
   Les dix meilleures n'ont aucune légende commerciale.
 
+## 3 bis. VISUELLEMENT DIFFÉRENT, PAS SEULEMENT TEXTUELLEMENT
+
+Consigne du 28/09 : **les publications doivent être différentes AUSSI à l'œil.**
+
+Le défaut constaté : `LeTri` et `ShortVersYouTube` se ressemblent trait pour
+trait — fond noir, texte blanc centré, une carte avec la capture de l'app. Deux
+publications d'affilée sur le même compte donnaient l'impression d'une seule
+vidéo répétée, et une grille de profil où tout se ressemble ne donne aucune
+raison de cliquer sur la deuxième vignette.
+
+**Règle : alterner les gabarits, jamais deux fois le même d'affilée.**
+Gabarits disponibles :
+- `ShortPleinCadre` — le clip occupe tout le cadre, texte en haut à gauche,
+  aucune carte. L'aspect change tous les jours puisque le clip change.
+- `LeTri` — fond sombre, carte de l'app, chiffres en typographie.
+- `ShortVersYouTube` — leçon, démonstration, renvoi.
+
+Avant de rendre une pièce : regarder la vignette de la PRÉCÉDENTE. Si les deux
+se ressemblent, changer de gabarit ou de fond.
+
 ## 4. JAMAIS DEUX FOIS LE MÊME CONTENU
 
 - Contenu **neuf chaque jour**, choisi après analyse de la veille.

@@ -16,6 +16,7 @@ import { DUREE_REC, DuDebutALaFin, REC_DEFAUT } from "./creatis/DuDebutALaFin";
 import { DUREE_TUTO, TutoYouTube, TUTO_DEFAUT } from "./creatis/TutoYouTube";
 import { DUREE_LE_TRI, LeTri, LE_TRI_DEFAUT } from "./creatis/LeTri";
 import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/ShortVersYouTube";
+import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT } from "./creatis/ShortPleinCadre";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -138,6 +139,18 @@ export const RemotionRoot: React.FC = () => {
             obtenu. Les reperes se relevent sur l'enregistrement. */}
         {/* Seule composition en 16:9 : YouTube n'est pas un fil vertical, on y
             vient pour apprendre. Toutes les autres restent en 1080x1920. */}
+        {/* Gabarit VISUELLEMENT OPPOSE aux autres shorts : le clip occupe
+            tout le cadre, le texte est en haut a gauche, pas de carte. Deux
+            publications d affilee ne doivent pas se ressembler. */}
+        <Composition
+          id="ShortPleinCadre"
+          component={ShortPleinCadre}
+          durationInFrames={DUREE_PLEIN}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{ reglage: PLEIN_DEFAUT }}
+        />
         {/* Short compagnon de la video longue du jour : il enseigne un critere
             utilisable sans l'outil, le demontre, puis renvoie au tutoriel. */}
         <Composition
