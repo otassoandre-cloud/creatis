@@ -118,25 +118,40 @@ const COMPTE = arg('compte', '');
     const f = path.join(SORTIE, `ig-grille-${pseudo}.png`);
     await page.screenshot({ path: f, fullPage: false }).catch(() => {});
 
-    /* ── LES VUES NE SONT PAS DANS LA GRILLE ────────────────────────────
-       Vérifié le 28/09 sur une capture : la grille du profil n'affiche QUE
-       l'icône de lecture, aucun compteur. L'extraction rend donc zéro partout.
+    /* ── LES VUES SONT SUR L'ONGLET REELS, PAS SUR LA GRILLE ────────────
+       Première erreur : j'ai lu la grille des publications, qui n'affiche que
+       l'icône de lecture, et j'en ai conclu qu'Instagram ne donnait pas les
+       vues. Faux — elles sont sur l'onglet Reels (`/<pseudo>/reels/`), écrites
+       sous chaque vignette. Il fallait changer d'onglet, pas d'API.
+       On y va donc explicitement, et on descend jusqu'à ce que le nombre de
+       vignettes cesse d'augmenter. */
+    await page.goto(`https://www.instagram.com/${pseudo}/reels/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(8000);
+    let avant = 0;
+    for (let i = 0; i < 14; i++) {
+      await page.mouse.wheel(0, 2200);
+      await page.waitForTimeout(1200);
+      const n = await page.evaluate(() => document.querySelectorAll('a[href*="/reel/"]').length).catch(() => 0);
+      if (n === avant && i > 2) break;
+      avant = n;
+    }
 
-       On N'ÉCRIT PAS un relevé de zéros : `apprendre.js` en tirerait des
-       moyennes fausses et classerait les gabarits Instagram au hasard. Mieux
-       vaut pas de donnée qu'une donnée inventée.
-
-       Pour avoir ces vues il faut soit ouvrir chaque publication une par une,
-       soit l'API Graph — dont le jeton est expiré. C'est le même déblocage que
-       pour les stories. */
     const enNombre = (t) => {
       const m = String(t || '').replace(/\s/g, '').replace(',', '.').match(/^([\d.]+)([KkMm])?/);
       if (!m) return 0;
       const n = parseFloat(m[1]);
       return Math.round(n * (m[2] ? (m[2].toLowerCase() === 'k' ? 1000 : 1e6) : 1));
     };
-    const avecVues = info.liens
-      .map(([href, alt]) => ({ href, legende: alt, vues: enNombre(info.vues[href]) }))
+
+    const reels = await page.evaluate(() => [...document.querySelectorAll('a[href*="/reel/"]')]
+      .map((a) => ({
+        href: a.getAttribute('href') || '',
+        brut: (a.innerText || '').replace(/ /g, ' ').trim(),
+      }))
+      .filter((x) => x.href)).catch(() => []);
+
+    const avecVues = reels
+      .map((r) => ({ href: r.href, vues: enNombre(r.brut), brut: r.brut }))
       .filter((x) => x.vues > 0);
 
     const STATS = path.join(RACINE, 'social', 'stats');
@@ -145,14 +160,20 @@ const COMPTE = arg('compte', '');
     if (avecVues.length) {
       fs.mkdirSync(STATS, { recursive: true });
       fs.writeFileSync(fStats, JSON.stringify({
-        releve_le: new Date().toISOString(), compte: pseudo, publications: avecVues,
+        releve_le: new Date().toISOString(), compte: pseudo,
+        source: 'onglet Reels du profil',
+        publications: avecVues,
       }, null, 2));
-      console.log(`Relevé écrit : ${avecVues.length} publication(s) avec un nombre de vues.`);
+      console.log(`
+Relevé Reels : ${avecVues.length} vidéo(s) avec leurs vues.`);
+      for (const r of avecVues.slice(0, 8)) {
+        console.log(`  ${String(r.vues).padStart(6)} vues  ${r.href}`);
+      }
     } else {
       if (fs.existsSync(fStats)) fs.unlinkSync(fStats);
-      console.log('AUCUN nombre de vues lisible sur la grille — pas de relevé écrit.');
-      console.log('Instagram ne les affiche pas ici ; il faut l API Graph (jeton expiré).');
+      console.log('Aucune vue lisible sur l onglet Reels — pas de relevé écrit.');
     }
+    await page.screenshot({ path: path.join(SORTIE, `ig-reels-${pseudo}.png`) }).catch(() => {});
 
     console.log('En-tête du profil : ' + info.entete.join(' | '));
     console.log(`\n${info.liens.length} publication(s) lue(s) :\n`);

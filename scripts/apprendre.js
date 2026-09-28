@@ -63,6 +63,19 @@ if (!releves.length) {
 const dernier = lire(path.join(STATS, releves[0]), { publications: [] });
 const mesures = dernier.publications || [];
 
+/* ── INSTAGRAM AUSSI ──────────────────────────────────────────────────────
+   Les vues Instagram sont sur l'ONGLET REELS du profil, pas sur la grille des
+   publications — j'avais lu le mauvais onglet et conclu à tort qu'elles
+   n'existaient pas. La jointure s'y fait par l'URL du Reel, relevée au moment
+   de la publication : plus fiable qu'un rapprochement par légende. */
+const relevesIg = fs.existsSync(STATS)
+  ? fs.readdirSync(STATS).filter((f) => f.startsWith('instagram-') && f.endsWith('.json')).sort().reverse()
+  : [];
+const mesuresIg = relevesIg.length
+  ? (lire(path.join(STATS, relevesIg[0]), { publications: [] }).publications || [])
+  : [];
+const vuesIg = new Map(mesuresIg.map((m) => [String(m.href || '').replace(/\//g, ''), m.vues]));
+
 /* ── La jointure ───────────────────────────────────────────────────────────
    TikTok ne rend pas d'identifiant exploitable dans la liste : on rapproche
    par la LÉGENDE, qui est ce qu'on a écrit nous-mêmes. On compare sur les
@@ -98,6 +111,19 @@ const duJour = (d) => {
 };
 const recentes = appariees.filter((a) => duJour(a.date));
 const comparables = appariees.filter((a) => !duJour(a.date));
+
+/* Les pièces Instagram rejoignent le même tableau, appariées par leur URL. */
+for (const p of registre.pieces || []) {
+  if (!p.url || !/instagram\.com/.test(p.url)) continue;
+  const cle = String(p.url).split('/reel/')[1]?.replace(/\//g, '');
+  if (!cle) continue;
+  for (const [k, v] of vuesIg) {
+    if (k.includes(cle)) {
+      appariees.push({ ...p, vues: v, jaime: 0, date: p.publie_le || '', reseau: 'instagram' });
+      break;
+    }
+  }
+}
 
 /* ── Le classement par variable ────────────────────────────────────────── */
 const parVariable = (nom, extraire) => {
