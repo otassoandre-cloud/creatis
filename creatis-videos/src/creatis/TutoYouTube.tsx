@@ -79,7 +79,7 @@ import { COULEURS } from "./theme";
  */
 
 const FPS = 30;
-export const DUREE_TUTO = 34 * FPS; // 1020 images
+export const DUREE_TUTO = 30 * FPS; // 900 images
 
 /** Marge de sécurité YouTube : rien d'important sous 88 % ni dans le coin haut-droit. */
 const BAS_SUR = 0.88;
@@ -105,63 +105,55 @@ export type EtapeTuto = {
   cible?: { x: number; y: number };
 };
 
-/* ── LES REPÈRES DU SCRIPT SONT FAUX, ON LES A MESURÉS ───────────────────
- * `rec-youtube-2809.json` annonce la grille à 75,3 s. À l'image elle n'apparaît
- * qu'à 87 s. L'écart n'est pas une erreur du script : il pose son repère quand
- * le SÉLECTEUR apparaît dans le DOM, pas quand l'écran est peint — vignettes,
- * scores et notes arrivent après. Un premier montage calé sur ces repères
- * affichait « Cinq clips, notés » par-dessus la barre d'analyse encore en cours,
- * exactement le défaut déjà payé sur Parcours.
+/* ── LES REPÈRES DU SCRIPT SONT FAUX, ON LES MESURE ──────────────────────
+ * Le fichier de repères pose sa marque quand le SÉLECTEUR entre dans le DOM,
+ * pas quand l'écran est peint. Le 28/09 il annonçait la grille à 449,6 s ; à
+ * l'image elle n'apparaît qu'à 450 et disparaît à 456. Les bornes ci-dessous
+ * sont relevées sur une planche contact de l'enregistrement.
  *
- * Les bornes ci-dessous viennent donc d'une planche contact de l'enregistrement,
- * une image toutes les quatre secondes. Relevé :
- *   0 → 7 s     page de connexion (ne jamais montrer)
- *   7 → 15 s    accueil, saisie du lien, lancement
- *   15 → 87 s   analyse — 72 secondes d'attente pure
- *   87 → 98 s   LA GRILLE : 5 clips, notes 92 / 90 / 88 / 86 / 85
- *   98 → 158 s  éditeur : sous-titres, format, aperçu
+ * Enregistrement du 28/09 après-midi — « QUEL INFLUENCEUR POSSÈDE LE MEILLEUR
+ * FAST FOOD ? », 10 min 40 :
+ *    7 → 15 s     accueil, saisie du lien, lancement
+ *   15 → 450 s    analyse — SEPT MINUTES ET QUART d'attente
+ *  450 → 456 s    LA GRILLE : 10 clips notés, six secondes à l'écran
+ *  456 → 641 s    éditeur
  *
- * ── ET LES DÉCOUPES SUIVENT LA VOIX ──────────────────────────────────────
- * Frontières relevées au `silencedetect` sur la voix du jour (31,7 s) :
- * 7,9 / 15,4 / 20,7 / 25,2. Chaque plan change quand la phrase change, jamais
- * au milieu d'une. La composition fait 34 s : 2,3 s de queue après la dernière
- * phrase, de quoi laisser l'image finir sans silence qui traîne.
+ * ── LES DÉCOUPES SUIVENT LA VOIX ─────────────────────────────────────────
+ * Frontières au `silencedetect` sur la voix du jour (28,2 s) : 9,2 / 14,2 /
+ * 18,7 / 23,3 / 25,1. La composition fait 30 s, soit 1,8 s de queue.
  *
- * Règle tenue partout : l'annotation ne dit que ce que l'écran montre au même
- * instant. Les notes citées à l'étape 3 sont lisibles sur les vignettes. */
+ * ── UN SEGMENT À QUARANTE-SIX FOIS LA VITESSE ────────────────────────────
+ * L'analyse dure 433 secondes et tient en 9,5 : c'est assumé et ANNONCÉ par le
+ * bandeau. L'écran d'analyse ne bouge presque pas de toute façon — ce qu'on
+ * comprime, c'est de l'attente, pas de l'information. Et la voix donne le
+ * chiffre vrai : « compte sept minutes d'analyse ». Une démonstration qui
+ * cacherait ce délai se retournerait contre le produit au premier essai. */
 export const ETAPES_DEFAUT: EtapeTuto[] = [
   {
-    debut: 0, fin: 8, rec: [7.5, 15.5],
+    debut: 0, fin: 9.2, rec: [7.0, 16.0],
     titre: "Colle le lien de ta vidéo",
     detail: "Rien à télécharger, aucun logiciel à installer.",
     zoom: ZOOM_MAX, cible: { x: 0.5, y: 0.42 },
   },
   {
-    debut: 8, fin: 15.5, rec: [15.5, 86.5],
-    titre: "L'IA lit ce qui est dit",
-    detail: "Transcription, puis repérage des passages qui se comprennent seuls.",
+    debut: 9.2, fin: 18.7, rec: [16.0, 449.0],
+    titre: "Un clip doit tenir debout tout seul",
+    detail: "L'IA lit la transcription et cherche les passages qui se comprennent sans le reste.",
     zoom: 1,
   },
   {
-    /* Plein cadre et vitesse réelle : seul plan qui PROUVE quelque chose. La
-       grille ne bouge pas entre 87 et 98 s, on n'en prend donc que 5,5 s — de
-       quoi la montrer sans l'accélérer. */
-    debut: 15.5, fin: 21, rec: [86.5, 92.0],
-    titre: "Cinq clips, notés",
-    detail: "92, 90, 88, 86, 85 — déjà recadrés en vertical et sous-titrés.",
+    /* Plein cadre, vitesse réelle : six secondes, c'est tout ce que la grille
+       reste à l'écran, et c'est le seul plan qui prouve quelque chose. */
+    debut: 18.7, fin: 25.1, rec: [450.0, 456.0],
+    titre: "Dix clips, notés",
+    detail: "Déjà recadrés en vertical et sous-titrés. Sept minutes d'analyse pour y arriver.",
     zoom: 1,
   },
   {
-    debut: 21, fin: 25.7, rec: [92.0, 99.5],
+    debut: 25.1, fin: 30, rec: [456.0, 475.0],
     titre: "À toi de trier",
-    detail: "C'est la seule étape qui compte vraiment, et la seule qui ne s'automatise pas.",
+    detail: "C'est la seule étape qui ne s'automatise pas.",
     zoom: 1.1, cible: { x: 0.5, y: 0.5 },
-  },
-  {
-    debut: 25.7, fin: 34, rec: [99.5, 158.0],
-    titre: "Tu ajustes, puis tu exportes",
-    detail: "Sous-titres, format, recadrage. Ou rien du tout.",
-    zoom: 1,
   },
 ];
 
@@ -173,22 +165,13 @@ export type ReglageTuto = {
 };
 
 export const TUTO_DEFAUT: ReglageTuto = {
-  /* Nom DATÉ, et non `rec-youtube.mp4` : l'enregistreur réécrit `parcours.mp4`
-     à chaque tournage, y compris les verticaux. Un nom fixe aurait fait
-     ressortir la vidéo d'hier sous le commentaire d'aujourd'hui.
-
-     Et suffixe `-h264` : Playwright rend du VP8, dont les images-clés sont
-     rares. Tant que le montage ne faisait qu'UNE lecture linéaire, ça ne se
-     voyait pas ; à cinq segments, chacun cherchant jusqu'à 99 s dans le
-     fichier, le rendu est passé de cinq à plus de huit minutes sans finir.
-     Le ré-encodage pose une image-clé par seconde (`-g 25 -sc_threshold 0`)
-     et coûte 65 s une fois pour toutes :
-
-       ffmpeg -i rec-youtube-2809.mp4 -c:v libx264 -preset veryfast -crf 20               -pix_fmt yuv420p -r 25 -g 25 -keyint_min 25 -sc_threshold 0 -an               -movflags +faststart rec-youtube-2809-h264.mp4
-
-     À refaire pour chaque nouvel enregistrement monté en segments. */
-  enregistrement: "rec-youtube-2809-h264.mp4",
-  voix: "tuto-du-jour.mp3",
+  /* Nom DATÉ et suffixe `-h264`. Daté, parce que l'enregistreur réécrit
+     `parcours.mp4` à chaque tournage. H.264, parce que Playwright rend du VP8
+     aux images-clés rares : sur un montage à quatre segments cherchant jusqu'à
+     456 s dans le fichier, le rendu n'aboutissait pas. Le ré-encodage pose une
+     image-clé par seconde et coûte une minute une fois pour toutes. */
+  enregistrement: "rec-yt-2809b-h264.mp4",
+  voix: "tuto-2809b.mp3",
   titre: "Une vidéo longue → des Shorts",
 };
 

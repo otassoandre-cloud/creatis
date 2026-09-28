@@ -50,13 +50,11 @@ const arg = (n, d) => { const i = process.argv.indexOf("--" + n); return i !== -
    spectateur reconnaissait une publicité. Ici on montre un geste, et le produit
    n'apparaît que parce qu'il est l'outil de ce geste. */
 const TEXTE_DU_JOUR = `
-Tu as une vidéo longue et tu veux en tirer des formats courts. Voilà comment.
+Tu as une vidéo longue et tu veux en tirer des formats courts. Voilà comment, du début à la fin.
 Tu colles le lien. Rien à télécharger, aucun logiciel à installer.
-L'intelligence artificielle lit ce qui est dit, et cherche les passages qui se comprennent tout seuls. Pas les plus bruyants : les plus autonomes.
-Elle te rend ses meilleures propositions, notées, déjà recadrées en vertical et sous-titrées.
-À toi de trier. C'est la seule étape qui compte vraiment, et la seule qui ne s'automatise pas.
-Tu ajustes les sous-titres si tu veux, puis tu exportes.
-Une vidéo d'une heure, ça fait une semaine de contenu court.
+L'intelligence artificielle lit ce qui est dit, et cherche les passages qui se comprennent tout seuls. C'est le seul critère qui compte : un clip doit tenir debout sans la vidéo d'où il sort.
+Elle rend dix propositions, notées, déjà recadrées en vertical et sous-titrées. Compte sept minutes d'analyse.
+À toi de trier. C'est la seule étape qui ne s'automatise pas.
 `.trim().replace(/\s+/g, " ");
 
 const TEXTE = arg("texte", TEXTE_DU_JOUR);

@@ -45,8 +45,27 @@ const dateParis = () => new Intl.DateTimeFormat('fr-CA', {
 const DATE = arg('date', dateParis());
 
 /** 8 h → 21 h inclus. 11 h est pris par la vidéo longue. */
-const HEURES = Array.from({ length: 14 }, (_, i) => String(8 + i).padStart(2, '0'));
+const TOUTES_HEURES = Array.from({ length: 14 }, (_, i) => String(8 + i).padStart(2, '0'));
 const HEURE_LONGUE = '11';
+
+/* Un plan écrit à 10 h ne programme pas 8 h. Sans ce filtre, les créneaux déjà
+   passés partaient « en attente », le planificateur les marquait « manqués » au
+   tour suivant, et le contenu du jour était perdu sans que rien ne soit publié.
+   On ne garde donc que les heures ENCORE À VENIR quand le plan porte sur
+   aujourd'hui — pour une autre date, toutes les heures sont valides. */
+const heureParis = () => new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris', hour: '2-digit', hour12: false,
+}).format(new Date()).padStart(2, '0');
+
+const HEURES = DATE === dateParis()
+  ? TOUTES_HEURES.filter((h) => h > heureParis())
+  : TOUTES_HEURES;
+
+if (!HEURES.length) {
+  console.log(`Il est ${heureParis()} h à Paris : plus aucun créneau à venir aujourd'hui.`);
+  console.log('Planifier pour demain avec --date.');
+  process.exit(0);
+}
 
 if (!fs.existsSync(FILE)) {
   console.error(`Aucune file d attente : ${FILE}`);
@@ -106,7 +125,7 @@ fs.mkdirSync(path.dirname(PLAN), { recursive: true });
 fs.writeFileSync(PLAN, JSON.stringify(plan, null, 2));
 
 const remplis = creneaux.filter((c) => c.statut === 'en attente').length;
-console.log(`Plan du ${DATE} écrit : ${remplis} créneau(x) rempli(s) sur ${HEURES.length}.`);
+console.log(`Plan du ${DATE} écrit : ${remplis} créneau(x) rempli(s) sur ${HEURES.length} restant(s) (${TOUTES_HEURES.length} dans la journée).`);
 for (const c of creneaux) {
   console.log(`  ${c.heure}  ${String(c.cible || '—').padEnd(4)} ${c.statut.padEnd(10)} ${c.titre || c.piece || c.detail || ''}`);
 }
