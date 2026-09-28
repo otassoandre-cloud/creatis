@@ -127,14 +127,6 @@ const COMPTE = arg('compte', '');
        vignettes cesse d'augmenter. */
     await page.goto(`https://www.instagram.com/${pseudo}/reels/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(8000);
-    let avant = 0;
-    for (let i = 0; i < 14; i++) {
-      await page.mouse.wheel(0, 2200);
-      await page.waitForTimeout(1200);
-      const n = await page.evaluate(() => document.querySelectorAll('a[href*="/reel/"]').length).catch(() => 0);
-      if (n === avant && i > 2) break;
-      avant = n;
-    }
 
     const enNombre = (t) => {
       const m = String(t || '').replace(/\s/g, '').replace(',', '.').match(/^([\d.]+)([KkMm])?/);
@@ -143,12 +135,33 @@ const COMPTE = arg('compte', '');
       return Math.round(n * (m[2] ? (m[2].toLowerCase() === 'k' ? 1000 : 1e6) : 1));
     };
 
-    const reels = await page.evaluate(() => [...document.querySelectorAll('a[href*="/reel/"]')]
-      .map((a) => ({
-        href: a.getAttribute('href') || '',
-        brut: (a.innerText || '').replace(/ /g, ' ').trim(),
-      }))
-      .filter((x) => x.href)).catch(() => []);
+    /* ── ACCUMULER EN DESCENDANT, LA LISTE EST VIRTUALISÉE ──────────────
+       Même piège que sur TikTok, et je ne l'avais pas appliqué ici : après
+       avoir beaucoup défilé, Instagram retire du DOM les vignettes du HAUT.
+       Une lecture unique en fin de défilement rendait 27 Reels dont les trois
+       plus RÉCENTS manquaient — précisément ceux qu'on vient de publier et
+       qu'on veut mesurer. On lit donc à chaque palier et on accumule. */
+    const collecte = new Map();
+    const lireEcran = async () => {
+      const vus = await page.evaluate(() => [...document.querySelectorAll('a[href*="/reel/"]')]
+        .map((a) => ({
+          href: a.getAttribute('href') || '',
+          brut: (a.innerText || '').replace(/ /g, ' ').trim(),
+        }))).catch(() => []);
+      for (const v of vus) if (v.href) collecte.set(v.href, v.brut);
+    };
+
+    await lireEcran();
+    let avant = -1;
+    for (let i = 0; i < 16; i++) {
+      await page.mouse.wheel(0, 1800);
+      await page.waitForTimeout(1100);
+      await lireEcran();
+      if (collecte.size === avant && i > 2) break;
+      avant = collecte.size;
+    }
+    const reels = [...collecte.entries()].map(([href, brut]) => ({ href, brut }));
+    console.log(`  ${reels.length} Reel(s) collecté(s) au fil du défilement`);
 
     const avecVues = reels
       .map((r) => ({ href: r.href, vues: enNombre(r.brut), brut: r.brut }))
