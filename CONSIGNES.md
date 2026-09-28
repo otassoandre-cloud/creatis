@@ -20,8 +20,29 @@ au contrôle.
 1. Lire ce fichier en entier.
 2. `node scripts/tiktok-stats.js` — les vues et J'aime par publication.
 3. Ouvrir l'onglet Données analytiques de TikTok — **rétention et sources de trafic**.
-4. `node scripts/social-brief.js` — les inscriptions attribuées (souvent nulles, voir §5).
-5. Décider le contenu du jour À PARTIR de ces chiffres, pas avant de les avoir lus.
+4. **`node scripts/apprendre.js`** — relie ce qu'on a publié à ce que ça a donné,
+   et écrit `social/verdict.md`. **C'est LUI qu'on lit pour décider du contenu.**
+5. `node scripts/social-brief.js` — les inscriptions attribuées (souvent nulles, voir §6).
+6. Décider le contenu du jour À PARTIR du verdict, pas avant de l'avoir lu.
+
+## 0. COMMENT LE CONTENU S'AMÉLIORE — le seul mécanisme qui marche
+
+Je ne retiens rien d'une session à l'autre. L'amélioration ne peut donc pas
+venir de ma mémoire, elle vient d'une **boucle écrite sur le disque** :
+
+1. **Chaque pièce porte ses variables** au moment où on la produit, dans
+   `social/registre.json` : `gabarit`, `accroche` (question / chiffre /
+   affirmation), `son` (le nom du son posé, ou `null`), `heure`, `promeut`.
+2. Le lendemain, `tiktok-stats.js` relève les chiffres et les écrit en JSON.
+3. `apprendre.js` fait la **jointure** et classe chaque variable par résultat.
+4. Le verdict dit quoi refaire et quoi arrêter — et **refuse de conclure sous
+   trois publications par valeur**, parce qu'en dessous c'est du bruit.
+5. Une publication **du jour n'entre pas dans le classement** : elle n'a pas
+   fini d'accumuler ses vues. Elle est listée à part.
+
+**Conséquence pratique : ne faire varier qu'une chose à la fois.** Changer le
+gabarit ET l'accroche ET le son le même jour ne permet d'attribuer le résultat
+à rien. Fixer les autres variables, bouger celle qu'on teste.
 
 ---
 

@@ -196,6 +196,17 @@ const enNombre = (t) => {
     const jour = new Date().toISOString().slice(0, 10);
     const f = path.join(BRIEFS, `tiktok-${jour}.txt`);
     fs.writeFileSync(f, lignesSortie.join('\n') + '\n');
+
+    /* Et la MÊME chose en JSON, pour que `apprendre.js` puisse relier ces
+       chiffres aux variables de chaque pièce (gabarit, accroche, son, heure).
+       Sans ce fichier, les résultats et les décisions vivent dans deux mondes
+       séparés, et rien ne s'améliore d'un jour sur l'autre. */
+    const STATS = path.join(RACINE, 'social', 'stats');
+    fs.mkdirSync(STATS, { recursive: true });
+    fs.writeFileSync(
+      path.join(STATS, `tiktok-${jour}.json`),
+      JSON.stringify({ releve_le: new Date().toISOString(), publications }, null, 2),
+    );
     console.log('\n→ ' + f);
     console.log('  capture : ' + path.join(SORTIE, 'tiktok-stats.png'));
   } catch (e) {
