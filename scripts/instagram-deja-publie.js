@@ -88,6 +88,11 @@ const COMPTE = arg('compte', '');
       await page.waitForTimeout(1800);
     }
 
+    /* ── ON RELÈVE AUSSI LES VUES ───────────────────────────────────────
+       Le script ne servait qu'à éviter les doublons. Mais `apprendre.js` ne
+       voyait que TikTok : deux tiers des publications ne comptaient pour rien
+       dans la boucle d'amélioration. La grille affiche le nombre de vues sur
+       chaque vignette de Reel — on le prend au passage, c'est gratuit. */
     const info = await page.evaluate(() => {
       const nombres = [...document.querySelectorAll('header li, header span')]
         .map((e) => (e.textContent || '').trim()).filter(Boolean);
@@ -97,11 +102,57 @@ const COMPTE = arg('compte', '');
         const img = a.querySelector('img');
         publications.set(href, (img?.getAttribute('alt') || '').replace(/\s+/g, ' ').trim());
       }
-      return { entete: nombres.slice(0, 8), liens: [...publications.entries()] };
+      /* Le compteur de vues est le texte affiché en surimpression de la
+         vignette. On remonte du lien vers son conteneur et on y cherche un
+         nombre — « 1,2 K » compris. */
+      const vues = {};
+      for (const a of document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]')) {
+        const href = a.getAttribute('href') || '';
+        const t = (a.textContent || '').replace(/ /g, ' ').trim();
+        const m = t.match(/([\d.,]+\s*[KkMm]?)/);
+        if (m) vues[href] = m[1];
+      }
+      return { entete: nombres.slice(0, 8), liens: [...publications.entries()], vues };
     });
 
     const f = path.join(SORTIE, `ig-grille-${pseudo}.png`);
     await page.screenshot({ path: f, fullPage: false }).catch(() => {});
+
+    /* ── LES VUES NE SONT PAS DANS LA GRILLE ────────────────────────────
+       Vérifié le 28/09 sur une capture : la grille du profil n'affiche QUE
+       l'icône de lecture, aucun compteur. L'extraction rend donc zéro partout.
+
+       On N'ÉCRIT PAS un relevé de zéros : `apprendre.js` en tirerait des
+       moyennes fausses et classerait les gabarits Instagram au hasard. Mieux
+       vaut pas de donnée qu'une donnée inventée.
+
+       Pour avoir ces vues il faut soit ouvrir chaque publication une par une,
+       soit l'API Graph — dont le jeton est expiré. C'est le même déblocage que
+       pour les stories. */
+    const enNombre = (t) => {
+      const m = String(t || '').replace(/\s/g, '').replace(',', '.').match(/^([\d.]+)([KkMm])?/);
+      if (!m) return 0;
+      const n = parseFloat(m[1]);
+      return Math.round(n * (m[2] ? (m[2].toLowerCase() === 'k' ? 1000 : 1e6) : 1));
+    };
+    const avecVues = info.liens
+      .map(([href, alt]) => ({ href, legende: alt, vues: enNombre(info.vues[href]) }))
+      .filter((x) => x.vues > 0);
+
+    const STATS = path.join(RACINE, 'social', 'stats');
+    const jour = new Date().toISOString().slice(0, 10);
+    const fStats = path.join(STATS, `instagram-${jour}.json`);
+    if (avecVues.length) {
+      fs.mkdirSync(STATS, { recursive: true });
+      fs.writeFileSync(fStats, JSON.stringify({
+        releve_le: new Date().toISOString(), compte: pseudo, publications: avecVues,
+      }, null, 2));
+      console.log(`Relevé écrit : ${avecVues.length} publication(s) avec un nombre de vues.`);
+    } else {
+      if (fs.existsSync(fStats)) fs.unlinkSync(fStats);
+      console.log('AUCUN nombre de vues lisible sur la grille — pas de relevé écrit.');
+      console.log('Instagram ne les affiche pas ici ; il faut l API Graph (jeton expiré).');
+    }
 
     console.log('En-tête du profil : ' + info.entete.join(' | '));
     console.log(`\n${info.liens.length} publication(s) lue(s) :\n`);

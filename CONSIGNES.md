@@ -44,6 +44,19 @@ venir de ma mémoire, elle vient d'une **boucle écrite sur le disque** :
 gabarit ET l'accroche ET le son le même jour ne permet d'attribuer le résultat
 à rien. Fixer les autres variables, bouger celle qu'on teste.
 
+**Ce que la boucle NE voit pas encore, au 28/09 :**
+- **Instagram.** La grille du profil n'affiche aucun compteur de vues —
+  vérifié à la capture. Il faudrait ouvrir chaque publication, ou l'API Graph
+  (jeton expiré). Tant que c'est le cas, les publications Instagram ne
+  comptent pour rien dans l'apprentissage.
+- **YouTube.** Pas encore relevé du tout.
+- **La rétention.** On ne lit que vues et J'aime. La durée moyenne de
+  visionnage est dans « Voir les données » de chaque publication TikTok, un
+  clic par vidéo — pas encore automatisé.
+
+Donc aujourd'hui la boucle n'apprend QUE sur TikTok, QUE sur les vues et les
+J'aime. Ne pas prétendre le contraire.
+
 ---
 
 ## 1. LE RYTHME
