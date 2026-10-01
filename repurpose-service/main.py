@@ -1617,8 +1617,46 @@ def _get_whisper_model():
         _whisper_model_cache = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
     return _whisper_model_cache
 
+# PLAFOND DE DUREE SUR LA TRANSCRIPTION LOCALE.
+#
+# Le 28/09/2026 a 00h52, une source de 2 h 27 est arrivee sur ce chemin. Whisper
+# tourne ici sur le CPU de Railway : le conteneur est mort en cours de route
+# (deploiement marque CRASHED), et le service a repondu 502 a TOUS les clients
+# pendant des heures — pas seulement a celui qui avait envoye la longue video.
+# Une seule requete pouvait donc eteindre le produit entier.
+#
+# 90 minutes est volontairement genereux : les sources mesurees qui passent bien
+# vont de 23 a 40 minutes (52 s de transcription pour 36 min). Au-dela, on refuse
+# AVANT de charger quoi que ce soit, avec un message qui dit quoi faire — c'est
+# infiniment preferable a un service qui tombe pour tout le monde.
+DUREE_MAX_WHISPER_LOCAL_S = float(os.environ.get("DUREE_MAX_WHISPER_LOCAL_S", 90 * 60))
+
+
+def _duree_media(media_path: str) -> float:
+    """Duree en secondes via ffprobe. 0.0 si on ne sait pas — on ne bloque jamais
+    sur une mesure ratee, le plafond ne doit pas devenir une panne de plus."""
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", media_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        return float((out.stdout or "0").strip() or 0.0)
+    except Exception as e:
+        logger.warning(f"[whisper-local] duree illisible ({e}) — on laisse passer")
+        return 0.0
+
+
 def _transcribe_local(media_path: str) -> Dict:
-    logger.info(f"[whisper-local] model={WHISPER_MODEL} device=cpu")
+    duree = _duree_media(media_path)
+    if duree > DUREE_MAX_WHISPER_LOCAL_S:
+        logger.error(f"[whisper-local] REFUS — {duree / 60:.0f} min > "
+                     f"{DUREE_MAX_WHISPER_LOCAL_S / 60:.0f} min, le conteneur n'y survivrait pas")
+        raise RuntimeError(
+            f"Cette vidéo dure {duree / 60:.0f} minutes — c'est au-delà de ce que "
+            f"l'analyse sait traiter d'un coup ({DUREE_MAX_WHISPER_LOCAL_S / 60:.0f} minutes "
+            "maximum). Découpe-la en deux et relance, ou choisis une vidéo plus courte.")
+    logger.info(f"[whisper-local] model={WHISPER_MODEL} device=cpu duree={duree / 60:.0f}min")
     model = _get_whisper_model()
     # beam_size=5 (Ret) était trop lent en CPU pur sur les vidéos longues — beam_size=1 est
     # nettement plus rapide (quasi le seul levier dispo sur ce fallback) pour rester sous le
