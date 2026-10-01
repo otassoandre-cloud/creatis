@@ -51,10 +51,10 @@ import { POLICE } from "./police";
  */
 
 const FPS = 30;
-/* La voix dure 2,16 s (mesuré sur le fichier, pas estimé). La musique prend le
-   relais à la frame qui suit immédiatement sa dernière syllabe. */
+/* La musique prend le relais à la frame qui suit immédiatement la dernière
+   syllabe. La durée de la voix est MESURÉE sur le fichier (`ffmpeg -i`) et
+   passée en réglage : l'estimer décale la musique. */
 const DEBUT_VOIX = Math.round(0.6 * FPS);
-const FIN_VOIX = DEBUT_VOIX + Math.round(2.16 * FPS);
 
 export const DUREE_VOCAL = 13.5 * FPS; // 405 images — aucun temps mort
 
@@ -154,13 +154,36 @@ const PLANS: Plan[] = [
 
 const vitesse = (p: Plan) => (p.rec[1] - p.rec[0]) / (p.fin - p.debut);
 
-export const Vocal: React.FC = () => {
+/**
+ * Les réglages d'un film : sa source, ses plans, sa voix. Ce qui change d'un
+ * tournage à l'autre — tout le reste (zone sûre, musique, légendes, bandeau)
+ * est commun et ne doit plus être recopié.
+ */
+export type ReglagesVocal = {
+  source: string;
+  plans: Plan[];
+  /** Durée réelle du fichier de voix, en secondes. MESURÉE, jamais estimée. */
+  dureeVoix: number;
+  voix?: string;
+};
+
+const BOISERIE: ReglagesVocal = {
+  source: "rec-vocal-0110-h264.mp4",
+  plans: PLANS,
+  dureeVoix: 2.16,
+  voix: "voix/commande-vocale.mp3",
+};
+
+export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
+  const { source, plans: PLANS_ACTIFS, dureeVoix, voix } = { ...BOISERIE, ...reglages };
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
   const s = frame / fps;
 
-  const i = PLANS.reduce((acc, p, k) => (s >= p.debut ? k : acc), 0);
-  const plan = PLANS[i];
+  const FIN_VOIX = DEBUT_VOIX + Math.round(dureeVoix * fps);
+
+  const i = PLANS_ACTIFS.reduce((acc, p, k) => (s >= p.debut ? k : acc), 0);
+  const plan = PLANS_ACTIFS[i];
   const v = vitesse(plan);
 
   const entre = spring({
@@ -181,7 +204,7 @@ export const Vocal: React.FC = () => {
          lieu de trancher en noir pur. */
       style={{ backgroundColor: "#0a0f0a", fontFamily: POLICE }}>
       {/* L'enregistrement, plein cadre, découpé en plans de vitesses différentes. */}
-      {PLANS.map((p) => {
+      {PLANS_ACTIFS.map((p) => {
         /* On amène le rectangle utile au centre de la zone sûre, à la plus
            grande échelle qui l'y fait tenir entièrement. Rien d'important ne
            peut donc approcher un bord, quel que soit le rognage du téléphone. */
@@ -199,7 +222,7 @@ export const Vocal: React.FC = () => {
           >
             <AbsoluteFill style={{ overflow: "hidden" }}>
               <Video
-                src={staticFile("rec-vocal-0110-h264.mp4")}
+                src={staticFile(source)}
                 trimBefore={Math.round(p.rec[0] * FPS)}
                 playbackRate={vitesse(p)}
                 style={{
@@ -285,7 +308,7 @@ export const Vocal: React.FC = () => {
 
       {/* La commande, entendue. C'est elle qui fait comprendre qu'on a PARLÉ. */}
       <Sequence from={DEBUT_VOIX} name="La commande">
-        <Audio src={staticFile("voix/commande-vocale.mp3")} />
+        {voix ? <Audio src={staticFile(voix)} /> : null}
       </Sequence>
 
       {/* La musique démarre PILE quand la voix se tait — pas avant, pas après.
