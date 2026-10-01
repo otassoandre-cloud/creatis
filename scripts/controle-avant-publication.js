@@ -3,7 +3,8 @@
  * Contrôle les consignes AVANT de publier. Bloque au lieu de rappeler.
  *
  *   node scripts/controle-avant-publication.js                 tout le plan du jour
- *   node scripts/controle-avant-publication.js --piece <id>    une pièce
+ *   node scripts/controle-avant-publication.js --piece <id>    une pièce du plan
+ *   node scripts/controle-avant-publication.js --cible tiktok --piece <id>  *        [--gabarit <nom>]                                   une publication hors plan
  *
  * Code 0 = rien ne s'y oppose. Code 5 = une consigne est violée, ne pas publier.
  *
@@ -37,6 +38,30 @@ const REGISTRE = path.join(RACINE, 'social', 'registre.json');
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
 const PIECE = arg('piece', '');
+/* ── LE TROU DU 01/10 ──────────────────────────────────────────────────────
+   Pendant une journée entière ce contrôle n'a RIEN contrôlé des publications
+   faites à la main. Il ne parcourait que les créneaux « en attente » du plan
+   du jour ; appelé en direct avec `--compte tiktok --piece …`, il ne trouvait
+   aucun créneau correspondant, donc aucune faute, donc « rien ne s'oppose ».
+   Il a laissé passer une republication sur un compte où la pièce était déjà
+   en ligne.
+
+   Une publication hors plan est maintenant transformée en créneau examiné par
+   les mêmes règles. Et `--cible` sans `--piece` (ou l'inverse) est refusé :
+   un contrôle qu'on peut appeler à moitié est un contrôle qu'on contourne. */
+const ALIAS = { instagram: 'g1', tiktok: 't1', youtube: 'y1', g1: 'g1', t1: 't1', y1: 'y1' };
+const CIBLE_BRUTE = arg('cible', arg('compte', ''));
+const CIBLE = CIBLE_BRUTE ? ALIAS[CIBLE_BRUTE.toLowerCase()] : '';
+const GABARIT = arg('gabarit', '');
+
+if (CIBLE_BRUTE && !CIBLE) {
+  console.error(`Cible inconnue : « ${CIBLE_BRUTE} ». Attendu : instagram|tiktok|youtube (ou g1|t1|y1).`);
+  process.exit(2);
+}
+if (CIBLE && !PIECE) {
+  console.error('--cible sans --piece : impossible de contrôler quoi que ce soit.');
+  process.exit(2);
+}
 
 const lire = (f, defaut) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : defaut);
 
@@ -45,13 +70,29 @@ const file = lire(FILE, { pieces: [] });
 const registre = lire(REGISTRE, { pieces: [] });
 
 const pieces = new Map((file.pieces || []).map((p) => [p.id, p]));
+
+/* Une publication demandée en ligne de commande devient un créneau à part
+   entière : elle traverse exactement les mêmes règles que celles du plan. */
+if (CIBLE && PIECE) {
+  plan.creneaux = (plan.creneaux || []).concat([
+    { heure: 'maintenant', piece: PIECE, cible: CIBLE, statut: 'en attente' },
+  ]);
+  if (GABARIT && !pieces.has(PIECE)) pieces.set(PIECE, { id: PIECE, gabarit: GABARIT });
+  else if (GABARIT) pieces.get(PIECE).gabarit = GABARIT;
+}
 const fautes = [];
 const avis = [];
 
 /* ── 1. DOUBLON ────────────────────────────────────────────────────────── */
 const dejaFait = new Set();
 for (const p of registre.pieces || []) {
-  if (p.statut === 'publié' && p.compte) dejaFait.add(`${p.id}@${p.compte}`);
+  /* `id` est daté et suffixé (« 2026-10-01-vocal-boiserie-t1 »), `piece` est le
+     nom nu (« vocal-boiserie »). Une première version comparait `id` au nom nu :
+     les deux chaînes ne pouvaient JAMAIS être égales, donc la règle « ne jamais
+     republier » — la consigne la plus répétée — n'a jamais rien bloqué. Trouvé
+     le 01/10 en vérifiant pourquoi un doublon TikTok passait. */
+  const nom = p.piece || p.id;
+  if (p.statut === 'publié' && p.compte && nom) dejaFait.add(`${nom}@${p.compte}`);
 }
 for (const c of plan.creneaux || []) {
   if (c.statut !== 'en attente' || !c.piece || !c.cible) continue;
