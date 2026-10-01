@@ -188,15 +188,20 @@ const attendre = (ms) => page.waitForTimeout(ms);
    fichier de repères. `controle-fin-de-film.js` refuse ensuite tout plan qui
    tombe dedans. */
 const ATTENTES = [];
+/* Vocabulaire ÉTROIT, et c'est voulu. Une première version acceptait
+   « préparation » et « en cours » : le badge « Préparation… » d'une seule carte
+   suffisait alors à faire passer la GRILLE DE RÉSULTATS pour une attente —
+   mesuré à 89 % sur le tournage Amixem du 01/10. On ne garde que les formules
+   qui désignent vraiment un blocage. */
 const MOTS_D_ATTENTE =
-  /t[ée]l[ée]chargement|chargement|r[ée]cup[ée]ration|en cours|patiente|veuillez|pr[ée]paration|analyse en cours/i;
+  /t[ée]l[ée]chargement|r[ée]cup[ée]ration|analyse en cours|transcription en cours|patiente/i;
 let attenteOuverte = null;
 
 const echantillonner = async () => {
   let visible = false;
   try {
     const texte = await page.evaluate(() => document.body.innerText || "");
-    visible = /t[ée]l[ée]chargement|chargement|r[ée]cup[ée]ration|en cours|patiente|veuillez|pr[ée]paration|analyse en cours/i.test(texte);
+    visible = /t[ée]l[ée]chargement|r[ée]cup[ée]ration|analyse en cours|transcription en cours|patiente/i.test(texte);
   } catch {
     return; // page en cours de navigation : on ne conclut rien
   }
@@ -290,11 +295,42 @@ try {
   const titre = (await carte.innerText().catch(() => "")).split("\n")[0];
   await carte.click();
   marquer("fiche");
-  await attendre(6000);
+
+  /* ── ON ATTEND QUE LE CLIP JOUE, PAS UN DÉLAI FIXE ──────────────────────
+     Le tournage du 01/10 attendait 6 s après le clic, puis coupait. Le clip
+     était encore en téléchargement : le film s'est donc terminé sur
+     « Récupération depuis YouTube », et la fin manquait À LA SOURCE — aucun
+     montage ne pouvait la rattraper. Retour : « à la fin on voit ça alors
+     qu'on devrait voir le résultat du clip final ».
+
+     On interroge donc le vrai lecteur : il doit avoir des images et un temps
+     qui avance. Tant que ce n'est pas le cas, on reste. */
+  const joue = await page
+    .waitForFunction(
+      () => {
+        const v = document.querySelector("video");
+        return !!v && v.readyState >= 3 && v.currentTime > 0.2;
+      },
+      undefined,
+      { timeout: 180000, polling: 500 },
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  if (joue) {
+    marquer("clipJoue");
+    console.log("  le clip JOUE — on filme le résultat");
+    /* Assez pour qu'on voie le clip tourner avec ses sous-titres. */
+    await attendre(9000);
+  } else {
+    console.log("  ⚠ le clip n'a jamais joué en 3 min : la fin sera inutilisable,");
+    console.log("    ne pas monter de plan final sur cet enregistrement.");
+    await attendre(2500);
+  }
   console.log("  clip ouvert : " + titre.slice(0, 60));
 
   marquer("bout");
-  await attendre(2500);
+  await attendre(1500);
   console.log("· fin du parcours");
 } catch (e) {
   console.error("Échec : " + String(e.message).split("\n")[0]);

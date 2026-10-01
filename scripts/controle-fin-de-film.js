@@ -23,7 +23,12 @@
  * le navigateur le sait — d'où les fenêtres relevées pendant le tournage par
  * `enregistrer-vocal.mjs` (clé `attentes` du fichier de repères).
  *
- * Sortie 5 = au moins un plan tombe sur une attente. Le film ne part pas.
+ * Sortie 5 = le DERNIER plan tombe sur une attente. Le film ne part pas.
+ *
+ * Un plan intermédiaire sur une attente est signalé sans bloquer : montrer deux
+ * secondes d'analyse avec le bandeau « accéléré » est un choix légitime, et
+ * c'est le plan que l'utilisateur a gardé. Ce qu'il a refusé, c'est de FINIR
+ * sur un chargement.
  */
 
 const fs = require('fs');
@@ -78,6 +83,7 @@ const fenetres = plans.split(',').map((p) => {
 const chevauche = (a, b) => Math.max(0, Math.min(a.fin, b[1]) - Math.max(a.debut, b[0]));
 
 const fautifs = [];
+const tolerees = [];
 
 fenetres.forEach((f, i) => {
   const dernier = i === fenetres.length - 1;
@@ -91,8 +97,17 @@ fenetres.forEach((f, i) => {
   const longueur = f.fin - f.debut;
   if (pire > 0.4) {
     const part = Math.round((pire / longueur) * 100);
-    console.log(`  ✗ ${etiquette} : ATTENTE ${part} % du plan (fenêtre ${laquelle[0]}s→${laquelle[1]}s)`);
-    fautifs.push({ i: i + 1, dernier, part });
+    if (dernier) {
+      console.log(`  ✗ ${etiquette} : ATTENTE ${part} % du plan (fenêtre ${laquelle[0]}s→${laquelle[1]}s)`);
+      fautifs.push({ i: i + 1, part });
+    } else {
+      /* Un plan intermédiaire sur une attente peut être VOULU : montrer deux
+         secondes d'analyse, bandeau « accéléré ×17 » à l'appui, dit « elle lit
+         tout » et c'est le plan que l'utilisateur a gardé. Ce qu'il a refusé,
+         c'est de FINIR là-dessus. On le signale sans bloquer. */
+      console.log(`  ~ ${etiquette} : attente ${part} % — admis, mais court et avec le bandeau`);
+      tolerees.push(i + 1);
+    }
   } else {
     console.log(`  ✓ ${etiquette} : l'écran montre un résultat`);
   }
@@ -101,16 +116,18 @@ fenetres.forEach((f, i) => {
 console.log('');
 
 if (fautifs.length === 0) {
-  console.log(`Aucun plan ne tombe sur une attente. Le film peut partir.`);
+  if (tolerees.length) {
+    console.log(`Plan(s) ${tolerees.join(', ')} sur une attente, admis : garder court,`);
+    console.log(`et afficher le bandeau qui dit que c'est accéléré.`);
+  }
+  console.log(`La fin montre un résultat. Le film peut partir.`);
   process.exit(0);
 }
 
 for (const f of fautifs) {
-  console.log(`Le plan ${f.i} montre un écran d'attente sur ${f.part} % de sa durée.`);
-  if (f.dernier) {
-    console.log(`C'est le DERNIER plan : il porte la récompense du film. Montrer`);
-    console.log(`le résultat fini — le clip qui joue — pas le chargement qui y mène.`);
-  }
+  console.log(`Le DERNIER plan montre un écran d'attente sur ${f.part} % de sa durée.`);
+  console.log(`Il porte la récompense du film : il doit montrer le résultat fini —`);
+  console.log(`le clip qui joue — pas le chargement qui y mène.`);
 }
 console.log('');
 console.log(`Déplacer la fenêtre hors de l'attente, ou prolonger l'enregistrement`);
