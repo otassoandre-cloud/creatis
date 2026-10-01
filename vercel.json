@@ -5,7 +5,19 @@
   "outputDirectory": ".",
   "crons": [
     {
+      "path": "/api/user-sync?action=daily_report",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/user-sync?action=email_cron",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/user-sync?action=expirer_plans_temporaires",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/user-sync?action=relance_essai_annuel_j5",
       "schedule": "0 9 * * *"
     },
     {
@@ -27,101 +39,425 @@
     {
       "path": "/api/tweet-daily",
       "schedule": "0 16 19 5 *"
+    },
+    {
+      "path": "/api/user-sync?action=rattrapage_impayes",
+      "schedule": "0 8 * * *"
     }
   ],
-  "functions": {
-    "api/stripe-webhook.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    },
-    "api/prospect-batch.js": {
-      "memory": 1024,
-      "maxDuration": 300
-    },
-    "api/repurpose.js": {
-      "memory": 1024,
-      "maxDuration": 300
-    }
-  },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/app", "dest": "/app.html" },
-    { "src": "/js/app-r8.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r9.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r10.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r11.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r12.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r13.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r14.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r15.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r16.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r17.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r18.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r19.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r20.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r21.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r22.js", "dest": "/js/app.js" },
-    { "src": "/js/app-r23.js", "dest": "/js/app.js" },
-    { "src": "/css/app-r4.css", "dest": "/css/app.css" },
-    { "src": "/auth", "dest": "/auth.html" },
-    { "src": "/auth/callback", "dest": "/auth/callback.html" },
-    { "src": "/success", "dest": "/success.html" },
-    { "src": "/cancel", "dest": "/cancel.html" },
-    { "src": "/cgu", "dest": "/cgu.html" },
-    { "src": "/mentions-legales", "dest": "/mentions-legales.html" },
-    { "src": "/confidentialite", "dest": "/confidentialite.html" },
-    { "src": "/affiliation", "dest": "/affiliation.html" },
-    { "src": "/parrainage", "dest": "/parrainage.html" },
-    { "src": "/test-chat", "dest": "/test-chat.html" },
-    { "src": "/lp", "dest": "/lp.html" },
-    { "src": "/outils", "dest": "/outils.html" },
-    { "src": "/generateur-clips-viraux", "dest": "/generateur-clips-viraux.html" },
-    { "src": "/clips-v2", "dest": "/clips-v2.html" },
-    { "src": "/studio", "dest": "/clips-v2.html" },
-    { "src": "/outil-ia-createurs-contenu", "dest": "/outil-ia-createurs-contenu.html" },
-    { "src": "/programme-affiliation-youtuber", "dest": "/programme-affiliation-youtuber.html" },
-    { "src": "/(.*)", "dest": "/$1" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/app",
+      "dest": "/app.html"
+    },
+    {
+      "src": "/js/app-r8.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r9.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r10.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r11.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r12.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r13.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r14.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r15.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r16.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r17.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r18.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r19.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r20.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r21.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r22.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/js/app-r23.js",
+      "dest": "/js/app.js"
+    },
+    {
+      "src": "/css/app-r4.css",
+      "dest": "/css/app.css"
+    },
+    {
+      "src": "/auth",
+      "dest": "/auth.html"
+    },
+    {
+      "src": "/auth/callback",
+      "dest": "/auth/callback.html"
+    },
+    {
+      "src": "/success",
+      "dest": "/success.html"
+    },
+    {
+      "src": "/cancel",
+      "dest": "/cancel.html"
+    },
+    {
+      "src": "/cgu",
+      "dest": "/cgu.html"
+    },
+    {
+      "src": "/mentions-legales",
+      "dest": "/mentions-legales.html"
+    },
+    {
+      "src": "/confidentialite",
+      "dest": "/confidentialite.html"
+    },
+    {
+      "src": "/affiliation",
+      "dest": "/affiliation.html"
+    },
+    {
+      "src": "/parrainage",
+      "dest": "/parrainage.html"
+    },
+    {
+      "src": "/test-chat",
+      "dest": "/test-chat.html"
+    },
+    {
+      "src": "/lp",
+      "dest": "/lp.html"
+    },
+    {
+      "src": "/offre-createur",
+      "dest": "/offre-createur.html"
+    },
+    {
+      "src": "/outils",
+      "dest": "/outils.html"
+    },
+    {
+      "src": "/generateur-clips-viraux",
+      "dest": "/generateur-clips-viraux.html"
+    },
+    {
+      "src": "/clips-v2",
+      "dest": "/clips-v2.html"
+    },
+    {
+      "src": "/studio",
+      "dest": "/clips-v2.html"
+    },
+    {
+      "src": "/outil-ia-createurs-contenu",
+      "dest": "/outil-ia-createurs-contenu.html"
+    },
+    {
+      "src": "/programme-affiliation-youtuber",
+      "dest": "/programme-affiliation-youtuber.html"
+    },
+    {
+      "src": "/blog",
+      "dest": "/blog.html"
+    },
+    {
+      "src": "/blog/geo-shorts-video",
+      "dest": "/blog/geo-shorts-video.html"
+    },
+    {
+      "src": "/tiktok",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/t/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/insta",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/i/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/x",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=x&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/x/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=x&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/yt",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/y/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/li",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=linkedin&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/l/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=linkedin&utm_medium=post&utm_campaign=$1"
+      }
+    },
+    {
+      "src": "/tk",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/ig",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
+      }
+    },
+    {
+      "src": "/t1",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=compte1"
+      }
+    },
+    {
+      "src": "/t1/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=compte1-$1"
+      }
+    },
+    {
+      "src": "/t2",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=bio&utm_campaign=compte2"
+      }
+    },
+    {
+      "src": "/t2/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=tiktok&utm_medium=post&utm_campaign=compte2-$1"
+      }
+    },
+    {
+      "src": "/g1",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=compte1"
+      }
+    },
+    {
+      "src": "/g1/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=compte1-$1"
+      }
+    },
+    {
+      "src": "/g2",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=compte2"
+      }
+    },
+    {
+      "src": "/g2/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=instagram&utm_medium=post&utm_campaign=compte2-$1"
+      }
+    },
+    {
+      "src": "/y1",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=bio&utm_campaign=compte1"
+      }
+    },
+    {
+      "src": "/y1/([A-Za-z0-9_-]{1,24})",
+      "status": 308,
+      "headers": {
+        "Location": "/?utm_source=youtube&utm_medium=post&utm_campaign=compte1-$1"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/css/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
-        { "key": "Surrogate-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate, s-maxage=0"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/js/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
-        { "key": "Surrogate-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate, s-maxage=0"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/(.*\\.html)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
-        { "key": "Surrogate-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate, s-maxage=0"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/app",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate, s-maxage=0" },
-        { "key": "Surrogate-Control", "value": "no-store" },
-        { "key": "Pragma", "value": "no-cache" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate, s-maxage=0"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "credentialless"
+        }
       ]
     }
   ]

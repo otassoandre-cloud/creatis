@@ -8,7 +8,8 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css?v=20260523c">
   <link rel="stylesheet" href="css/app-r4.css">
   <script defer src="/_vercel/insights/script.js"></script>
@@ -58,6 +59,11 @@
     };
   })();
   </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
 </head>
 <body>
 
@@ -71,7 +77,7 @@
       </a>
 
       <nav class="sidebar-nav">
-        <button class="agent-btn actif" id="btn-dashboard" onclick="app.afficherDashboard()"
+        <button class="agent-btn actif" id="btn-dashboard" onclick="app.afficherDashboard()" title="Tableau de bord"
           style="margin-bottom:8px;border-bottom:1px solid var(--bordure);padding-bottom:12px;border-radius:0">
           <span class="agent-btn-icone"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
           <span class="agent-btn-info">
@@ -82,10 +88,11 @@
         <!-- Catégorie Agents IA -->
         <div class="nav-categorie" id="cat-agents">
           <button class="nav-cat-header" onclick="toggleNavCat('cat-agents')">
-            <span>Agents IA</span>
+            <span class="nav-cat-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+            <span class="nav-cat-label">Agents IA</span>
             <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <div class="nav-cat-body" id="agents-nav">
+          <div class="nav-cat-body" id="agents-nav" data-titre="Agents IA">
             <!-- Généré dynamiquement par app.js -->
           </div>
         </div>
@@ -93,10 +100,11 @@
         <!-- Catégorie Assistant -->
         <div class="nav-categorie" id="cat-assistant">
           <button class="nav-cat-header" onclick="toggleNavCat('cat-assistant')">
-            <span>Assistant</span>
+            <span class="nav-cat-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <span class="nav-cat-label">Assistant</span>
             <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <div class="nav-cat-body" id="chat-nav">
+          <div class="nav-cat-body" id="chat-nav" data-titre="Assistant">
             <!-- Généré dynamiquement par app.js -->
           </div>
         </div>
@@ -104,10 +112,11 @@
         <!-- Catégorie Navigation -->
         <div class="nav-categorie" id="cat-navigation">
           <button class="nav-cat-header" onclick="toggleNavCat('cat-navigation')">
-            <span>Navigation</span>
+            <span class="nav-cat-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36z"/></svg></span>
+            <span class="nav-cat-label">Navigation</span>
             <svg class="nav-cat-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <div class="nav-cat-body">
+          <div class="nav-cat-body" data-titre="Navigation">
             <button class="agent-btn" id="btn-historique-nav" onclick="app.afficherHistorique()">
               <span class="agent-btn-icone"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>
               <span class="agent-btn-info">
@@ -134,52 +143,70 @@
       </nav>
 
       <div class="sidebar-pied">
-        <!-- Compteur générations (plan gratuit) -->
-        <div class="compteur-generations" id="compteur-zone">
-          <div class="compteur-label">
-            Générations restantes
-            <span id="compteur-label-val">10/10</span>
-          </div>
-          <div class="barre-progression">
-            <div class="barre-progression-remplie" id="barre-progression" style="width:0%"></div>
-          </div>
-        </div>
+        <!-- Compte : déclencheur icône seul en mode rail, détails complets (avatar + quota + checklist) en flyout au survol -->
+        <div class="sidebar-account" id="sidebar-account">
+          <button class="sidebar-account-trigger" title="Mon compte" aria-label="Mon compte">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
 
-        <!-- Infos utilisateur -->
-        <div class="utilisateur-info">
-          <div class="avatar" id="user-avatar">C</div>
-          <div style="min-width:0;">
-            <span class="utilisateur-nom" id="user-nom">Créateur</span>
-            <span class="utilisateur-plan" id="user-plan">Gratuit</span>
-          </div>
-        </div>
+          <div class="sidebar-account-flyout">
+            <!-- Infos utilisateur -->
+            <div class="utilisateur-info">
+              <div class="avatar" id="user-avatar">C</div>
+              <div style="min-width:0;">
+                <span class="utilisateur-nom" id="user-nom">Créateur</span>
+                <span class="utilisateur-plan" id="user-plan">Gratuit</span>
+              </div>
+            </div>
 
-        <!-- Checklist premiers pas (masquée si Pro ou tout complété) -->
-        <div class="onb-sidebar-checklist" id="onb-sidebar-checklist">
-          <div class="onb-sc-titre">Premiers pas</div>
-          <div class="onb-sc-item done">
-            <span class="onb-sc-ico">✓</span><span>Compte créé</span>
-          </div>
-          <div class="onb-sc-item" id="onb-sc-gen">
-            <span class="onb-sc-ico" id="onb-sc-gen-ico">○</span><span>Première génération</span>
-          </div>
-          <div class="onb-sc-item" id="onb-sc-yt">
-            <span class="onb-sc-ico" id="onb-sc-yt-ico">○</span><span>Connecter YouTube</span>
-          </div>
-          <div class="onb-sc-item onb-sc-pro" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
-            <span class="onb-sc-ico">→</span><span>Passer au Pro</span>
+            <!-- Compteur générations (plan gratuit) -->
+            <div class="compteur-generations" id="compteur-zone">
+              <div class="compteur-label">
+                Générations restantes
+                <span id="compteur-label-val">10/10</span>
+              </div>
+              <div class="barre-progression">
+                <div class="barre-progression-remplie" id="barre-progression" style="width:0%"></div>
+              </div>
+            </div>
+
+            <!-- Checklist premiers pas (masquée si Pro ou tout complété) -->
+            <div class="onb-sidebar-checklist" id="onb-sidebar-checklist">
+              <div class="onb-sc-titre">Premiers pas</div>
+              <div class="onb-sc-item done">
+                <span class="onb-sc-ico">✓</span><span>Compte créé</span>
+              </div>
+              <div class="onb-sc-item" id="onb-sc-gen">
+                <span class="onb-sc-ico" id="onb-sc-gen-ico">○</span><span>Première génération</span>
+              </div>
+              <div class="onb-sc-item" id="onb-sc-yt">
+                <span class="onb-sc-ico" id="onb-sc-yt-ico">○</span><span>Connecter YouTube</span>
+              </div>
+              <div class="onb-sc-item onb-sc-pro" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+                <span class="onb-sc-ico">→</span><span>Passer au Pro</span>
+              </div>
+            </div>
+
+            <!-- Gestion de l'abonnement. Volontairement présent et lisible : l'article L215-1-1
+                 du Code de la consommation impose une résiliation accessible « facilement,
+                 directement et en permanence » pour tout contrat souscrit en ligne. L'écran de
+                 rétention se place APRÈS le clic, jamais en obstacle à l'accès. -->
+            <button id="btn-gerer-abo" onclick="ouvrirGestionAbo()"
+              style="display:none;width:100%;margin-top:10px;background:transparent;border:1px solid rgba(255,255,255,.12);color:#9ca3af;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;text-align:center">
+              Gérer mon abonnement
+            </button>
           </div>
         </div>
 
         <!-- Actions compte -->
-        <button class="btn-sm w-100" style="position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;margin-bottom:6px;" id="btn-upgrade-sidebar" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+        <button class="btn-sm w-100" title="Passer au Pro" style="position:relative;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--vert);color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;margin-bottom:6px;" id="btn-upgrade-sidebar" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          Passer au Pro
-          <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:#f97316;color:#fff;font-size:11px;font-weight:800;padding:3px 7px;border-radius:20px;line-height:1.2;letter-spacing:0;">-50% le 1er mois</span>
+          <span class="sidebar-btn-label">Passer au Pro</span>
+          
         </button>
-        <button class="btn-ghost btn-sm w-100" style="display:flex;align-items:center;justify-content:center;gap:6px;" id="btn-deconnexion" onclick="typeof Auth !== 'undefined' ? Auth.deconnecter() : (window.location.href='auth.html')">
+        <button class="btn-ghost btn-sm w-100" title="Déconnexion" style="display:flex;align-items:center;justify-content:center;gap:6px;" id="btn-deconnexion" onclick="typeof Auth !== 'undefined' ? Auth.deconnecter() : (window.location.href='auth.html')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Déconnexion
+          <span class="sidebar-btn-label">Déconnexion</span>
         </button>
       </div>
 
@@ -220,10 +247,10 @@
             <!-- ── HEADER ROW ── -->
             <div class="dash-header-row">
               <div>
-                <div class="dash-greeting-line" id="dash-greeting">Bonjour</div>
-                <p class="dash-greeting-sub">Voici ton espace de création</p>
+                <div class="dash-header-date" id="dash-header-date"></div>
+                <h2 class="dash-greeting-line" id="dash-greeting">Bonjour</h2>
+                <p class="dash-greeting-sub" id="dash-greeting-sub">Voici ton espace de création</p>
               </div>
-              <div class="dash-header-date" id="dash-header-date"></div>
             </div>
 
             <!-- ── KPI CARDS ── -->
@@ -279,18 +306,31 @@
                 <!-- Section agents (affichée par défaut) -->
                 <div id="dash-agents-section">
                 <div class="dash-section-head">
-                  <h4 class="dash-section-titre">Agents IA</h4>
-                  <div id="dash-pro-hint" style="display:none">
-                    <button class="btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                      Pro
-                    </button>
+                  <h4 class="dash-section-titre">Agent principal</h4>
+                </div>
+                <div id="dash-agent-hero"><!-- Généré dynamiquement par JS --></div>
+
+                <div class="dash-section-head" style="margin-top:26px">
+                  <h4 class="dash-section-titre">Autres agents</h4>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div id="dash-pro-hint" style="display:none">
+                      <button class="btn-ghost btn-sm" style="display:flex;align-items:center;gap:5px;" onclick="document.getElementById('modal-upgrade').classList.add('visible')">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                        Pro
+                      </button>
+                    </div>
+                    <button class="dash-agents-toggle" id="dash-agents-toggle" onclick="app.toggleAutresAgents()">Voir les 8 →</button>
                   </div>
                 </div>
 
                 <div class="dash-agents-grid" id="dash-agents-grid">
                   <!-- Généré dynamiquement par JS -->
                 </div>
+
+                <div class="dash-section-head" style="margin-top:26px">
+                  <h4 class="dash-section-titre">Activité récente</h4>
+                </div>
+                <div id="dash-activite-recente" class="dash-activite-recente"><!-- Généré dynamiquement par JS --></div>
                 </div>
 
                 <!-- Historique (affiché via sidebar Navigation > Historique) -->
@@ -335,10 +375,17 @@
                     <canvas id="ai-sphere-canvas" width="200" height="200"></canvas>
                   </div>
                   <p class="dash-ai-tip" id="dash-ai-tip">Choisis un agent pour commencer à créer du contenu YouTube.</p>
+                  <div class="dash-ai-quick">
+                    <input type="text" id="dash-ai-quick-input" class="dash-ai-quick-input" placeholder="Pose ta question à l'assistant…" maxlength="500"
+                      onkeydown="if(event.key==='Enter'){event.preventDefault();app.lancerQuestionRapide()}">
+                    <button class="dash-ai-quick-send" onclick="app.lancerQuestionRapide()" title="Envoyer" aria-label="Envoyer">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                  </div>
                   <div class="dash-ai-btns">
                     <button class="dash-ai-btn-primary" onclick="app.selectionnerAgent('chat-libre')">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                      Assistant & Support
+                      Ouvrir l'Assistant
                     </button>
                   </div>
                 </div>
@@ -373,20 +420,6 @@
                       <div class="dash-quota-remplie" id="dash-miniatures-remplie" style="width:0%"></div>
                     </div>
                   </div>
-                  <div class="dash-stats-compact" id="dash-stats-compact" style="display:none">
-                    <div class="dash-stat-mini">
-                      <span class="dash-stat-mini-val" id="stat-gen-compact">0</span>
-                      <span class="dash-stat-mini-lbl">générations</span>
-                    </div>
-                    <div class="dash-stat-mini">
-                      <span class="dash-stat-mini-val" id="stat-agents-compact">0</span>
-                      <span class="dash-stat-mini-lbl">agents</span>
-                    </div>
-                    <div class="dash-stat-mini">
-                      <span class="dash-stat-mini-val" id="stat-streak-compact">0j</span>
-                      <span class="dash-stat-mini-lbl">jours actifs</span>
-                    </div>
-                  </div>
                 </div>
 
                 <!-- Chaîne YouTube -->
@@ -398,7 +431,7 @@
                         <h3 id="dash-chaine-nom">Ma chaîne</h3>
                         <p id="dash-chaine-stats" class="dash-chaine-meta"></p>
                       </div>
-                      <span class="badge badge-vert" style="display:flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0;"></span> Connectée</span>
+                      <button id="dash-chaine-badge" class="badge badge-vert" style="display:flex;align-items:center;gap:4px;border:none;cursor:default;" onclick="" title="Dernière synchro"><span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0;"></span> Connectée</button>
                     </div>
                   </div>
                   <div id="dash-chaine-deconnectee">
@@ -486,6 +519,15 @@
     <div class="modal" style="max-width:520px;">
       <button class="modal-fermer" onclick="app.fermerModal('modal-upgrade')">✕</button>
 
+      <!-- Preuve sociale réelle -->
+      <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🎨</div>
+        <div>
+          <div style="font-size:12px;font-weight:800;color:#fff;margin-bottom:2px;">Créateur manga · TikTok</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);">5,4M vues · <strong style="color:#10b981;">+1 050€ générés</strong> en clips courts</div>
+        </div>
+      </div>
+
       <div style="text-align:center;margin-bottom:24px;">
         <div style="width:56px;height:56px;border-radius:16px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
         <h2 style="font-size:20px;margin-bottom:6px;">Passe à la vitesse supérieure</h2>
@@ -497,48 +539,48 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
             <div style="display:flex;align-items:baseline;gap:10px;">
-              <div style="font-size:20px;font-weight:800;text-decoration:line-through;color:var(--texte-muted);">19€</div>
-              <div style="font-size:24px;font-weight:800;color:var(--texte);">9,50€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
+              <div style="font-size:24px;font-weight:800;color:var(--texte);">14€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
             </div>
-            <div style="font-size:12px;color:var(--texte-doux);">Plan Pro — Sans engagement</div>
+            <div style="font-size:12px;color:var(--texte-doux);">150 clips/mois · 7 jours d'essai gratuit · sans engagement</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
             <span class="badge badge-vert">Le plus populaire</span>
-            <span style="background:#f97316;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">-50% le 1er mois</span>
+            
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Générations <strong style="color:var(--texte);">illimitées</strong></div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Les <strong style="color:var(--texte);">10 agents IA</strong> débloqués</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Les <strong style="color:var(--texte);">8 agents IA</strong> débloqués</div>
           <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">30 miniatures HD</strong> par mois</div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Prospection sponsors</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Recyclage multiplateforme</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">Clips viraux sans watermark</strong></div>
         </div>
         <button class="btn-primaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('pro')">
-          Passer au Pro — 9,50€ le 1er mois
+          Passer au Pro — 14€/mois
         </button>
       </div>
 
-      <!-- Plan Studio -->
-      <div style="background:var(--bg);border:1px solid var(--bordure);border-radius:var(--radius);padding:18px;margin-bottom:16px;opacity:0.5;">
+      <!-- Plan Annuel — 08/09/2026 : l'essai de 7 jours est passe sur le Pro MENSUEL. Sur
+           l'annuel il ne convertissait pas : 4 essais arrives a terme, 0 payant, 3 impayes
+           (139€ d'un coup que la carte refusait). L'annuel redit ce qu'il est : une remise. -->
+      <div style="background:var(--bg);border:1px solid var(--bordure);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
-            <div style="font-size:20px;font-weight:800;">49€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/mois</span></div>
-            <div style="font-size:12px;color:var(--texte-doux);">Plan Studio — Pour les agences · <strong style="color:#6b7280;">Bientôt disponible</strong></div>
+            <div style="font-size:24px;font-weight:800;color:var(--texte);">139€ <span style="font-size:13px;color:var(--texte-muted);font-weight:400;">/an</span></div>
+            <div style="font-size:12px;color:var(--texte-doux);">Soit 11,58€/mois — Pro Annuel</div>
           </div>
+          <span class="badge badge-vert">2 MOIS OFFERTS</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Générations <strong style="color:var(--texte);">illimitées</strong></div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">100 miniatures HD</strong> par mois</div>
-          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">3 chaînes YouTube</strong> indépendantes</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Tout le plan Pro, en illimité</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> <strong style="color:var(--texte);">29€ d'économie</strong> contre le mensuel</div>
+          <div style="font-size:12px;color:var(--texte-doux);"><span style="color:var(--vert);">✓</span> Sans engagement au renouvellement</div>
         </div>
-        <button disabled class="btn-secondaire w-100" style="padding:13px;font-size:14px;cursor:not-allowed;opacity:0.5;">
-          Coming Soon
+        <button class="btn-secondaire w-100" style="padding:13px;font-size:14px;" onclick="lancerPaiement('pro', true)">
+          Prendre l'annuel
         </button>
       </div>
 
-      <div style="text-align:center;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35);border-radius:8px;padding:10px;margin-bottom:12px;">
-        <span style="font-size:13px;color:#f97316;display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> <strong>-50% le 1er mois</strong> — Offre de lancement limitée</span>
-      </div>
       <p style="text-align:center;font-size:12px;color:var(--texte-muted);">
         Paiement sécurisé par Stripe · Annulable à tout moment
       </p>
@@ -604,7 +646,6 @@
       <div class="onb-dots">
         <span class="onb-dot actif" id="onb-dot-1"></span>
         <span class="onb-dot" id="onb-dot-2"></span>
-        <span class="onb-dot" id="onb-dot-3"></span>
         <span class="onb-dot" id="onb-dot-4"></span>
         <span class="onb-dot" id="onb-dot-5"></span>
       </div>
@@ -625,7 +666,7 @@
         <p class="onb-texte">Ça aide Créatis à personnaliser tes scripts, titres et idées.</p>
         <input type="text" id="onb-niche" class="input" placeholder="Finance, gaming, cuisine…" style="width:100%;margin-bottom:16px;" />
         <button class="btn btn-primaire" style="width:100%;" onclick="app._onbSauvegarderNiche()">Suivant →</button>
-        <button class="onb-passer" onclick="app._onbEtape(3)">Passer cette étape →</button>
+        <button class="onb-passer" onclick="app._onbEtape(4)">Passer cette étape →</button>
       </div>
 
       <!-- Étape 3 : Plateformes -->
@@ -675,11 +716,10 @@
       <!-- Étape 5 : Premier agent -->
       <div class="onb-step" id="onb-step-5">
         <div class="onb-emoji"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-        <h2 class="onb-titre">Génère ton premier contenu</h2>
-        <p class="onb-texte">Clique sur un agent — ton contenu est prêt en 30 secondes.</p>
-        <div class="onb-agents" id="onb-agents"></div>
-        <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="app._onbLancerAgent('youtube-complet')">
-          Lancer YouTube Complet →
+        <h2 class="onb-titre">Génère tes premiers clips viraux</h2>
+        <p class="onb-texte">Uploade une vidéo — tes clips shorts sont prêts en 30 secondes.</p>
+        <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="app._onbLancerAgent('clips-viraux')">
+          Créer mes clips viraux →
         </button>
         <button class="onb-passer" onclick="app._onbTerminer()">Voir le tableau de bord</button>
       </div>
@@ -691,38 +731,41 @@
   <div class="modal-fond" id="modal-post-gen">
     <div class="modal modal-post-gen">
       <div class="mpg-header">
-        <div class="mpg-emoji"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-        <h2 class="mpg-titre">Premier contenu généré !</h2>
-        <p class="mpg-sous">Tu viens de gagner 2h de travail créatif.</p>
+        <div class="mpg-emoji">✂️</div>
+        <h2 class="mpg-titre">Télécharge tes clips.</h2>
+        <p class="mpg-sous">Passe Pro pour continuer à créer des clips viraux sans limite.</p>
       </div>
       <div class="mpg-benefits">
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+          <span class="mpg-b-ico">✂️</span>
           <div>
-            <div class="mpg-b-titre">Miniature Pro</div>
-            <div class="mpg-b-desc">Génère des visuels YouTube avec IA (gpt-image-1)</div>
+            <div class="mpg-b-titre">Clips viraux illimités</div>
+            <div class="mpg-b-desc">Traite autant de vidéos que tu veux, chaque semaine</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          <span class="mpg-b-ico">💬</span>
           <div>
-            <div class="mpg-b-titre">6 agents supplémentaires</div>
-            <div class="mpg-b-desc">Recyclage, sponsors, analyse vidéo, réponses…</div>
+            <div class="mpg-b-titre">Sous-titres + hook personnalisés</div>
+            <div class="mpg-b-desc">Style, position, texte — tout est modifiable</div>
           </div>
         </div>
         <div class="mpg-benefit">
-          <span class="mpg-b-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z"/><path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z"/></svg></span>
+          <span class="mpg-b-ico">🎬</span>
           <div>
-            <div class="mpg-b-titre">Générations illimitées</div>
-            <div class="mpg-b-desc">Plus de limite mensuelle — crée autant que tu veux</div>
+            <div class="mpg-b-titre">Script, titres, miniatures IA</div>
+            <div class="mpg-b-desc">Tous les outils créateur débloqués en un seul plan</div>
           </div>
         </div>
       </div>
-      <button class="btn btn-primaire" style="width:100%;margin-top:20px;" onclick="window.location.href='index.html#tarifs'">
-        Voir le plan Pro — 9,50€ le 1er mois →
+      <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:10px 14px;margin-top:16px;text-align:center;font-size:13px;color:#f59e0b;font-weight:600;">
+        🎁 Analyse gratuite · vois tes clips avant de payer
+      </div>
+      <button class="btn btn-primaire" style="width:100%;margin-top:12px;" onclick="window.location.href='index.html#tarifs'">
+        Passer Pro — 14€/mois →
       </button>
-      <button class="onb-passer" onclick="document.getElementById('modal-post-gen').classList.remove('visible')">
-        Continuer avec le plan gratuit
+      <button class="onb-passer" onclick="document.getElementById('modal-post-gen').classList.remove('visible')" style="opacity:0.5;font-size:12px;">
+        Rester bloqué en gratuit
       </button>
     </div>
   </div>
@@ -746,24 +789,18 @@
 
     // Recharger le contexte YouTube (bouton 🔄)
     async function actualiserContexteYT() {
-      if (!YouTube.estConnecte()) {
-        app.afficherToast('Connecte ta chaîne YouTube pour personnaliser les agents', 'erreur');
-        return;
-      }
-      app.afficherToast('🔄 Actualisation des données de ta chaîne…', 'info', 2000);
-      YouTubeContext.viderCache();
-      await app._initialiserContexteYT();
+      await app._rafraichirChaineYT();
     }
 
     // Paiement Stripe
-    function lancerPaiement(plan) {
+    function lancerPaiement(plan, annuel = false) {
       if (!CONFIG.estStripeConfigured()) {
         if (typeof app !== 'undefined') {
           app.afficherToast('⚠️ Stripe non configuré. Ajoute ta clé dans js/config.js', 'erreur');
         }
         return;
       }
-      Stripe_Integration.lancerPaiement(plan);
+      Stripe_Integration.lancerPaiement(plan, annuel);
     }
   </script>
   <script>
@@ -917,7 +954,206 @@
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
+    if (e.data && e.data.type === 'show_upgrade') {
+      document.getElementById('modal-upgrade')?.classList.add('visible');
+    }
   });
+
+/* ═══ Gestion / résiliation d'abonnement ═══
+   Le bouton n'apparaît que pour un plan payant : proposer « gérer mon abonnement » à quelqu'un
+   qui n'en a pas ne fait qu'ouvrir une impasse. */
+(function () {
+  function planPayant() {
+    try {
+      const u = JSON.parse(localStorage.getItem('creatis_user') || '{}');
+      return u.plan && u.plan !== 'gratuit' && u.plan !== 'demo';
+    } catch { return false; }
+  }
+  function majBouton() {
+    const b = document.getElementById('btn-gerer-abo');
+    if (b) b.style.display = planPayant() ? 'block' : 'none';
+  }
+  document.addEventListener('DOMContentLoaded', majBouton);
+  setTimeout(majBouton, 1500);   // le plan arrive après la synchro Supabase
+  window._majBoutonAbo = majBouton;
+})();
+
+function ouvrirGestionAbo() {
+  if (document.getElementById('modal-resiliation')) {
+    document.getElementById('modal-resiliation').style.display = 'flex';
+    return;
+  }
+  const d = document.createElement('div');
+  d.id = 'modal-resiliation';
+  d.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px';
+  d.innerHTML = `
+    <div style="background:#0d1512;border:1px solid #1f2e26;border-radius:16px;max-width:440px;width:100%;padding:26px;color:#fff;box-sizing:border-box;max-height:90vh;overflow:auto">
+      <h3 style="margin:0 0 6px;font-size:19px;font-weight:800">Gérer ton abonnement</h3>
+      <p style="margin:0 0 20px;font-size:13.5px;color:#9ca3af;line-height:1.55">
+        Tu peux mettre à jour ta carte, télécharger tes factures ou résilier. La résiliation prend
+        effet à la fin de la période déjà payée — tu gardes l'accès jusque-là.
+      </p>
+
+      <div style="font-size:12px;font-weight:700;color:#9ca3af;margin-bottom:8px">
+        Si tu pars, qu'est-ce qui n'a pas marché ? <span style="font-weight:400">(facultatif)</span>
+      </div>
+      <div id="motifs-resil" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        ${[
+          ['trop_cher', 'Trop cher pour mon usage'],
+          ['qualite', "La qualité des clips ne me convient pas"],
+          ['pas_le_temps', "Je ne l'utilise pas assez"],
+          ['bug', "J'ai rencontré trop de problèmes techniques"],
+          ['concurrent', "Je passe sur un autre outil"],
+          ['autre', 'Autre raison']
+        ].map(([v, t]) => `
+          <label style="display:flex;align-items:center;gap:9px;font-size:13px;color:#d1d5db;cursor:pointer;padding:7px 10px;border:1px solid #1f2e26;border-radius:8px">
+            <input type="radio" name="motif" value="${v}" style="accent-color:#10b981;flex-shrink:0">${t}
+          </label>`).join('')}
+      </div>
+      <textarea id="commentaire-resil" rows="2" placeholder="Un mot de plus ? Ça nous aide vraiment."
+        style="width:100%;background:#0a0f0a;border:1px solid #1f2e26;border-radius:8px;color:#fff;padding:9px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+
+      <div id="resil-erreur" style="display:none;color:#fca5a5;font-size:12.5px;margin-top:10px;line-height:1.5"></div>
+
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+        <button onclick="document.getElementById('modal-resiliation').style.display='none'"
+          style="flex:1;min-width:130px;background:#10b981;color:#04140d;border:none;border-radius:9px;padding:11px;font-weight:800;font-size:14px;cursor:pointer">
+          Je reste
+        </button>
+        <button id="btn-vers-portail" onclick="afficherOffreRetention()"
+          style="flex:1;min-width:130px;background:transparent;color:#9ca3af;border:1px solid #374151;border-radius:9px;padding:11px;font-weight:600;font-size:14px;cursor:pointer">
+          Continuer
+        </button>
+      </div>
+      <p style="margin:14px 0 0;font-size:11.5px;color:#6b7280;line-height:1.5">
+        Un souci technique se règle souvent en une réponse — écris à
+        <a href="mailto:contact@creatis.app" style="color:#10b981">contact@creatis.app</a> avant de partir.
+      </p>
+    </div>`;
+  document.body.appendChild(d);
+}
+
+/* Offre de rétention adaptée au motif. Une remise uniforme coûterait de l'argent à des clients
+   qui seraient restés ; ici chaque motif reçoit la réponse qui le concerne, et « je passe sur un
+   autre outil » n'en reçoit aucune — insister n'y changerait rien. */
+const OFFRES_RETENTION = {
+  trop_cher: {
+    titre: 'Avant de partir — le Starter existe',
+    texte: '9,95 €/mois au lieu de 14 €, avec 20 clips par mois. Ta période déjà payée reste acquise, et le changement prend effet à la prochaine échéance.',
+    bouton: 'Passer au Starter (9,95 €)',
+    geste: 'starter'
+  },
+  pas_le_temps: {
+    titre: 'Mets-le en pause plutôt',
+    texte: "Un mois sans facturation, tes clips et ton historique restent intacts. Tout redémarre automatiquement, sans rien à refaire.",
+    bouton: 'Mettre en pause 1 mois',
+    geste: 'pause'
+  },
+  bug: {
+    titre: "Laisse-nous 24 h",
+    texte: "La plupart des problèmes techniques se règlent en un échange. Si on n'y arrive pas, tu résilies — l'option reste ouverte.",
+    bouton: 'Décrire le problème',
+    geste: 'support'
+  },
+  qualite: {
+    titre: 'Dis-nous ce qui coince',
+    texte: "Le cadrage, les sous-titres et le choix des moments se règlent souvent en deux minutes. On regarde ta vidéo avec toi.",
+    bouton: 'Demander un coup de main',
+    geste: 'support'
+  }
+};
+
+function afficherOffreRetention() {
+  const motif = document.querySelector('input[name="motif"]:checked')?.value || '';
+  const offre = OFFRES_RETENTION[motif];
+  if (!offre) { allerAuPortail(); return; }        // aucun geste pertinent → on ne retient pas
+  if (window.posthog) posthog.capture('retention_offre_vue', { motif, geste: offre.geste });
+
+  const boite = document.querySelector('#modal-resiliation > div');
+  if (!boite) { allerAuPortail(); return; }
+  boite.innerHTML = `
+    <h3 style="margin:0 0 8px;font-size:19px;font-weight:800">${offre.titre}</h3>
+    <p style="margin:0 0 22px;font-size:14px;color:#d1d5db;line-height:1.6">${offre.texte}</p>
+    <div id="resil-erreur" style="display:none;color:#fca5a5;font-size:12.5px;margin-bottom:12px;line-height:1.5"></div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <button id="btn-accepter-offre" onclick="accepterOffre('${offre.geste}','${motif}')"
+        style="background:#10b981;color:#04140d;border:none;border-radius:9px;padding:12px;font-weight:800;font-size:14px;cursor:pointer">
+        ${offre.bouton}
+      </button>
+      <button id="btn-vers-portail" onclick="allerAuPortail()"
+        style="background:transparent;color:#6b7280;border:none;padding:9px;font-size:13px;cursor:pointer;text-decoration:underline">
+        Non merci, je veux résilier
+      </button>
+    </div>`;
+}
+
+async function accepterOffre(geste, motif) {
+  const btn = document.getElementById('btn-accepter-offre');
+  const err = document.getElementById('resil-erreur');
+  if (err) err.style.display = 'none';
+
+  if (geste === 'support') {
+    if (window.posthog) posthog.capture('retention_acceptee', { motif, geste });
+    const sujet = encodeURIComponent(motif === 'bug' ? 'Problème technique' : 'Aide sur la qualité des clips');
+    window.location.href = `mailto:contact@creatis.app?subject=${sujet}`;
+    document.getElementById('modal-resiliation').style.display = 'none';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Application…'; }
+  try {
+    const tok = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : '';
+    if (!tok) throw new Error('Session expirée — reconnecte-toi puis réessaie.');
+    const r = await fetch('/api/user-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ action: 'retention_appliquer', metadata: { geste, motif } })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || `Erreur ${r.status}`);
+    if (window.posthog) posthog.capture('retention_acceptee', { motif, geste });
+
+    const boite = document.querySelector('#modal-resiliation > div');
+    if (boite) boite.innerHTML = `
+      <h3 style="margin:0 0 10px;font-size:19px;font-weight:800;color:#10b981">C'est fait</h3>
+      <p style="margin:0 0 22px;font-size:14px;color:#d1d5db;line-height:1.6">${d.message}</p>
+      <button onclick="location.reload()"
+        style="width:100%;background:#10b981;color:#04140d;border:none;border-radius:9px;padding:12px;font-weight:800;font-size:14px;cursor:pointer">
+        Revenir à mes clips
+      </button>`;
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Réessayer'; }
+  }
+}
+
+async function allerAuPortail() {
+  const btn = document.getElementById('btn-vers-portail');
+  const err = document.getElementById('resil-erreur');
+  if (err) err.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Ouverture…'; }
+  try {
+    const tok = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : '';
+    if (!tok) throw new Error('Session expirée — reconnecte-toi puis réessaie.');
+    const motif = document.querySelector('input[name="motif"]:checked')?.value || '';
+    const commentaire = document.getElementById('commentaire-resil')?.value || '';
+    if (window.posthog) posthog.capture('resiliation_intention', { motif });
+
+    // Action de /api/user-sync et non fonction dédiée : Vercel Hobby plafonne à 12 fonctions.
+    const r = await fetch('/api/user-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ action: 'portail_abonnement', metadata: { motif, commentaire } })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.url) throw new Error([d.error, d.aide].filter(Boolean).join(' ') || `Erreur ${r.status}`);
+    window.location.href = d.url;
+  } catch (e) {
+    // Message affiché dans le modal plutôt qu'en alerte : sur mobile, une alerte bloque tout.
+    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Continuer'; }
+  }
+}
 </script>
 </body>
 </html>

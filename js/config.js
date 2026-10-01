@@ -21,8 +21,10 @@ const CONFIG = {
   /* ======================================
    * MODÈLES IA
    * ====================================== */
-  GROQ_MODEL: 'llama-3.3-70b-versatile',
-  GEMINI_IMAGE_MODEL: 'gemini-2.0-flash-exp-image-generation', // non utilisé (Together AI actif)
+  GROQ_MODEL: 'openai/gpt-oss-120b',
+  // Hors service chez Google depuis 2026, et de toute facon jamais branche (Together AI actif).
+  // Laisse tel quel volontairement : ne pas inventer un nom de remplacement sans l'avoir teste.
+  GEMINI_IMAGE_MODEL: null,
   TOGETHER_IMAGE_MODEL: 'black-forest-labs/FLUX.1-schnell-Free',
   TOGETHER_URL: 'https://api.together.xyz/v1/images/generations',
   HF_URL: 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
@@ -69,37 +71,55 @@ const CONFIG = {
   /* ======================================
    * PLANS TARIFAIRES — 3 plans
    * ====================================== */
+  /* Quotas : `videos` = analyses lancées, `clips` = clips téléchargés (exports), par mois.
+     Les deux comptent — une analyse coûte surtout du CPU de transcription, un export coûte du
+     téléchargement + de l'encodage. Plafonner seulement les clips laissait la porte ouverte à
+     quelqu'un qui analyse 200 vidéos sans rien exporter (le poste le plus cher). */
   PLANS: {
+    // Découverte — plus affiché dans la grille tarifaire, mais accordé à l'inscription : c'est le
+    // tunnel d'acquisition. 2 analyses (et non 1) pour qu'un échec ne condamne pas le compte —
+    // 6 analyses sur 24 échouaient sur 3 jours, une seule tentative aurait suffi à perdre la personne.
     gratuit: {
-      nom: 'Gratuit',
+      nom: 'Découverte',
       prix: 0,
-      generations: 1, // 1 génération gratuite pour découvrir
-      miniatures: 5,
-      agents: ['clips-viraux', 'youtube-complet', 'idees-videos', 'chat-libre'],
-      description: '10 générations/mois · 5 miniatures pour tester',
+      videos: 2,
+      clips: 0,          // aucun téléchargement — l'analyse et l'aperçu restent gratuits
+      generations: 0,
+      miniatures: 0,
+      agents: ['clips-viraux'],
+      description: 'Analyse et aperçu gratuits · téléchargement réservé aux plans payants',
+      masqueDansGrille: true,
       stripeId: null
+    },
+    starter: {
+      nom: 'Starter',
+      prix: 9.95,
+      videos: 5,
+      clips: 20,
+      generations: 20,
+      miniatures: 0,
+      agents: ['clips-viraux'],
+      description: '20 clips/mois · 5 vidéos analysées',
+      stripeId: 'price_1Tx8TXAptK6HZtp5vB5clklV'
     },
     pro: {
       nom: 'Pro',
-      prix: 19,
-      prixAnnuel: 15,
-      generations: 50,
+      prix: 14,
+      /* Affiche desormais le prix MENSUEL de l'annuel : depuis le 10/09/2026 il est preleve
+         en douze fois (11,58 € x 12 = 139 €) au lieu d'un comptant de 139 € que les cartes
+         refusaient — 8 echecs, tous en provision insuffisante, zero conversion sur 6 essais.
+         `prixAnnuel` reste le total annuel, utilise pour les comparaisons. */
+      prixAnnuelMensuel: 11.58,
+      engagementMois: 12,
+      prixAnnuel: 139,
+      videos: 30,
+      clips: 150,
+      generations: 150,
       miniatures: 30,
       agents: 'tous',
-      description: '50 générations/mois · 30 miniatures/mois',
-      stripeId: 'price_1TWISZAptK6HZtp5uBP0RHe8',
-      stripeIdAnnuel: 'price_1TWIU8AptK6HZtp5SbYvQ12d'
-    },
-    studio: {
-      nom: 'Studio',
-      prix: 49,
-      prixAnnuel: 39,
-      generations: -1, // illimité
-      miniatures: 100,
-      agents: 'tous',
-      description: 'Générations illimitées · 100 miniatures/mois',
-      stripeId: 'price_1TWIV6AptK6HZtp5qlNhu47w',
-      stripeIdAnnuel: 'price_1TWIVeAptK6HZtp5zIef773D'
+      description: '150 clips/mois · 30 vidéos · tous les outils IA',
+      stripeId: 'price_1Tx8U8AptK6HZtp5DrLkfs5m',
+      stripeIdAnnuel: 'price_1TxaweAptK6HZtp5p0LjSDk5'
     }
   },
 

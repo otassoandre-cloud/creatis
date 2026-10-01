@@ -20,6 +20,8 @@ const MIME = {
 http.createServer((req, res) => {
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/') urlPath = '/index.html';
+  // Alias versionnés (cache-busting) réécrits en prod par vercel.json — reproduit ici pour le dev local
+  urlPath = urlPath.replace(/^\/(css|js)\/app-r\d+\.(css|js)$/, '/$1/app.$2');
 
   const filePath = path.join(ROOT, urlPath);
   const ext = path.extname(filePath);

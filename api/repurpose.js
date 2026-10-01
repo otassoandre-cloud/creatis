@@ -7,6 +7,70 @@
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || '').trim();
+/* NOMS DES MODÈLES — un seul endroit, parce qu'ils meurent.
+   Vérifié en production le 21/08/2026, sur l'endpoint lui-même : `groq_status: 404`,
+   `gemini_status: 404`. Les deux premiers étages de la cascade étaient hors service et
+   l'intégralité des clips sortait du troisième filet (Together), sans que rien ne le signale.
+     - Groq a retiré `llama-3.3-70b-versatile` de son catalogue.
+     - Google répond « This model models/gemini-2.0-flash is no longer available.
+       Please update your code to use models/gemini-3.6-flash ».
+   Deux fonctions n'avaient PAS de filet et sont donc restées mortes en silence : la
+   classification du type de contenu (Groq uniquement) et le reclassement visuel des clips
+   (Gemini uniquement) — celui-là même qui devait choisir les meilleurs candidats en regardant
+   les images. Une panne de modèle doit se voir : voir `_dbg.provider`. */
+const GROQ_MODEL   = process.env.GROQ_MODEL   || 'openai/gpt-oss-120b';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+
+/* LES QUOTAS GRATUITS DE GOOGLE SE COMPTENT PAR MODELE.
+ *
+ * Le 27/09/2026, un abonne Pro restait bloque sur « service saturé » alors que
+ * le repli pose la veille cote Railway fonctionnait. Son chemin n'etait pas
+ * celui-la : l'upload de FICHIER est analyse ici, sur Vercel, par une seconde
+ * cascade (Groq -> Gemini -> Together) qui a sa propre panne. Les trois etages
+ * etaient a terre en meme temps — Groq au plafond du jour, Together a 402
+ * depuis le 15/09, et Gemini fige sur `gemini-3.6-flash`, le SEUL modele en 429
+ * ce jour-la. `gemini-3.5-flash` et les `flash-lite` repondaient 200 avec la
+ * meme cle, au meme instant. D'ou l'echec en neuf secondes.
+ *
+ * On parcourt donc une liste, du plus capable au plus econome. 429 (quota),
+ * 404 (modele retire — c'est arrive a gemini-2.0-flash) et 5xx (surcharge
+ * passagere) font passer au suivant ; une 4xx de contenu est rendue telle
+ * quelle, changer de modele n'y changerait rien.
+ *
+ * Le premier de la liste reste `GEMINI_MODEL`, pour qu'une variable
+ * d'environnement garde la main. */
+const GEMINI_MODELES = [...new Set([
+  GEMINI_MODEL,
+  ...(process.env.GEMINI_MODELS || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite')
+    .split(',').map(m => m.trim()).filter(Boolean),
+])];
+
+async function appelGemini(corps, timeoutMs = 30000) {
+  let derniere = null;
+  for (const modele of GEMINI_MODELES) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent?key=${GEMINI_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps), signal: AbortSignal.timeout(timeoutMs) },
+      );
+      if (r.ok) {
+        if (modele !== GEMINI_MODELES[0]) console.warn(`[gemini] servi par ${modele}`);
+        return r;
+      }
+      derniere = r;
+      if (r.status === 429 || r.status === 404 || r.status >= 500) {
+        console.warn(`[gemini] ${modele} indisponible (${r.status}), modele suivant`);
+        continue;
+      }
+      return r;
+    } catch (e) {
+      console.warn(`[gemini] ${modele} injoignable : ${e.message}`);
+    }
+  }
+  return derniere || new Response(JSON.stringify({ error: 'aucun modele Gemini disponible' }),
+    { status: 503, headers: { 'Content-Type': 'application/json' } });
+}
+
 const REPURPOSE_SERVICE_URL = (process.env.REPURPOSE_SERVICE_URL || '').trim();
 const REPURPOSE_SERVICE_SECRET = (process.env.REPURPOSE_SERVICE_SECRET || '').trim();
 const GROQ_KEY = (process.env.GROQ_API_KEY || '').trim();
@@ -72,10 +136,80 @@ async function _fetchYT(url, opts = {}) {
 }
 
 // Credits par plan
-const CREDITS = { gratuit: 0, pro: 5, studio: 20 };
+const CREDITS = { gratuit: 0, starter: 5, pro: 20, studio: 20 };
+
+/* Quotas mensuels — DOIT rester aligné avec CONFIG.PLANS dans js/config.js.
+   `videos` = analyses lancées, `clips` = clips exportés. On plafonne les deux : une analyse coûte
+   surtout du CPU de transcription, un export coûte du téléchargement + de l'encodage. Ne limiter
+   que les exports laissait quelqu'un analyser 200 vidéos sans rien exporter — le poste le plus cher. */
+const QUOTAS = {
+  // Gratuit : 1 analyse pour voir ses clips en aperçu, mais AUCUN téléchargement.
+  gratuit: { videos: 2,  clips: 0   },
+  starter: { videos: 5,  clips: 20  },
+  pro:     { videos: 30, clips: 150 },
+  studio:  { videos: 30, clips: 150 },
+};
+
+const _moisCourant = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth()}`; };
+
+/* Compteur du mois en cours : si la clé de reset stockée n'est pas le mois courant, le compteur
+   est périmé et vaut 0. Évite d'avoir à faire tourner un cron de remise à zéro. */
+function _compteurDuMois(valeur, cleReset) {
+  return cleReset === _moisCourant() ? (valeur || 0) : 0;
+}
+
+/* Vérifie le quota de vidéos analysées. Retourne null si OK, sinon la réponse d'erreur à renvoyer. */
+function verifierQuotaVideos(userData) {
+  const plan = userData?.plan || 'gratuit';
+  const max = (QUOTAS[plan] || QUOTAS.gratuit).videos;
+  const used = _compteurDuMois(userData?.videos_count, userData?.videos_reset);
+  if (used < max) return null;
+  if (plan === 'gratuit') {
+    /* Distinguer les deux causes : proposer « Passe à Pro » à quelqu'un qui a DÉJÀ
+       souscrit et dont la carte a été refusée est incompréhensible côté client, et
+       l'envoie sur un tunnel de paiement au lieu de la mise à jour de sa carte. */
+    if (userData?.impaye) {
+      return { status: 402, body: {
+        ok: false, error: 'paiement_en_defaut',
+        message: `Ton dernier paiement n'est pas passé — l'accès ${userData.plan_facture || 'payant'} est suspendu. Mets à jour ta carte pour le rétablir.`
+      } };
+    }
+    return { status: 403, body: { ok: false, error: 'upgrade_required', message: 'Passe à Pro pour analyser de nouvelles vidéos' } };
+  }
+  return { status: 429, body: {
+    ok: false, error: 'quota_atteint',
+    message: `Limite atteinte : ${max} vidéos analysées ce mois-ci. Le compteur repart le 1er du mois — ou passe au plan supérieur.`,
+    videos_used: used, videos_max: max, plan
+  } };
+}
+
+/* Un jeton du connecteur MCP n'est pas un JWT Supabase : c'est une chaine opaque
+   dont seul le SHA-256 est en base. On le reconnait a sa forme (pas trois parties
+   separees par des points) et on resout l'utilisateur dans `mcp_tokens`.
+
+   Le faire ICI et pas dans api/mcp.js est deliberé : tout le reste du fichier —
+   verification du plan, quota videos, quota clips, decompte — s'applique alors au
+   connecteur exactement comme a l'application web, sans duplication. Un abonne qui
+   passe par Claude consomme le meme quota que s'il passait par le site. */
+async function verifierJetonMcp(token) {
+  if (!token || !process.env.SUPABASE_SERVICE_KEY) return null;
+  try {
+    const hash = require('crypto').createHash('sha256').update(token).digest('hex');
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/mcp_tokens?token_hash=eq.${hash}&revoked_at=is.null&select=user_id,expires_at`,
+      { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!r.ok) return null;
+    const t = (await r.json())?.[0];
+    if (!t || new Date(t.expires_at) < new Date()) return null;
+    return { id: t.user_id, email: null, via: 'mcp' };
+  } catch { return null; }
+}
 
 async function verifyToken(token) {
   if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  // Jeton opaque = connecteur MCP ; JWT a trois segments = session web.
+  if (token.split('.').length !== 3) return verifierJetonMcp(token);
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -90,10 +224,71 @@ async function verifyToken(token) {
   } catch { return null; }
 }
 
+/* Delai laisse a un client dont le prelevement a echoue pour regulariser avant de
+   perdre l'acces. Trois jours : assez pour une carte a re-approvisionner ou a
+   remplacer, bien moins que les ~3 semaines pendant lesquelles Stripe rejoue. */
+const GRACE_IMPAYE_H = 72;
+
+/* Plan reellement accorde = ce que `users.plan` annonce, MOINS les abonnements en
+   defaut de paiement.
+
+   `users.plan` etait jusqu'ici la seule colonne consultee pour autoriser. Le
+   webhook, lui, passait bien l'abonnement en `past_due` sur echec — mais personne
+   ne lisait ce statut. Un abonne dont le prelevement echouait gardait donc l'acces
+   Pro complet jusqu'a ce que Stripe abandonne ses relances et emette
+   `customer.subscription.deleted`, seul evenement qui retrogradait le compte : de
+   l'ordre de trois semaines.
+
+   Constate le 07/09/2026 sur les deux premiers essais annuels arrives a terme
+   (139 EUR, provision insuffisante les deux fois) : `abonnements.status =
+   past_due` et `users.plan = pro` en meme temps, sans qu'aucun euro soit encaisse.
+
+   Trois garde-fous, parce que couper l'acces a tort coute plus cher que de le
+   laisser ouvert trois jours de trop :
+   - aucune ligne d'abonnement -> on ne touche a rien. Beaucoup de comptes Pro
+     legitimes n'en ont pas (crees a la main, comptes de test, offres accordees).
+   - une ligne active ou en essai -> on ne touche a rien, meme si une vieille ligne
+     resiliee traine a cote. Le cas se produit des qu'un client se reabonne.
+   - `past_due_depuis` absent -> on ne touche a rien. Sans date de depart on ne peut
+     pas savoir si le delai est ecoule, et on prefere l'erreur genereuse. */
+function planEffectif(user) {
+  const plan = user?.plan || 'gratuit';
+  if (plan === 'gratuit') return { plan, impaye: false };
+
+  const abos = Array.isArray(user?.abonnements) ? user.abonnements : [];
+  if (!abos.length) return { plan, impaye: false };
+  if (abos.some((a) => a.status === 'active' || a.status === 'trialing')) return { plan, impaye: false };
+
+  /* `incomplete` : la toute PREMIÈRE facture n'a jamais été honorée — 3D Secure abandonné au
+     checkout, ou carte refusée d'entrée. Aucune période de grâce ici, contrairement à
+     `past_due` juste en dessous : les 72 h protègent quelqu'un qui a déjà payé et dont le
+     renouvellement bute, ce qui mérite qu'on lui laisse le temps de changer de carte. Qui n'a
+     jamais rien versé n'a rien à préserver.
+     Ce chemin ne devrait plus produire d'accès du tout depuis le 13/09/2026 : le webhook
+     n'écrit plus `users.plan` tant que la session n'est pas payée, donc la ligne 206 sort avant
+     d'arriver ici. Il reste comme second verrou, et pour les comptes ouverts avant ce correctif. */
+  if (abos.every((a) => a.status === 'incomplete' || a.status === 'incomplete_expired')) {
+    return { plan: 'gratuit', impaye: true };
+  }
+
+  const dates = abos
+    .filter((a) => a.status === 'past_due' || a.status === 'unpaid')
+    .map((a) => a.past_due_depuis)
+    .filter(Boolean)
+    .map((d) => new Date(d).getTime())
+    .filter((t) => Number.isFinite(t));
+  if (!dates.length) return { plan, impaye: false };
+
+  const ecoule = Date.now() - Math.min(...dates);
+  return ecoule > GRACE_IMPAYE_H * 3600e3
+    ? { plan: 'gratuit', impaye: true }
+    : { plan, impaye: false };
+}
+
 async function getUserPlan(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return 'gratuit';
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset,videos_count,videos_reset,abonnements(status,past_due_depuis)`, {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
@@ -101,13 +296,30 @@ async function getUserPlan(userId) {
     });
     if (!r.ok) return 'gratuit';
     const rows = await r.json();
-    return rows?.[0] || { plan: 'gratuit', repurpose_count: 0 };
+    const row = rows?.[0];
+    if (!row) return { plan: 'gratuit', repurpose_count: 0 };
+
+    /* `plan` est ecrase par le plan REELLEMENT accorde ; le plan facture reste
+       dispo sous `plan_facture` pour les messages. Tous les appelants lisent
+       `.plan`, donc la restriction s'applique partout sans les modifier un a un. */
+    const { plan, impaye } = planEffectif(row);
+    return { ...row, plan, plan_facture: row.plan, impaye };
   } catch { return { plan: 'gratuit', repurpose_count: 0 }; }
 }
 
 async function incrementRepurposeCount(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return;
   try {
+    // Récupérer le count avant increment pour détecter la 1ère analyse
+    const before = await getUserPlan(userId);
+    // BUG CORRIGÉ : on envoyait la CHAÎNE "repurpose_count + 1" dans le PATCH. PostgREST n'évalue
+    // pas les expressions SQL dans un body JSON — il tentait de caster ce texte en entier, échouait
+    // en 400, et l'erreur était avalée par le catch. Le compteur d'analyses n'a donc jamais été
+    // incrémenté. On lit puis on écrit la valeur, comme le fait déjà logClipExport.
+    // Ce compteur suit les VIDÉOS ANALYSÉES (videos_count), distinct des clips exportés
+    // (repurpose_count), pour pouvoir plafonner les deux séparément.
+    const moisCourant = _moisCourant();
+    const dejaFait = _compteurDuMois(before?.videos_count, before?.videos_reset);
     await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {
@@ -115,7 +327,50 @@ async function incrementRepurposeCount(userId) {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
-      body: JSON.stringify({ repurpose_count: `repurpose_count + 1` })
+      body: JSON.stringify({ videos_count: dejaFait + 1, videos_reset: moisCourant })
+    });
+    // Email de relance 1h après la 1ère analyse gratuite
+    if ((before?.repurpose_count || 0) === 0 && before?.plan === 'gratuit') {
+      _scheduleClipsRelanceEmail(userId).catch(() => {});
+    }
+  } catch {}
+}
+
+async function _scheduleClipsRelanceEmail(userId) {
+  if (!process.env.SUPABASE_SERVICE_KEY || !process.env.BREVO_API_KEY) return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=email,nom`, {
+      headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+    });
+    const rows = await r.json();
+    const user = rows?.[0];
+    if (!user?.email) return;
+    const nom = user.nom || user.email.split('@')[0] || 'Créateur';
+    // Délai 1h (Vercel serverless ne peut pas sleep — on envoie après 1h via scheduled email)
+    // Pour l'instant : envoi immédiat avec messaging "dans 1h" → à remplacer par un cron
+    await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY.trim() },
+      body: JSON.stringify({
+        sender: { email: 'contact@creatis.app', name: 'Créatis' },
+        to: [{ email: user.email, name: nom }],
+        subject: `${nom}, tes clips viraux sont prêts 🎬`,
+        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#fff;padding:32px;border-radius:12px;">
+          <div style="font-size:22px;font-weight:900;margin-bottom:8px;">Créatis<span style="color:#10b981;">.</span></div>
+          <h2 style="font-size:20px;margin:0 0 12px;">Tes 3 clips sont prêts, ${nom} 🎬</h2>
+          <p style="color:#aaa;font-size:15px;line-height:1.6;margin:0 0 20px;">
+            Tu viens de créer tes premiers clips viraux. Mais ta vidéo contient encore <strong style="color:#fff;">7+ moments forts</strong> que l'IA a identifiés — et que tu n'as pas encore débloqués.
+          </p>
+          <div style="background:#111;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <div style="font-size:13px;color:#10b981;font-weight:700;margin-bottom:8px;">🔒 Clips encore disponibles dans ta vidéo</div>
+            <div style="color:#aaa;font-size:13px;">Score 94 · Score 91 · Score 89 · Score 87…</div>
+          </div>
+          <a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;margin-bottom:20px;">
+            Débloquer tous mes clips — 9,95€ →
+          </a>
+          <p style="color:#555;font-size:12px;">Offre -50% le 1er mois · Annulable à tout moment</p>
+        </div>`
+      })
     });
   } catch {}
 }
@@ -267,7 +522,7 @@ async function _fetchYouTubePage(videoId) {
       'Upgrade-Insecure-Requests': '1',
       'Cache-Control': 'max-age=0',
     },
-    timeout: 15000,
+    timeout: 9000,
   });
   if (!r.ok) throw new Error(`YouTube inaccessible (${r.status})`);
   return r.text();
@@ -282,79 +537,94 @@ function _parseCaptionTracks(html) {
 }
 
 // Retourne les segments avec timestamps (pour l'identification de clips)
+// Méthode A : page YouTube + piste ASR (LANGUE ORIGINALE — évite les sous-titres traduits).
+// Meilleure pour la langue, mais l'IP Vercel est parfois bot-bloquée → on la time-boxe.
+async function _captionsViaPage(videoId) {
+  const html = await _fetchYouTubePage(videoId);
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+  const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
+  const tracks = _parseCaptionTracks(html);
+  if (!tracks?.length) return null;
+  // Sélection identique à celle de _captionsViaNpm — elles divergeaient, et c'est CE chemin-ci qui
+  // gagne la course. Il prenait la 1re piste ASR quelle que soit sa langue : sur une vidéo française
+  // dont l'auteur a déclaré l'audio en anglais (ou qui porte une piste anglaise), on récupérait des
+  // sous-titres anglais sur un contenu français. Une piste dont l'URL contient `tlang=` est une
+  // TRADUCTION automatique — jamais l'original, donc exclue partout.
+  const original = t => !/\btlang=/.test(t.baseUrl || '');
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr' && original(t))
+    || tracks.find(t => t.languageCode === 'fr' && original(t))
+    || tracks.find(t => t.kind === 'asr' && original(t))
+    || tracks.find(original)
+    || tracks[0];
+  if (!track?.baseUrl) return null;
+  const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
+  const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(7000) });
+  if (!cr.ok) return null;
+  const data = await cr.json();
+  const segments = (data.events || [])
+    .filter(e => e.segs && e.tStartMs != null)
+    .map(e => ({
+      start: e.tStartMs / 1000,
+      end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
+      text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
+    }))
+    .filter(s => s.text);
+  if (!segments.length) return null;
+  console.log(`[captions/page] ${segments.length} segments lang=${track.languageCode}`);
+  return { segments, title, duration: segments[segments.length - 1].end };
+}
+
+// Méthode B : Railway (IP différente + cookies → contourne le bot-check, prépare fr/en).
+async function _captionsViaRailway(videoId) {
+  if (!REPURPOSE_SERVICE_URL) return null;
+  const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcript/${videoId}`, {
+    headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  if (!d.segments?.length) return null;
+  console.log(`[captions/railway] ${d.segments.length} segments lang=${d.language}`);
+  return { segments: d.segments, title: '', duration: d.segments[d.segments.length - 1].end };
+}
+
+// Méthode C (dernier recours) : npm générique (ne contrôle pas la langue).
+async function _captionsViaNpm(videoId) {
+  const { YoutubeTranscript } = require('youtube-transcript');
+  const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
+  if (!raw?.length) return null;
+  const segments = raw.map(s => ({
+    start: s.offset / 1000,
+    end: (s.offset + s.duration) / 1000,
+    text: (s.text || '').replace(/\n/g, ' ').trim(),
+  })).filter(s => s.text);
+  if (!segments.length) return null;
+  console.log(`[captions/npm] ${segments.length} segments (fallback générique)`);
+  return { segments, title: '', duration: segments[segments.length - 1].end };
+}
+
 async function getYouTubeTranscriptSegments(videoId) {
-  // Méthode 1 : youtube-transcript npm — ANDROID sans gl/hl + proxy résidentiel
-  try {
-    const { YoutubeTranscript } = require('youtube-transcript');
-    const raw = await YoutubeTranscript.fetchTranscript(videoId, { fetch: _fetchYT });
-    if (raw?.length) {
-      const segments = raw.map(s => ({
-        start: s.offset / 1000,
-        end: (s.offset + s.duration) / 1000,
-        text: (s.text || '').replace(/\n/g, ' ').trim(),
-      })).filter(s => s.text);
-      if (segments.length) {
-        console.log(`[captions/npm] OK ${segments.length} segments`);
-        return { segments, title: '', duration: segments[segments.length - 1].end };
-      }
-    }
-  } catch (e) {
-    console.warn('[captions/npm] failed:', e.message);
-  }
+  // PARALLÈLE : page (langue originale) ET Railway lancés en même temps → on obtient la latence
+  // du plus rapide au lieu d'une cascade séquentielle (avant : jusqu'à 7s + 15s + npm empilés
+  // quand l'IP Vercel était bot-bloquée). C'est LE fix « bloqué sur transcription ».
+  const pageP    = _captionsViaPage(videoId).catch(e => { console.warn('[captions/page] fail:', e.message); return null; });
+  const railwayP = _captionsViaRailway(videoId).catch(e => { console.warn('[captions/railway] fail:', e.message); return null; });
 
-  // Méthode 2 : fetch page via proxy + extraction caption tracks
-  try {
-    const html = await _fetchYouTubePage(videoId);
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
-    const title = titleMatch ? titleMatch[1].replace(' - YouTube', '').replace(/\\u[\dA-F]{4}/gi, c => String.fromCharCode(parseInt(c.slice(2), 16))) : '';
-    const tracks = _parseCaptionTracks(html);
-    if (tracks?.length) {
-      const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
-        || tracks.find(t => t.languageCode === 'fr')
-        || tracks.find(t => t.kind === 'asr')
-        || tracks[0];
-      if (track?.baseUrl) {
-        const captionsUrl = track.baseUrl.replace(/\\u0026/g, '&') + '&fmt=json3';
-        const cr = await _fetchYT(captionsUrl, { signal: AbortSignal.timeout(10000) });
-        if (cr.ok) {
-          const data = await cr.json();
-          const segments = (data.events || [])
-            .filter(e => e.segs && e.tStartMs != null)
-            .map(e => ({
-              start: e.tStartMs / 1000,
-              end: (e.tStartMs + (e.dDurationMs || 2000)) / 1000,
-              text: e.segs.map(s => (s.utf8 || '').replace(/\n/g, ' ')).join('').trim(),
-            }))
-            .filter(s => s.text);
-          if (segments.length) {
-            console.log(`[captions/fetch] ${segments.length} segments, lang=${track.languageCode}`);
-            return { segments, title, duration: segments[segments.length - 1].end };
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('[captions/fetch] failed:', e.message);
-  }
+  // Préfère la page si elle répond vite (≤9s, meilleure langue) ; sinon prend Railway dès qu'il
+  // est prêt (déjà en cours, aucun temps d'attente ajouté).
+  const pageFast = await Promise.race([pageP, new Promise(r => setTimeout(() => r('__timeout__'), 9000))]);
+  if (pageFast && pageFast !== '__timeout__' && pageFast.segments?.length) return pageFast;
 
-  // Méthode 3 : Railway service (IPs différentes de Vercel → contourne bot detection)
-  if (REPURPOSE_SERVICE_URL) {
-    try {
-      const r = await fetch(`${REPURPOSE_SERVICE_URL}/transcript/${videoId}`, {
-        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
-        signal: AbortSignal.timeout(30000),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        if (d.segments?.length) {
-          console.log(`[captions/railway] OK ${d.segments.length} segments lang=${d.language}`);
-          return { segments: d.segments, title: '', duration: d.segments[d.segments.length - 1].end };
-        }
-      }
-    } catch (e) {
-      console.warn('[captions/railway] failed:', e.message);
-    }
-  }
+  const railway = await railwayP;
+  if (railway?.segments?.length) return railway;
+
+  const pageLate = await pageP;
+  if (pageLate?.segments?.length) return pageLate;
+
+  try {
+    const npm = await _captionsViaNpm(videoId);
+    if (npm?.segments?.length) return npm;
+  } catch (e) { console.warn('[captions/npm] fail:', e.message); }
 
   throw new Error('Pas de sous-titres disponibles pour cette vidéo');
 }
@@ -387,73 +657,170 @@ async function transcribeAudioUrl(audioUrl) {
   return { segments, duration: d.duration || 0 };
 }
 
-// Identification des clips viraux via Groq LLM
-async function identifyViralClips(segments, videoId, title, nClips) {
-  const _dbg = { groq: !!GROQ_KEY, gemini: !!GEMINI_KEY, together: !!TOGETHER_KEY, segments: segments.length, provider: 'none', groq_status: null, gemini_status: null, raw_sample: '' };
-  console.log(`[clips] start — GROQ:${_dbg.groq} GEMINI:${_dbg.gemini} TOGETHER:${_dbg.together} segments:${_dbg.segments}`);
-  // Échantillonnage uniforme sur toute la vidéo (pas juste le début)
-  const MAX_CHARS = 7500;
-  let sampled = segments;
-  if (segments.length > 0) {
-    const avgLen = segments.slice(0, 30).reduce((a, s) => a + `[${s.start.toFixed(1)}s] ${s.text}\n`.length, 0) / Math.min(30, segments.length);
-    const maxSegs = Math.max(1, Math.floor(MAX_CHARS / avgLen));
-    if (segments.length > maxSegs) {
-      const step = segments.length / maxSegs;
-      sampled = Array.from({ length: maxSegs }, (_, i) => segments[Math.floor(i * step)]);
+// Découpe les segments en morceaux CONTIGUS d'environ chunkChars caractères, avec un léger
+// chevauchement — contrairement à un échantillonnage épars (1 segment sur N), ça garde à chaque
+// fois un contexte local cohérent (nécessaire pour juger si un clip a un début/fin propre) tout
+// en couvrant la vidéo entière au fil des morceaux, pas juste les 8-10 premières minutes.
+function _chunkSegmentsForClips(segments, chunkChars = 7500, overlap = 5, maxChunks = 8) {
+  const chunks = [];
+  let cur = [], curLen = 0, chunkStart = 0, i = 0;
+  while (i < segments.length) {
+    const s = segments[i];
+    cur.push(s);
+    curLen += (s.text || '').length + 20;
+    const isLast = i === segments.length - 1;
+    if (curLen >= chunkChars || isLast) {
+      chunks.push(cur);
+      if (isLast) break;
+      i = Math.max(chunkStart, i - overlap + 1) + 1;
+      chunkStart = i;
+      cur = []; curLen = 0;
+    } else {
+      i++;
     }
   }
-  const transcript = sampled.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n').substring(0, MAX_CHARS);
+  return chunks.slice(0, maxChunks);
+}
 
-  const prompt = `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cette transcription et sélectionne les ${nClips} MEILLEURS moments qui feront le plus de vues.
+async function _mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
-CRITÈRES DE SÉLECTION (par ordre de priorité) :
-1. HOOK fort dès les 3 premières secondes — phrase qui accroche immédiatement ("j'ai failli mourir", "personne ne le sait mais...", chiffre choc, question rhétorique)
-2. ÉMOTION intense — surprise, rire, choc, admiration, révélation
-3. AUTONOME — le clip se comprend sans contexte, commence et finit proprement sur une idée complète
-4. TENSION ou CURIOSITÉ — l'audience veut savoir la suite
-5. RÉPARTITION — couvre différentes parties de la vidéo, pas tous au même endroit
+function _buildClipsPrompt(transcript, title, n, isChunk, extraHint = '') {
+  return `Tu es un expert en création de contenu viral sur YouTube Shorts et TikTok. Analyse cet${isChunk ? ' EXTRAIT de' : 'te'} transcription et sélectionne les ${n} MEILLEURS moments à en tirer.
 
-ÉVITER : moments trop longs sans action, transitions, intros/outros, passages plats sans émotion.
+TON RÔLE EST DE CLASSER, PAS DE FILTRER. Propose les ${n} meilleurs moments de ce passage même
+si certains sont moyens — tu les noteras honnêtement plus bas, et c'est la note qui fera le tri,
+pas ton silence. Un moment moyen bien noté 45 est utile : il donne du choix. Un moment moyen
+gonflé à 90 est nuisible : il fait perdre confiance dans toutes les notes.
+Seule exception : s'il n'y a vraiment RIEN d'exploitable (pur silence, comptage, bruit), n'invente
+pas — rends-en moins.
+
+NOTE CHAQUE CANDIDAT SUR 4 CRITÈRES, de 0 à 5 :
+
+- "hook" — les 3 premières secondes accrochent-elles ?
+  5 = phrase qui arrête le scroll net (chiffre choc, aveu, contradiction, question qui pique)
+  3 = début intéressant mais qui demande quelques secondes de patience
+  1 = commence au milieu d'une explication, ou par une banalité
+  0 = aucune accroche
+
+- "emotion" — intensité ressentie (surprise, rire, choc, colère, admiration, révélation)
+  5 = réaction physique du spectateur   3 = intéressant sans être marquant   0 = plat, informatif
+
+- "autonomie" — se comprend-il SANS la vidéo d'origine ?
+  5 = complet en soi, commence et finit proprement sur une idée entière
+  3 = compréhensible mais un détail manque   0 = incompréhensible hors contexte
+
+- "tension" — donne-t-il envie de connaître la suite ?
+  5 = on ne peut pas décrocher   3 = curiosité légère   0 = aucune attente créée
+
+CALIBRAGE — utilise TOUTE l'échelle, c'est ce qui rend le classement utile :
+  5 = exceptionnel, doit rester rare (un ou deux sur l'ensemble de ta réponse)
+  4 = fort, clairement au-dessus du lot
+  3 = correct, publiable sans être marquant
+  2 = faible mais montrable
+  0-1 = à éviter
+Si tu mets 4 ou 5 partout, ta réponse ne classe plus rien et devient inutilisable.
+
+À NOTER BAS plutôt qu'à écarter : intros, outros, remerciements, transitions, annonces de
+sponsor, passages purement explicatifs, moments qui dépendent d'un visuel qu'on ne verra pas.
+Ils descendront d'eux-mêmes en bas du classement.${extraHint}
 
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
-{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"première phrase exacte du clip qui accroche","score":88}]}
+{"clips":[{"start_time":12.5,"end_time":67.0,"title":"titre accrocheur court","hook":"phrase d'accroche courte et percutante (max 8-10 mots) que TU rédiges pour donner envie de regarder — pas besoin d'être une citation exacte du transcript, reformule/résume l'idée choc du clip (ex: \"Il a perdu 50 000€ en 3 minutes\")","notes":{"hook":4,"emotion":3,"autonomie":5,"tension":3},"pourquoi":"en une phrase, ce qui rend ce moment fort"}]}
 
-Règles : durée 30-90s, score 0-100 (sois exigeant : score 90+ = vraiment viral), ne coupe pas au milieu d'une phrase.
+Règles : durée 30-90s, ne coupe jamais au milieu d'une phrase, démarre le clip SUR l'accroche
+(pas 10 secondes avant), et couvre différentes parties de la vidéo plutôt que trois extraits voisins.
 
-Transcription "${title}" :
+Transcription "${title}"${isChunk ? ' (extrait)' : ''} :
 ${transcript}`;
+}
 
+// Classifie le type de contenu (podcast, tuto, débat...) pour adapter les critères de viralité —
+// un extrait de tutoriel ne se juge pas comme un extrait de débat. Un seul appel léger, réutilisé
+// pour tous les morceaux du découpage.
+async function _classifyContentType(sampleText) {
+  if (!GROQ_KEY || !sampleText) return null;
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: 'user', content: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }],
+        temperature: 0.3, max_tokens: 200, response_format: { type: 'json_object' },
+      }),
+      signal: AbortSignal.timeout(10000), // indice optionnel : ne doit pas retarder le vrai travail
+    });
+    if (r.ok) {
+      const d = await r.json();
+      return JSON.parse(d.choices?.[0]?.message?.content?.trim() || '');
+    }
+    /* Filet Gemini. Cette fonction n'en avait aucun : elle appelait Groq et rendait `null` au
+       moindre pépin. Quand le modèle Groq a été retiré, elle a donc rendu `null` à CHAQUE
+       analyse, et l'adaptation du prompt au type de contenu — un extrait de tutoriel ne se juge
+       pas comme un extrait de débat — a disparu sans que rien ne l'indique. */
+    if (!GEMINI_KEY) return null;
+    const g = await appelGemini({
+        contents: [{ parts: [{ text: `Classe ce contenu. Choisis un type parmi : podcast, interview, tutoriel, conférence, commentaire, débat, vlog, autre. Réponds UNIQUEMENT en JSON, sans markdown :\n{"content_type":"...","hint":"1 phrase sur ce qui rend CE type de contenu viral en clip court"}\n\nExtrait :\n${sampleText.slice(0, 2000)}` }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 200, responseMimeType: 'application/json' },
+    }, 10000);
+    if (!g.ok) return null;
+    const gd = await g.json();
+    return JSON.parse(gd.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '');
+  } catch { return null; }
+}
+
+// Traduit les pics de volume audio tombant dans la fenêtre [start,end] d'un morceau en un indice
+// textuel pour le LLM — signal invisible à l'écrit (cri, rire, réaction) qu'une analyse texte-only rate.
+function _energyHintForRange(energyPeaks, start, end) {
+  if (!energyPeaks?.length) return '';
+  const inRange = energyPeaks.filter(t => t >= start && t <= end).map(t => Math.round(t));
+  if (!inRange.length) return '';
+  return `\n\nPICS DE VOLUME AUDIO détectés (indice supplémentaire — cri, rire, réaction forte, souvent invisible dans le texte) aux secondes : ${inRange.slice(0, 40).join(', ')}. À qualité égale, privilégie les clips qui contiennent un de ces pics.`;
+}
+
+// Chaîne de fallback Groq → Gemini → Together, retourne le texte brut du LLM ou null si tout échoue.
+// Chaque étage est borné à ~30 s (et non 60) : un modèle qui n'a pas répondu en 30 s ne répondra
+// pas, et trois étages à 60 s faisaient monter l'analyse à 180 s rien que pour le LLM — on a mesuré
+// une analyse à 230 s en production. Pire cas désormais ~95 s pour toute la cascade.
+async function _callClipLLM(prompt, _dbg) {
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4096, response_format: { type: 'json_object' } }),
+    signal: AbortSignal.timeout(30000),
   });
-  _dbg.groq_status = r.status; _dbg.provider = r.ok ? 'groq' : 'none';
-  console.log('[clips] Groq status:', r.status);
+  _dbg.groq_status = r.status;
+  if (r.ok) _dbg.provider = 'groq';
 
-  // Fallback Gemini Flash
   if (!r.ok && GEMINI_KEY) {
-    console.warn(`[clips] Groq ${r.status} → Gemini Flash`);
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
-      signal: AbortSignal.timeout(60000),
-    });
+    /* 12288 et non 4096 : les modeles Gemini 3 paient leur raisonnement sur le
+       budget de SORTIE, et un JSON de clips coupe en plein milieu est
+       indistinguable d'une panne — mesure cote Railway le 26/09. */
+    const geminiRes = await appelGemini(
+      { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 12288, responseMimeType: 'application/json' } },
+      30000,
+    );
     _dbg.gemini_status = geminiRes.status;
-    console.log('[clips] Gemini status:', geminiRes.status);
     if (geminiRes.ok) {
       const gd = await geminiRes.json();
       const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      _dbg.provider = 'gemini'; _dbg.raw_sample = gt.slice(0, 200);
+      _dbg.provider = 'gemini';
       r = { ok: true, json: async () => ({ choices: [{ message: { content: gt } }] }) };
     } else { r = geminiRes; }
   }
 
-  // Fallback Together AI si Groq et Gemini indisponibles
   if (!r.ok && TOGETHER_KEY) {
-    console.warn(`[clips] Gemini aussi KO → Together AI`);
     const tr = await fetch('https://api.together.xyz/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
@@ -465,41 +832,52 @@ ${transcript}`;
         ],
         temperature: 0.7, max_tokens: 4096
       }),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(30000),
     });
-    console.log('[clips] Together status:', tr.status);
     if (tr.ok) {
       const td = await tr.json();
       const tt = td.choices?.[0]?.message?.content || '';
-      _dbg.provider = 'together'; _dbg.raw_sample = tt.slice(0, 200);
-      console.log('[clips] Together raw:', tt.slice(0, 300));
+      _dbg.provider = 'together';
       r = { ok: true, json: async () => ({ choices: [{ message: { content: tt } }] }) };
-    } else {
-      const errT = await tr.text().catch(() => '');
-      console.warn('[clips] Together error:', tr.status, errT.slice(0, 100));
-      r = tr;
-    }
+    } else { r = tr; }
   }
 
-  // Tous les LLM KO → découpage uniforme
-  if (!r.ok) {
-    const errBody = typeof r.text === 'function' ? await r.text() : String(r.status);
-    _dbg.provider = 'fallback'; _dbg.error = errBody.slice(0, 100);
-    console.warn(`[clips] tous LLM KO, découpage uniforme. debug:`, JSON.stringify(_dbg));
-    if (segments.length === 0) throw new Error(`LLM error ${r.status}`);
-    const totalDur2 = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-    const fallbackClips = Array.from({ length: nClips }, (_, i) => {
-      const s2 = Math.floor((totalDur2 / (nClips + 1)) * (i + 1));
-      const seg2 = segments.find(s => s.start >= s2) || segments[Math.floor(i / nClips * segments.length)];
-      const st2 = seg2 ? seg2.start : s2;
-      return { video_id: videoId, start: st2, end: Math.min(st2 + 60, totalDur2), title: `Moment ${i + 1}`, hook: seg2?.text?.substring(0, 80) || '', score: 70, _dbg };
-    });
-    return fallbackClips;
-  }
+  if (!r.ok) return null;
   const raw = (await r.json()).choices?.[0]?.message?.content?.trim() || '';
-  _dbg.raw_sample = raw.slice(0, 200);
-  console.log('[clips] raw LLM response:', raw.slice(0, 400));
-  // Extraire le JSON en trouvant le premier { et dernier } (ignore le texte autour)
+  return raw;
+}
+
+/* Le score est CALCULÉ à partir de notes par critère, il n'est plus demandé au modèle.
+   Mesuré sur 60 jours de production : quand on demandait un score 0-100 en lui disant « sois
+   exigeant, 90+ = vraiment viral », le modèle répondait 90+ sur la quasi-totalité des clips —
+   98 sur 791 ouvertures, 96 sur 447, 95 sur 537, et presque rien en dessous de 90. Un score qui
+   ne varie pas ne classe rien : trier dessus revenait à tirer au sort, et l'utilisateur recevait
+   dix clips tous annoncés « excellents » dont il en gardait un.
+   Quatre notes de 0 à 5, avec des ancrages décrits dans le prompt, se calibrent beaucoup mieux
+   qu'un chiffre global sorti d'un coup. La pondération donne le poids au hook, qui est ce qui
+   décide de la rétention sur les trois premières secondes. */
+const _POIDS_NOTES = { hook: 0.35, emotion: 0.25, autonomie: 0.20, tension: 0.20 };
+
+function _scoreDepuisNotes(c) {
+  const n = c.notes || c.criteres || c.scores || null;
+  if (n && typeof n === 'object') {
+    let total = 0, poidsUtilises = 0;
+    for (const [cle, poids] of Object.entries(_POIDS_NOTES)) {
+      const brut = n[cle] ?? n[cle === 'autonomie' ? 'autonomy' : cle] ?? n[cle === 'emotion' ? 'émotion' : cle];
+      const note = parseFloat(brut);
+      if (!isNaN(note)) { total += Math.max(0, Math.min(5, note)) * poids; poidsUtilises += poids; }
+    }
+    // Au moins la moitié des critères doivent être notés pour que le calcul veuille dire quelque chose.
+    if (poidsUtilises >= 0.5) return Math.round((total / poidsUtilises) * 20);
+  }
+  // Repli : ancien format (score global déclaré). On le conserve pour ne pas casser une réponse
+  // d'un modèle de secours qui suivrait l'ancien schéma, mais il est volontairement rabaissé —
+  // un score déclaré ne vaut pas un score calculé et ne doit pas passer devant.
+  const declare = parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral);
+  return isNaN(declare) ? 55 : Math.min(declare, 75);
+}
+
+function _parseClipsFromRaw(raw, videoId) {
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
   const jsonStr = firstBrace !== -1 && lastBrace > firstBrace ? raw.slice(firstBrace, lastBrace + 1) : raw;
@@ -511,8 +889,7 @@ ${transcript}`;
     const s = raw.indexOf('['), e = raw.lastIndexOf(']');
     if (s !== -1 && e > s) try { clips = JSON.parse(raw.slice(s, e + 1)); } catch {}
   }
-  console.log(`[clips] parsed ${clips.length} clips avant filtre, sample:`, JSON.stringify(clips[0] || {}).slice(0, 200));
-  clips = clips
+  return clips
     .map(c => ({
       video_id: videoId,
       // Accepte noms EN et FR
@@ -520,7 +897,8 @@ ${transcript}`;
       end: parseFloat(c.end_time ?? c.end ?? c.fin ?? c.temps_fin ?? c.finish ?? c.timestamp_end ?? c.heure_fin),
       title: c.title || c.titre || c.name || c.nom || '',
       hook: c.hook || c.accroche || c.description || c.extrait || '',
-      score: parseInt(c.score ?? c.note ?? c.viral_score ?? c.rating ?? c.score_viral) || 80
+      score: _scoreDepuisNotes(c),
+      pourquoi: c.pourquoi || c.justification || c.reason || ''
     }))
     .filter(c => !isNaN(c.start) && !isNaN(c.end) && c.end > c.start)
     .map(c => {
@@ -530,21 +908,175 @@ ${transcript}`;
       const end = dur < minDur ? c.start + targetDur : Math.min(c.end, c.start + maxDur);
       return { ...c, end };
     });
+}
 
-  // Fallback : LLM n'a rien retourné d'utilisable → découpage uniforme
-  if (clips.length === 0 && segments.length > 0) {
-    _dbg.provider = _dbg.provider + '_empty';
-    console.warn('[clips] 0 clips après parsing, découpage uniforme. debug:', JSON.stringify(_dbg));
-    const totalDur = segments[segments.length - 1].end || segments[segments.length - 1].start + 30;
-    const n = nClips;
-    clips = Array.from({ length: n }, (_, i) => {
-      const start = Math.floor((totalDur / (n + 1)) * (i + 1));
-      const seg = segments.find(s => s.start >= start) || segments[Math.floor(i / n * segments.length)];
-      const s = seg ? seg.start : start;
-      return { video_id: videoId, start: s, end: Math.min(s + 60, totalDur), title: `Moment ${i + 1}`, hook: seg?.text?.substring(0, 80) || '', score: 70, _dbg };
-    });
+// Garde-fou anti-chevauchement en code (pas seulement dans le prompt) — nécessaire dès que
+// plusieurs morceaux sont fusionnés, et rattrape aussi le cas où le modèle suit mal la consigne.
+function _dedupeClips(clips) {
+  const sorted = [...clips].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const kept = [];
+  for (const c of sorted) {
+    const dur = c.end - c.start;
+    const overlaps = kept.some(k => Math.min(c.end, k.end) - Math.max(c.start, k.start) > 0.5 * dur);
+    if (!overlaps) kept.push(c);
   }
-  return clips;
+  return kept;
+}
+
+/* `_uniformFallbackClips` a ete SUPPRIMEE le 14/09/2026. Elle decoupait la video en
+   tranches egales de 60 s notees 70 quand le LLM ne rendait rien, et ce faux resultat
+   partait a l'utilisateur sans le moindre signe. Ne pas la reintroduire : l'absence de
+   clip doit remonter comme une erreur, pas se deguiser en analyse. */
+
+// Identification des clips viraux via LLM (Groq → Gemini → Together), en plusieurs passes pour
+// couvrir toute la vidéo sur les contenus longs.
+async function identifyViralClips(segments, videoId, title, nClips, energyPeaks = []) {
+  const _dbg = { groq: !!GROQ_KEY, gemini: !!GEMINI_KEY, together: !!TOGETHER_KEY, segments: segments.length, provider: 'none', groq_status: null, gemini_status: null, raw_sample: '', chunks: 0, content_type: null, energy_peaks: energyPeaks.length };
+  console.log(`[clips] start — GROQ:${_dbg.groq} GEMINI:${_dbg.gemini} TOGETHER:${_dbg.together} segments:${_dbg.segments} energy_peaks:${energyPeaks.length}`);
+
+  if (segments.length === 0) throw new Error('Transcription vide');
+
+  const chunks = _chunkSegmentsForClips(segments);
+  _dbg.chunks = chunks.length;
+  const isChunked = chunks.length > 1;
+  /* Un PLAFOND par morceau, plus un plancher. L'ancien `Math.max(2, ...)` demandait au moins deux
+     clips à CHAQUE morceau : sur une vidéo d'une heure découpée en huit, le modèle devait trouver
+     seize « meilleurs moments » même dans les passages où il ne se passe rien. D'où les clips
+     plats. Le prompt autorise désormais explicitement une liste vide.
+     Sur une vidéo courte (un seul morceau) on demande plus de candidats qu'on n'en affichera :
+     sans cela on demandait exactement dix clips et on gardait les dix — il n'y avait aucune
+     sélection, juste une production. */
+  const perChunkN = isChunked
+    // Assez de candidats pour qu'il reste un vrai choix apres dedoublonnage, sans exploser le
+    // temps de reponse : de quoi couvrir nClips en piochant dans chaque morceau, plus une marge.
+    ? Math.max(3, Math.min(6, Math.ceil(nClips / chunks.length) + 2))
+    : Math.min(nClips + 6, 16);
+  console.log(`[clips] ${chunks.length} morceau(x) (${_dbg.segments} segments)`);
+
+  let contentHint = '';
+  const typeInfo = await _classifyContentType(chunks[0].map(s => s.text).join(' '));
+  if (typeInfo?.content_type) {
+    contentHint = `\n\nType de contenu détecté : ${typeInfo.content_type}. ${typeInfo.hint || ''}`;
+    _dbg.content_type = typeInfo.content_type;
+  }
+
+  /* BUDGET DE TEMPS GLOBAL. Chaque morceau déclenche sa propre cascade LLM (jusqu'à ~95 s), et les
+     morceaux passent 3 par 3 : une vidéo longue = plusieurs vagues = 200 s et plus. Mesuré en
+     production : une analyse à 230 s, et des échecs en série dès que le client coupe avant.
+     Passé le budget, on arrête de lancer de nouveaux morceaux et on rend ce qu'on a déjà.
+     Six clips issus des premiers morceaux valent infiniment mieux qu'une erreur au bout de 2 min. */
+  const BUDGET_MS = 210000;
+  const _debut = Date.now();
+  let _abandonnes = 0;
+
+  const chunkResults = await _mapWithConcurrency(chunks, 3, async (chunkSegs) => {
+    if (Date.now() - _debut > BUDGET_MS) { _abandonnes++; return []; }
+    try {
+      const transcript = chunkSegs.map(s => `[${s.start.toFixed(1)}s] ${s.text}`).join('\n');
+      const energyHint = _energyHintForRange(energyPeaks, chunkSegs[0].start, chunkSegs[chunkSegs.length - 1].end);
+      const prompt = _buildClipsPrompt(transcript, title, perChunkN, isChunked, contentHint + energyHint);
+      const raw = await _callClipLLM(prompt, _dbg);
+      if (!raw) return [];
+      _dbg.raw_sample = raw.slice(0, 200);
+      return _parseClipsFromRaw(raw, videoId);
+    } catch (e) {
+      console.warn('[clips] morceau échoué:', e.message);
+      return [];
+    }
+  });
+  _dbg.chunks_abandonnes = _abandonnes;
+  _dbg.duree_llm_ms = Date.now() - _debut;
+  if (_abandonnes) console.warn(`[clips] budget ${BUDGET_MS}ms dépassé — ${_abandonnes}/${chunks.length} morceaux abandonnés`);
+
+  const allClips = chunkResults.flat();
+  console.log(`[clips] ${allClips.length} candidats avant dédoublonnage, sample:`, JSON.stringify(allClips[0] || {}).slice(0, 200));
+  let clips = _dedupeClips(allClips);
+
+  /* AUCUN morceau exploitable — les trois fournisseurs sont tombes.
+
+     Ce chemin servait un decoupage UNIFORME : dix tranches de 60 s reparties a
+     intervalles egaux, toutes notees 70, intitulees « Moment 1 » a « Moment 10 ».
+     Reproduit deux fois de suite le 14/09/2026 sur une source d'une heure, aux
+     memes secondes — donc pas un accident.
+
+     C'est pire que de ne rien rendre. L'utilisateur voit dix clips avec des
+     scores : rien ne lui dit qu'aucun n'a ete choisi, et il conclut que le
+     produit ne sait pas travailler. Une erreur franche lui permet de reessayer ;
+     un faux resultat lui fait perdre sa video ET sa confiance.
+
+     Pourquoi ca arrive : une source d'une heure produit ~10 morceaux, et le
+     plafond Groq est de 8 000 tokens PAR MINUTE. Quand le job de fond a deja
+     consomme ce budget juste avant, la cascade complete (Groq, Gemini, Together)
+     n'a plus rien a offrir — mesure ce jour-la, `gemini_status: 429` inclus.
+     Appelee seule quelques minutes plus tard, la meme requete rend 8 vrais clips
+     notes 96, 83, 80, 78 : le service marche, il etait sature. */
+  if (clips.length === 0) {
+    _dbg.provider = _dbg.provider + '_empty';
+    console.error('[clips] AUCUN clip identifié — les 3 fournisseurs ont échoué. debug:', JSON.stringify(_dbg));
+    const _err = new Error("Le service d'analyse est saturé — réessaie dans deux ou trois minutes, ta vidéo n'est pas perdue.");
+    _err.saturation = true;
+    _err._dbg = _dbg;
+    throw _err;
+  }
+
+  /* PLANCHER DE QUALITÉ. Sans lui, `slice(0, nClips)` rendait les dix premiers quel que soit leur
+     niveau. Mesuré sur 60 jours : un abonné Pro — sans paywall, avec un quota de 150 clips par
+     mois, donc aucune raison de se retenir — ouvrait 42 % des clips livrés et n'en exportait que
+     6,1 %. Le produit livrait dix clips pour en faire garder moins d'un.
+     Mieux vaut en rendre quatre solides que dix dont huit finiront à la corbeille : le nombre
+     affiché n'a de valeur que si l'utilisateur les garde. On garde tout de même un minimum, pour
+     ne jamais renvoyer un studio vide à quelqu'un qui vient d'attendre son analyse. */
+  /* Seuil abaisse a 40 (et non 60) apres mesure : avec le calibrage du prompt, un moment
+     « correct, publiable » note 3 partout tombe exactement a 60 — le seuil coupait donc la
+     moitie des moments corrects. On ne coupe plus que le vraiment mauvais, et on TRIE : les
+     meilleurs remontent, les faibles restent disponibles en bas de liste avec leur vraie note.
+     Donner du choix classe vaut mieux que decider a la place de l'utilisateur. */
+  const SEUIL_QUALITE = 40;
+  const MIN_CLIPS = 5;
+  const tries = [...clips].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const retenus = tries.filter(c => (c.score || 0) >= SEUIL_QUALITE);
+  const final = (retenus.length >= MIN_CLIPS ? retenus : tries.slice(0, MIN_CLIPS)).slice(0, nClips);
+  _dbg.candidats = clips.length;
+  _dbg.ecartes_sous_seuil = clips.length - retenus.length;
+  _dbg.score_max = clips.length ? Math.max(...clips.map(c => c.score || 0)) : null;
+  console.log(`[clips] ${clips.length} candidats → ${final.length} retenus (seuil ${SEUIL_QUALITE}, ${_dbg.ecartes_sous_seuil} écartés)`);
+
+  return final.map(c => ({ ...c, _dbg }));
+}
+
+// Reclassement visuel des clips candidats via Gemini Vision — combine le score texte (transcript)
+// avec un signal visuel réel (expression, action à l'écran, cadrage) sur UNE frame par candidat.
+// Ne prétend pas "regarder toute la vidéo" (source souvent longue, ça coûterait trop cher/trop
+// lent) : affine seulement la sélection déjà pré-filtrée par le texte. Retourne null en best-effort
+// (jamais bloquant) si Gemini est indisponible ou si le parsing échoue — l'appelant garde alors le
+// classement texte tel quel.
+async function rankClipsVisual(candidates, frames, nFinal) {
+  if (!GEMINI_KEY) return null;
+  const frameByIndex = new Map(frames.map(f => [f.i, f.data]));
+  const parts = [{ text:
+    `Tu es un expert en montage de clips viraux courts (TikTok/Reels/Shorts). Voici ${candidates.length} extraits candidats issus d'une même vidéo source, chacun avec son titre, son "hook" (accroche) et une frame représentative. Pour chaque candidat, évalue le potentiel viral RÉEL en te basant sur l'image (expression du visage, action à l'écran, qualité de cadrage, texte/graphismes visibles) ET les infos fournies. Choisis les ${nFinal} meilleurs et classe-les du meilleur au moins bon.\n\nRéponds UNIQUEMENT en JSON strict, sans texte autour, format exact :\n{"ranking":[{"i":<index du candidat>,"visual_score":<0-100>,"reason":"<1 phrase courte en français>"}]}\n(le tableau "ranking" doit contenir exactement ${nFinal} entrées, triées du meilleur au moins bon)\n\nCandidats :` }];
+  for (const c of candidates) {
+    const data = frameByIndex.get(c.i);
+    if (!data) continue;
+    parts.push({ text: `Candidat ${c.i} — titre: "${c.title}", hook: "${c.hook}", score texte: ${c.text_score ?? 'N/A'}` });
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data } });
+  }
+  const r = await appelGemini(
+    { contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096, responseMimeType: 'application/json' } },
+    30000,
+  );
+  if (!r.ok) { console.warn('[rank_clips_visual] Gemini', r.status, (await r.text().catch(() => '')).slice(0, 200)); return null; }
+  const gd = await r.json();
+  const raw = gd?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  try {
+    const parsed = JSON.parse(raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim());
+    const ranking = Array.isArray(parsed?.ranking) ? parsed.ranking : null;
+    if (!ranking?.length) return null;
+    return ranking.filter(x => typeof x.i === 'number').map(x => x.i);
+  } catch (e) {
+    console.warn('[rank_clips_visual] parse échoué:', e.message, raw.slice(0, 200));
+    return null;
+  }
 }
 
 async function getYouTubeTranscript(videoId) {
@@ -558,9 +1090,12 @@ async function getYouTubeTranscript(videoId) {
     throw new Error('Pas de sous-titres disponibles pour cette vidéo. Active les sous-titres automatiques sur YouTube, ou utilise une vidéo avec des sous-titres.');
   }
 
-  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr')
-    || tracks.find(t => t.languageCode === 'fr')
-    || tracks.find(t => t.kind === 'asr')
+  // Une piste dont l'URL porte `tlang=` est une traduction automatique, pas l'original.
+  const estOriginal = t => !/\btlang=/.test(t.baseUrl || '');
+  const track = tracks.find(t => t.languageCode === 'fr' && t.kind === 'asr' && estOriginal(t))
+    || tracks.find(t => t.languageCode === 'fr' && estOriginal(t))
+    || tracks.find(t => t.kind === 'asr' && estOriginal(t))
+    || tracks.find(estOriginal)
     || tracks[0];
 
   if (!track?.baseUrl) throw new Error('Aucune piste de sous-titres trouvable');
@@ -602,6 +1137,38 @@ async function transcribeViaRailway(youtubeUrl) {
     throw new Error(err.detail || `Railway transcription (${r.status})`);
   }
   return r.json();
+}
+
+/* Sous-titres, puis Whisper si YouTube ne les donne pas.
+ *
+ * Le 15/09/2026, l'IP Railway s'est fait renvoyer des 429 par YouTube sur les deux
+ * methodes de sous-titres. Le site s'en sortait — sa branche d'analyse bascule sur
+ * Whisper — mais `shorts_start` levait l'erreur telle quelle : le connecteur MCP,
+ * qui passe exclusivement par la, echouait sur TOUTES les videos. Les deux chemins
+ * partagent desormais cette fonction pour ne plus pouvoir diverger.
+ *
+ * `marquer` est optionnel : la branche d'analyse s'en sert pour sa telemetrie. */
+async function obtenirSegments(videoId, url, marquer = () => {}) {
+  try {
+    const r = await getYouTubeTranscriptSegments(videoId);
+    if (r?.segments?.length) {
+      marquer('transcription');
+      console.log(`[clips] captions OK: ${r.segments.length} segments`);
+      return { ...r, source: 'sous-titres' };
+    }
+    throw new Error('Transcription vide');
+  } catch (e) {
+    marquer('sous_titres_echec');
+    console.warn('[clips] captions failed, fallback Railway Whisper:', e.message);
+    const r = await transcribeViaRailway(url);
+    if (!r.segments?.length) {
+      marquer('transcription_echec_total');
+      throw new Error('Transcription vide');
+    }
+    marquer('transcription');
+    console.log(`[clips] Railway Whisper OK: ${r.segments.length} segments`);
+    return { ...r, source: 'whisper-railway' };
+  }
 }
 
 async function transcribeWithCloudRun(url) {
@@ -649,15 +1216,11 @@ Réponds directement sans introduction. Tout en français.`;
   let r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 })
+    body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.8, max_tokens: 4096 })
   });
   if ((r.status === 429 || r.status === 402) && GEMINI_KEY) {
     console.warn(`[content] Groq ${r.status}, fallback Gemini Flash`);
-    const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 4096 } })
-    });
+    const gr = await appelGemini({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 8192 } });
     if (!gr.ok) throw new Error('Erreur génération contenu');
     const gd = await gr.json();
     return gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -689,15 +1252,24 @@ module.exports = async (req, res) => {
 
   // ── Proxy multipart vers Railway (upload-video, transcribe-audio, reframe-clip) ──
   if (contentType.includes('multipart/form-data')) {
-    const authUser2 = await verifyToken(token);
-    if (!authUser2 && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
     const railwayEndpoint = (req.query && req.query.railway) || 'upload-video';
+    // upload-video et transcribe-audio publics (analyse gratuite) ; reframe-clip = export Pro uniquement
+    if (railwayEndpoint === 'reframe-clip') {
+      const authUser2 = await verifyToken(token);
+      if (!authUser2 && !isLocal) return res.status(401).json({ error: 'Connexion requise pour exporter' });
+    }
     if (!['upload-video', 'transcribe-audio', 'reframe-clip'].includes(railwayEndpoint)) {
       return res.status(400).json({ error: 'Endpoint invalide' });
     }
     try {
-      const railwayRes = await fetch(`${REPURPOSE_SERVICE_URL}/${railwayEndpoint}`, {
+      // Pour reframe-clip : injecter le plan vérifié côté serveur (le client ne peut pas le falsifier)
+      let railwayTarget = `${REPURPOSE_SERVICE_URL}/${railwayEndpoint}`;
+      if (railwayEndpoint === 'reframe-clip' && authUser2) {
+        const planInfo = await getUserPlan(authUser2.id);
+        railwayTarget += `?plan=${planInfo?.plan || 'gratuit'}`;
+      }
+      const railwayRes = await fetch(railwayTarget, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}`, 'Content-Type': contentType },
         body: rawBody,
@@ -718,19 +1290,122 @@ module.exports = async (req, res) => {
   let body = {};
   try { body = JSON.parse(rawBody.toString('utf8')); } catch {}
 
-  // Auth requise (Repurpose = Pro uniquement)
-  const authUser = await verifyToken(token);
-  if (!authUser && !isLocal) {
-    return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
-  }
   const mode = body.mode || 'text';
   const url = body.url || '';
 
+  // Modes publics — pas d'auth requise (analyse gratuite, paywall au téléchargement)
+  const PUBLIC_MODES = new Set(['upload-token', 'clips', 'rank_clips_visual', 'upload-status', 'log_lead', 'notify_clips_ready', 'debug_log']);
+  const authUser = PUBLIC_MODES.has(mode) ? null : await verifyToken(token);
+  if (!PUBLIC_MODES.has(mode) && !authUser && !isLocal) {
+    return res.status(401).json({ error: 'Connexion requise pour utiliser Repurpose Vidéo' });
+  }
+
   // ── Modes sans URL — traiter immédiatement avant tout autre check ──
+
+  // Email "tes clips sont prêts"
+  if (mode === 'notify_clips_ready') {
+    const _au = await verifyToken(token);
+    if (_au && process.env.BREVO_API_KEY) {
+      try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${_au.id}&select=email,nom`, {
+          headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+        });
+        const user = (await r.json())?.[0];
+        if (user?.email) {
+          const nom = user.nom || user.email.split('@')[0] || 'Créateur';
+          const count = body.count || 0;
+          const name = body.name || 'ta vidéo';
+          await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY.trim() },
+            body: JSON.stringify({
+              sender: { email: 'contact@creatis.app', name: 'Créatis' },
+              to: [{ email: user.email, name: nom }],
+              subject: `Tes ${count} clips de "${name}" sont prêts 🎬`,
+              htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#fff;padding:32px;border-radius:12px;">
+                <div style="font-size:22px;font-weight:900;margin-bottom:8px;">Créatis<span style="color:#10b981;">.</span></div>
+                <h2 style="font-size:20px;margin:0 0 12px;">Tes ${count} clips viraux sont prêts, ${nom} 🎬</h2>
+                <p style="color:#aaa;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                  L'analyse de <strong style="color:#fff;">"${name}"</strong> est terminée. Tes clips t'attendent sur Créatis.
+                </p>
+                <a href="https://creatis.app/clips-v2.html${body.generation_id ? `?g=${encodeURIComponent(body.generation_id)}` : ''}" style="display:inline-block;background:#10b981;color:#000;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;">
+                  Voir mes clips →
+                </a>
+              </div>`
+            })
+          });
+        }
+      } catch {}
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  // Debug temporaire : le client poste ici les infos de diagnostic qu'on ne peut pas voir depuis
+  // la console du téléphone de l'utilisateur — juste loggé côté serveur, à retirer une fois le
+  // bug de lecture mobile résolu.
+  if (mode === 'debug_log') {
+    console.log('[debug_log]', JSON.stringify(body.data || {}).slice(0, 500));
+    return res.status(200).json({ ok: true });
+  }
+
+  /* Créatis vocal — comprend une demande dite librement, comme à un interlocuteur.
+     Les motifs figés ne couvraient que les tournures prévues d'avance : « prends la dernière
+     de Squeezie mais fais-moi que des trucs punchy » n'était pas compris. On confie donc
+     l'extraction au modèle, et on lui fait aussi formuler la réponse — la même phrase répétée
+     à chaque fois sonne robotique, quelle que soit la qualité de la voix.
+     Le client garde son analyse par motifs et n'appelle ceci qu'en complément : si Groq est
+     indisponible, la commande vocale continue de fonctionner. */
+  if (mode === 'voix_intention') {
+    const phrase = String(body.phrase || '').slice(0, 400).trim();
+    if (!phrase) return res.status(400).json({ error: 'phrase requise' });
+    if (!GROQ_KEY) return res.status(503).json({ error: 'GROQ_API_KEY non configurée' });
+    try {
+      const sys = `Tu es l'assistant vocal de Créatis, un outil qui découpe une longue vidéo YouTube en clips courts.
+L'utilisateur te parle à l'oral, en français, sans ponctuation et parfois en hésitant.
+Ta seule mission : identifier de QUELLE vidéo il veut des clips.
+
+Extrais :
+- "chaine" : le nom du créateur ou de la chaîne YouTube. Chaîne vide si absent.
+- "titre" : le titre de la vidéo précise, SEULEMENT s'il en nomme une. Vide s'il dit « la dernière », « la nouvelle » ou ne précise pas.
+- "reponse" : ce que tu réponds à voix haute, à la première personne, 12 mots maximum.
+
+Règles pour "reponse" :
+- Varie la formulation à chaque fois, comme le ferait une vraie personne. Ne répète jamais la même phrase.
+- Si "chaine" est trouvée : confirme naturellement que tu y vas.
+- Si "chaine" est vide : demande de quel créateur il s'agit, gentiment.
+- Jamais de liste, jamais d'emoji, jamais de guillemets. Une phrase parlée, c'est tout.
+
+Réponds UNIQUEMENT par un objet JSON : {"chaine":"...","titre":"...","reponse":"..."}
+Aucun texte avant ou après.`;
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: phrase }],
+          temperature: 0.8,
+          max_tokens: 200,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      if (!r.ok) return res.status(502).json({ error: `Groq ${r.status}` });
+      const d = await r.json();
+      const brut = d?.choices?.[0]?.message?.content || '{}';
+      let out = {};
+      try { out = JSON.parse(brut); } catch { return res.status(502).json({ error: 'Réponse illisible' }); }
+      return res.status(200).json({
+        ok: true,
+        chaine: String(out.chaine || '').trim().slice(0, 80),
+        titre: String(out.titre || '').trim().slice(0, 120),
+        reponse: String(out.reponse || '').trim().slice(0, 200),
+      });
+    } catch (e) {
+      return res.status(502).json({ error: e.message });
+    }
+  }
 
   // Upload token : credentials Railway pour upload direct
   if (mode === 'upload-token') {
-    if (!authUser && !isLocal) return res.status(401).json({ error: 'Connexion requise' });
     if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
     return res.status(200).json({ ok: true, railway_url: REPURPOSE_SERVICE_URL, token: REPURPOSE_SERVICE_SECRET });
   }
@@ -752,15 +1427,359 @@ module.exports = async (req, res) => {
   }
 
   // Clips depuis fichier uploadé (segments déjà transcrits, pas d'URL YouTube)
+  /* Traduction des sous-titres d'un clip. On ne retranscrit pas : on traduit les segments déjà
+     transcrits, ce qui garde EXACTEMENT le même minutage. L'audio n'est pas touché — la vidéo
+     reste dans sa langue d'origine, seuls les sous-titres changent. */
+  /* Le client confirme qu'il a bien REÇU et AFFICHÉ ses clips → seulement là on décompte une
+     vidéo du quota. Avant, le décompte se faisait dès que le serveur avait fini son travail : si
+     la réponse n'arrivait jamais au navigateur (coupure réseau, onglet fermé), l'utilisateur
+     perdait un crédit sur un écran d'erreur. Cas réel : quelqu'un a brûlé ses 2 vidéos gratuites
+     sur deux analyses échouées, puis s'est fait bloquer par le paywall sans avoir vu un seul clip. */
+  if (mode === 'confirmer_analyse') {
+    const _auC = await verifyToken(token);
+    if (!_auC) return res.status(200).json({ ok: true, ignore: 'non authentifié' });
+    await incrementRepurposeCount(_auC.id);
+    return res.status(200).json({ ok: true });
+  }
+
+  /* Historique des générations — indispensable, pas confortable.
+     Avant, une analyse ne vivait que dans le localStorage du navigateur : une seule à la fois,
+     purgée au bout de 4 h, et invisible depuis un autre appareil. L'email « Tes clips sont prêts »
+     renvoyait vers une page vide dès qu'il était ouvert sur le téléphone. On ne stocke que les
+     métadonnées (bornes, titres, scores) : les vidéos se re-téléchargent depuis la source. */
+  if (mode === 'save_generation') {
+    const _auG = await verifyToken(token);
+    if (!_auG) return res.status(200).json({ ok: true, ignore: 'non authentifié' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(200).json({ ok: true, ignore: 'stockage indisponible' });
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations`, {
+        method: 'POST',
+        headers: {
+          'apikey': process.env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          user_id: _auG.id,
+          nom: (body.name || 'Vidéo').slice(0, 200),
+          source_type: body.youtube_url ? 'youtube' : 'upload',
+          youtube_url: body.youtube_url || null,
+          video_id: body.video_id || null,
+          nb_clips: Array.isArray(body.clips) ? body.clips.length : 0,
+          clips: body.clips || [],
+          /* AUCUNE troncature. La limite de 200 amputait toute vidéo de plus de ~6 minutes :
+             une heure de parole produit ~1800 cues, donc les clips situés au-delà revenaient
+             sans le moindre sous-titre à la réouverture. Une génération rouverte doit se
+             comporter exactement comme l'analyse d'origine, quelle que soit la durée.
+             Le client allège déjà la charge si nécessaire (il retire les timings mot par mot
+             avant de toucher au texte) ; couper ici annulerait ce travail. */
+          segments: Array.isArray(body.segments) ? body.segments : [],
+          plan: body.plan || null
+        })
+      });
+      if (!r.ok) return res.status(200).json({ ok: false, error: (await r.text()).slice(0, 200) });
+      const row = (await r.json())?.[0];
+      return res.status(200).json({ ok: true, id: row?.id || null });
+    } catch (e) {
+      return res.status(200).json({ ok: false, error: String(e).slice(0, 200) });
+    }
+  }
+
+  if (mode === 'list_generations') {
+    const _auL = await verifyToken(token);
+    if (!_auL) return res.status(401).json({ error: 'non authentifié' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(200).json({ generations: [] });
+    try {
+      // Sans les colonnes lourdes (clips/segments) : la liste doit rester légère à charger.
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations?user_id=eq.${_auL.id}` +
+        `&select=id,nom,created_at,nb_clips,source_type,youtube_url&order=created_at.desc&limit=50`, {
+        headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+      });
+      if (!r.ok) return res.status(200).json({ generations: [] });
+      return res.status(200).json({ generations: await r.json() });
+    } catch {
+      return res.status(200).json({ generations: [] });
+    }
+  }
+
+  if (mode === 'get_generation') {
+    const _auX = await verifyToken(token);
+    if (!_auX) return res.status(401).json({ error: 'non authentifié' });
+    if (!body.id) return res.status(400).json({ error: 'id requis' });
+    if (!process.env.SUPABASE_SERVICE_KEY) return res.status(404).json({ error: 'introuvable' });
+    try {
+      // Le filtre user_id est ce qui empêche de lire la génération de quelqu'un d'autre en
+      // devinant un identifiant : on utilise la clé de service, donc RLS ne s'applique pas ici.
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clip_generations?id=eq.${encodeURIComponent(body.id)}` +
+        `&user_id=eq.${_auX.id}&select=*&limit=1`, {
+        headers: { 'apikey': process.env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
+      });
+      if (!r.ok) return res.status(404).json({ error: 'introuvable' });
+      const row = (await r.json())?.[0];
+      if (!row) return res.status(404).json({ error: 'introuvable' });
+      return res.status(200).json({ generation: row });
+    } catch {
+      return res.status(404).json({ error: 'introuvable' });
+    }
+  }
+
+  if (mode === 'translate_segments') {
+    const { segments, target_lang } = body;
+    if (!Array.isArray(segments) || !segments.length) return res.status(400).json({ error: 'segments requis' });
+    if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const cible = target_lang === 'en' ? 'anglais' : 'français';
+    // On borne : un clip de 60 s dépasse rarement 60 segments, au-delà c'est un appel abusif.
+    const textes = segments.slice(0, 120).map(s => String(s.text || '').trim());
+
+    const prompt = `Traduis en ${cible} chaque ligne du tableau JSON ci-dessous.
+
+RÈGLES STRICTES :
+- Renvoie UNIQUEMENT un tableau JSON de chaînes, rien d'autre, aucun commentaire.
+- Le tableau de sortie doit contenir EXACTEMENT ${textes.length} éléments, dans le même ordre.
+- Une ligne de sous-titre = une ligne traduite. Ne fusionne ni ne découpe jamais deux lignes.
+- Garde la longueur proche de l'original : ce sont des sous-titres, ils doivent tenir à l'écran.
+- Conserve le ton parlé, les noms propres et les nombres à l'identique.
+- Si une ligne est déjà en ${cible}, renvoie-la telle quelle.
+
+Entrée :
+${JSON.stringify(textes, null, 0)}`;
+
+    /* Chaîne de repli identique au reste du fichier : Groq est limité à 30 requêtes/minute sur le
+       plan gratuit et renvoie 429 dès qu'on enchaîne — sans repli, la traduction échouait
+       simplement sous les yeux de l'utilisateur. Groq → Gemini Flash → Together. */
+    async function _traduireAvecRepli() {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.2,           // traduction : on veut de la fidélité, pas de la créativité
+          max_tokens: 4096,
+          response_format: { type: 'json_object' }
+        }),
+        signal: AbortSignal.timeout(45000)
+      });
+      if (r.ok) return (await r.json()).choices?.[0]?.message?.content || '';
+
+      if (GEMINI_KEY) {
+        console.warn(`[translate] Groq ${r.status} → repli Gemini Flash`);
+        const g = await appelGemini(
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } },
+          45000,
+        );
+        if (g.ok) {
+          const gd = await g.json();
+          const gt = gd.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (gt) return gt;
+        }
+        console.warn('[translate] Gemini indisponible aussi');
+      }
+
+      if (TOGETHER_KEY) {
+        console.warn('[translate] → repli Together');
+        const t = await fetch('https://api.together.xyz/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOGETHER_KEY}` },
+          body: JSON.stringify({
+            model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+            messages: [
+              { role: 'system', content: 'Réponds UNIQUEMENT avec un tableau JSON valide de chaînes, sans aucun texte avant ou après.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.2, max_tokens: 4096
+          }),
+          signal: AbortSignal.timeout(60000)
+        });
+        if (t.ok) return (await t.json()).choices?.[0]?.message?.content || '';
+      }
+
+      throw new Error(r.status === 429
+        ? 'les 3 services de traduction sont saturés — réessaie dans une minute'
+        : `service de traduction indisponible (${r.status})`);
+    }
+
+    try {
+      const brut = await _traduireAvecRepli();
+      // Le modèle renvoie tantôt un tableau nu, tantôt un objet qui l'enveloppe — on gère les deux.
+      let arr;
+      try {
+        const parsed = JSON.parse(brut);
+        arr = Array.isArray(parsed) ? parsed : (Object.values(parsed).find(Array.isArray) || null);
+      } catch { arr = (brut.match(/\[[\s\S]*\]/) || [null])[0] ? JSON.parse(brut.match(/\[[\s\S]*\]/)[0]) : null; }
+      if (!Array.isArray(arr)) throw new Error('Réponse de traduction illisible');
+      // Alignement 1:1 obligatoire — sinon les sous-titres se décalent du son. En cas de
+      // désalignement on garde l'original pour les lignes manquantes plutôt que de tout décaler.
+      const out = textes.map((orig, i) => {
+        const t = typeof arr[i] === 'string' ? arr[i].trim() : '';
+        return t || orig;
+      });
+      console.log(`[translate] ${out.length}/${textes.length} lignes → ${cible}`);
+      return res.status(200).json({ ok: true, target_lang: target_lang === 'en' ? 'en' : 'fr', texts: out });
+    } catch (err) {
+      console.error('[translate] échec:', err.message);
+      return res.status(502).json({ error: `Traduction impossible : ${err.message}` });
+    }
+  }
+
   if (mode === 'clips' && body.segments?.length && body.video_id) {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const _au = await verifyToken(token);
+    if (_au) {
+      const _refus = verifierQuotaVideos(await getUserPlan(_au.id));
+      if (_refus) return res.status(_refus.status).json(_refus.body);
+    }
+    /* Le titre. Ce chemin servait a l'upload de fichier, ou le client le connait toujours
+       (c'est le nom du fichier). Depuis le 13/09 il recoit aussi le repli d'une analyse
+       YouTube : la le client n'a rien, puisque c'est le job qui devait le lui donner et
+       qu'il a echoue. Sans ca, la generation s'appelait « Video YouTube » dans l'historique.
+       oEmbed plutot que le scrape de la page : ce dernier est bot-bloque depuis l'IP Vercel. */
+    let _titre = body.title || '';
+    if (!_titre && body.youtube_url && body.video_id) {
+      _titre = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + body.video_id)}&format=json`,
+        { signal: AbortSignal.timeout(6000) })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => (d?.title || ''))
+        .catch(() => '');
+    }
+
     try {
-      const clips = await identifyViralClips(body.segments, body.video_id, body.title || '', body.n_clips || 5);
+      const clips = await identifyViralClips(body.segments, body.video_id, _titre, body.n_clips || 5, body.energy_peaks || []);
       const clipsWithId = clips.map(c => ({ ...c, video_id: body.video_id }));
       const _debug = clips[0]?._dbg || null;
+      // Décompte APRÈS succès uniquement : une analyse qui échoue ne doit pas coûter un crédit.
+      // Ce chemin (upload de fichier) ne décomptait rien du tout — le quota vidéos n'était donc
+      // jamais appliqué, `videos_count` restait à 0 et n'importe qui pouvait analyser sans limite.
+      // Décompte retiré d'ici : voir mode 'confirmer_analyse'. Le serveur pouvait terminer
+      // l'analyse et incrémenter alors que le client, lui, n'avait jamais reçu la réponse —
+      // l'utilisateur perdait son quota sur un écran d'erreur. C'est maintenant le client qui
+      // confirme la réception, une fois les clips réellement affichés.
       return res.status(200).json({ ok: true, mode: 'clips', status: 'done', _debug,
-        result: { clips: clipsWithId, title: body.title || '', duration: body.duration || 0, youtube_url: `upload:${body.video_id}` }
+        /* `upload:<id>` etait code en dur : ce chemin ne servait qu'aux fichiers televerses.
+           Depuis le 13/09 il recoit aussi le repli d'une analyse YouTube dont le job a rendu
+           ses segments — et la generation enregistree doit alors porter la vraie URL, sinon
+           le bouton « Reprendre » de l'historique ne sait plus quoi rouvrir. */
+        result: { clips: clipsWithId, title: _titre, duration: body.duration || 0, youtube_url: body.youtube_url || `upload:${body.video_id}`, segments: body.segments }
       });
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  // Affinage visuel des clips candidats (best-effort, jamais bloquant côté client)
+  if (mode === 'rank_clips_visual' && Array.isArray(body.candidates) && Array.isArray(body.frames)) {
+    try {
+      const nFinal = Math.max(1, Math.min(body.n_final || 10, body.candidates.length));
+      const order = await rankClipsVisual(body.candidates, body.frames, nFinal);
+      if (!order) return res.status(200).json({ ok: false, error: 'Analyse visuelle indisponible' });
+      return res.status(200).json({ ok: true, order });
+    } catch (err) {
+      return res.status(200).json({ ok: false, error: err.message });
+    }
+  }
+
+  if (mode === 'raw_segment') {
+    // Lance le téléchargement du segment brut sur Railway
+    // allow_api_fallback: false => JAMAIS l'API payante (utilisé par le préchargement en arrière-plan
+    // pour ne pas brûler de crédits en silence si le chemin gratuit est momentanément bot-bloqué).
+    const { video_id, start, end, allow_api_fallback } = body;
+    if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/raw-segment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id, start, end, allow_api_fallback: allow_api_fallback !== false }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway' });
+      return res.status(200).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'raw_segment_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/raw-segment-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (data.status === 'done') {
+        // On retourne l'URL directe du fichier (endpoint public sur Railway)
+        data.file_url = `${REPURPOSE_SERVICE_URL}/raw-segment-file/${job_id}/clip.mp4`;
+      }
+      return res.status(r.ok ? 200 : r.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  // Aperçu serveur d'un clip issu d'un fichier local déjà pré-uploadé (mobile) — évite au
+  // navigateur de chercher une position profonde dans le fichier source entier (peu fiable sur
+  // certains iPhone), en découpant juste ce clip côté Railway (petit fichier, démarre à 0).
+  if (mode === 'preview_clip') {
+    const { video_id, start, end } = body;
+    console.log(`[preview_clip] video_id:${video_id} start:${start} end:${end}`);
+    if (!video_id || start == null || end == null) return res.status(400).json({ error: 'video_id, start, end requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/preview-clip-start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id, start, end }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      console.log(`[preview_clip] Railway status:${r.status}`, JSON.stringify(data).slice(0, 200));
+      if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway' });
+      return res.status(200).json(data);
+    } catch (err) {
+      console.log(`[preview_clip] erreur:`, err.message);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'preview_clip_status') {
+    const { job_id } = body;
+    if (!job_id) return res.status(400).json({ error: 'job_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/preview-clip-status/${job_id}`, {
+        headers: { 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await r.json();
+      if (data.status === 'done') {
+        data.file_url = `${REPURPOSE_SERVICE_URL}/preview-clip-file/${job_id}/clip.mp4`;
+      }
+      return res.status(r.ok ? 200 : r.status).json(data);
+    } catch (err) {
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
+  if (mode === 'clip_stream_url') {
+    // Proxy vers Railway /stream-url (fallback si raw_segment pas utilisé)
+    const { video_id } = body;
+    if (!video_id) return res.status(400).json({ error: 'video_id requis' });
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service Railway non configuré' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/stream-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ video_id }),
+        signal: AbortSignal.timeout(35000),
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: data.detail || 'Erreur Railway stream-url' });
+      return res.status(200).json(data);
     } catch (err) {
       return res.status(502).json({ error: err.message });
     }
@@ -826,7 +1845,7 @@ module.exports = async (req, res) => {
       if (!clips?.length) {
         if (isUploadUrl) throw new Error('Clips requis pour les vidéos uploadées');
         if (!GROQ_KEY) throw new Error('Clé Groq non configurée');
-        const transcript = await getYouTubeTranscriptSegments(videoId);
+        const transcript = await obtenirSegments(videoId, url);
         clips = await identifyViralClips(transcript.segments, videoId, transcript.title, n_clips || 3);
       }
 
@@ -949,6 +1968,48 @@ module.exports = async (req, res) => {
     }
   }
 
+  /* ── ANALYSE EN TÂCHE DE FOND ─────────────────────────────────────────────────────────
+     `clips_start` lance le travail sur Railway et rend la main en une seconde ; le client
+     interroge ensuite `clips_status`. C'est le chemin normal depuis le 13/09/2026.
+
+     Ce que ça répare, mesuré ce jour-là sur 6 analyses : la route synchrone `mode: 'clips'`
+     tient la connexion ouverte pendant toute l'analyse, et deux choses la coupent —
+     iOS qui suspend la requête quand l'écran se verrouille (« Load failed » à 2 min 48), et
+     le délai d'attente de 240 s vers Railway sur une transcription Whisper longue (atteint à
+     4 min 03). Les deux fois le serveur a fini son travail sans que personne n'écoute.
+     Avec un job, la connexion du téléphone n'a plus besoin de survivre à l'analyse : une
+     interrogation perdue est sans conséquence, la suivante retrouve le même `session_id`.
+
+     `mode: 'clips'` reste en place et inchangé : le client y retombe si le job échoue. Les
+     deux chemins ne tirent pas les sous-titres au même endroit — la route synchrone essaie
+     d'abord depuis l'IP Vercel, le job depuis celle de Railway — donc le filet rattrape aussi
+     les vidéos que l'une des deux se fait refuser. */
+  if (mode === 'clips_start') {
+    if (!REPURPOSE_SERVICE_URL) return res.status(503).json({ error: 'Service non configuré' });
+    const _auS = await verifyToken(token);
+    if (_auS) {
+      const _refusS = verifierQuotaVideos(await getUserPlan(_auS.id));
+      if (_refusS) return res.status(_refusS.status).json(_refusS.body);
+    }
+    const videoId = extractVideoId(url);
+    if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
+    try {
+      const r = await fetch(`${REPURPOSE_SERVICE_URL}/clips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${REPURPOSE_SERVICE_SECRET}` },
+        body: JSON.stringify({ url, n_clips: body.n_clips || 10 }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.session_id) throw new Error(data.detail || `Démarrage impossible (${r.status})`);
+      console.log(`[clips_start][${videoId}] job ${data.session_id}`);
+      return res.status(200).json({ ok: true, mode: 'clips_start', session_id: data.session_id, video_id: videoId });
+    } catch (err) {
+      console.warn(`[clips_start][${videoId}] échec: ${err.message}`);
+      return res.status(502).json({ error: err.message });
+    }
+  }
+
   if (mode === 'clips_status') {
     const { session_id } = body;
     if (!session_id) return res.status(400).json({ error: 'session_id manquant' });
@@ -963,12 +2024,51 @@ module.exports = async (req, res) => {
         throw new Error(err.detail || `Erreur statut (${r.status})`);
       }
       const job = await r.json();
-      if (job.status === 'done' && job.result?.clips) {
-        job.result.clips = job.result.clips.map(clip => ({
-          ...clip,
-          download_url: `${REPURPOSE_SERVICE_URL}${clip.download_url}`
-        }));
-        if (authUser) await incrementRepurposeCount(authUser.id);
+
+      /* Le décompte du quota n'a RIEN à faire ici. Il se faisait à l'arrivée des clips ;
+         `mode: 'clips'` l'avait déjà déplacé vers `confirmer_analyse`, pour la raison
+         écrite là-bas : le serveur peut terminer alors que le client n'a jamais rien
+         affiché, et l'utilisateur perdait sa vidéo sur un écran d'erreur. Le laisser ici
+         aurait en plus décompté DEUX fois, ce chemin et la confirmation. */
+
+      /* Railway et Vercel se deploient sur le meme push, sans ordre garanti. Pendant la
+         minute ou l'un est a jour et pas l'autre, `result` peut encore etre l'ANCIENNE forme :
+         une simple liste de clips, sans les segments. Livrer ca au client donnerait des clips
+         sans sous-titres, en silence. On refuse : le client bascule alors sur la route
+         synchrone, qui elle est complete. */
+      if (job.status === 'done' && Array.isArray(job.result)) {
+        console.warn(`[clips_status] ${session_id} : forme ancienne (Railway pas encore deploye) — repli synchrone`);
+        throw new Error('Service en cours de mise a jour');
+      }
+
+      if (job.status === 'done' && job.result) {
+        /* Le titre est cosmétique et ne doit jamais retarder la réponse : le client affiche
+           « Vidéo YouTube » à défaut, exactement comme aujourd'hui quand la page est
+           inaccessible. Une seule tentative, sur la dernière interrogation. */
+        if (!job.result.title && job.result.video_id) {
+          /* oEmbed d'abord. Le scrape de la page d'ecoute est bot-bloque depuis l'IP Vercel :
+             verifie le 13/09, la premiere version de ce bloc rendait une chaine vide et le
+             studio affichait « Video YouTube » a la place du vrai titre — y compris dans
+             l'historique des generations, ou toutes les lignes se seraient appelees pareil.
+             oEmbed est une API publique documentee, sans cle, qui repond la ou le scrape est
+             refuse. Le scrape reste en second : il lit le titre dans la langue d'origine. */
+          const _oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + job.result.video_id)}&format=json`;
+          job.result.title = await fetch(_oembed, { signal: AbortSignal.timeout(6000) })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => (d?.title || ''))
+            .catch(() => '');
+
+          if (!job.result.title) {
+            job.result.title = await _fetchYouTubePage(job.result.video_id)
+              .then(html => {
+                const m = html.match(/<title>([^<]+)<\/title>/) || html.match(/"title":"([^"]{3,120})"/);
+                return m ? m[1].replace(' - YouTube', '') : '';
+              })
+              .catch(() => '');
+          }
+        }
+        job.result.youtube_url = url || null;
+        console.log(`[clips_status] ${session_id} terminé — ${job.result.clips?.length || 0} clips, ${job.result.segments?.length || 0} segments`);
       }
       return res.status(200).json({ ok: true, mode: 'clips_status', ...job });
     } catch (err) {
@@ -1011,9 +2111,24 @@ module.exports = async (req, res) => {
   // ── Mode CLIPS : traitement synchrone sur Vercel ──
   if (mode === 'clips') {
     if (!GROQ_KEY) return res.status(500).json({ error: 'Clé Groq non configurée' });
+    const _au2 = await verifyToken(token);
+    if (_au2) {
+      const _refus2 = verifierQuotaVideos(await getUserPlan(_au2.id));
+      if (_refus2) return res.status(_refus2.status).json(_refus2.body);
+    }
     const { n_clips } = body;
     const videoId = extractVideoId(url);
     if (!videoId) return res.status(400).json({ error: 'URL YouTube invalide' });
+
+    /* CHRONOMÉTRAGE ÉTAPE PAR ÉTAPE. Environ une analyse YouTube sur trois échoue avec des messages
+       réseau bruts (« Load failed », « Failed to fetch ») à des durées irrégulières — 37 s, 97 s —
+       qui ne correspondent à aucun seuil. Sans mesurer chaque étape, on ne peut que supposer : trois
+       hypothèses ont été formulées le 30/07, deux étaient fausses. Ces repères apparaissent dans les
+       logs Vercel ET dans la réponse (`_temps`), donc lisibles même sans accès aux logs. */
+    const _t0 = Date.now();
+    const _temps = {};
+    const _etape = (nom) => { _temps[nom] = Date.now() - _t0; console.log(`[clips][${videoId}] ${nom} à ${_temps[nom]}ms`); };
+
     try {
       let segments, title = '', duration = 0;
 
@@ -1024,27 +2139,41 @@ module.exports = async (req, res) => {
       }).catch(() => {});
 
       try {
-        const r = await getYouTubeTranscriptSegments(videoId);
+        const r = await obtenirSegments(videoId, url, _etape);
         segments = r.segments; title = r.title || pageTitle; duration = r.duration;
-        console.log(`[clips] captions OK: ${segments.length} segments`);
+        _temps.source_transcription = r.source;
       } catch (e) {
-        console.warn('[clips] captions failed:', e.message);
-        throw new Error('Cette vidéo n\'a pas de sous-titres automatiques disponibles. Active les sous-titres automatiques sur YouTube Studio, ou utilise une vidéo avec des sous-titres existants.');
+        console.error(`[clips][${videoId}] ÉCHEC transcription — temps: ${JSON.stringify(_temps)}`);
+        throw new Error(`Transcription impossible — ${e.message}. Utilise l'option "Uploader une vidéo" pour les vidéos sans sous-titres.`);
       }
 
       if (!segments?.length) return res.status(502).json({ error: 'Transcription vide — vidéo sans paroles ?' });
+      _temps.nb_segments = segments.length;
+      _temps.duree_video_s = Math.round(duration || 0);
 
       // 3. Identification clips via Groq LLM
       const clips = await identifyViralClips(segments, videoId, title, n_clips || 10);
+      _etape('identification_clips');
       console.log(`[clips] ${clips.length} clips identifiés pour ${videoId}`);
+      _temps.total_ms = Date.now() - _t0;
+      _temps.poids_reponse_ko = Math.round(Buffer.byteLength(JSON.stringify({ clips, segments: body.include_segments ? segments : undefined })) / 1024);
+      console.log(`[clips][${videoId}] TERMINÉ — ${JSON.stringify(_temps)}`);
+
+      // Décompte APRÈS succès uniquement (chemin URL YouTube) — même raison que ci-dessus.
+      // Décompte retiré d'ici : voir mode 'confirmer_analyse'. Le serveur pouvait terminer
+      // l'analyse et incrémenter alors que le client, lui, n'avait jamais reçu la réponse —
+      // l'utilisateur perdait son quota sur un écran d'erreur. C'est maintenant le client qui
+      // confirme la réception, une fois les clips réellement affichés.
 
       return res.status(200).json({
         ok: true, mode: 'clips', status: 'done',
+        _temps,
         result: { clips, title, duration, youtube_url: url, segments: body.include_segments ? segments : undefined }
       });
     } catch (err) {
-      console.error('[clips] fatal:', err.message);
-      return res.status(502).json({ error: err.message });
+      _temps.total_ms = Date.now() - _t0;
+      console.error(`[clips][${videoId}] FATAL: ${err.message} — temps: ${JSON.stringify(_temps)}`);
+      return res.status(502).json({ error: err.message, _temps });
     }
   }
 
@@ -1089,4 +2218,24 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.config = { api: { bodyParser: false } };
+/* Duree maximale d'execution. Elle n'etait pas declaree, donc la fonction tournait avec le
+   defaut de la plateforme — bien en dessous de ce que dure reellement une analyse.
+   Le commentaire cote client l'annonce lui-meme : « cette requete dure 30 a 90 s ».
+
+   60 s est le plafond du plan Hobby. Ca ne suffit PAS pour une video que YouTube bot-bloque :
+   le 09/09/2026, OZ7oN-v_G74 a demande 18 tentatives yt-dlp, deux attentes, un rafraichissement
+   de cookies via Chromium puis le repli sur l'API payante — plusieurs minutes. Les deux essais
+   de l'utilisateur ont echoue alors que le serveur, lui, a fini par produire ses 2176 segments :
+   personne n'ecoutait plus.
+
+   Le vrai correctif — passer l'analyse en tache de fond — est en place depuis le 13/09/2026 :
+   le client appelle `clips_start` puis interroge `clips_status`, et aucune de ces deux requetes
+   ne depasse quelques secondes. Ce plafond ne concerne donc plus que le filet de securite
+   (`mode: 'clips'`, la route synchrone), ou il releve la barre pour les videos qui prennent
+   entre 10 et 60 s.
+
+   A verifier si un jour un doute revient : rien ne prouve que cette declaration soit lue. Le
+   13/09, une analyse a tourne 243 s dans cette fonction avant de repondre — quatre fois la
+   valeur ci-dessous. Vercel documente `export const config` pour les modules ES ; ce fichier
+   est en CommonJS. Ne pas s'appuyer dessus comme sur une garantie. */
+module.exports.config = { maxDuration: 60 };

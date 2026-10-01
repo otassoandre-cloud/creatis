@@ -1,0 +1,57 @@
+# Créatis
+
+> Créatis est une plateforme IA pour créateurs de contenu francophones qui transforme automatiquement une vidéo longue (YouTube, podcast, stream, webinaire) en clips courts viraux prêts à publier sur TikTok, Instagram Reels et YouTube Shorts.
+
+Créatis analyse l'audio d'une vidéo (transcription), détecte les moments à fort potentiel viral avec un modèle de langage, recadre automatiquement en format vertical 9:16 avec suivi du visage (face tracking), et incruste des sous-titres animés (style karaoke mot par mot). Le tout en moins de 60 secondes, sans compétence en montage vidéo requise.
+
+Public cible : créateurs YouTube, podcasteurs, streamers Twitch, coachs et infopreneurs, agences de clipping — francophones (France, Belgique, Suisse, Québec).
+
+## Produit
+
+- [Accueil](https://creatis.app/): présentation générale, tarifs, FAQ
+- [Clips Viraux (l'outil)](https://creatis.app/clips-v2.html): l'application de génération de clips
+- [Tarifs détaillés](https://creatis.app/pricing.md): fichier de tarification structuré pour agents IA
+
+## Guides et définitions
+
+- [Qu'est-ce qu'un clip viral ?](https://creatis.app/blog/qu-est-ce-qu-un-clip-viral.html): définition de l'entité centrale
+- [Qu'est-ce que le repurposing vidéo ?](https://creatis.app/blog/repurposing-video-definition.html)
+- [Qu'est-ce qu'un hook vidéo ?](https://creatis.app/blog/hook-video-definition.html)
+- [Comment découper une vidéo en Shorts automatiquement](https://creatis.app/blog/decouper-video-shorts-automatiquement.html)
+- [Clipper GTA 6 (sortie le 19 novembre 2026)](https://creatis.app/blog/clipper-gta-6.html): campagnes de clipping rémunérées, taux annoncés par les plateformes francophones, contrainte de volume
+- [Campagnes de clipping rémunérées](https://creatis.app/blog/campagnes-clipping-remunerees.html): budget fermé, vue vérifiée, CPM annoncé
+- [Plateformes de clipping en France](https://creatis.app/blog/plateformes-clipping-france.html): Whop, PostRoyalty, Clip.farm, NF Clipping, Reachcat
+- [Combien paye 1 000 vues en clipping](https://creatis.app/blog/combien-paye-1000-vues-clipping.html): taux annoncés 0,40-2 €, et ce qui les sépare du revenu réel
+- [Clips depuis un stream gaming](https://creatis.app/blog/clips-stream-gaming.html): signal jeu vs signal parole, cadrage webcam + jeu
+- [Vidéo floue après export](https://creatis.app/blog/video-floue-apres-export.html): source basse définition, crop 9:16 à 31,6 %, export 1080x1920, recompression plateforme
+- [Sous-titres décalés](https://creatis.app/blog/sous-titres-decales.html): décalage constant vs dérive progressive, deux causes et deux remèdes
+- [Outil de clips IA français](https://creatis.app/blog/outil-clips-ia-francais.html): transcription FR, facturation en euros, données en Europe
+- [Clips depuis une visio](https://creatis.app/blog/clips-depuis-visioconference.html): Zoom, Meet, Teams — vue intervenant, cadence variable, audio inégal
+- [Publier ses clips en anglais](https://creatis.app/blog/sous-titres-anglais-clips.html): sous-titres traduits FR/EN, l'audio reste en français
+- [Clips pour LinkedIn](https://creatis.app/blog/clips-pour-linkedin.html): le texte du post compte autant que la vidéo
+- [Recycler ses anciennes vidéos](https://creatis.app/blog/recycler-anciennes-videos.html): trier sur l'intemporel, pas sur la performance passée
+- [Clips sans montrer son visage](https://creatis.app/blog/clips-sans-montrer-son-visage.html): le clipping resout le probleme par construction
+- [Combien coute de faire clipper ses videos](https://creatis.app/blog/combien-coute-faire-clipper-ses-videos.html): prestataire, forfait ou outil, seuils de bascule
+- [Musique sur un clip](https://creatis.app/blog/musique-clips-droits.html): son de l'app, musique incrustee, musique deja dans la source — trois statuts
+- [Analyser ses clips](https://creatis.app/blog/analyser-performance-clips.html): completion, courbe de retention, partages/vues — les vues ne disent rien
+- [Lancer une campagne de clipping](https://creatis.app/blog/lancer-campagne-clipping.html): cote annonceur — taux, brief, garde-fous
+- [Podcast audio sans video](https://creatis.app/blog/clips-depuis-podcast-audio.html): pourquoi les audiogrammes performent mal, et les 3 options
+- [Clips sur Facebook Reels](https://creatis.app/blog/clips-pour-facebook-reels.html): recyclage accepte, audience plus agee, moins sature
+- [Video trop lourde ou refusee](https://creatis.app/blog/video-trop-lourde-tiktok.html): duree, debit, codec, cadence — dans cet ordre
+- [Creatives publicitaires](https://creatis.app/blog/clips-pour-publicite.html): la creative qualifie, le clip retient — et tester dix angles
+- [Combien de temps avant des resultats](https://creatis.app/blog/combien-de-temps-avant-resultats-clips.html): 3 phases, 6 semaines, 30 clips
+- [Calculateur de revenus clipping](https://creatis.app/calculateur-revenus-clipping.html): combien de clips/jour pour un objectif, au taux REELLEMENT verse (0,39 $/1000, pas 1-5 $)
+- [Montage video par IA](https://creatis.app/montage-video-ia.html): decoupage a partir de la transcription, pas de l'image
+- [Couper une video YouTube](https://creatis.app/couper-video-youtube.html): les bornes sont proposees, pas a chercher
+- [Video longue en Shorts](https://creatis.app/video-longue-en-short.html): combien d'extraits selon le type de source
+- [Blog complet](https://creatis.app/blog.html): tous les guides
+
+## Comparatifs
+
+- [Comparatifs avec les autres outils](https://creatis.app/alternatives/): Opus Clip, Klap, Submagic, Vizard, CapCut, Vidyo AI
+
+## Optional
+
+- [Programme d'affiliation](https://creatis.app/affiliation): 30% récurrent à vie
+- [CGU](https://creatis.app/cgu.html)
+- [Confidentialité](https://creatis.app/confidentialite.html)

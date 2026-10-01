@@ -86,6 +86,7 @@ a:hover { color: var(--vert-clair); }
   gap: 8px;
   transition: var(--transition);
   white-space: nowrap;
+  touch-action: manipulation;
 }
 
 .btn-primaire:hover {

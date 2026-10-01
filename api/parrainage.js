@@ -1,9 +1,27 @@
 /* ===== VERCEL FUNCTION — Parrainage ===== */
 /* GET  /api/parrainage?code=XXXXXXXX  → stats du parrain
+   GET  /api/parrainage?admin=1        → liste tous les affiliés triés (usage admin-affiliation.html)
    POST /api/parrainage                → enregistre un filleul */
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
+
+/* Paliers du programme d'affiliation — index = position dans ce tableau (1-based pour affiliate_highest_tier) */
+const PALIERS = [
+  { seuil: 5, recompense: '1 mois Pro offert' },
+  { seuil: 10, recompense: 'Créatis Pro à vie' },
+  { seuil: 25, recompense: '100€ cash' },
+  { seuil: 50, recompense: 'Commission passe à 35%' },
+  { seuil: 100, recompense: 'Commission passe à 40%' }
+];
+
+function palierAtteint(nbActifs) {
+  let idx = 0;
+  for (let i = 0; i < PALIERS.length; i++) {
+    if (nbActifs >= PALIERS[i].seuil) idx = i + 1;
+  }
+  return idx; // 0 = aucun palier
+}
 
 async function supabaseGet(table, match, select = '*') {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
@@ -39,6 +57,84 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  /* GET ?admin=1 — liste tous les affiliés triés par filleuls actifs (admin-affiliation.html)
+     Protégé par token serveur — jamais de mot de passe en clair côté client. */
+  if (req.method === 'GET' && req.query?.admin) {
+    const adminToken = (process.env.ADMIN_TOKEN || '').trim();
+    const auth = (req.headers['authorization'] || '').replace('Bearer ', '');
+    if (!adminToken || auth !== adminToken) return res.status(401).json({ error: 'unauthorized' });
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(200).json({ affilies: [] });
+
+    try {
+      const res1 = await fetch(`${SUPABASE_URL}/rest/v1/users?select=id,email,nom,plan,referred_by,affiliate_highest_tier,created_at,videos_count,repurpose_count,stripe_subscription_id&limit=5000`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (!res1.ok) {
+        const detail = await res1.text().catch(() => '');
+        throw new Error(`Supabase ${res1.status}: ${detail.slice(0, 300)}`);
+      }
+      const tous = await res1.json();
+
+      // Résoudre chaque code affilié (préfixe 12 car. d'uuid) vers son propriétaire
+      const parCode = new Map();
+      tous.forEach(u => parCode.set(String(u.id).slice(0, 12).toLowerCase(), u));
+
+      // Grouper les filleuls par code parrain
+      const groupes = new Map();
+      tous.filter(u => u.referred_by).forEach(u => {
+        const code = String(u.referred_by).toLowerCase();
+        if (!groupes.has(code)) groupes.set(code, []);
+        groupes.get(code).push(u);
+      });
+
+      const affilies = [...groupes.entries()].map(([code, filleuls]) => {
+        const proprietaire = parCode.get(code);
+        const actifs = filleuls.filter(u => u.plan && u.plan !== 'gratuit').length;
+        const palier = palierAtteint(actifs);
+        return {
+          code,
+          email: proprietaire?.email || '(inconnu)',
+          nom: proprietaire?.nom || '',
+          inscrits: filleuls.length,
+          actifs,
+          palierActuel: palier,
+          recompenseActuelle: palier > 0 ? PALIERS[palier - 1].recompense : null,
+          prochainPalier: palier < PALIERS.length ? PALIERS[palier] : null,
+          highestTierEnregistre: proprietaire?.affiliate_highest_tier || 0,
+          /* La liste nominative était calculée puis JETÉE : on ne renvoyait que des compteurs.
+             Impossible de savoir QUI sont les filleuls, ni si l'abonné payant l'est encore.
+             `stripe_subscription_id` répond à la seule question qui compte avant de verser une
+             commission — un plan payant SANS abonnement Stripe signale une résiliation ou un
+             accès offert à la main. Le compteur d'analyses distingue un vrai utilisateur d'une
+             inscription morte. Les payants d'abord, puis les plus récents. */
+          filleuls: filleuls
+            .map(u => ({
+              email: u.email || '(sans email)',
+              nom: u.nom || '',
+              plan: u.plan || 'gratuit',
+              inscrit: u.created_at || null,
+              /* DEUX compteurs distincts, et les confondre induit en erreur : `videos_count`
+                 compte les vidéos ANALYSÉES, `repurpose_count` les clips EXPORTÉS. Afficher le
+                 second sous le libellé « analyses » faisait passer pour inactifs des filleuls
+                 qui avaient bel et bien utilisé le produit — seulement sans jamais exporter,
+                 ce qui est le cas de presque tout le monde (paywall à l'export). */
+              analyses: u.videos_count || 0,
+              exports: u.repurpose_count || 0,
+              abonnementActif: !!u.stripe_subscription_id
+            }))
+            .sort((x, y) => (x.plan === 'gratuit' ? 1 : 0) - (y.plan === 'gratuit' ? 1 : 0)
+                         || String(y.inscrit || '').localeCompare(String(x.inscrit || '')))
+        };
+      }).sort((a, b) => b.actifs - a.actifs);
+
+      return res.status(200).json({ affilies, paliers: PALIERS });
+    } catch (e) {
+      console.error('[Parrainage] GET admin error:', e.message);
+      return res.status(200).json({ affilies: [], error: e.message });
+    }
+  }
+
   /* GET — stats du parrain */
   if (req.method === 'GET') {
     const { code } = req.query;
@@ -54,7 +150,13 @@ module.exports = async (req, res) => {
 
       const inscrits = filleuls.length;
       const abonnes = filleuls.filter(u => u.plan && u.plan !== 'gratuit').length;
-      return res.status(200).json({ inscrits, abonnes, mois: abonnes });
+      const palier = palierAtteint(abonnes);
+      return res.status(200).json({
+        inscrits, abonnes, mois: abonnes,
+        palierActuel: palier,
+        recompenseActuelle: palier > 0 ? PALIERS[palier - 1].recompense : null,
+        prochainPalier: palier < PALIERS.length ? PALIERS[palier] : null
+      });
     } catch (e) {
       console.error('[Parrainage] GET error:', e.message);
       return res.status(200).json({ inscrits: 0, abonnes: 0, mois: 0 });
@@ -67,6 +169,34 @@ module.exports = async (req, res) => {
     if (!userId || !refCode) return res.status(400).json({ error: 'userId et refCode requis' });
 
     try {
+      // Format attendu : préfixe d'UUID (hex + tirets uniquement). Tout autre → ignoré (anti-injection).
+      if (!/^[a-f0-9-]{8,36}$/i.test(refCode)) {
+        console.log(`[Parrainage] Code au format invalide ignoré: ${refCode}`);
+        return res.status(200).json({ ok: false, ignored: 'bad_format' });
+      }
+      if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(200).json({ ok: false, ignored: 'no_db' });
+
+      // La colonne `id` est de type uuid → LIKE impossible. Le refCode est un PRÉFIXE d'uuid
+      // (12 premiers caractères) → on borne la plage uuid correspondante (gte/lte).
+      const code = refCode.toLowerCase();
+      const lo = code + '00000000-0000-0000-0000-000000000000'.slice(code.length);
+      const hi = code + 'ffffffff-ffff-ffff-ffff-ffffffffffff'.slice(code.length);
+      const check = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?id=gte.${lo}&id=lte.${hi}&select=id&limit=1`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const affilies = check.ok ? await check.json() : [];
+      if (!affilies.length) {
+        console.log(`[Parrainage] Code inconnu ignoré: ${refCode}`);
+        return res.status(200).json({ ok: false, ignored: 'unknown_code' });
+      }
+
+      // Anti auto-parrainage : l'affilié trouvé ne peut pas être l'utilisateur lui-même.
+      if (affilies[0].id === userId) {
+        console.log(`[Parrainage] Auto-parrainage ignoré: ${userId}`);
+        return res.status(200).json({ ok: false, ignored: 'self_referral' });
+      }
+
       await supabasePatch('users', { id: userId }, {
         referred_by: refCode,
         updated_at: new Date().toISOString()
