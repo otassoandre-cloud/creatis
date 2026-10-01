@@ -86,6 +86,27 @@ J'aime. Ne pas prétendre le contraire.
   niveau ou sous la médiane**. « Le clipping en 3 étapes simple » → 6 vues.
   Les dix meilleures n'ont aucune légende commerciale.
 
+## 2 bis. UNE HEURE ENTRE DEUX PUBLICATIONS, ET MONTRER PLUTÔT QU'AFFIRMER
+
+**Espacement.** Au moins une heure entre deux publications sur un même compte.
+Consigne du 28/09, après que j'ai envoyé quatre pièces en quelques minutes.
+Deux vidéos coup sur coup se cannibalisent, et le compte ressemble à un robot.
+C'est contrôlé par `controle-avant-publication.js`, qui BLOQUE sous une heure.
+
+**Valeur.** Les pièces du 28/09 énonçaient : « un clip qui marche ne montre pas
+tout », « tu as trois secondes ». Ce sont des SLOGANS. Le spectateur n'y apprend
+rien qu'il puisse faire, et il part.
+
+Le test : **est-ce que la vidéo MONTRE, ou est-ce qu'elle AFFIRME ?** Une
+affirmation ne vaut rien. Il faut un mécanisme visible, un chiffre, une échelle,
+un avant-après — quelque chose que le spectateur puisse refaire.
+
+Le gabarit `Mecanique` est né de là : motion design intégral, zéro capture
+d'écran, qui montre la vidéo longue, le balayage de la transcription, les
+moments notés, le basculement 16:9 → 9:16 et les sous-titres. On comprend
+en regardant. Il porte aussi l'échelle (règle 0:00 → 47:00) et le compte
+chiffré, parce que sans échelle on ne sait pas de quoi on parle.
+
 ## 3 ter. CE QUI MARCHE VRAIMENT SUR CE COMPTE — relevé le 28/09
 
 Comparaison des vignettes, vues à l'appui :

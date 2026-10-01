@@ -98,6 +98,31 @@ if (longue) {
   }
 }
 
+/* ── 3 bis. UNE HEURE ENTRE DEUX PUBLICATIONS SUR UN MÊME COMPTE ──────────
+   Consigne du 28/09, après que j'ai envoyé quatre pièces en quelques minutes.
+   Deux vidéos coup sur coup se cannibalisent : la seconde arrive avant que la
+   première ait fini d'être distribuée, et le compte ressemble à un robot.
+   On compare à la dernière publication RÉELLE inscrite au registre. */
+const UNE_HEURE = 60 * 60 * 1000;
+const dernierePar = {};
+for (const p of registre.pieces || []) {
+  if (p.statut !== 'publié' || !p.compte || !p.publie_le) continue;
+  const t = Date.parse(p.publie_le);
+  if (!Number.isNaN(t) && (!dernierePar[p.compte] || t > dernierePar[p.compte].t)) {
+    dernierePar[p.compte] = { t, titre: p.titre || p.id };
+  }
+}
+for (const c of plan.creneaux || []) {
+  if (c.statut !== 'en attente' || !c.cible) continue;
+  const d = dernierePar[c.cible];
+  if (!d) continue;
+  const ecart = Date.now() - d.t;
+  if (ecart < UNE_HEURE) {
+    const minutes = Math.round(ecart / 60000);
+    fautes.push(`${c.heure} — dernière publication sur ${c.cible} il y a ${minutes} min (« ${d.titre} »). Attendre une heure.`);
+  }
+}
+
 /* ── 4. LE SON ─────────────────────────────────────────────────────────────
    Mesuré le 28/09 : source de trafic « Son » à 0 %, vues -74,8 %. Une pièce
    muette doit recevoir un son tendance À LA PUBLICATION. */
