@@ -4131,7 +4131,14 @@ const V2 = (() => {
       hookPos: globalOpts.hookPos || 'top',
       subY: 82, subX: 50,
       hookY: 10, hookX: 50,
-      reframeMode: 'center',
+      /* 'face' et non 'center'. Le serveur passe au suivi de visage par defaut
+         depuis le 04/09, mais le formulaire d'export ecrasait ce defaut avec
+         'center' : le suivi n'a donc JAMAIS tourne pour un client. Sur une
+         interview ou un podcast filme en 16:9, l'intervenant est presque
+         toujours decentre — il sortait colle au bord, un tiers de cadre vide.
+         Sans risque : le suivi exige un visage detecte sur au moins la moitie
+         des images echantillonnees et retombe seul sur le crop centre. */
+      reframeMode: 'face',
       wmEnabled: globalOpts.wmEnabled || false,
       wmPos: globalOpts.wmPos || 'tr',
       wmOpacity: globalOpts.wmOpacity || 0.8,
@@ -6086,7 +6093,7 @@ const V2 = (() => {
   function toggleSplit(on) {
     if (_modalIdx === null) return;
     if (!_clipSettings[_modalIdx]) _clipSettings[_modalIdx] = getClipOpts(_modalIdx);
-    _clipSettings[_modalIdx].reframeMode = on ? 'split' : 'center';
+    _clipSettings[_modalIdx].reframeMode = on ? 'split' : 'face';
     _clipSettings[_modalIdx]._reframeUserSet = true;
     _splitShowSingle = false; _split1Streak = 0; _split2Streak = 0; // repart en split
     _syncCadrageHints();
@@ -6717,7 +6724,17 @@ const V2 = (() => {
     // Position de crop manuelle (glisser) — si définie, on affiche le canvas et on cadre dessus
     // même en mode 'center'.
     const manualX = (_modalIdx !== null && !_exportPreviewUrl) ? _clipSettings[_modalIdx]?.cropXFrac : null;
-    if ((mode === 'center' && manualX == null) || !video || video.style.display === 'none') {
+    /* SUR TELEPHONE, 'face' N'ACTIVE PAS L'APERCU PAR CANVAS.
+       La detection de visage du navigateur repose sur TensorFlow, desactive sur
+       iOS et Android depuis le 02/07 : il faisait recharger l'onglet. Le canvas
+       y dessinerait donc un crop centre — exactement ce que l'element video
+       montre deja en `object-fit: cover`, mais en payant une passe de dessin a
+       chaque image. On le laisse masque.
+       L'export, lui, reste en suivi de visage : c'est le SERVEUR qui detecte,
+       et il le fait bien mieux que le telephone. */
+    const _sansDetection = _isIOS() || /Android/i.test(navigator.userAgent);
+    const _apercuInutile = (mode === 'center' || (mode === 'face' && _sansDetection)) && manualX == null;
+    if (_apercuInutile || !video || video.style.display === 'none') {
       canvas.style.display = 'none';
       return;
     }
@@ -6902,9 +6919,10 @@ const V2 = (() => {
       subY: prev.subY ?? 82, subX: prev.subX ?? 50,
       hookY: prev.hookY ?? 10, hookX: prev.hookX ?? 50,
       // Préserve le mode existant au lieu de forcer 'face' à chaque changement de réglage —
-      // c'était pourquoi un export pouvait finir cadré différemment de l'aperçu (qui, lui,
-      // retombe sur 'center' par défaut) dès que l'utilisateur touchait n'importe quel réglage.
-      reframeMode: prev.reframeMode || 'center',
+      // c'était pourquoi un export pouvait finir cadré différemment de l'aperçu dès que
+      // l'utilisateur touchait n'importe quel réglage. Le defaut est maintenant 'face' des
+      // deux cotes, donc le repli ci-dessous l'est aussi.
+      reframeMode: prev.reframeMode || 'face',
       _reframeUserSet: prev._reframeUserSet || false,
       segEdits: prev.segEdits || {},
     };
@@ -7998,7 +8016,7 @@ const V2 = (() => {
     form.append('hook_bg',    opts.hookBg || '#000000');
     form.append('hook_y',       String(opts.hookY ?? 10));
     form.append('hook_style',   _hookStyle || 'pill');
-    form.append('reframe_mode', opts.reframeMode || 'center');
+    form.append('reframe_mode', opts.reframeMode || 'face');
     // Position de crop manuelle (glisser) — si définie, l'export cadre exactement là (prioritaire
     // sur l'auto-détection). -1 = pas de position manuelle.
     form.append('crop_x_frac', String(opts.cropXFrac != null ? opts.cropXFrac : -1));
