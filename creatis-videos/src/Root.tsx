@@ -18,6 +18,7 @@ import { DUREE_LE_TRI, LeTri, LE_TRI_DEFAUT } from "./creatis/LeTri";
 import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/ShortVersYouTube";
 import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT, calculerDuree } from "./creatis/ShortPleinCadre";
 import { DUREE_MECANIQUE, Mecanique } from "./creatis/Mecanique";
+import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
 import { DUREE_V3, EtapesV3 } from "./creatis/Etapes3";
 import { DUREE_V2, EtapesV2 } from "./creatis/Etapes2";
@@ -142,6 +143,14 @@ export const RemotionRoot: React.FC = () => {
             vient pour apprendre. Toutes les autres restent en 1080x1920. */}
         {/* Motion design integral, zero capture d ecran : la piece MONTRE le
             mecanisme au lieu de l affirmer. */}
+        <Composition
+          id="Lancement"
+          component={Lancement}
+          durationInFrames={DUREE_LANCEMENT}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
         <Composition
           id="Mecanique"
           component={Mecanique}

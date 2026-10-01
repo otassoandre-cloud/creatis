@@ -35,7 +35,7 @@ const SORTIE = join(ICI, "public", "voix");
    fait ecrire des textes trop maigres — la premiere voix laissait douze
    secondes de silence. */
 const MOTS_PAR_MINUTE = 190;
-const DUREE_CIBLE = 33;
+const DUREE_CIBLE = 36;
 const PLAFOND = Math.round((MOTS_PAR_MINUTE / 60) * DUREE_CIBLE); // 124
 
 const env = {};
@@ -50,11 +50,12 @@ const arg = (n, d) => { const i = process.argv.indexOf("--" + n); return i !== -
    spectateur reconnaissait une publicité. Ici on montre un geste, et le produit
    n'apparaît que parce qu'il est l'outil de ce geste. */
 const TEXTE_DU_JOUR = `
-Tu as une vidéo longue et tu veux en tirer des formats courts. Voilà comment, du début à la fin.
-Tu colles le lien. Rien à télécharger, aucun logiciel à installer.
-L'intelligence artificielle lit ce qui est dit, et cherche les passages qui se comprennent tout seuls. C'est le seul critère qui compte : un clip doit tenir debout sans la vidéo d'où il sort.
-Elle rend dix propositions, notées, déjà recadrées en vertical et sous-titrées. Compte sept minutes d'analyse.
-À toi de trier. C'est la seule étape qui ne s'automatise pas.
+Les marques paient pour être clippées. Un million quatre cent mille dollars, versés à trois cent trois personnes.
+Pas pour des vidéos. Pour des clips de trente secondes.
+GTA six sort le dix-neuf novembre. La fenêtre est ouverte maintenant.
+Le problème, c'est le volume. Il en faut des dizaines, chaque semaine.
+Créatis prend ta vidéo longue, trouve les moments qui se tiennent seuls, les recadre, les sous-titre.
+Toi, tu choisis. Et tu publies.
 `.trim().replace(/\s+/g, " ");
 
 const TEXTE = arg("texte", TEXTE_DU_JOUR);
