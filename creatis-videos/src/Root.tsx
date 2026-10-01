@@ -18,6 +18,7 @@ import { DUREE_LE_TRI, LeTri, LE_TRI_DEFAUT } from "./creatis/LeTri";
 import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/ShortVersYouTube";
 import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT, calculerDuree } from "./creatis/ShortPleinCadre";
 import { DUREE_MECANIQUE, Mecanique } from "./creatis/Mecanique";
+import { DUREE_CHIFFRES, Chiffres, CHIFFRES_DEFAUT } from "./creatis/Chiffres";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
@@ -171,6 +172,18 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1920}
           height={1080}
+        />
+        {/* CHIFFRES — le format qui ENSEIGNE : il partage une mesure prise sur
+            nos propres publications, utilisable par le spectateur sur son
+            compte a lui. Aucune mention du produit avant la derniere image. */}
+        <Composition
+          id="Chiffres"
+          component={Chiffres}
+          durationInFrames={DUREE_CHIFFRES}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{ reglage: CHIFFRES_DEFAUT }}
         />
         <Composition
           id="Mecanique"
