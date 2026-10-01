@@ -51,6 +51,11 @@ import { POLICE } from "./police";
  */
 
 const FPS = 30;
+/* La voix dure 2,16 s (mesuré sur le fichier, pas estimé). La musique prend le
+   relais à la frame qui suit immédiatement sa dernière syllabe. */
+const DEBUT_VOIX = Math.round(0.6 * FPS);
+const FIN_VOIX = DEBUT_VOIX + Math.round(2.16 * FPS);
+
 export const DUREE_VOCAL = 13.5 * FPS; // 405 images — aucun temps mort
 
 /** Un plan = une fenêtre de l'enregistrement, et ce qu'on en dit. */
@@ -208,8 +213,17 @@ export const Vocal: React.FC = () => {
       ) : null}
 
       {/* La commande, entendue. C'est elle qui fait comprendre qu'on a PARLÉ. */}
-      <Sequence from={Math.round(0.6 * FPS)} name="La commande">
+      <Sequence from={DEBUT_VOIX} name="La commande">
         <Audio src={staticFile("voix/commande-vocale.mp3")} />
+      </Sequence>
+
+      {/* La musique démarre PILE quand la voix se tait — pas avant, pas après.
+          Première version livrée sans : « il y a la commande vocale et puis
+          après, rien du tout, il n'y a plus de son » (01/10). Un silence de
+          onze secondes sous des coupes rapides vide le montage de son élan.
+          Le fichier commence sur un impact : on entend la musique ARRIVER. */}
+      <Sequence from={FIN_VOIX} name="La musique">
+        <Audio src={staticFile("musique/vocal-pulse.mp3")} />
       </Sequence>
     </AbsoluteFill>
   );

@@ -119,7 +119,48 @@ const ctx = await nav.newContext({
   permissions: ["microphone"],
   recordVideo: { dir: SORTIE, size: { width: 1080, height: 1920 } },
 });
+/* ── CE QUI EST SIMULÉ, ET CE QUI NE L'EST PAS ───────────────────────────
+   Cette machine n'a aucune boucle audio : mesuré trois fois, le périphérique
+   d'enregistrement par défaut capte 0 même quand le son est joué au niveau
+   système. La transcription de Chrome ne peut donc rien entendre ici.
+
+   On remplace donc UNIQUEMENT `SpeechRecognition`, qui appartient au
+   NAVIGATEUR, par un double qui rend la phrase. Tout ce qui est Créatis tourne
+   pour de vrai : le gestionnaire vocal de l'application, la résolution du
+   nom de chaîne, la recherche de la dernière vidéo, l'analyse, le découpage,
+   le recadrage, les sous-titres. Rien du produit n'est truqué.
+
+   À dire à qui regarde le film : la commande vocale fonctionne telle quelle
+   chez un utilisateur qui a un micro. Ce qu'on contourne, c'est l'absence de
+   micro sur la machine de tournage — pas une limite du produit.
+
+   Pour un tournage SANS aucune simulation : un câble audio virtuel, ou
+   quelqu'un qui prononce la phrase. Le reste du script ne change pas. */
+const COMMANDE = arg("commande", "prends la dernière vidéo de La Boiserie");
+
 const page = await ctx.newPage();
+await page.addInitScript((phrase) => {
+  class Double {
+    constructor() { this.lang = "fr-FR"; this.continuous = false; this.interimResults = false; }
+    start() {
+      setTimeout(() => {
+        this.onstart?.(new Event("start"));
+        setTimeout(() => {
+          const r = [{ 0: { transcript: phrase, confidence: 0.95 }, isFinal: true, length: 1 }];
+          r.length = 1;
+          this.onresult?.({ results: r, resultIndex: 0 });
+          setTimeout(() => this.onend?.(new Event("end")), 150);
+        }, 1400);
+      }, 80);
+    }
+    stop() { this.onend?.(new Event("end")); }
+    abort() { this.onend?.(new Event("end")); }
+    addEventListener(t, f) { this["on" + t] = f; }
+    removeEventListener(t) { delete this["on" + t]; }
+  }
+  window.SpeechRecognition = Double;
+  window.webkitSpeechRecognition = Double;
+}, COMMANDE);
 
 /* Les repères s'écrivent PENDANT le tournage. Les deviner après coup sur
    l'image a déjà coûté deux montages faux : le fichier de repères annonçait la
@@ -131,6 +172,43 @@ const marquer = (nom) => {
   console.log(`  [${reperes[nom]}s] ${nom}`);
 };
 const attendre = (ms) => page.waitForTimeout(ms);
+
+/* ── RELEVÉ DES ATTENTES ──────────────────────────────────────────────────
+   Le 01/10 le film s'est terminé sur « Téléchargement du clip… Récupération
+   depuis YouTube » au lieu du clip fini. Retour : « à la fin on voit ça alors
+   qu'on devrait voir le résultat du clip final ».
+
+   On ne peut pas détecter ça après coup sur l'image : un écran d'attente
+   ANIME (spinner, barre de progression), donc `freezedetect` le déclare
+   vivant — essayé, il rate le défaut et accuse à tort la grille de résultats,
+   qui est immobile parce qu'on la LIT.
+
+   Seul le navigateur sait ce que la page affiche. On échantillonne donc
+   pendant tout le tournage, et on écrit les fenêtres d'attente dans le
+   fichier de repères. `controle-fin-de-film.js` refuse ensuite tout plan qui
+   tombe dedans. */
+const ATTENTES = [];
+const MOTS_D_ATTENTE =
+  /t[ée]l[ée]chargement|chargement|r[ée]cup[ée]ration|en cours|patiente|veuillez|pr[ée]paration|analyse en cours/i;
+let attenteOuverte = null;
+
+const echantillonner = async () => {
+  let visible = false;
+  try {
+    const texte = await page.evaluate(() => document.body.innerText || "");
+    visible = /t[ée]l[ée]chargement|chargement|r[ée]cup[ée]ration|en cours|patiente|veuillez|pr[ée]paration|analyse en cours/i.test(texte);
+  } catch {
+    return; // page en cours de navigation : on ne conclut rien
+  }
+  const t = Math.round((Date.now() - T0) / 100) / 10;
+  if (visible && attenteOuverte === null) {
+    attenteOuverte = t;
+  } else if (!visible && attenteOuverte !== null) {
+    if (t - attenteOuverte >= 0.8) ATTENTES.push([attenteOuverte, t]);
+    attenteOuverte = null;
+  }
+};
+const batteur = setInterval(() => { echantillonner().catch(() => {}); }, 500);
 
 page.on("console", (m) => {
   const t = m.text();
@@ -174,32 +252,16 @@ try {
   console.log("· on parle");
   marquer("micro");
 
-  const son64 = fs.readFileSync(path.resolve("public/voix/commande-courte.wav")).toString("base64");
+  await micro.click();
+  await attendre(6000);
 
-  let entendu = false;
-  for (let essai = 1; essai <= 3 && !entendu; essai++) {
-    await micro.click().catch(() => {});
-    /* L'application dit « Oui ? » AVANT d'écouter. On laisse passer sa réponse,
-       puis on prononce la commande — sinon elle tombe pendant qu'elle parle, et
-       c'est exactement ce qui faisait « Je n'ai rien entendu ». */
-    await attendre(2600);
-    await page.evaluate((b64) => {
-      const a = new Audio("data:audio/wav;base64," + b64);
-      a.volume = 1;
-      a.play().catch(() => {});
-    }, son64);
-    await attendre(9000);
-    const rate = await page
-      .locator("text=/rien entendu/i")
-      .first().isVisible().catch(() => false);
-    if (!rate) { entendu = true; break; }
-    console.log(`  essai ${essai} : « rien entendu », on relance le micro`);
-    await attendre(1500);
-  }
   marquer("commande");
   await page.screenshot({ path: path.join(SORTIE, "vocal-apres-commande.png") }).catch(() => {});
-  if (!entendu) {
-    throw new Error("l application n a rien entendu après trois essais — voir vocal-apres-commande.png");
+  /* On vérifie quand même que l'application a bien reçu la phrase : si elle
+     affiche « rien entendu », le double n'a pas été posé à temps. */
+  const rate = await page.locator("text=/rien entendu/i").first().isVisible().catch(() => false);
+  if (rate) {
+    throw new Error("l application affiche « rien entendu » — le double de transcription n a pas pris");
   }
 
   /* Preuve que la commande a été ENTENDUE : l'analyse démarre d'elle-même.
@@ -254,9 +316,22 @@ try {
     const mo = (fs.statSync(cible).size / 1048576).toFixed(1);
     console.log(`\nOK — public/${NOM} (${mo} Mo)`);
   }
+  clearInterval(batteur);
+  /* Une attente encore ouverte à la coupure court jusqu'à la fin du film. */
+  if (attenteOuverte !== null) {
+    ATTENTES.push([attenteOuverte, Math.round((Date.now() - T0) / 100) / 10]);
+  }
   fs.writeFileSync(
     path.join(SORTIE, NOM.replace(/\.mp4$/, "") + "-reperes.json"),
-    JSON.stringify({ reperes, commande: path.basename(WAV) }, null, 2),
+    JSON.stringify(
+      { reperes, attentes: ATTENTES, commande: path.basename(WAV) },
+      null,
+      2,
+    ),
   );
+  if (ATTENTES.length) {
+    console.log(`  ${ATTENTES.length} fenêtre(s) d'attente relevée(s) — ne pas y monter de plan :`);
+    for (const [a, b] of ATTENTES) console.log(`     ${a}s → ${b}s`);
+  }
   console.log("  repères : public/" + NOM.replace(/\.mp4$/, "") + "-reperes.json");
 }

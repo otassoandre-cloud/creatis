@@ -232,6 +232,16 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **Un plan ne tombe JAMAIS sur un écran d'attente** (« Téléchargement du
+  clip… », « Analyse en cours »). Le dernier plan surtout : il porte la
+  récompense, il doit montrer le résultat fini qui joue. Contrôlé par
+  `scripts/controle-fin-de-film.js` sur les fenêtres relevées pendant le
+  tournage. `freezedetect` ne sert à rien ici : un écran d'attente bouge
+  (spinner), et la grille de résultats est immobile parce qu'on la lit.
+  → L'enregistrement doit durer **jusqu'à ce que le résultat s'affiche**.
+- **La musique démarre à la frame où la voix se tait**, sur un impact. Pas de
+  silence après une commande vocale : ça vide le montage. Mesurer la durée
+  réelle du fichier de voix, ne pas l'estimer.
 - **TikTok ne permet pas de changer le son après publication.** Vérifier le niveau
   AVANT d'envoyer : au-dessus de −45 dB, la vidéo porte déjà sa bande-son, on
   n'ajoute rien.
