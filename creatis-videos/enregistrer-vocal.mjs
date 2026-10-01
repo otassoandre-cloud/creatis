@@ -24,6 +24,17 @@
  * capture` ne nourrit pas. Aucun drapeau ne contourne ça : la Web Speech API
  * écoute le périphérique d'enregistrement du système, pas le faux.
  *
+ * DEUXIÈME MESURE, le même jour : faire jouer la commande PAR LA PAGE, pour
+ * que le « Mixage stéréo » — qui est le périphérique d'enregistrement par
+ * défaut de cette machine et qui capte ce que jouent les haut-parleurs — la
+ * renvoie en entrée. Résultat :
+ *
+ *   niveau capté par le mixage stéréo : 0,004   (c'est-à-dire du silence)
+ *   et identique que `--mute-audio` soit retiré ou non
+ *
+ * Le son de la page ne sort donc pas. Sans sortie audio active, la boucle
+ * haut-parleur → mixage stéréo → reconnaissance ne peut pas se fermer.
+ *
  * Deux voies pour filmer quand même la commande vocale :
  *  1. Un câble audio virtuel (VB-CABLE, gratuit) installé et choisi comme
  *     périphérique d'enregistrement par défaut : on y joue le WAV, et Chrome
@@ -72,7 +83,11 @@ if (!EMAIL || !MDP) {
   console.error("CREATIS_EMAIL et CREATIS_MDP manquants — voir creatis-videos/.env");
   process.exit(1);
 }
-if (!fs.existsSync(WAV)) {
+if (!fs.existsSync(path.resolve("public/voix/commande-courte.wav"))) {
+  console.error("public/voix/commande-courte.wav manquant — c est lui que la page joue.");
+  process.exit(1);
+}
+if (false && !fs.existsSync(WAV)) {
   console.error("WAV de commande introuvable : " + WAV);
   console.error("Le fabriquer depuis un mp3 :");
   console.error('  ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono:d=2.2" -i voix.mp3 \\');
@@ -84,10 +99,14 @@ if (!fs.existsSync(WAV)) {
 const nav = await chromium.launch({
   channel: "chrome",
   headless: false,
+  /* PAS de faux micro : mesuré, il nourrit getUserMedia mais pas la
+     reconnaissance vocale, qui écoute le périphérique d'enregistrement du
+     SYSTÈME. Or celui de cette machine est « Mixage stéréo », qui capte ce que
+     jouent les haut-parleurs. On fait donc jouer la commande PAR LA PAGE :
+     Chrome l'émet, le mixage stéréo la renvoie en entrée, et la reconnaissance
+     l'entend comme une vraie voix. Rien à installer. */
   args: [
     "--use-fake-ui-for-media-stream",
-    "--use-fake-device-for-media-stream",
-    `--use-file-for-fake-audio-capture=${WAV}`,
     "--autoplay-policy=no-user-gesture-required",
     "--disable-blink-features=AutomationControlled",
   ],
@@ -155,10 +174,21 @@ try {
   console.log("· on parle");
   marquer("micro");
 
+  const son64 = fs.readFileSync(path.resolve("public/voix/commande-courte.wav")).toString("base64");
+
   let entendu = false;
   for (let essai = 1; essai <= 3 && !entendu; essai++) {
     await micro.click().catch(() => {});
-    await attendre(11000);
+    /* L'application dit « Oui ? » AVANT d'écouter. On laisse passer sa réponse,
+       puis on prononce la commande — sinon elle tombe pendant qu'elle parle, et
+       c'est exactement ce qui faisait « Je n'ai rien entendu ». */
+    await attendre(2600);
+    await page.evaluate((b64) => {
+      const a = new Audio("data:audio/wav;base64," + b64);
+      a.volume = 1;
+      a.play().catch(() => {});
+    }, son64);
+    await attendre(9000);
     const rate = await page
       .locator("text=/rien entendu/i")
       .first().isVisible().catch(() => false);
