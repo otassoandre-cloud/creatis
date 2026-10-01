@@ -220,7 +220,35 @@ const SON = arg('son', '');
       return null;
     };
 
-    const soucis = await poserUnSon().catch((e) => String(e.message || e).split(String.fromCharCode(10))[0]);
+    /* ── NE PAS POSER DE SON SUR UNE VIDÉO QUI PARLE ────────────────────
+       La règle du son a été écrite pour les pièces MUETTES, dont la source de
+       trafic « Son » était à 0 %. Appliquée à un film qui porte une voix off,
+       elle superpose un morceau à la narration et la noie — c'est arrivé le
+       01/10 sur le film de lancement.
+       On mesure donc le niveau audio du fichier AVANT : au-dessus de -45 dB il
+       y a une vraie bande-son, et on n'y touche pas. */
+    const niveau = (() => {
+      try {
+        const ff = path.join(RACINE, 'node_modules', 'ffmpeg-static', 'ffmpeg.exe');
+        if (!fs.existsSync(ff)) return null;
+        const sortie = require('child_process')
+          .execFileSync(ff, ['-i', path.resolve(VIDEO), '-af', 'volumedetect', '-f', 'null', '-'],
+            { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        const m = String(sortie).match(/mean_volume:\s*(-?[\d.]+)/);
+        return m ? parseFloat(m[1]) : null;
+      } catch (e) {
+        const m = String(e.stderr || '').match(/mean_volume:\s*(-?[\d.]+)/);
+        return m ? parseFloat(m[1]) : null;
+      }
+    })();
+
+    let soucis = null;
+    if (niveau !== null && niveau > -45) {
+      console.log(`  la vidéo porte déjà du son (${niveau} dB) — aucun son ajouté`);
+      console.log('  (poser un morceau par-dessus une voix off la noierait)');
+    } else {
+      soucis = await poserUnSon().catch((e) => String(e.message || e).split(String.fromCharCode(10))[0]);
+    }
     if (soucis) {
       console.warn('');
       console.warn('SANS SON — ' + soucis);

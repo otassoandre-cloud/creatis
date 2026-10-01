@@ -153,6 +153,17 @@ export const RemotionRoot: React.FC = () => {
           height={HAUTEUR_MINI}
           defaultProps={{ reglage: MINI_DEFAUT }}
         />
+        {/* La declinaison verticale du film de lancement. Meme composant : les
+            deux passages qui cassaient en 9:16 — la rangee de clips et la
+            grille — se reorganisent selon le format. */}
+        <Composition
+          id="LancementVertical"
+          component={Lancement}
+          durationInFrames={DUREE_LANCEMENT}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="Lancement"
           component={Lancement}

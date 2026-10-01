@@ -341,9 +341,13 @@ const Volume: React.FC<{ s: number; frame: number; fps: number; width: number; h
   if (!visible) return null;
   /* Même correction : trois rangées doivent tenir entre 17 % et 76 % de la
      hauteur. On calcule la case à partir de là, et la largeur suit. */
-  const cols = 10;
-  const lignes = 3;
-  const caseH = (height * 0.59 - 20) / lignes;
+  /* Le nombre de colonnes dépend du FORMAT. Dix cases de 232 px tiennent sur
+     1920 de large, pas sur 1080 : en vertical la grille sortait du cadre.
+     On en met cinq, sur quatre rangées, ce qui donne le même effet de masse. */
+  const vertical = height > width;
+  const cols = vertical ? 5 : 10;
+  const lignes = vertical ? 4 : 3;
+  const caseH = (height * (vertical ? 0.42 : 0.59) - 20) / lignes;
   const caseL = caseH / 1.6;
   return (
     <AbsoluteFill style={style}>
@@ -397,10 +401,19 @@ const Produit: React.FC<{ s: number; frame: number; fps: number; width: number; 
 
   /* On dimensionne par la HAUTEUR disponible, pas par la largeur : un premier
      jet partait de la largeur et les clips descendaient jusqu'à 88 %, par-dessus
-     la légende. La bande utile va de 22 % à 78 %, soit 56 % de la hauteur. */
-  const clipH = Math.round(height * 0.56);
+     la légende.
+
+     Et la DISPOSITION dépend du format : quatre clips en rang tiennent sur
+     1920 de large, pas sur 1080. En vertical on passe en deux par deux, ce qui
+     les garde assez grands pour qu'on voie les visages — un clip de 240 px de
+     large ne montre plus rien. */
+  const vertical = height > width;
+  const parRangee = vertical ? 2 : 4;
+  const rangees = VRAIS_CLIPS.length / parRangee;
+  const hautDispo = height * (vertical ? 0.52 : 0.56);
+  const clipH = Math.round((hautDispo - (rangees - 1) * 20) / rangees);
   const clipL = Math.round((clipH * 9) / 16);
-  const total = clipL * VRAIS_CLIPS.length + 26 * (VRAIS_CLIPS.length - 1);
+  const total = clipL * parRangee + 26 * (parRangee - 1);
 
   return (
     <AbsoluteFill style={style}>
@@ -422,7 +435,8 @@ const Produit: React.FC<{ s: number; frame: number; fps: number; width: number; 
       <div
         style={{
           position: "absolute", top: height * 0.22, left: (width - total) / 2,
-          display: "flex", gap: 26,
+          width: total,
+          display: "flex", flexWrap: "wrap", gap: 26, rowGap: 20,
         }}
       >
         {VRAIS_CLIPS.map((c, i) => {
