@@ -4565,14 +4565,37 @@ const V2 = (() => {
       if (_seekRendered) return;
       _seekRendered = true;
       if (_userTookControl) { _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl); return; }
+      /* MUET PENDANT LES 80 ms DE RENDU — sinon Safari refuse, et le lecteur reste noir.
+         Ce play() ne sert pas a ecouter : il force le decodage de la premiere image, puis
+         pause aussitot. Or WebKit rejette play() sur une video NON MUETTE des que le geste
+         de l'utilisateur n'est plus « frais » — et il ne l'est plus : on arrive ici sur
+         l'evenement `seeked` ou sur le filet de 2 s, bien apres le clic.
+         Mesure sur 20 jours, taux d'export apres ouverture d'un clip :
+           Windows 10,9 %   Android 26,1 %   iOS 2,2 %   Mac OS X 2,9 %
+         Les deux moteurs WebKit s'effondrent ensemble, les deux autres non : ce n'etait pas
+         « le telephone », c'etait Safari. 41 personnes sur iPhone ont ouvert 91 clips et en
+         ont exporte 2 — elles voyaient un cadre noir et repartaient.
+         On remet le son des que l'image est rendue : l'apercu reste sonore pour le lecteur. */
+      const _sonAvant = video.muted;
+      video.muted = true;
+      const _rendreLeSon = () => { video.muted = _sonAvant; };
       video.play().then(() => {
         _autoPauseTimer = setTimeout(() => {
           _autoPauseTimer = null;
-          if (_userTookControl) { _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl); return; }
+          if (_userTookControl) { _rendreLeSon(); _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl); return; }
           video.pause();
+          _rendreLeSon();
           _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl);
         }, 80);
-      }).catch(() => {});
+      }).catch((err) => {
+        /* Le `.catch` etait VIDE : quand play() echouait, le repli sur la vignette ne se
+           declenchait pas non plus — il vit dans le `.then`. L'utilisateur restait donc
+           devant un rectangle noir, sans la moindre indication. */
+        _rendreLeSon();
+        _debugLog({ step: 'play-refuse', name: err?.name, message: String(err?.message || '').slice(0, 120) });
+        if (window.posthog) posthog.capture('preview_autoplay_refuse', { raison: String(err?.name || 'inconnue') });
+        _fallbackToThumbIfBlank(video, ph, fallbackThumbUrl);
+      });
     };
     video.addEventListener('seeked', _renderFirstFrame, { once: true });
     // Filet de sécurité : 'seeked' peut ne jamais se déclencher (seek profond peu fiable, ou seek
