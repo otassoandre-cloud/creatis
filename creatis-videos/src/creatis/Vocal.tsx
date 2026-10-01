@@ -63,8 +63,27 @@ type Plan = {
   debut: number;
   fin: number;
   rec: [number, number];
+  /** Rectangle UTILE de l'enregistrement, en pixels source : [x, y, l, h]. */
+  cadre: [number, number, number, number];
   texte?: string;
 };
+
+/* ── LA ZONE SÛRE, ET POURQUOI ELLE EXISTE ───────────────────────────────
+   Un téléphone récent fait 19,5:9. Une vidéo 9:16 jouée en plein écran y est
+   AGRANDIE jusqu'à remplir la hauteur — donc rognée sur les côtés. Retour du
+   01/10, captures à l'appui : la grille des huit clips perdait sa première et
+   sa dernière carte, et « 8 clips viraux trouvés » devenait « lips viraux
+   fouvés ».
+
+   Le premier montage posait l'enregistrement bord à bord : tout ce qui touchait
+   un bord était condamné. Chaque plan déclare maintenant le rectangle qui
+   compte, et on le place dans une zone qui survit au rognage.
+
+   8 % de marge de chaque côté couvre le rapport 19,5:9 (1080 × 16/19,5 ≈ 886,
+   soit 9 % perdus). */
+const ZONE_L = 1080 * 0.84; // 907 px — aucun pixel utile au-delà
+const ZONE_H = 1300;        // sous le bandeau, au-dessus de la légende
+const ZONE_CY = 800;        // centre vertical de la zone utile
 
 /* ── CHAQUE PLAN S'ARRÊTE QUAND IL A FINI DE DIRE CE QU'IL DIT ───────────
    Le premier montage faisait 22 s dont une bonne moitié de temps mort : trois
@@ -79,16 +98,23 @@ const PLANS: Plan[] = [
     /* On entre quand le message « Je cherche la dernière vidéo de… » s'affiche,
        pas avant : les secondes où l'écran est figé n'apprennent rien. */
     debut: 0, fin: 2.6, rec: [15.6, 19.0],
+    /* La colonne centrale du site : titre, champ, « tes vidéos ». */
+    cadre: [180, 120, 720, 1160],
     texte: "« Prends la dernière vidéo de La Boiserie »",
   },
   {
+    /* On resserre sur le titre et la miniature qui vient d'apparaître. */
     debut: 2.6, fin: 5.2, rec: [19.0, 21.6],
+    cadre: [280, 200, 520, 930],
     texte: "Elle la trouve toute seule.",
   },
   {
     /* L'écran d'analyse ne bouge quasiment pas : deux secondes suffisent à dire
        qu'il y a une attente. Le bandeau donne la durée vraie. */
+    /* Mesuré : pendant l'analyse tout tient entre y=46 et y=640 sur 1920.
+       Sans recadrage, les deux tiers bas de l'image sont du noir vide. */
     debut: 5.2, fin: 7.4, rec: [22.0, 60.0],
+    cadre: [210, 30, 660, 630],
     texte: "Elle lit tout ce qui est dit.",
   },
   {
@@ -96,11 +122,32 @@ const PLANS: Plan[] = [
        passage sous la vitesse réelle — parce que c'est le seul plan qui prouve
        quelque chose. Et on s'arrête à 240,8 : après, l'éditeur est déjà ouvert
        et la légende mentirait. */
-    debut: 7.4, fin: 11.0, rec: [238.8, 240.8],
+    /* La grille occupe TOUTE la largeur de l'enregistrement : c'est le seul
+       plan qu'il faut réduire (×0,87) au lieu d'agrandir, sinon les cartes des
+       extrémités sortent du cadre. */
+    debut: 7.4, fin: 10.6, rec: [238.8, 240.0],
+    cadre: [20, 130, 1040, 860],
     texte: "Huit clips, notés.",
   },
   {
-    debut: 11.0, fin: 13.5, rec: [241.6, 244.6],
+    /* ── POURQUOI LE FILM NE FINIT PLUS DANS L'ÉDITEUR ──────────────────
+       Il s'y terminait sur « Téléchargement du clip… Récupération depuis
+       YouTube ». Retour du 01/10 : « à la fin on voit ça alors qu'on devrait
+       voir le résultat du clip final ». L'enregistrement s'est arrêté pendant
+       ce téléchargement : le clip fini n'y est JAMAIS visible, aucun montage
+       ne peut le rattraper.
+
+       Alors on finit sur ce qui est vraiment là : un gros plan sur les notes.
+       96, 95, 92 — c'est la preuve, et la grille dit elle-même « clique sur un
+       clip pour le personnaliser et télécharger ».
+
+       Le prochain tournage doit durer jusqu'à ce que le clip joue.
+
+       La fenêtre s'arrête à 240,45 : relevé image par image, la grille tient
+       jusqu'à 240,5 et l'éditeur s'ouvre à 240,6. Une fenêtre à 240,8 ramenait
+       l'écran de téléchargement dans les dernières images. */
+    debut: 10.6, fin: 13.5, rec: [240.0, 240.45],
+    cadre: [20, 150, 530, 420],
     texte: "Prêts à publier.",
   },
 ];
@@ -129,33 +176,52 @@ export const Vocal: React.FC = () => {
   const visible = Math.min(entre, sort);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#000", fontFamily: POLICE }}>
+    <AbsoluteFill /* Fond à la couleur de l'application : quand un plan doit être réduit
+         (la grille), les bandes qui apparaissent se confondent avec elle au
+         lieu de trancher en noir pur. */
+      style={{ backgroundColor: "#0a0f0a", fontFamily: POLICE }}>
       {/* L'enregistrement, plein cadre, découpé en plans de vitesses différentes. */}
-      {PLANS.map((p) => (
-        <Sequence
-          key={p.debut}
-          from={Math.round(p.debut * fps)}
-          durationInFrames={Math.round((p.fin - p.debut) * fps)}
-          name={`${p.texte ?? ""} (x${vitesse(p).toFixed(1)})`}
-          layout="none"
-        >
-          <Video
-            src={staticFile("rec-vocal-0110-h264.mp4")}
-            trimBefore={Math.round(p.rec[0] * FPS)}
-            playbackRate={vitesse(p)}
-            style={{ width: "100%", height: "100%" }}
-            objectFit="cover"
-            muted
-          />
-        </Sequence>
-      ))}
+      {PLANS.map((p) => {
+        /* On amène le rectangle utile au centre de la zone sûre, à la plus
+           grande échelle qui l'y fait tenir entièrement. Rien d'important ne
+           peut donc approcher un bord, quel que soit le rognage du téléphone. */
+        const [cx, cy, cl, ch] = p.cadre;
+        const e = Math.min(ZONE_L / cl, ZONE_H / ch);
+        const tx = 540 - (cx + cl / 2) * e;
+        const ty = ZONE_CY - (cy + ch / 2) * e;
+        return (
+          <Sequence
+            key={p.debut}
+            from={Math.round(p.debut * fps)}
+            durationInFrames={Math.round((p.fin - p.debut) * fps)}
+            name={`${p.texte ?? ""} (x${vitesse(p).toFixed(1)} · cadre ×${e.toFixed(2)})`}
+            layout="none"
+          >
+            <AbsoluteFill style={{ overflow: "hidden" }}>
+              <Video
+                src={staticFile("rec-vocal-0110-h264.mp4")}
+                trimBefore={Math.round(p.rec[0] * FPS)}
+                playbackRate={vitesse(p)}
+                style={{
+                  position: "absolute",
+                  width: 1080,
+                  height: 1920,
+                  transformOrigin: "0 0",
+                  transform: `translate(${tx}px, ${ty}px) scale(${e})`,
+                }}
+                muted
+              />
+            </AbsoluteFill>
+          </Sequence>
+        );
+      })}
 
       {/* Voile bas : sans lui, un texte clair posé sur une interface claire
           devient illisible dès que le contenu de l'écran change. */}
       <AbsoluteFill
         style={{
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 13%, transparent 28%)",
+            "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 22%, transparent 38%)",
         }}
       />
 
@@ -165,14 +231,18 @@ export const Vocal: React.FC = () => {
         <div
           style={{
             position: "absolute",
-            bottom: height * 0.14,
-            left: 70,
-            right: 70,
+            /* 22 % et non 14 % : à 14 % la légende tombait sur la ligne du
+               pseudo d'Instagram, et « Elle lit tout ce qui est dit. » venait
+               buter contre l'icône d'envoi. Les marges de 170 px la tiennent
+               aussi à l'écart de la colonne de boutons, à droite. */
+            bottom: height * 0.22,
+            left: 170,
+            right: 170,
             textAlign: "center",
             opacity: visible,
             transform: `translateY(${interpolate(visible, [0, 1], [16, 0])}px)`,
             color: "#fff",
-            fontSize: i === 0 ? 62 : 70,
+            fontSize: i === 0 ? 56 : 64,
             fontWeight: 800,
             lineHeight: 1.15,
             letterSpacing: -1.5,
@@ -189,7 +259,8 @@ export const Vocal: React.FC = () => {
         <div
           style={{
             position: "absolute",
-            top: height * 0.17,
+            /* Au-dessus de la zone utile (qui commence à 150 px), pas dessus. */
+            top: 60,
             left: 0,
             right: 0,
             textAlign: "center",
