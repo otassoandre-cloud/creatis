@@ -228,17 +228,21 @@ const SON = arg('son', '');
        On mesure donc le niveau audio du fichier AVANT : au-dessus de -45 dB il
        y a une vraie bande-son, et on n'y touche pas. */
     const niveau = (() => {
+      /* ffmpeg écrit `volumedetect` sur STDERR, jamais sur stdout. Un premier
+         jet lisait stdout, ne trouvait rien, et concluait « pas de son » : le
+         01/10 un morceau est parti par-dessus une commande vocale pour cette
+         seule raison. D'où `spawnSync`, qui rend les deux flux. */
       try {
         const ff = path.join(RACINE, 'node_modules', 'ffmpeg-static', 'ffmpeg.exe');
         if (!fs.existsSync(ff)) return null;
-        const sortie = require('child_process')
-          .execFileSync(ff, ['-i', path.resolve(VIDEO), '-af', 'volumedetect', '-f', 'null', '-'],
-            { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-        const m = String(sortie).match(/mean_volume:\s*(-?[\d.]+)/);
+        const r = require('child_process').spawnSync(
+          ff, ['-i', path.resolve(VIDEO), '-af', 'volumedetect', '-f', 'null', '-'],
+          { encoding: 'utf8' },
+        );
+        const m = String(r.stderr || '').match(/mean_volume:\s*(-?[\d.]+)/);
         return m ? parseFloat(m[1]) : null;
       } catch (e) {
-        const m = String(e.stderr || '').match(/mean_volume:\s*(-?[\d.]+)/);
-        return m ? parseFloat(m[1]) : null;
+        return null;
       }
     })();
 

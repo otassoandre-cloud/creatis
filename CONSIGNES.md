@@ -228,6 +228,13 @@ niveau laissé bas.
 - Playwright rend du **VP8** : transcoder en H.264 (`-g 25 -sc_threshold 0`) avant
   tout montage segmenté, sinon le rendu n'aboutit pas.
 - Remotion ne lance plus Chrome quand la machine en a déjà 40 : `--concurrency=1`.
+- **ffmpeg écrit `volumedetect` sur STDERR, jamais sur stdout.** Lire stdout rend
+  une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
+  voix off. Payé deux fois : le film de lancement, puis la commande vocale du
+  01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **TikTok ne permet pas de changer le son après publication.** Vérifier le niveau
+  AVANT d'envoyer : au-dessus de −45 dB, la vidéo porte déjà sa bande-son, on
+  n'ajoute rien.
 - Juger une session sur un **marqueur POSITIF**, jamais sur l'absence de bouton de
   connexion — une page blanche n'en a pas non plus.
 - TikTok/Instagram empilent des modales : boucler jusqu'à ce qu'un tour ne ferme rien.
