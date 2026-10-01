@@ -75,6 +75,21 @@ if (!Array.isArray(attentes)) {
   process.exit(4);
 }
 
+/* Avant le 01/10, le relevé acceptait « préparation » et « en cours » : le badge
+   « Préparation… » d'une seule carte suffisait à faire passer une GRILLE DE
+   RÉSULTATS pour une attente (mesuré à 89 % et 100 % sur deux tournages). Sur un
+   fichier non estampillé, on ne refuse donc pas — on dit que la mesure n'est pas
+   fiable et qu'il faut regarder l'image. */
+const fiable = donnees.vocabulaire === 'etroit-2026-10-01';
+if (!fiable) {
+  console.log('');
+  console.log(`⚠ Relevé fait avec l'ANCIEN vocabulaire (ou non estampillé).`);
+  console.log(`  Il marque les grilles de résultats comme des attentes : ne pas`);
+  console.log(`  bloquer là-dessus, VÉRIFIER la fenêtre finale sur une planche`);
+  console.log(`  contact avant de monter.`);
+  console.log('');
+}
+
 const fenetres = plans.split(',').map((p) => {
   const [d, f] = p.trim().split('-').map(Number);
   return { debut: d, fin: f };
@@ -122,6 +137,13 @@ if (fautifs.length === 0) {
   }
   console.log(`La fin montre un résultat. Le film peut partir.`);
   process.exit(0);
+}
+
+if (!fiable) {
+  console.log(`Le dernier plan tombe dans une fenêtre d'attente, mais le relevé`);
+  console.log(`n'est pas fiable (ancien vocabulaire). Vérifier l'image avant de`);
+  console.log(`conclure — et refaire le tournage pour obtenir une vraie mesure.`);
+  process.exit(4);
 }
 
 for (const f of fautifs) {

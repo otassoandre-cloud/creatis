@@ -19,6 +19,8 @@ import { DUREE_SHORT_YT, ShortVersYouTube, SHORT_YT_DEFAUT } from "./creatis/Sho
 import { DUREE_PLEIN, ShortPleinCadre, PLEIN_DEFAUT, calculerDuree } from "./creatis/ShortPleinCadre";
 import { DUREE_MECANIQUE, Mecanique } from "./creatis/Mecanique";
 import { DUREE_CHIFFRES, Chiffres, CHIFFRES_DEFAUT } from "./creatis/Chiffres";
+import { DUREE_VOCAL, Vocal } from "./creatis/Vocal";
+import { AMIXEM } from "./creatis/VocalAmixem";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
@@ -176,6 +178,26 @@ export const RemotionRoot: React.FC = () => {
         {/* CHIFFRES — le format qui ENSEIGNE : il partage une mesure prise sur
             nos propres publications, utilisable par le spectateur sur son
             compte a lui. Aucune mention du produit avant la derniere image. */}
+        {/* VOCAL — une phrase, et l application fait tout. Le seul film ou on
+            ne commente presque rien : l ecran suffit. */}
+        <Composition
+          id="Vocal"
+          component={Vocal}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        {/* Même dispositif, autre tournage : seules les fenêtres changent. */}
+        <Composition
+          id="VocalAmixem"
+          component={Vocal}
+          defaultProps={AMIXEM}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="Chiffres"
           component={Chiffres}

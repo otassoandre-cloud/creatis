@@ -165,6 +165,14 @@ export type ReglagesVocal = {
   /** Durée réelle du fichier de voix, en secondes. MESURÉE, jamais estimée. */
   dureeVoix: number;
   voix?: string;
+  /**
+   * Durée VRAIE de l'analyse, telle qu'elle s'écrit dans le bandeau.
+   *
+   * Elle était codée en dur (« 3 min 36 »), et le second film l'a donc annoncée
+   * alors que son analyse avait duré 87 s. Un chiffre faux sur un bandeau qui
+   * sert justement à ne pas tromper le spectateur est pire que pas de bandeau.
+   */
+  dureeVraie: string;
 };
 
 const BOISERIE: ReglagesVocal = {
@@ -172,10 +180,11 @@ const BOISERIE: ReglagesVocal = {
   plans: PLANS,
   dureeVoix: 2.16,
   voix: "voix/commande-vocale.mp3",
+  dureeVraie: "3 min 36",
 };
 
 export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
-  const { source, plans: PLANS_ACTIFS, dureeVoix, voix } = { ...BOISERIE, ...reglages };
+  const { source, plans: PLANS_ACTIFS, dureeVoix, voix, dureeVraie } = { ...BOISERIE, ...reglages };
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
   const s = frame / fps;
@@ -301,7 +310,7 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
               fontWeight: 700,
             }}
           >
-            ACCÉLÉRÉ ×{Math.round(v)} · 3 min 36 en vrai
+            ACCÉLÉRÉ ×{Math.round(v)} · {dureeVraie} en vrai
           </span>
         </div>
       ) : null}

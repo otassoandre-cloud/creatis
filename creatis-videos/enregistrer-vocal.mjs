@@ -360,7 +360,11 @@ try {
   fs.writeFileSync(
     path.join(SORTIE, NOM.replace(/\.mp4$/, "") + "-reperes.json"),
     JSON.stringify(
-      { reperes, attentes: ATTENTES, commande: path.basename(WAV) },
+      /* `vocabulaire` date le relevé : les fenêtres posées avant le 01/10
+         acceptaient « préparation » et « en cours », et marquaient donc les
+         GRILLES DE RÉSULTATS comme des attentes. Le contrôle doit pouvoir le
+         savoir plutôt que de refuser un film sur une mesure fausse. */
+      { reperes, attentes: ATTENTES, vocabulaire: 'etroit-2026-10-01', commande: path.basename(WAV) },
       null,
       2,
     ),
