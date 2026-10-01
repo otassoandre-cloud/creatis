@@ -1,0 +1,232 @@
+/**
+ * FILME LA COMMANDE VOCALE : on parle, l'application fait tout le reste.
+ *
+ *   node enregistrer-vocal.mjs
+ *   node enregistrer-vocal.mjs --commande "Prends la dernière vidéo de Amixem."
+ *
+ * Produit `public/vocal.mp4` (1080x1920) et ses repères, comme
+ * `enregistrer-parcours.mjs`.
+ *
+ * ── POURQUOI CE TOURNAGE-LÀ ──────────────────────────────────────────────
+ * Tout ce qui a été publié jusqu'ici EXPLIQUAIT ou AFFIRMAIT. Ici on ne dit
+ * rien : on prononce une phrase, et l'écran fait le travail. C'est la seule
+ * chose que l'outil sache faire que personne d'autre ne montre, et ça se
+ * comprend sans une ligne de commentaire.
+ *
+ * ── ÉTAT : CE SCRIPT NE PEUT PAS PARLER TOUT SEUL ───────────────────────
+ * MESURÉ le 01/10, sur la page de l'application, avec le faux micro branché :
+ *
+ *   getUserMedia        -> reçoit le WAV parfaitement, amplitude maximale 1,0
+ *   SpeechRecognition   -> « no-speech », il n'entend rien
+ *
+ * Chrome fait donc passer la reconnaissance vocale par un chemin de capture
+ * INTERNE, distinct de celui de getUserMedia, que `--use-file-for-fake-audio-
+ * capture` ne nourrit pas. Aucun drapeau ne contourne ça : la Web Speech API
+ * écoute le périphérique d'enregistrement du système, pas le faux.
+ *
+ * Deux voies pour filmer quand même la commande vocale :
+ *  1. Un câble audio virtuel (VB-CABLE, gratuit) installé et choisi comme
+ *     périphérique d'enregistrement par défaut : on y joue le WAV, et Chrome
+ *     l'entend comme un vrai micro. Demande une installation sur la machine.
+ *  2. Quelqu'un prononce la phrase dans un vrai micro pendant que ce script
+ *     filme. Tout le reste — connexion, attente, ouverture du clip, repères —
+ *     fonctionne déjà ; il ne manque que la voix.
+ *
+ * Le reste de ce fichier est conservé : dès qu'une des deux voies est en place,
+ * il tourne sans modification.
+ *
+ * ── COMMENT ON PARLE SANS MICRO ──────────────────────────────────────────
+ * Chrome sait prendre un FICHIER comme microphone :
+ *   --use-fake-device-for-media-stream   remplace le micro par un faux
+ *   --use-file-for-fake-audio-capture=…  lui donne un WAV à jouer
+ *   --use-fake-ui-for-media-stream       accorde l'autorisation sans la demander
+ * L'application entend donc une vraie voix et la transcrit pour de bon : rien
+ * n'est simulé côté produit, c'est son propre chemin vocal qui tourne.
+ *
+ * Le WAV doit être du PCM 16 bits, mono, 16 kHz. On lui met deux secondes de
+ * silence devant : la reconnaissance démarre APRÈS le clic, et une phrase qui
+ * commence à l'instant zéro est coupée en deux.
+ *
+ * ── IL FAUT LE VRAI CHROME, PAS CHROMIUM ─────────────────────────────────
+ * `webkitSpeechRecognition` envoie l'audio aux serveurs de Google, et le
+ * Chromium livré avec Playwright n'a pas les clés pour ça : la reconnaissance
+ * y échoue silencieusement. D'où `channel: "chrome"`.
+ *
+ * Et PAS de headless : le service de parole ne tourne pas dans ce mode.
+ */
+import "./env-local.mjs";
+import { chromium } from "playwright";
+import fs from "fs";
+import path from "path";
+
+const arg = (n, d) => { const i = process.argv.indexOf("--" + n); return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
+
+const EMAIL = process.env.CREATIS_EMAIL;
+const MDP = process.env.CREATIS_MDP;
+const SITE = process.env.CREATIS_URL || "https://creatis.app";
+const SORTIE = path.resolve("public");
+const NOM = process.env.SORTIE_REC || "vocal.mp4";
+const WAV = path.resolve(arg("wav", "public/voix/commande-vocale.wav"));
+
+if (!EMAIL || !MDP) {
+  console.error("CREATIS_EMAIL et CREATIS_MDP manquants — voir creatis-videos/.env");
+  process.exit(1);
+}
+if (!fs.existsSync(WAV)) {
+  console.error("WAV de commande introuvable : " + WAV);
+  console.error("Le fabriquer depuis un mp3 :");
+  console.error('  ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono:d=2.2" -i voix.mp3 \\');
+  console.error('    -filter_complex "[1]aresample=16000[v];[0][v]concat=n=2:v=0:a=1,apad=pad_dur=6" \\');
+  console.error("    -ar 16000 -ac 1 -c:a pcm_s16le commande-vocale.wav");
+  process.exit(1);
+}
+
+const nav = await chromium.launch({
+  channel: "chrome",
+  headless: false,
+  args: [
+    "--use-fake-ui-for-media-stream",
+    "--use-fake-device-for-media-stream",
+    `--use-file-for-fake-audio-capture=${WAV}`,
+    "--autoplay-policy=no-user-gesture-required",
+    "--disable-blink-features=AutomationControlled",
+  ],
+  ignoreDefaultArgs: ["--enable-automation"],
+});
+
+const ctx = await nav.newContext({
+  viewport: { width: 1080, height: 1920 },
+  deviceScaleFactor: 1,
+  permissions: ["microphone"],
+  recordVideo: { dir: SORTIE, size: { width: 1080, height: 1920 } },
+});
+const page = await ctx.newPage();
+
+/* Les repères s'écrivent PENDANT le tournage. Les deviner après coup sur
+   l'image a déjà coûté deux montages faux : le fichier de repères annonçait la
+   grille douze secondes avant qu'elle soit peinte. */
+const T0 = Date.now();
+const reperes = {};
+const marquer = (nom) => {
+  reperes[nom] = Math.round((Date.now() - T0) / 100) / 10;
+  console.log(`  [${reperes[nom]}s] ${nom}`);
+};
+const attendre = (ms) => page.waitForTimeout(ms);
+
+page.on("console", (m) => {
+  const t = m.text();
+  if (/voix|vocal|transcription|reconnai/i.test(t)) console.log("  [page] " + t.slice(0, 120));
+});
+
+try {
+  console.log("· connexion");
+  await page.goto(`${SITE}/auth.html`, { waitUntil: "domcontentloaded" });
+  await page.click("#toggle-btn");
+  await page.waitForFunction(
+    () => document.getElementById("btn-submit-texte")?.textContent?.includes("connecter"),
+    { timeout: 15000 },
+  );
+  await page.fill("#auth-email", EMAIL);
+  await page.fill("#auth-password", MDP);
+  await page.click("#btn-submit");
+  await page.waitForURL((u) => !u.pathname.includes("auth.html"), { timeout: 60000 });
+  console.log("  connecté");
+
+  await page.goto(`${SITE}/clips-v2.html`, { waitUntil: "domcontentloaded" });
+  await attendre(4000);
+
+  /* Le micro n'apparaît que si le navigateur sait reconnaître la parole. S'il
+     n'est pas là, inutile d'aller plus loin : on le dit au lieu d'enregistrer
+     deux minutes d'écran immobile. */
+  const micro = page.locator("#btn-voix");
+  if (!(await micro.isVisible().catch(() => false))) {
+    await page.screenshot({ path: path.join(SORTIE, "vocal-sans-micro.png") }).catch(() => {});
+    throw new Error("bouton micro absent — SpeechRecognition indisponible dans ce navigateur");
+  }
+
+  /* ── POURQUOI LA COMMANDE EST RÉPÉTÉE DANS LE WAV ────────────────────
+     Premier essai : l'application a répondu « Je n'ai rien entendu — appuie
+     sur le micro et parle APRÈS "Oui ?" ». Elle PARLE d'abord, puis écoute :
+     la phrase était passée pendant qu'elle disait « Oui ? ».
+     Le WAV contient donc la commande huit fois de suite, sur une minute : quel
+     que soit l'instant où la fenêtre d'écoute s'ouvre, une phrase entière y
+     tombe. Et on réessaie si le message d'échec revient — cliquer une seconde
+     fois relance une fenêtre, et le fichier joue toujours. */
+  console.log("· on parle");
+  marquer("micro");
+
+  let entendu = false;
+  for (let essai = 1; essai <= 3 && !entendu; essai++) {
+    await micro.click().catch(() => {});
+    await attendre(11000);
+    const rate = await page
+      .locator("text=/rien entendu/i")
+      .first().isVisible().catch(() => false);
+    if (!rate) { entendu = true; break; }
+    console.log(`  essai ${essai} : « rien entendu », on relance le micro`);
+    await attendre(1500);
+  }
+  marquer("commande");
+  await page.screenshot({ path: path.join(SORTIE, "vocal-apres-commande.png") }).catch(() => {});
+  if (!entendu) {
+    throw new Error("l application n a rien entendu après trois essais — voir vocal-apres-commande.png");
+  }
+
+  /* Preuve que la commande a été ENTENDUE : l'analyse démarre d'elle-même.
+     Si rien ne bouge en quarante secondes, la transcription a échoué — et il
+     vaut mieux l'écrire que livrer un film où il ne se passe rien. */
+  console.log("· attente du démarrage de l'analyse");
+  const partie = await page
+    .waitForSelector("#progress-bar, .analyse-en-cours, #btn-analyze[disabled], .clip-card", { timeout: 45000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!partie) {
+    await page.screenshot({ path: path.join(SORTIE, "vocal-rien.png") }).catch(() => {});
+    throw new Error("l analyse n a pas démarré : la commande n a pas été comprise");
+  }
+  marquer("analyse");
+
+  console.log("· analyse en cours (jusqu'à 15 min)");
+  await page.waitForSelector(".clip-card", { timeout: 15 * 60 * 1000 });
+  marquer("grille");
+  await attendre(4000);
+
+  /* On ouvre le premier clip : la commande vocale n'a d'intérêt que si on voit
+     ce qu'elle a produit. */
+  console.log("· ouverture du premier clip");
+  const carte = page.locator(".clip-card").first();
+  const titre = (await carte.innerText().catch(() => "")).split("\n")[0];
+  await carte.click();
+  marquer("fiche");
+  await attendre(6000);
+  console.log("  clip ouvert : " + titre.slice(0, 60));
+
+  marquer("bout");
+  await attendre(2500);
+  console.log("· fin du parcours");
+} catch (e) {
+  console.error("Échec : " + String(e.message).split("\n")[0]);
+  process.exitCode = 1;
+} finally {
+  await page.close();
+  await ctx.close();
+  await nav.close();
+
+  /* Playwright nomme le fichier d'après un identifiant interne : on le renomme
+     pour que la composition sache quoi charger. */
+  const films = fs.readdirSync(SORTIE).filter((f) => f.endsWith(".webm") || /^[a-f0-9]{20,}\.mp4$/.test(f));
+  const dernier = films
+    .map((f) => ({ f, t: fs.statSync(path.join(SORTIE, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)[0];
+  if (dernier) {
+    const cible = path.join(SORTIE, NOM);
+    fs.renameSync(path.join(SORTIE, dernier.f), cible);
+    const mo = (fs.statSync(cible).size / 1048576).toFixed(1);
+    console.log(`\nOK — public/${NOM} (${mo} Mo)`);
+  }
+  fs.writeFileSync(
+    path.join(SORTIE, NOM.replace(/\.mp4$/, "") + "-reperes.json"),
+    JSON.stringify({ reperes, commande: path.basename(WAV) }, null, 2),
+  );
+  console.log("  repères : public/" + NOM.replace(/\.mp4$/, "") + "-reperes.json");
+}
