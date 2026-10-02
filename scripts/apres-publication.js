@@ -39,6 +39,7 @@ const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i !== -
 const CIBLE = arg('cible', '');
 const PIECE = arg('piece', '');
 const GABARIT = arg('gabarit', '');
+const SOURCE = arg('source', '');
 const ACCROCHE = arg('accroche', '');
 const SON = arg('son', '');
 const TITRE = arg('titre', '');
@@ -115,6 +116,10 @@ const heureParis = () => new Intl.DateTimeFormat('fr-FR', {
     heure: heureParis(),
     /* LES VARIABLES — sans elles, `apprendre.js` ne peut rien classer. */
     gabarit: GABARIT || null,
+    /* Ce qui a été filmé. Sans lui, `controle-avant-publication.js` ne peut pas
+       distinguer deux films du même gabarit sur deux sources différentes, et
+       bloque une publication légitime. */
+    source: SOURCE || null,
     accroche: ACCROCHE || null,
     son: SON || null,
     muet: !SON,

@@ -239,6 +239,15 @@ niveau laissé bas.
   tournage. `freezedetect` ne sert à rien ici : un écran d'attente bouge
   (spinner), et la grille de résultats est immobile parce qu'on la lit.
   → L'enregistrement doit durer **jusqu'à ce que le résultat s'affiche**.
+- **Pour filmer le clip fini** : interroger `#modal-video` et `#modal-player-ph`,
+  puis CLIQUER sur `#modal-play-overlay` — le clip ne démarre pas seul.
+  `document.querySelector("video")` rend l'aperçu 16:9 de l'accueil, déjà
+  chargé : il a fait perdre deux tournages le 01/10. Le téléchargement prend
+  ~25 s, prévoir plusieurs minutes d'attente. Le dernier plan se monte à
+  **vitesse réelle** : des sous-titres accélérés ne se lisent pas.
+- **Deux publications du même gabarit d'affilée sont admises si la SOURCE
+  change** (décision du 02/10 : « tu montres la commande vocale, comme on a
+  fait avant »). Ce qui est interdit, c'est le même gabarit ET la même source.
 - **La musique démarre à la frame où la voix se tait**, sur un impact. Pas de
   silence après une commande vocale : ça vide le montage. Mesurer la durée
   réelle du fichier de voix, ne pas l'estimer.
