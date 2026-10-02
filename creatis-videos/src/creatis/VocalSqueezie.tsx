@@ -32,6 +32,12 @@ export const SQUEEZIE: ReglagesVocal = {
   voix: "voix/commande-squeezie.mp3",
   /* Analyse relevée : 18,9 s → 408,1 s, soit 389 s. */
   dureeVraie: "6 min 29",
+  /* Le son du clip manque encore : l'enregistrement Playwright n'a pas de piste
+     audio, et il faut le vrai clip exporté — pas une synthèse. Renseigner dès
+     que `exporter-clip.mjs lbLj5Yb6SAE 1089 1121 public/clip-squeezie.mp4` a
+     tourné :
+       sonClip: { fichier: "clip-squeezie.mp4", depart: 3.9 },
+     3,9 s = (441,0 − 437,7) + 0,6, d'après les repères du tournage. */
   plans: [
     {
       debut: 0, fin: 2.4, rec: [12.0, 14.0],

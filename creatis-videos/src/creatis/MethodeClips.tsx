@@ -117,6 +117,22 @@ const DEMO: PlanDemo[] = [
 
 const FIN_DEMO = 90.5;
 
+/**
+ * Le son du clip généré, pour le dernier plan de la démonstration.
+ *
+ * `null` tant que le clip n'a pas été exporté : l'enregistrement Playwright ne
+ * porte aucune piste audio (vérifié), et synthétiser une voix à la place de
+ * celle du créateur ferait de la démonstration un faux. Dès que
+ * `exporter-clip.mjs` a produit le fichier, renseigner `fichier` et `depart`.
+ *
+ * `depart` = position dans le clip correspondant à la première image du plan :
+ * (441,0 − 437,7) + 0,6 = 3,9 s pour le tournage Squeezie.
+ */
+type SonClip = { fichier: string; depart: number; volume?: number };
+/* `as` et non une annotation : avec `: SonClip | null = null`, TypeScript
+   réduit la constante à `null` et refuse ensuite toute lecture de ses champs. */
+const SON_CLIP = null as SonClip | null;
+
 export const DUREE_METHODE = Math.round((FIN_DEMO + 2.2) * 30);
 
 /** Apparition douce et décalée, pour que le rythme soit le même partout. */
@@ -489,8 +505,22 @@ export const MethodeClips: React.FC = () => {
         <Audio src={staticFile("musique/vocal-pulse.mp3")} volume={0.75} />
       </Sequence>
       <Sequence from={Math.round(79.0 * fps)} layout="none">
-        <Audio src={staticFile("musique/vocal-pulse.mp3")} volume={0.75} />
+        {/* La musique s'efface sous le clip : on vient là pour l'entendre. */}
+        <Audio
+          src={staticFile("musique/vocal-pulse.mp3")}
+          volume={(f) => (SON_CLIP && f + 79.0 * fps >= DEMO[4].debut * fps ? 0.16 : 0.75)}
+        />
       </Sequence>
+
+      {SON_CLIP ? (
+        <Sequence from={Math.round(DEMO[4].debut * fps)} layout="none" name="Le son du clip">
+          <Audio
+            src={staticFile(SON_CLIP.fichier)}
+            trimBefore={Math.round(SON_CLIP.depart * fps)}
+            volume={SON_CLIP.volume ?? 1}
+          />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
   );
 };

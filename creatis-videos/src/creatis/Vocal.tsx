@@ -173,6 +173,23 @@ export type ReglagesVocal = {
    * sert justement à ne pas tromper le spectateur est pire que pas de bandeau.
    */
   dureeVraie: string;
+  /**
+   * LE SON DU CLIP FINI, pour le dernier plan.
+   *
+   * Playwright n'enregistre QUE l'image : `rec-*.mp4` ne porte aucune piste
+   * audio (vérifié, zéro flux). Montrer le clip généré sans l'entendre, c'est
+   * montrer la moitié du résultat — « il faut qu'on entende le clip quand
+   * même » (02/10).
+   *
+   * Le son doit donc venir du clip RÉELLEMENT exporté (`exporter-clip.mjs`),
+   * pas d'une synthèse : faire dire au créateur des mots qu'il n'a pas dits
+   * transformerait la démonstration en faux.
+   *
+   * `depart` est la position, en secondes DANS LE CLIP, qui correspond à la
+   * première image du dernier plan. Elle se calcule avec les repères du
+   * tournage : (rec_debut − repere.clipJoue) + position_au_moment_du_repere.
+   */
+  sonClip?: { fichier: string; depart: number; volume?: number };
 };
 
 const BOISERIE: ReglagesVocal = {
@@ -184,7 +201,9 @@ const BOISERIE: ReglagesVocal = {
 };
 
 export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
-  const { source, plans: PLANS_ACTIFS, dureeVoix, voix, dureeVraie } = { ...BOISERIE, ...reglages };
+  const { source, plans: PLANS_ACTIFS, dureeVoix, voix, dureeVraie, sonClip } =
+    { ...BOISERIE, ...reglages };
+  const dernier = PLANS_ACTIFS[PLANS_ACTIFS.length - 1];
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
   const s = frame / fps;
@@ -326,8 +345,25 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
           onze secondes sous des coupes rapides vide le montage de son élan.
           Le fichier commence sur un impact : on entend la musique ARRIVER. */}
       <Sequence from={FIN_VOIX} name="La musique">
-        <Audio src={staticFile("musique/vocal-pulse.mp3")} />
+        {/* La musique s'efface sous le clip : on vient là pour l'entendre, lui. */}
+        <Audio
+          src={staticFile("musique/vocal-pulse.mp3")}
+          volume={(f) =>
+            sonClip && f + FIN_VOIX >= Math.round(dernier.debut * FPS) ? 0.18 : 1
+          }
+        />
       </Sequence>
+
+      {/* Le son du clip généré, calé sur ce que montre le dernier plan. */}
+      {sonClip ? (
+        <Sequence from={Math.round(dernier.debut * FPS)} name="Le son du clip">
+          <Audio
+            src={staticFile(sonClip.fichier)}
+            trimBefore={Math.round(sonClip.depart * FPS)}
+            volume={sonClip.volume ?? 1}
+          />
+        </Sequence>
+      ) : null}
     </AbsoluteFill>
   );
 };
