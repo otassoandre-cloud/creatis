@@ -538,6 +538,54 @@
       "son": "musique-vocal-pulse",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-02-vocal-inoxtag-t1",
+      "piece": "vocal-inoxtag",
+      "titre": "vocal-inoxtag",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-02T14:21:48.833Z",
+      "heure": "16 h",
+      "gabarit": "Vocal",
+      "source": "rec-inoxtag",
+      "accroche": "test autonomie",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-02-vocal-inoxtag-g1",
+      "piece": "vocal-inoxtag",
+      "titre": "vocal-inoxtag",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-02T14:23:29.986Z",
+      "heure": "16 h",
+      "gabarit": "Vocal",
+      "source": "rec-inoxtag",
+      "accroche": "test autonomie",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/Dd_sIBzuqif/"
+    },
+    {
+      "id": "2026-10-02-vocal-inoxtag-y1",
+      "piece": "vocal-inoxtag",
+      "titre": "vocal-inoxtag",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-02T14:26:22.740Z",
+      "heure": "16 h",
+      "gabarit": "Vocal",
+      "source": "rec-inoxtag",
+      "accroche": "premiere personne",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": null
     }
   ]
 }

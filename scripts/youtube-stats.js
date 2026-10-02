@@ -138,6 +138,10 @@ const lireOnglet = async (page, onglet) => {
     let n = parseFloat(mv[1].replace(/[  ]/g, '').replace(',', '.'));
     if (mv[2] && /k/i.test(mv[2])) n *= 1000;
     if (mv[2] && /m/i.test(mv[2])) n *= 1000000;
+    /* Une publication de quelques minutes n'affiche pas encore de compteur :
+       le texte capté ne contient aucun nombre et `parseFloat` rend NaN. Zéro
+       est la bonne lecture — afficher « NaN vue » ferait croire à une panne. */
+    if (!Number.isFinite(n)) n = 0;
     out.push({
       id,
       titre: txt.slice(0, txt.indexOf(mv[0])).trim().slice(0, 90),
