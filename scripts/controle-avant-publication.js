@@ -53,6 +53,9 @@ const ALIAS = { instagram: 'g1', tiktok: 't1', youtube: 'y1', g1: 'g1', t1: 't1'
 const CIBLE_BRUTE = arg('cible', arg('compte', ''));
 const CIBLE = CIBLE_BRUTE ? ALIAS[CIBLE_BRUTE.toLowerCase()] : '';
 const GABARIT = arg('gabarit', '');
+/* Ce qu'on FILME. Deux films du même gabarit mais d'une autre source ne se
+   ressemblent pas : autre créateur, autres miniatures, autres notes. */
+const SOURCE = arg('source', '');
 
 if (CIBLE_BRUTE && !CIBLE) {
   console.error(`Cible inconnue : « ${CIBLE_BRUTE} ». Attendu : instagram|tiktok|youtube (ou g1|t1|y1).`);
@@ -77,8 +80,8 @@ if (CIBLE && PIECE) {
   plan.creneaux = (plan.creneaux || []).concat([
     { heure: 'maintenant', piece: PIECE, cible: CIBLE, statut: 'en attente' },
   ]);
-  if (GABARIT && !pieces.has(PIECE)) pieces.set(PIECE, { id: PIECE, gabarit: GABARIT });
-  else if (GABARIT) pieces.get(PIECE).gabarit = GABARIT;
+  if (GABARIT && !pieces.has(PIECE)) pieces.set(PIECE, { id: PIECE, gabarit: GABARIT, source: SOURCE });
+  else if (GABARIT) Object.assign(pieces.get(PIECE), { gabarit: GABARIT, source: SOURCE });
 }
 const fautes = [];
 const avis = [];
@@ -110,16 +113,35 @@ for (const c of plan.creneaux || []) {
    Deux publications d'affilée sur un compte ne doivent pas partager le même
    gabarit : la grille de profil donnerait l'impression d'une vidéo répétée. */
 const dernierGabarit = {};
+const sources = {};
 for (const p of registre.pieces || []) {
   if (p.statut === 'publié' && p.compte && p.gabarit) dernierGabarit[p.compte] = p.gabarit;
+  if (p.statut === 'publié' && p.compte && p.source) sources[p.compte] = p.source;
 }
 const vus = { ...dernierGabarit };
 for (const c of plan.creneaux || []) {
   if (c.statut !== 'en attente' || !c.piece || !c.cible) continue;
   const g = pieces.get(c.piece)?.gabarit;
   if (!g) { avis.push(`${c.heure} — « ${c.piece} » n'indique pas son gabarit, variété non vérifiable`); continue; }
-  if (vus[c.cible] === g) {
-    fautes.push(`${c.heure} — gabarit « ${g} » déjà utilisé juste avant sur ${c.cible} : changer de gabarit`);
+  /* ── POURQUOI CE N'EST PLUS BLOQUANT QUAND LA SOURCE CHANGE ───────────
+     La règle disait : jamais deux fois le même gabarit d'affilée sur un compte.
+     Elle vient de « les publications doivent toujours être différentes, même
+     visuellement », et elle a été écrite contre des cartes de slogan quasi
+     identiques.
+
+     Le 02/10 l'utilisateur a tranché : « c'est le contenu pour aujourd'hui qui
+     poste tout […] tu montres la commande vocale, comme on a fait avant ». Le
+     format de la commande vocale est donc le format de la maison, assumé.
+
+     Ce qui rend deux films vraiment semblables n'est pas le gabarit seul, c'est
+     le gabarit ET la même source filmée. Même gabarit, autre créateur, autres
+     miniatures, autres notes : un spectateur voit deux vidéos différentes.
+     On ne bloque donc que sur la répétition complète. */
+  const memeSource = sources[c.cible] && sources[c.cible] === pieces.get(c.piece)?.source;
+  if (vus[c.cible] === g && memeSource) {
+    fautes.push(`${c.heure} — gabarit « ${g} » ET même source qu'avant sur ${c.cible} : c'est la même vidéo deux fois`);
+  } else if (vus[c.cible] === g) {
+    avis.push(`${c.heure} — gabarit « ${g} » déjà utilisé juste avant sur ${c.cible}, mais la source change : admis`);
   }
   vus[c.cible] = g;
 }

@@ -48,7 +48,34 @@ const contour = {
   paintOrder: "stroke fill" as const,
 };
 
-export const LeMarche: React.FC = () => {
+/* Ce que l'ouverture annonce, passe de l'exterieur : deux videos qui se suivent
+   avec le meme chiffre se lisent comme la meme video. Les trois angles
+   disponibles viennent tous des memes releves publics de septembre 2026 sur
+   l'ecosysteme Whop, et chacun dit quelque chose de different :
+
+     « 887 000 $ »   ce que la plateforme a verse en un mois — l'argent existe
+     « 1 000 000 »   les videos publiees en un mois — c'est un metier de volume
+     « 1 a 5 $ »     le tarif aux mille vues — l'unite que tout clippeur connait
+
+   Le REVERS, lui, ne change pas : le clippeur median a gagne 24 $ au total. Il
+   empeche la video de ressembler a une promesse de gains faciles, et c'est ce
+   qui la rend credible aupres de gens qui ont deja essaye. */
+export type AngleMarche = {
+  /** Le chiffre, lisible a l'image 0. */
+  chiffre: string;
+  /** Ce qu'il designe, sur deux lignes. */
+  quoi: [string, string];
+};
+
+export const ANGLES: Record<string, AngleMarche> = {
+  verse: { chiffre: "887 000 $", quoi: ["versés à des clippeurs", "en un mois"] },
+  volume: { chiffre: "1 000 000", quoi: ["de clips publiés", "en un mois"] },
+  tarif: { chiffre: "1 à 5 $", quoi: ["pour mille vues", "c'est le tarif"] },
+};
+
+export const LeMarche: React.FC<{ angle?: AngleMarche }> = ({
+  angle = ANGLES.verse,
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -103,7 +130,7 @@ export const LeMarche: React.FC = () => {
             ...contour,
           }}
         >
-          887 000 $
+          {angle.chiffre}
         </div>
 
         <div
@@ -118,9 +145,9 @@ export const LeMarche: React.FC = () => {
             ...contour,
           }}
         >
-          versés à des clippeurs
+          {angle.quoi[0]}
           <br />
-          en un mois
+          {angle.quoi[1]}
         </div>
 
         {/* Le revers, sur une ligne séparée et sur fond plein : c'est une autre

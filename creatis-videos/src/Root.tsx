@@ -21,6 +21,8 @@ import { DUREE_MECANIQUE, Mecanique } from "./creatis/Mecanique";
 import { DUREE_CHIFFRES, Chiffres, CHIFFRES_DEFAUT } from "./creatis/Chiffres";
 import { DUREE_VOCAL, Vocal } from "./creatis/Vocal";
 import { AMIXEM } from "./creatis/VocalAmixem";
+import { SQUEEZIE } from "./creatis/VocalSqueezie";
+import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
 import { ClaudeMcp, DUREE_MCP } from "./creatis/ClaudeMcp";
@@ -189,6 +191,24 @@ export const RemotionRoot: React.FC = () => {
           height={1920}
         />
         {/* Même dispositif, autre tournage : seules les fenêtres changent. */}
+        {/* FORMAT LONG — la grille de notation expliquee AVANT la demonstration. */}
+        <Composition
+          id="MethodeClips"
+          component={MethodeClips}
+          durationInFrames={DUREE_METHODE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="VocalSqueezie"
+          component={Vocal}
+          defaultProps={SQUEEZIE}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="VocalAmixem"
           component={Vocal}

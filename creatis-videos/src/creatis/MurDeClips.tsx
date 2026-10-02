@@ -5,7 +5,7 @@ import {
 } from "remotion";
 import { POLICE } from "./police";
 import { COULEURS } from "./theme";
-import { DUREE_MARCHE, LeMarche } from "./LeMarche";
+import { ANGLES, DUREE_MARCHE, LeMarche } from "./LeMarche";
 import { OffreEssai } from "./OffreEssai";
 
 /**
@@ -337,7 +337,7 @@ export const MurDeClips: React.FC = () => {
           ne montraient qu'un plan d'arene, sans un chiffre. Dans Remotion comme
           en CSS, c'est le dernier ecrit qui peint par-dessus. */}
       <Sequence durationInFrames={DUREE_MARCHE} name="Le marche" layout="none">
-        <LeMarche />
+        <LeMarche angle={ANGLES.volume} />
       </Sequence>
 
       <Sequence from={ECLAT} durationInFrames={DUREE_MUR - ECLAT} name="Le mur">

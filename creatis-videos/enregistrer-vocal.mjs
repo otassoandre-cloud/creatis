@@ -296,36 +296,69 @@ try {
   await carte.click();
   marquer("fiche");
 
-  /* ── ON ATTEND QUE LE CLIP JOUE, PAS UN DÉLAI FIXE ──────────────────────
-     Le tournage du 01/10 attendait 6 s après le clic, puis coupait. Le clip
-     était encore en téléchargement : le film s'est donc terminé sur
-     « Récupération depuis YouTube », et la fin manquait À LA SOURCE — aucun
-     montage ne pouvait la rattraper. Retour : « à la fin on voit ça alors
-     qu'on devrait voir le résultat du clip final ».
+  /* ── ON ATTEND QUE LE CLIP JOUE, VRAIMENT ──────────────────────────────
+     Deux tournages ratés avant celui-ci :
 
-     On interroge donc le vrai lecteur : il doit avoir des images et un temps
-     qui avance. Tant que ce n'est pas le cas, on reste. */
-  const joue = await page
+     1. Le 01/10 matin : six secondes d'attente fixe après le clic, puis coupe.
+        Le clip était encore en téléchargement, et la fin manquait À LA SOURCE.
+     2. Le 01/10 soir : une attente « jusqu'à ce que le clip joue » qui
+        interrogeait `document.querySelector("video")` — soit le PREMIER lecteur
+        de la page, l'aperçu 16:9 de l'accueil, déjà chargé. Elle rendait vrai
+        immédiatement. Relevé image par image : l'aperçu du clip affichait
+        « Téléchargement du clip… » pendant les neuf secondes filmées.
+
+     Les bons éléments sont `#modal-video` (le lecteur du clip) et
+     `#modal-player-ph` (l'écran d'attente qui le masque). Tant que le
+     placeholder est visible, le clip n'est pas là. Et il ne démarre pas tout
+     seul : il faut cliquer. */
+  const pret = await page
     .waitForFunction(
       () => {
-        const v = document.querySelector("video");
-        return !!v && v.readyState >= 3 && v.currentTime > 0.2;
+        const v = document.getElementById("modal-video");
+        const ph = document.getElementById("modal-player-ph");
+        const attend = ph && getComputedStyle(ph).display !== "none";
+        return !!v && !attend && getComputedStyle(v).display !== "none" && v.readyState >= 2;
       },
       undefined,
-      { timeout: 180000, polling: 500 },
+      { timeout: 300000, polling: 500 },
     )
     .then(() => true)
     .catch(() => false);
 
-  if (joue) {
-    marquer("clipJoue");
-    console.log("  le clip JOUE — on filme le résultat");
-    /* Assez pour qu'on voie le clip tourner avec ses sous-titres. */
-    await attendre(9000);
+  if (!pret) {
+    console.log("  ⚠ le clip n'a jamais fini de se télécharger en 5 min.");
+    console.log("    La fin sera inutilisable : ne pas y monter de plan final.");
+    await attendre(2000);
   } else {
-    console.log("  ⚠ le clip n'a jamais joué en 3 min : la fin sera inutilisable,");
-    console.log("    ne pas monter de plan final sur cet enregistrement.");
-    await attendre(2500);
+    marquer("clipPret");
+    console.log("  le clip est CHARGÉ — on le lance");
+
+    /* Le clic démarre la lecture ; sans lui l'image reste sur la première
+       frame et on filme un arrêt sur image en croyant filmer un clip. */
+    await page.locator("#modal-play-overlay, .modal-play-overlay").first().click().catch(() => {});
+    await attendre(600);
+
+    const joue = await page
+      .waitForFunction(
+        () => {
+          const v = document.getElementById("modal-video");
+          return !!v && !v.paused && v.currentTime > 0.5;
+        },
+        undefined,
+        { timeout: 20000, polling: 250 },
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (joue) {
+      marquer("clipJoue");
+      const t = await page.evaluate(() => document.getElementById("modal-video").currentTime);
+      console.log(`  le clip JOUE (t=${t.toFixed(1)}s) — on filme douze secondes`);
+      await attendre(12000);
+    } else {
+      console.log("  ⚠ le clip est chargé mais ne démarre pas au clic.");
+      await attendre(3000);
+    }
   }
   console.log("  clip ouvert : " + titre.slice(0, 60));
 
