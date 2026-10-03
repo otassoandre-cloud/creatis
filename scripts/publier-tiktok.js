@@ -212,6 +212,20 @@ const SON = arg('son', '');
       if (nomSon) console.log(`  son choisi : « ${nomSon} »`);
 
       await shot('son-pose');
+
+      /* ── POURQUOI ON NE TOUCHE PAS AU MÉLANGE ICI ─────────────────────
+         Un essai du 03/10 cherchait le réglage de volume pour remonter le son
+         d'origine. Le sélecteur `:text-is("Volume")` a matché autre chose, les
+         flèches ont agi sur des curseurs qui n'étaient pas ceux du volume, et
+         le script a annoncé « mélange réglé » alors que la capture montre
+         qu'aucun panneau de volume n'était ouvert. Pire : ces clics ont laissé
+         l'éditeur dans un état où « Enregistrer » ne répondait plus.
+
+         Une étape qui prétend réussir sans l'avoir fait est pire que pas
+         d'étape. On laisse donc TikTok mélanger par défaut, et c'est le FICHIER
+         qui porte la protection : le son du clip y est à plein niveau sur le
+         dernier plan (−19 dB contre −25 dB pour la musique). */
+
       const enreg = page.locator('button:has-text("Enregistrer"), button:has-text("Save")').first();
       if (!(await enreg.isVisible().catch(() => false))) return 'bouton « Enregistrer » introuvable après le son';
       await enreg.click({ timeout: 8000 }).catch(() => {});
@@ -220,39 +234,23 @@ const SON = arg('son', '');
       return null;
     };
 
-    /* ── NE PAS POSER DE SON SUR UNE VIDÉO QUI PARLE ────────────────────
-       La règle du son a été écrite pour les pièces MUETTES, dont la source de
-       trafic « Son » était à 0 %. Appliquée à un film qui porte une voix off,
-       elle superpose un morceau à la narration et la noie — c'est arrivé le
-       01/10 sur le film de lancement.
-       On mesure donc le niveau audio du fichier AVANT : au-dessus de -45 dB il
-       y a une vraie bande-son, et on n'y touche pas. */
-    const niveau = (() => {
-      /* ffmpeg écrit `volumedetect` sur STDERR, jamais sur stdout. Un premier
-         jet lisait stdout, ne trouvait rien, et concluait « pas de son » : le
-         01/10 un morceau est parti par-dessus une commande vocale pour cette
-         seule raison. D'où `spawnSync`, qui rend les deux flux. */
-      try {
-        const ff = path.join(RACINE, 'node_modules', 'ffmpeg-static', 'ffmpeg.exe');
-        if (!fs.existsSync(ff)) return null;
-        const r = require('child_process').spawnSync(
-          ff, ['-i', path.resolve(VIDEO), '-af', 'volumedetect', '-f', 'null', '-'],
-          { encoding: 'utf8' },
-        );
-        const m = String(r.stderr || '').match(/mean_volume:\s*(-?[\d.]+)/);
-        return m ? parseFloat(m[1]) : null;
-      } catch (e) {
-        return null;
-      }
-    })();
+    /* ── ON POSE TOUJOURS UN SON TENDANCE ──────────────────────────────
+       Première règle : ne rien poser sur une vidéo qui parle, pour éviter de
+       noyer la voix off (défaut du 01/10). Elle allait trop loin : le 03/10
+       l'utilisateur rappelle que le son tendance de CHAQUE plateforme est une
+       consigne permanente — c'est lui qui donne de la portée, bien plus que
+       la bande-son qu'on fabrique.
+
+       On pose donc toujours, et c'est le MÉLANGE qui protège la voix : son
+       d'origine au maximum, son ajouté en dessous. Le niveau du fichier n'est
+       plus un motif pour s'abstenir, seulement une information. */
 
     let soucis = null;
-    if (niveau !== null && niveau > -45) {
-      console.log(`  la vidéo porte déjà du son (${niveau} dB) — aucun son ajouté`);
-      console.log('  (poser un morceau par-dessus une voix off la noierait)');
-    } else {
-      soucis = await poserUnSon().catch((e) => String(e.message || e).split(String.fromCharCode(10))[0]);
-    }
+    /* On pose toujours : le niveau du fichier n est plus un motif pour
+       s abstenir. C est le melange qui protege la voix.
+       (Le calcul du niveau a ete retire avec l ancienne condition — le
+       rajouter ici si on veut le journaliser un jour.) */
+    soucis = await poserUnSon().catch((e) => String(e.message || e).split(String.fromCharCode(10))[0]);
     if (soucis) {
       console.warn('');
       console.warn('SANS SON — ' + soucis);

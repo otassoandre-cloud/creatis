@@ -634,6 +634,54 @@
       "son": "musique-vocal-pulse",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-mcfly-t1",
+      "piece": "vocal-mcfly",
+      "titre": "vocal-mcfly",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T10:35:09.502Z",
+      "heure": "12 h",
+      "gabarit": "Vocal",
+      "source": "rec-mcfly",
+      "accroche": "critere retention",
+      "son": "original sound - elrolitas99",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-mcfly-g1",
+      "piece": "vocal-mcfly",
+      "titre": "vocal-mcfly",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T10:36:52.949Z",
+      "heure": "12 h",
+      "gabarit": "Vocal",
+      "source": "rec-mcfly",
+      "accroche": "critere retention",
+      "son": "musique+clip",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeB2-eHuKeE/"
+    },
+    {
+      "id": "2026-10-03-vocal-mcfly-y1",
+      "piece": "vocal-mcfly",
+      "titre": "vocal-mcfly",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T10:39:28.008Z",
+      "heure": "12 h",
+      "gabarit": "Vocal",
+      "source": "rec-mcfly",
+      "accroche": "premiere personne",
+      "son": "musique+clip",
+      "muet": false,
+      "url": null
     }
   ]
 }

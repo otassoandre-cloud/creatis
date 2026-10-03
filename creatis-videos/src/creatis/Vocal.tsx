@@ -348,9 +348,16 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
         {/* La musique s'efface sous le clip : on vient là pour l'entendre, lui. */}
         <Audio
           src={staticFile("musique/vocal-pulse.mp3")}
-          volume={(f) =>
-            sonClip && f + FIN_VOIX >= Math.round(dernier.debut * FPS) ? 0.18 : 1
-          }
+          /* Fondu de 0,4 s plutôt qu'une bascule sèche : une musique qui
+             tombe d'un coup s'entend comme un défaut, pas comme un choix. */
+          volume={(f) => {
+            if (!sonClip) return 1;
+            const bascule = Math.round(dernier.debut * FPS) - FIN_VOIX;
+            return interpolate(f, [bascule - 12, bascule], [1, 0.16], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            });
+          }}
         />
       </Sequence>
 

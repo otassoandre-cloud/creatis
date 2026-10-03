@@ -355,6 +355,46 @@ try {
       const t = await page.evaluate(() => document.getElementById("modal-video").currentTime);
       console.log(`  le clip JOUE (t=${t.toFixed(1)}s) — on filme douze secondes`);
       await attendre(12000);
+
+      /* ── ON RÉCUPÈRE LE CLIP LUI-MÊME, SON COMPRIS ────────────────────
+         Playwright n'enregistre que l'image : le film se terminait donc sur un
+         clip muet, « une musique banale qui n'apporte rien » (03/10).
+
+         Trois chemins essayés avant celui-ci :
+           · le « Mixage stéréo » de Windows : mesuré à −90 dB, il ne capte
+             rien de ce que joue le navigateur ;
+           · `exporter-clip.mjs` : demande des identifiants Créatis absents ;
+           · le CLI Railway : refusé par les permissions.
+
+         Or le lecteur joue depuis un blob DANS la page. On le relit donc avec
+         `fetch`, et on le sort en base64 : c'est exactement le fichier que
+         l'utilisateur obtiendrait en cliquant sur Exporter, sans rien d'autre
+         que la page déjà ouverte. */
+      try {
+        const b64 = await page.evaluate(async () => {
+          const v = document.getElementById("modal-video");
+          if (!v || !v.src.startsWith("blob:")) return null;
+          const buf = await (await fetch(v.src)).arrayBuffer();
+          let bin = "";
+          const o = new Uint8Array(buf);
+          const PAS = 0x8000; // par tranches : String.fromCharCode a une limite d'arguments
+          for (let i = 0; i < o.length; i += PAS) {
+            bin += String.fromCharCode.apply(null, o.subarray(i, i + PAS));
+          }
+          return btoa(bin);
+        });
+        if (b64) {
+          const nomClip = NOM.replace(/^rec-/, "clip-").replace(/\.mp4$/, "") + ".mp4";
+          fs.writeFileSync(path.join(SORTIE, nomClip), Buffer.from(b64, "base64"));
+          const mo = (fs.statSync(path.join(SORTIE, nomClip)).size / 1048576).toFixed(1);
+          console.log(`  clip récupéré : public/${nomClip} (${mo} Mo)`);
+          reperes.clipFichier = nomClip;
+        } else {
+          console.log("  ⚠ le lecteur n'expose pas de blob : pas de son de clip pour ce tournage.");
+        }
+      } catch (e) {
+        console.log("  recuperation du clip impossible : " + e.message);
+      }
     } else {
       console.log("  ⚠ le clip est chargé mais ne démarre pas au clic.");
       await attendre(3000);

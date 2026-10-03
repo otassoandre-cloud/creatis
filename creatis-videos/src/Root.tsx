@@ -24,6 +24,7 @@ import { AMIXEM } from "./creatis/VocalAmixem";
 import { SQUEEZIE } from "./creatis/VocalSqueezie";
 import { INOXTAG } from "./creatis/VocalInoxtag";
 import { MICHOU } from "./creatis/VocalMichou";
+import { MCFLY } from "./creatis/VocalMcfly";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
@@ -201,6 +202,15 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1920}
           height={1080}
+        />
+        <Composition
+          id="VocalMcfly"
+          component={Vocal}
+          defaultProps={MCFLY}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalMichou"
