@@ -145,7 +145,19 @@ const derniere = process.argv.includes('--derniere');
        · Le deuxième a cru passer par le sélecteur de fichier natif. Il n'y en
          a pas : Studio utilise bien un input, simplement caché. */
     console.log('· dépôt de la miniature');
-    const champ = page.locator('ytcp-thumbnail-uploader input[type="file"], input#file-loader').first();
+    /* ── UN SEUL CHAMP, ET CE N'EST PAS CELUI QU'ON VISAIT ──────────────
+       Les sélecteurs `ytcp-thumbnail-uploader input[type=file]` et
+       `input#file-loader` ne correspondent plus. Sondé le 03/10 : la page de
+       détails ne contient QU'UN SEUL `input[type=file]`, et le bloc miniature
+       est bien présent (« Importer un fichier », « Tests A/B »).
+
+       Ce n'est donc pas un droit manquant — j'ai longtemps soupçonné la chaîne
+       non vérifiée, à tort. On prend le champ unique. */
+    const champ = page.locator('input[type="file"]').first();
+    const nbChamps = await page.locator('input[type="file"]').count();
+    if (nbChamps !== 1) {
+      console.log(`  ${nbChamps} champs de fichier sur la page — on prend le premier, à vérifier sur la capture`);
+    }
     if (!(await champ.count())) {
       await shot('sans-champ');
       console.error('Champ de miniature absent. Causes possibles :');
@@ -153,6 +165,49 @@ const derniere = process.argv.includes('--derniere');
       console.error('  · le compte n est pas VÉRIFIÉ — la miniature personnalisée y est liée.');
       throw new Error('champ de miniature introuvable');
     }
+    /* ── IL FAUT D'ABORD DESCENDRE JUSQU'AU BLOC ────────────────────────
+       Les captures d'échec montraient toujours le HAUT de la page : le bloc
+       « Miniature » est sous la description, hors écran, et Studio ne câble
+       son champ que lorsqu'il est rendu. On l'amène donc à l'écran avant de
+       déposer quoi que ce soit. */
+    const bloc = page.locator('ytcp-thumbnail-uploader, :text("Importer un fichier")').first();
+    await bloc.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+    await shot('bloc-miniature');
+
+    /* ── « IMPORTER UN FICHIER » EST-IL SEULEMENT CLIQUABLE ? ───────────
+       Le 03/10, trois essais ont fini sur « Enregistrer est resté grisé » —
+       un symptôme, pas la cause. La capture du bloc montre enfin le vrai
+       état : « Importer un fichier » est PÂLE, pendant que « Sélectionner
+       dans la vidéo » et « Tests A/B » sont noirs. Le bouton est désactivé.
+
+       Une sonde avait pourtant conclu que tout allait bien : elle cherchait
+       le TEXTE « Importer un fichier » dans la page, et il y est. Présence
+       n'est pas disponibilité — il fallait lire l'état, pas l'existence. */
+    const importer = page.locator(':text("Importer un fichier")').first();
+    const inactif = await importer.evaluate((n) => {
+      let e = n;
+      for (let i = 0; i < 6 && e; i++) {
+        if (e.hasAttribute?.('disabled') || e.getAttribute?.('aria-disabled') === 'true') return true;
+        const o = parseFloat(getComputedStyle(e).opacity || '1');
+        if (o < 0.7) return true;
+        e = e.parentElement;
+      }
+      return false;
+    }).catch(() => false);
+
+    if (inactif) {
+      await shot('import-desactive');
+      console.error('');
+      console.error('« Importer un fichier » est DÉSACTIVÉ sur cette chaîne.');
+      console.error('YouTube réserve la miniature personnalisée aux chaînes validées.');
+      console.error('  → aller sur youtube.com/verify et valider le numéro de téléphone,');
+      console.error("    puis relancer. L'image est deja prete, rien d'autre a refaire.");
+      console.error('En attendant, « Sélectionner dans la vidéo » reste possible, mais il');
+      console.error("ne prend qu une image DE la video, pas la miniature dessinee.");
+      throw new Error('miniature personnalisée indisponible : chaîne non validée');
+    }
+
     await champ.setInputFiles(path.resolve(IMAGE));
     await page.waitForTimeout(9000);
     await shot('posee');

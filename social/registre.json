@@ -682,6 +682,22 @@
       "son": "musique+clip",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-03-retention-longue-y1",
+      "piece": "retention-longue",
+      "titre": "retention-longue",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T11:43:59.222Z",
+      "heure": "13 h",
+      "gabarit": "RetentionLongue",
+      "source": "rec-mcfly",
+      "accroche": "probleme nomme",
+      "son": "voix-off",
+      "muet": false,
+      "url": null
     }
   ]
 }

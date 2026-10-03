@@ -25,6 +25,8 @@ import { SQUEEZIE } from "./creatis/VocalSqueezie";
 import { INOXTAG } from "./creatis/VocalInoxtag";
 import { MICHOU } from "./creatis/VocalMichou";
 import { MCFLY } from "./creatis/VocalMcfly";
+import { MiniatureLongue } from "./creatis/MiniatureLongue";
+import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
@@ -202,6 +204,25 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1920}
           height={1080}
+        />
+        {/* Miniature de la video longue, dessinee d apres douze references du
+            domaine relevees sur YouTube. */}
+        {/* FORMAT LONG du 03/10 — un seul critere, et ce qu il faut couper. */}
+        <Composition
+          id="RetentionLongue"
+          component={RetentionLongue}
+          durationInFrames={DUREE_RETENTION}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="MiniatureLongue"
+          component={MiniatureLongue}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
         />
         <Composition
           id="VocalMcfly"
