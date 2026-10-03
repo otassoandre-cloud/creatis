@@ -586,6 +586,54 @@
       "son": "musique-vocal-pulse",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-michou-t1",
+      "piece": "vocal-michou",
+      "titre": "vocal-michou",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T08:51:53.866Z",
+      "heure": "10 h",
+      "gabarit": "Vocal",
+      "source": "rec-michou",
+      "accroche": "accroche 2 secondes",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-michou-g1",
+      "piece": "vocal-michou",
+      "titre": "vocal-michou",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T08:53:33.810Z",
+      "heure": "10 h",
+      "gabarit": "Vocal",
+      "source": "rec-michou",
+      "accroche": "accroche 2 secondes",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeBrLa5uiS_/"
+    },
+    {
+      "id": "2026-10-03-vocal-michou-y1",
+      "piece": "vocal-michou",
+      "titre": "vocal-michou",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T08:57:16.066Z",
+      "heure": "10 h",
+      "gabarit": "Vocal",
+      "source": "rec-michou",
+      "accroche": "premiere personne",
+      "son": "musique-vocal-pulse",
+      "muet": false,
+      "url": null
     }
   ]
 }

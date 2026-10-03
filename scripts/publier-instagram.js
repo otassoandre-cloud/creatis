@@ -274,7 +274,23 @@ const STRATEGIES = [
 
     console.log('· partage');
     await cliquer(['Partager', 'Share'], 'partage', true);
-    await page.waitForTimeout(20000);
+
+    /* ── ON ATTEND LA FIN DU TRANSFERT, PAS UN DÉLAI FIXE ────────────────
+       Vingt secondes suffisaient d'habitude. Le 03/10 elles n'ont pas suffi :
+       la capture montrait encore « Partage en cours », le script a rendu la
+       main, et `apres-publication.js` a lu l'onglet Reels AVANT que le nouveau
+       reel y soit — il a donc inscrit au registre l'URL de la veille.
+
+       Une mesure fausse est pire que pas de mesure : on attend que le panneau
+       de transfert disparaisse, jusqu'à trois minutes. */
+    const enVol = page.locator('text=/Partage en cours|Sharing|Publication en cours/i').first();
+    for (let i = 0; i < 90; i++) {
+      const visible = await enVol.isVisible().catch(() => false);
+      if (!visible) break;
+      if (i === 0) console.log('  transfert en cours — on attend la fin');
+      await page.waitForTimeout(2000);
+    }
+    await page.waitForTimeout(6000);
     await shot('apres-partage');
     const confirme = await page
       .locator('text=/Votre publication a été partagée|Your post has been shared|Reel partagé/i')
