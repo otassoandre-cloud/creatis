@@ -1,0 +1,16 @@
+Ce n'est pas la durée de ta vidéo qui décide du nombre de clips dedans.
+
+J'ai passé six vidéos de six créateurs dans la même analyse, et le résultat ne suit pas la longueur :
+— 54 minutes → 10 clips
+— 20 minutes → 8 clips
+— une autre, plus longue → 4 clips seulement
+
+Ce qui fait la différence, c'est la DENSITÉ : combien de moments autonomes, avec une accroche et une fin nette, par tranche de dix minutes.
+
+Concrètement, pour qu'un passage soit « clipable », il lui faut les cinq critères en même temps : une accroche dans les 2 premières secondes, de l'autonomie (ça se comprend sans le reste), de la rétention (aucun silence), de la valeur, et quelque chose qui fait réagir.
+
+Une vidéo longue et molle donne moins de clips qu'une vidéo courte et dense. Allonger ne sert à rien.
+
+creatis.app
+
+#clipping #montagevideo #reels #ia

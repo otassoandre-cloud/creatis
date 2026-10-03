@@ -1,13 +1,14 @@
-YOUTUBE — 2026-10-03 — 29 publication(s)
+YOUTUBE — 2026-10-03 — 32 publication(s)
 
-VIDÉOS — 4
+VIDÉOS — 5
       10 vues  il y a 5 j     0:35 Transformer une vidéo YouTube en Short avec l'IA (t
-       5 vues  il y a 1 j     0:33 Créatis — transforme tes vidéos longues en clips
-       2 vues  il y a 23 h    1:33 Noter un clip sur 100 : la grille complète (5 critè
-       2 vues  il y a 4 j     0:31 Découper une vidéo longue en Shorts avec l'IA — 10 
-  → médiane 5 · meilleure 10
+       6 vues  il y a 2 j     0:33 Créatis — transforme tes vidéos longues en clips
+       2 vues  il y a 1 j     1:33 Noter un clip sur 100 : la grille complète (5 critè
+       2 vues  il y a 5 j     0:31 Découper une vidéo longue en Shorts avec l'IA — 10 
+       0 vue   il y a 4 h     1:17 Pourquoi vos clips ne retiennent pas — les 3 coupes
+  → médiane 2 · meilleure 10
 
-SHORTS — 25
+SHORTS — 27
     1900 vues                 Je suis le seul a découvrir ça que maintenant ??
     1300 vues                 Tuto montage short en 30 secondes #claude #clips
     1200 vues                 1 seul site pour transformer ta vidéo en 10 clips viraux
@@ -23,17 +24,19 @@ SHORTS — 25
      677 vues                 Je suis la seule à découvrir ça que maintenant ?? 🤯
      535 vues                 Et si l’IA pouvait aider à grandir ta communauté tu dira
      309 vues                 Le clipping en 3 étapes simple #clipping
+     155 vues                 Je teste une commande vocale sur la dernière vidéo de Mi
      120 vues                 Je teste une commande vocale sur la dernière vidéo d'Ino
      120 vues                 Tes concurrents on déjà posté 12 clips pendant que tu ou
-      51 vues                 Je teste une commande vocale sur la dernière vidéo de Sq
+      57 vues                 Je teste une commande vocale sur la dernière vidéo de Mc
+      52 vues                 Je teste une commande vocale sur la dernière vidéo de Sq
+      48 vues                 Une phrase, huit clips notés — la grille de notation
       44 vues                 1 vidéo longue → 10 clips prêts à poster
-      40 vues                 Une phrase, huit clips notés — la grille de notation
       21 vues                 Incroyable avec une simple commande vocal tu obtient 10 
       14 vues                 Claude Fable 5 a codé ça tout seul et personne n’en parl
        6 vues                 Jungle ,montagne peut importe où tu es. 🌍
        6 vues                 Tout le monde peut faire 500€ pars vidéo
        0 vue                  Ne sous-estime pas la puissance des Shorts pour faire dé
-  → médiane 677 · meilleure 1900
+  → médiane 535 · meilleure 1900
 
 YouTube est le seul réseau où le lien de la description est cliquable
 sans mille abonnés. Juger sur les clics vers creatis.app, pas sur les vues.

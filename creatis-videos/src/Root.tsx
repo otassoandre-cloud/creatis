@@ -25,6 +25,7 @@ import { SQUEEZIE } from "./creatis/VocalSqueezie";
 import { INOXTAG } from "./creatis/VocalInoxtag";
 import { MICHOU } from "./creatis/VocalMichou";
 import { MCFLY } from "./creatis/VocalMcfly";
+import { MISTERV } from "./creatis/VocalMisterV";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
@@ -223,6 +224,15 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1280}
           height={720}
+        />
+        <Composition
+          id="VocalMisterV"
+          component={Vocal}
+          defaultProps={MISTERV}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalMcfly"

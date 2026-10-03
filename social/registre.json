@@ -698,6 +698,54 @@
       "son": "voix-off",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-misterv-t1",
+      "piece": "vocal-misterv",
+      "titre": "vocal-misterv",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T16:22:59.464Z",
+      "heure": "18 h",
+      "gabarit": "Vocal",
+      "source": "rec-misterv",
+      "accroche": "densite pas duree",
+      "son": "tendance",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-03-vocal-misterv-g1",
+      "piece": "vocal-misterv",
+      "titre": "vocal-misterv",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T16:24:42.480Z",
+      "heure": "18 h",
+      "gabarit": "Vocal",
+      "source": "rec-misterv",
+      "accroche": "densite pas duree",
+      "son": "musique+clip",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeCezKfudpU/"
+    },
+    {
+      "id": "2026-10-03-vocal-misterv-y1",
+      "piece": "vocal-misterv",
+      "titre": "vocal-misterv",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-03T16:27:19.390Z",
+      "heure": "18 h",
+      "gabarit": "Vocal",
+      "source": "rec-misterv",
+      "accroche": "titre court avec chiffre",
+      "son": "musique+clip",
+      "muet": false,
+      "url": null
     }
   ]
 }

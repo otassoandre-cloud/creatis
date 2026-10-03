@@ -4,18 +4,26 @@
   "handle": "@Creatis_officiel",
   "publications": [
     {
+      "id": "9eDjixB-WHo",
+      "titre": "1:17 Pourquoi vos clips ne retiennent pas — les 3 coupes à faire",
+      "vues": 0,
+      "age": "il y a 4 h",
+      "heures": null,
+      "onglet": "Vidéo"
+    },
+    {
       "id": "IX6481WSO6Y",
       "titre": "1:33 Noter un clip sur 100 : la grille complète (5 critères)",
       "vues": 2,
-      "age": "il y a 23 h",
+      "age": "il y a 1 j",
       "heures": null,
       "onglet": "Vidéo"
     },
     {
       "id": "lrSbjOYJrpo",
       "titre": "0:33 Créatis — transforme tes vidéos longues en clips",
-      "vues": 5,
-      "age": "il y a 1 j",
+      "vues": 6,
+      "age": "il y a 2 j",
       "heures": null,
       "onglet": "Vidéo"
     },
@@ -23,7 +31,7 @@
       "id": "93FaFgFWVvE",
       "titre": "0:31 Découper une vidéo longue en Shorts avec l'IA — 10 clips notés",
       "vues": 2,
-      "age": "il y a 4 j",
+      "age": "il y a 5 j",
       "heures": null,
       "onglet": "Vidéo"
     },
@@ -36,6 +44,22 @@
       "onglet": "Vidéo"
     },
     {
+      "id": "1zouLqE_WQE",
+      "titre": "Je teste une commande vocale sur la dernière vidéo de McFly et Carlito",
+      "vues": 57,
+      "age": "",
+      "heures": null,
+      "onglet": "Short"
+    },
+    {
+      "id": "aCRHT1ffEcU",
+      "titre": "Je teste une commande vocale sur la dernière vidéo de Michou",
+      "vues": 155,
+      "age": "",
+      "heures": null,
+      "onglet": "Short"
+    },
+    {
       "id": "rKW3ixDbfF4",
       "titre": "Je teste une commande vocale sur la dernière vidéo d'Inoxtag",
       "vues": 120,
@@ -46,7 +70,7 @@
     {
       "id": "kHYROVYEKhY",
       "titre": "Je teste une commande vocale sur la dernière vidéo de Squeezie",
-      "vues": 51,
+      "vues": 52,
       "age": "",
       "heures": null,
       "onglet": "Short"
@@ -54,7 +78,7 @@
     {
       "id": "t-UPX0BlCk4",
       "titre": "Une phrase, huit clips notés — la grille de notation",
-      "vues": 40,
+      "vues": 48,
       "age": "",
       "heures": null,
       "onglet": "Short"
