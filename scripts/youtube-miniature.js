@@ -175,37 +175,36 @@ const derniere = process.argv.includes('--derniere');
     await page.waitForTimeout(2500);
     await shot('bloc-miniature');
 
-    /* ── « IMPORTER UN FICHIER » EST-IL SEULEMENT CLIQUABLE ? ───────────
-       Le 03/10, trois essais ont fini sur « Enregistrer est resté grisé » —
-       un symptôme, pas la cause. La capture du bloc montre enfin le vrai
-       état : « Importer un fichier » est PÂLE, pendant que « Sélectionner
-       dans la vidéo » et « Tests A/B » sont noirs. Le bouton est désactivé.
+    /* ── LE VRAI BLOCAGE, ET IL EST ÉCRIT PAR YOUTUBE ──────────────────
+       Trois diagnostics faux avant celui-ci, le 03 et le 04/10 :
+         1. « Enregistrer est resté grisé » — un symptôme, pas une cause.
+         2. « le bloc Miniature est là, donc le droit existe » — la sonde
+            cherchait le TEXTE, et il y est. Présence n'est pas disponibilité.
+         3. « Importer un fichier est désactivé » — faux : mesuré, l'élément
+            n'a ni `disabled` ni `aria-disabled`, `pointer-events: auto`,
+            opacité 1. Le gris que je voyais était le style du bloc.
 
-       Une sonde avait pourtant conclu que tout allait bien : elle cherchait
-       le TEXTE « Importer un fichier » dans la page, et il y est. Présence
-       n'est pas disponibilité — il fallait lire l'état, pas l'existence. */
-    const importer = page.locator(':text("Importer un fichier")').first();
-    const inactif = await importer.evaluate((n) => {
-      let e = n;
-      for (let i = 0; i < 6 && e; i++) {
-        if (e.hasAttribute?.('disabled') || e.getAttribute?.('aria-disabled') === 'true') return true;
-        const o = parseFloat(getComputedStyle(e).opacity || '1');
-        if (o < 0.7) return true;
-        e = e.parentElement;
-      }
-      return false;
-    }).catch(() => false);
-
-    if (inactif) {
-      await shot('import-desactive');
+       Le test FONCTIONNEL a tranché : on clique, et YouTube ouvre une boîte —
+           « Accédez à plus de fonctionnalités YouTube
+             Pour ajouter des miniatures personnalisées,
+             validez votre numéro de téléphone. »
+       Le bouton marche ; c'est le COMPTE qui n'a pas le droit. Et la
+       validation demande un code reçu par SMS : elle ne peut pas être faite
+       d'ici, elle appartient au propriétaire de la chaîne. */
+    const porte = page.locator('text=/validez votre num[ée]ro de t[ée]l[ée]phone|verify your phone/i').first();
+    await page.locator(':text("Importer un fichier")').first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(3500);
+    if (await porte.isVisible().catch(() => false)) {
+      await shot('validation-demandee');
       console.error('');
-      console.error('« Importer un fichier » est DÉSACTIVÉ sur cette chaîne.');
-      console.error('YouTube réserve la miniature personnalisée aux chaînes validées.');
-      console.error('  → aller sur youtube.com/verify et valider le numéro de téléphone,');
-      console.error("    puis relancer. L'image est deja prete, rien d'autre a refaire.");
-      console.error('En attendant, « Sélectionner dans la vidéo » reste possible, mais il');
-      console.error("ne prend qu une image DE la video, pas la miniature dessinee.");
-      throw new Error('miniature personnalisée indisponible : chaîne non validée');
+      console.error('YouTube refuse : « Pour ajouter des miniatures personnalisées,');
+      console.error('validez votre numéro de téléphone. »');
+      console.error('');
+      console.error('  → youtube.com/verify, une fois, deux minutes, un code par SMS.');
+      console.error("  → L'image est déjà prête : après validation, relancer ce script suffit.");
+      console.error('');
+      console.error('Je ne peux pas valider à votre place : le code arrive sur votre téléphone.');
+      throw new Error('miniature personnalisée : numéro de téléphone non validé');
     }
 
     await champ.setInputFiles(path.resolve(IMAGE));
