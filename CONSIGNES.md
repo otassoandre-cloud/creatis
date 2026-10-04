@@ -232,6 +232,12 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **Le format long doit MONTRER, pas seulement dire.** Chaque point expliqué
+  s'illustre avec du matériau réel : une forme d'onde avec les silences
+  marqués, un clip qui joue, la grille des notes, une capture de Studio. Les
+  diapos de texte enchaînées sur une voix off, c'est « tout plat, tout doux »
+  (04/10) — et c'est ce que je produis par défaut si je n'y prends pas garde.
+  Le matériau existe : neuf tournages, leurs grilles, leurs clips avec son.
 - **La legende se pose entre 45 et 65 % de la hauteur**, jamais plus bas.
   Mesure du 04/10 sur une capture reelle : la ligne du pseudo commence a 84 %,
   la colonne de boutons monte jusqu a 53 %, et les sous-titres incrustes du

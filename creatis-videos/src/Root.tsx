@@ -33,6 +33,7 @@ import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { MiniatureGrille } from "./creatis/MiniatureGrille";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
+import { DUREE_ESSAI, EssaiIllustrations } from "./creatis/EssaiIllustrations";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
@@ -214,6 +215,15 @@ export const RemotionRoot: React.FC = () => {
         {/* Miniature de la video longue, dessinee d apres douze references du
             domaine relevees sur YouTube. */}
         {/* FORMAT LONG du 03/10 — un seul critere, et ce qu il faut couper. */}
+        {/* Planche d essai des illustrations, avant d en batir un film. */}
+        <Composition
+          id="EssaiIllustrations"
+          component={EssaiIllustrations}
+          durationInFrames={DUREE_ESSAI}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
         <Composition
           id="PremiereSeconde"
           component={PremiereSeconde}
