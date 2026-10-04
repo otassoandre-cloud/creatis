@@ -54,7 +54,7 @@ const FPS = 30;
 /* La musique prend le relais à la frame qui suit immédiatement la dernière
    syllabe. La durée de la voix est MESURÉE sur le fichier (`ffmpeg -i`) et
    passée en réglage : l'estimer décale la musique. */
-const DEBUT_VOIX = Math.round(0.6 * FPS);
+const DEBUT_VOIX_PAR_DEFAUT = 0.6;
 
 export const DUREE_VOCAL = 13.5 * FPS; // 405 images — aucun temps mort
 
@@ -65,6 +65,14 @@ type Plan = {
   rec: [number, number];
   /** Rectangle UTILE de l'enregistrement, en pixels source : [x, y, l, h]. */
   cadre: [number, number, number, number];
+  /**
+   * Position, en secondes DANS LE CLIP, du son à poser sur ce plan.
+   *
+   * N'importe quel plan peut porter le son du clip, pas seulement le dernier :
+   * les films qui s'ouvrent sur le résultat en ont besoin dès la première
+   * image. La musique s'efface automatiquement sous chaque plan qui en a un.
+   */
+  sonDepart?: number;
   texte?: string;
 };
 
@@ -190,6 +198,18 @@ export type ReglagesVocal = {
    * tournage : (rec_debut − repere.clipJoue) + position_au_moment_du_repere.
    */
   sonClip?: { fichier: string; depart: number; volume?: number };
+  /**
+   * Seconde où la commande se fait entendre.
+   *
+   * Elle valait 0,6 s, parce que le film commençait par elle. Mesuré le 04/10
+   * dans Studio : sur mon format, « ont continué de regarder » tombe à 9,9 %
+   * contre 30,4 % pour un Short de la même chaîne — neuf personnes sur dix
+   * balaient dans la première seconde. Ceux qui restent, eux, regardent 79 %
+   * du film : ce n'est pas le montage qui perd, c'est l'ouverture.
+   *
+   * D'où les films qui commencent par le RÉSULTAT : la voix arrive après.
+   */
+  debutVoix?: number;
 };
 
 const BOISERIE: ReglagesVocal = {
@@ -201,9 +221,9 @@ const BOISERIE: ReglagesVocal = {
 };
 
 export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
-  const { source, plans: PLANS_ACTIFS, dureeVoix, voix, dureeVraie, sonClip } =
+  const { source, plans: PLANS_ACTIFS, dureeVoix, voix, dureeVraie, sonClip, debutVoix } =
     { ...BOISERIE, ...reglages };
-  const dernier = PLANS_ACTIFS[PLANS_ACTIFS.length - 1];
+  const DEBUT_VOIX = Math.round((debutVoix ?? DEBUT_VOIX_PAR_DEFAUT) * FPS);
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
   const s = frame / fps;
@@ -350,10 +370,20 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
           src={staticFile("musique/vocal-pulse.mp3")}
           /* Fondu de 0,4 s plutôt qu'une bascule sèche : une musique qui
              tombe d'un coup s'entend comme un défaut, pas comme un choix. */
+          /* La musique s'efface sous TOUT plan qui porte le son du clip, et
+             revient après. Fondu de 0,4 s : une bascule sèche s'entend comme
+             un défaut, pas comme un choix. */
           volume={(f) => {
             if (!sonClip) return 1;
-            const bascule = Math.round(dernier.debut * FPS) - FIN_VOIX;
-            return interpolate(f, [bascule - 12, bascule], [1, 0.16], {
+            const t = (f + FIN_VOIX) / FPS;
+            const dansUnClip = PLANS_ACTIFS.some(
+              (p) => p.sonDepart !== undefined && t >= p.debut - 0.4 && t < p.fin,
+            );
+            if (!dansUnClip) return 1;
+            const p = PLANS_ACTIFS.find(
+              (q) => q.sonDepart !== undefined && t >= q.debut - 0.4 && t < q.fin,
+            );
+            return interpolate(t, [(p as Plan).debut - 0.4, (p as Plan).debut], [1, 0.16], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             });
@@ -361,16 +391,24 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
         />
       </Sequence>
 
-      {/* Le son du clip généré, calé sur ce que montre le dernier plan. */}
-      {sonClip ? (
-        <Sequence from={Math.round(dernier.debut * FPS)} name="Le son du clip">
-          <Audio
-            src={staticFile(sonClip.fichier)}
-            trimBefore={Math.round(sonClip.depart * FPS)}
-            volume={sonClip.volume ?? 1}
-          />
-        </Sequence>
-      ) : null}
+      {/* Le son du clip, sur CHAQUE plan qui en demande. */}
+      {sonClip
+        ? PLANS_ACTIFS.filter((p) => p.sonDepart !== undefined).map((p) => (
+            <Sequence
+              key={`son-${p.debut}`}
+              from={Math.round(p.debut * FPS)}
+              durationInFrames={Math.round((p.fin - p.debut) * FPS)}
+              name={`Son du clip — ${p.texte ?? p.debut}`}
+              layout="none"
+            >
+              <Audio
+                src={staticFile(sonClip.fichier)}
+                trimBefore={Math.round((p.sonDepart as number) * FPS)}
+                volume={sonClip.volume ?? 1}
+              />
+            </Sequence>
+          ))
+        : null}
     </AbsoluteFill>
   );
 };

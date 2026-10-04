@@ -26,8 +26,11 @@ import { INOXTAG } from "./creatis/VocalInoxtag";
 import { MICHOU } from "./creatis/VocalMichou";
 import { MCFLY } from "./creatis/VocalMcfly";
 import { MISTERV } from "./creatis/VocalMisterV";
+import { CYPRIEN } from "./creatis/VocalCyprien";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
+import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
+import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
@@ -210,6 +213,14 @@ export const RemotionRoot: React.FC = () => {
             domaine relevees sur YouTube. */}
         {/* FORMAT LONG du 03/10 — un seul critere, et ce qu il faut couper. */}
         <Composition
+          id="PremiereSeconde"
+          component={PremiereSeconde}
+          durationInFrames={DUREE_PREMIERE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
           id="RetentionLongue"
           component={RetentionLongue}
           durationInFrames={DUREE_RETENTION}
@@ -218,12 +229,29 @@ export const RemotionRoot: React.FC = () => {
           height={1080}
         />
         <Composition
+          id="MiniaturePremiere"
+          component={MiniaturePremiere}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
           id="MiniatureLongue"
           component={MiniatureLongue}
           durationInFrames={1}
           fps={30}
           width={1280}
           height={720}
+        />
+        <Composition
+          id="VocalCyprien"
+          component={Vocal}
+          defaultProps={CYPRIEN}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalMisterV"

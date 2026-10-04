@@ -232,6 +232,18 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **Ne JAMAIS appeler le contrôle dans un tube.** Le code de sortie d'un tube
+  est celui de sa derniere commande : `controle... | tail -3 && publier...`
+  voyait toujours un succes, meme quand le controle ecrivait « NE PAS
+  PUBLIER ». Pendant quatre jours le garde-fou n'a donc rien garde dans mes
+  propres lignes de commande. Passer par **`node scripts/publier.js`**, qui
+  enchaine controle -> publication -> inscription sans trou possible.
+- **La retention se lit dans Studio** (`node scripts/youtube-retention.js`) :
+  « Ont continue de regarder » et « Duree moyenne d'une vue ». Mesure du
+  04/10 : 9,9 % seulement passent la premiere seconde, mais ceux qui restent
+  voient 79 % du film. Le montage tient, c'est l'OUVERTURE qui perd. D'ou la
+  regle : **ouvrir sur le resultat, expliquer ensuite**. Studio n'affiche rien
+  sous ~100 vues : ne pas lire zero la ou il n'y a rien.
 - **Un plan ne tombe JAMAIS sur un écran d'attente** (« Téléchargement du
   clip… », « Analyse en cours »). Le dernier plan surtout : il porte la
   récompense, il doit montrer le résultat fini qui joue. Contrôlé par
