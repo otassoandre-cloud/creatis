@@ -232,6 +232,17 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **La legende se pose entre 45 et 65 % de la hauteur**, jamais plus bas.
+  Mesure du 04/10 sur une capture reelle : la ligne du pseudo commence a 84 %,
+  la colonne de boutons monte jusqu a 53 %, et les sous-titres incrustes du
+  clip sont a 65 %. Une legende a 78 % est recouverte sans qu on le voie.
+  Marges laterales de 170 px : la colonne de boutons ET le rognage 19,5:9.
+- **Le clip d ouverture decide de tout.** Depuis que le film ouvre sur le
+  resultat, un clip sombre, granuleux ou au sous-titre grossier annule la
+  correction. Deux tournages jetes le 04/10 pour cette raison (vision nocturne,
+  sequence veterinaire). Regarder la planche contact du clip AVANT de monter.
+- **Gemini TTS refuse certains noms** (`PROHIBITED_CONTENT`, faux positif).
+  Changer de chaine plutot que de chercher la cause.
 - **Ne JAMAIS appeler le contrôle dans un tube.** Le code de sortie d'un tube
   est celui de sa derniere commande : `controle... | tail -3 && publier...`
   voyait toujours un succes, meme quand le controle ecrivait « NE PAS

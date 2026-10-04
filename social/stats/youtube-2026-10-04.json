@@ -4,26 +4,34 @@
   "handle": "@Creatis_officiel",
   "publications": [
     {
-      "id": "9eDjixB-WHo",
-      "titre": "1:17 Pourquoi vos clips ne retiennent pas — les 3 coupes à faire",
+      "id": "QXVkKtKdwOM",
+      "titre": "1:36 J'ai mesuré où les gens décrochent — c'est pire que prévu",
       "vues": 2,
-      "age": "il y a 21 h",
+      "age": "il y a 4 h",
       "heures": null,
       "onglet": "Vidéo"
     },
     {
-      "id": "IX6481WSO6Y",
-      "titre": "1:33 Noter un clip sur 100 : la grille complète (5 critères)",
+      "id": "9eDjixB-WHo",
+      "titre": "1:17 Pourquoi vos clips ne retiennent pas — les 3 coupes à faire",
       "vues": 2,
       "age": "il y a 1 j",
       "heures": null,
       "onglet": "Vidéo"
     },
     {
+      "id": "IX6481WSO6Y",
+      "titre": "1:33 Noter un clip sur 100 : la grille complète (5 critères)",
+      "vues": 3,
+      "age": "il y a 2 j",
+      "heures": null,
+      "onglet": "Vidéo"
+    },
+    {
       "id": "lrSbjOYJrpo",
       "titre": "0:33 Créatis — transforme tes vidéos longues en clips",
-      "vues": 12,
-      "age": "il y a 2 j",
+      "vues": 14,
+      "age": "il y a 3 j",
       "heures": null,
       "onglet": "Vidéo"
     },
@@ -31,7 +39,7 @@
       "id": "93FaFgFWVvE",
       "titre": "0:31 Découper une vidéo longue en Shorts avec l'IA — 10 clips notés",
       "vues": 2,
-      "age": "il y a 5 j",
+      "age": "il y a 6 j",
       "heures": null,
       "onglet": "Vidéo"
     },
@@ -42,6 +50,14 @@
       "age": "il y a 6 j",
       "heures": null,
       "onglet": "Vidéo"
+    },
+    {
+      "id": "NFYCkP-0aUM",
+      "titre": "Ce clip n'existait pas",
+      "vues": 0,
+      "age": "il y a 3 minutes 193 vues",
+      "heures": 0,
+      "onglet": "Short"
     },
     {
       "id": "Bp2K8XDOnTM",
@@ -70,7 +86,7 @@
     {
       "id": "rKW3ixDbfF4",
       "titre": "Je teste une commande vocale sur la dernière vidéo d'Inoxtag",
-      "vues": 116,
+      "vues": 117,
       "age": "",
       "heures": null,
       "onglet": "Short"
@@ -78,7 +94,7 @@
     {
       "id": "kHYROVYEKhY",
       "titre": "Je teste une commande vocale sur la dernière vidéo de Squeezie",
-      "vues": 54,
+      "vues": 55,
       "age": "",
       "heures": null,
       "onglet": "Short"

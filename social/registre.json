@@ -810,6 +810,54 @@
       "son": "voix-off",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-04-vocal-mastu-t1",
+      "piece": "vocal-mastu",
+      "titre": "vocal-mastu",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-04T14:59:10.826Z",
+      "heure": "16 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-mastu",
+      "accroche": "zones d interface",
+      "son": "tendance",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-04-vocal-mastu-g1",
+      "piece": "vocal-mastu",
+      "titre": "vocal-mastu",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-04T15:00:58.489Z",
+      "heure": "17 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-mastu",
+      "accroche": "zones d interface",
+      "son": "musique+clip",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeE6AixOkWq/"
+    },
+    {
+      "id": "2026-10-04-vocal-mastu-y1",
+      "piece": "vocal-mastu",
+      "titre": "vocal-mastu",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-04T15:03:34.523Z",
+      "heure": "17 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-mastu",
+      "accroche": "forme question",
+      "son": "musique+clip",
+      "muet": false,
+      "url": null
     }
   ]
 }

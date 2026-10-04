@@ -291,8 +291,11 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
           devient illisible dès que le contenu de l'écran change. */}
       <AbsoluteFill
         style={{
+          /* Le voile suit la légende : un dégradé LOCAL autour de 50-58 %,
+             au lieu d'un voile de bas de cadre qui ne protège plus rien
+             maintenant que le texte est remonté. */
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 22%, transparent 38%)",
+            "linear-gradient(to top, transparent 30%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.78) 52%, rgba(0,0,0,0.5) 62%, transparent 72%)",
         }}
       />
 
@@ -302,11 +305,23 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
         <div
           style={{
             position: "absolute",
-            /* 22 % et non 14 % : à 14 % la légende tombait sur la ligne du
-               pseudo d'Instagram, et « Elle lit tout ce qui est dit. » venait
-               buter contre l'icône d'envoi. Les marges de 170 px la tiennent
-               aussi à l'écart de la colonne de boutons, à droite. */
-            bottom: height * 0.22,
+            /* ── OÙ SE POSE LA LÉGENDE, ET POURQUOI LÀ ───────────────────
+               Trois positions essayées, chacune corrigée par la mesure :
+
+               14 %  — tombait sur la ligne du pseudo d'Instagram, et le texte
+                       butait contre l'icône d'envoi.
+               22 %  — encore trop bas. Relevé sur la capture du 03/10 : la
+                       ligne du pseudo est à 84 % de la hauteur, la colonne de
+                       boutons monte jusqu'à 53 %. Une légende à 78 % est dans
+                       la zone que l'interface recouvre.
+               42 %  — ici. La ligne de base tombe à 58 % du haut, le bloc
+                       occupe 50-58 %. Au-dessus des sous-titres du clip
+                       lui-même (65 %), largement au-dessus de l'interface, et
+                       à hauteur de lecture plutôt qu'au ras du bord.
+
+               Les marges de 170 px la tiennent à l'écart de la colonne de
+               boutons ET du rognage latéral des téléphones 19,5:9. */
+            bottom: height * 0.42,
             left: 170,
             right: 170,
             textAlign: "center",

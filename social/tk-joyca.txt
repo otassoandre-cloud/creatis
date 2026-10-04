@@ -1,0 +1,10 @@
+Ton texte est peut-être caché derrière l'interface, et tu ne le vois pas.
+
+J'ai mesuré les zones sur une capture réelle :
+— la ligne du pseudo commence à 84 % de la hauteur
+— la colonne de boutons, à droite, monte jusqu'à 53 %
+— sur un téléphone 19,5:9, les côtés sont rognés d'environ 8 %
+
+Donc tout texte placé en dessous de 78 % est mangé, et tout ce qui touche les bords disparaît.
+
+La bande sûre : entre 45 et 65 % de la hauteur, avec 15 % de marge à gauche et à droite. Pas plus bas.
