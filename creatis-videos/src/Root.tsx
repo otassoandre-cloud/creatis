@@ -29,6 +29,7 @@ import { MISTERV } from "./creatis/VocalMisterV";
 import { CYPRIEN } from "./creatis/VocalCyprien";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
 import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
+import { MiniatureGrille } from "./creatis/MiniatureGrille";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
@@ -227,6 +228,14 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1920}
           height={1080}
+        />
+        <Composition
+          id="MiniatureGrille"
+          component={MiniatureGrille}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
         />
         <Composition
           id="MiniaturePremiere"
