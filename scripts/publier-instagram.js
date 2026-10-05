@@ -141,6 +141,23 @@ const STRATEGIES = [
       process.exit(2);
     }
 
+    /* ── LES BOÎTES QU'INSTAGRAM POSE SANS PRÉVENIR ─────────────────────
+       Le 05/10, « Activer les notifications » s'est ouverte par-dessus le
+       bouton Créer : le clic a expiré et la publication n'est jamais partie.
+       Ces boîtes apparaissent à des moments imprévisibles, donc on les écarte
+       juste avant chaque geste important plutôt qu'une fois au démarrage. */
+    const ecarterBoites = async () => {
+      for (const l of ['Plus tard', 'Not Now', 'Pas maintenant', 'Annuler', 'Ignorer']) {
+        const b = page.locator(`button:has-text("${l}"), div[role="button"]:has-text("${l}")`).first();
+        if (await b.isVisible().catch(() => false)) {
+          await b.click({ timeout: 4000 }).catch(() => {});
+          console.log(`  boîte écartée : « ${l} »`);
+          await page.waitForTimeout(1200);
+        }
+      }
+    };
+    await ecarterBoites();
+
     console.log('· création');
     const plus = page.locator(
       'svg[aria-label="Nouvelle publication"], svg[aria-label="New post"], a[href="#"]:has(svg[aria-label="Nouvelle publication"])',

@@ -77,9 +77,17 @@ const pieces = new Map((file.pieces || []).map((p) => [p.id, p]));
 /* Une publication demandée en ligne de commande devient un créneau à part
    entière : elle traverse exactement les mêmes règles que celles du plan. */
 if (CIBLE && PIECE) {
-  plan.creneaux = (plan.creneaux || []).concat([
+  /* ── ON NE JUGE QUE LA DEMANDE ──────────────────────────────────────────
+     Première version : on AJOUTAIT le créneau demandé au plan du jour. Le
+     contrôle examinait donc aussi tous les créneaux restés « en attente »,
+     y compris ceux d'autres comptes. Le 05/10 une publication Instagram a
+     été refusée à cause de deux créneaux périmés visant YouTube — et comme
+     l'appel était silencieux, elle n'est simplement jamais partie.
+
+     Une demande ponctuelle se juge sur elle-même : on REMPLACE le plan. */
+  plan.creneaux = [
     { heure: 'maintenant', piece: PIECE, cible: CIBLE, statut: 'en attente' },
-  ]);
+  ];
   if (GABARIT && !pieces.has(PIECE)) pieces.set(PIECE, { id: PIECE, gabarit: GABARIT, source: SOURCE });
   else if (GABARIT) Object.assign(pieces.get(PIECE), { gabarit: GABARIT, source: SOURCE });
 }

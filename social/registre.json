@@ -858,6 +858,54 @@
       "son": "musique+clip",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-05-vocal-croce-t1",
+      "piece": "vocal-croce",
+      "titre": "vocal-croce",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-05T09:41:31.010Z",
+      "heure": "11 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-croce",
+      "accroche": "338 contre 156",
+      "son": "tendance",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-05-vocal-croce-y1",
+      "piece": "vocal-croce",
+      "titre": "vocal-croce",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-05T09:44:30.993Z",
+      "heure": "11 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-croce",
+      "accroche": "338 contre 156",
+      "son": "musique+clip",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-05-vocal-croce-g1",
+      "piece": "vocal-croce",
+      "titre": "vocal-croce",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-05T09:48:38.664Z",
+      "heure": "11 h",
+      "gabarit": "VocalResultatDAbord",
+      "source": "rec-croce",
+      "accroche": "338 contre 156",
+      "son": "musique+clip",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeG7EESOGJt/"
     }
   ]
 }
