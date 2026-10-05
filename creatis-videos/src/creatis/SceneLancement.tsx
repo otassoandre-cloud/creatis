@@ -23,7 +23,7 @@ export const SceneLancement: React.FC = () => {
   const { fps } = useVideoConfig();
 
   const arguments_ = [
-    "7 jours d'essai gratuit",
+    "14 € par mois, sans engagement",
     "Résiliable avant, sans rien payer",
     "Sans montage, sans logiciel",
   ];

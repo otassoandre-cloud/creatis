@@ -458,7 +458,7 @@ export const PubDouleur: React.FC = () => (
 
       <Series.Sequence durationInFrames={55} name="5 · Créatis">
         <Punch>
-          <CartonFinal mention="7 jours d’essai gratuit sur l’annuel" />
+          <CartonFinal mention="14 € par mois, sans engagement" />
         </Punch>
       </Series.Sequence>
     </Series>

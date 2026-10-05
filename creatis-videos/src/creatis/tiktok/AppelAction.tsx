@@ -133,7 +133,7 @@ export const AppelAction: React.FC = () => {
             }),
           }}
         >
-          <span style={{ color: COULEURS.vert }}>7 jours d'essai gratuit</span>
+          <span style={{ color: COULEURS.vert }}>14 € par mois, sans engagement</span>
           <br />
           <span style={{ fontSize: 34, color: COULEURS.texteDoux, fontWeight: 600 }}>
             résiliable avant sans rien payer

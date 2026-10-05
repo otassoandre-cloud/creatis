@@ -158,7 +158,7 @@ export const AppelCommentaire: React.FC<{ duree: number }> = ({ duree }) => {
             ...contour,
           }}
         >
-          7 jours d’essai gratuit sur le Pro
+          14 € par mois, sans engagement sur le Pro
         </div>
       </AbsoluteFill>
 

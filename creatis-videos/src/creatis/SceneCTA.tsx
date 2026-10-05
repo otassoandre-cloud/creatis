@@ -164,9 +164,9 @@ export const SceneCTA: React.FC = () => {
             }),
           }}
         >
-          Essai gratuit 7 jours sur l'annuel
+          14 € par mois, sans engagement
           <br />
-          résiliable avant sans rien payer
+          résiliable à tout moment
         </Interactive.Div>
       </AbsoluteFill>
     </AbsoluteFill>

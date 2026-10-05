@@ -127,7 +127,7 @@ export const PubClaire: React.FC = () => (
       {/* L'unique raccord de la video. */}
       <Series.Sequence durationInFrames={DUREE_PUB_CLAIRE - PRISE} name="2 · Créatis">
         <Punch>
-          <CartonFinal clair mention="7 jours d’essai gratuit sur l’annuel" />
+          <CartonFinal clair mention="14 € par mois, sans engagement" />
         </Punch>
       </Series.Sequence>
     </Series>

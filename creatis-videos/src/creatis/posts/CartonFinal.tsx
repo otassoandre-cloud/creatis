@@ -20,7 +20,7 @@ import { COULEURS, ENTREE } from "../theme";
  * genereuse que la page de paiement fabrique des demandes de remboursement.
  */
 export const CartonFinal: React.FC<{ mention?: string; clair?: boolean }> = ({
-  mention = "7 jours d'essai gratuit sur l'annuel",
+  mention = "14 € par mois, sans engagement sur l'annuel",
   clair = false,
 }) => {
   const frame = useCurrentFrame();

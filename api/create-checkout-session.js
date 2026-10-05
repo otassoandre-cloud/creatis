@@ -60,7 +60,25 @@ const ENGAGEMENT_MOIS = 12;
    abonnements.trial_ends_at, sans requete Stripe supplementaire.
 
    Les essais annuels DEJA en cours ne sont pas touches : leur abonnement Stripe existe deja. */
-const PRO_ESSAI_JOURS = 7;
+
+/* PLUS D'ESSAI SUR LES PLANS PAYANTS — decision du 05/10/2026.
+   Desormais : on paie, on a l'acces ; on ne paie pas, on ne l'a pas.
+
+   CE QUI N'EST PAS TOUCHE, ET C'EST VOLONTAIRE :
+   · Les essais DEJA EN COURS continuent jusqu'a leur terme. Leur periode vit sur
+     l'abonnement Stripe, cree au moment du paiement : ne plus en accorder de
+     nouveau n'en annule aucun. Aucune action retroactive, aucun acces coupe.
+   · La relance J-2 et tout ce qui lit `trial_ends_at` restent en place — ils
+     servent precisement ces abonnements-la, et devront continuer de tourner
+     jusqu'a ce que le dernier essai se termine.
+   · Le palier GRATUIT ne bouge pas : 2 analyses en apercu, sans carte. Ce n'est
+     pas un essai de plan payant, c'est l'offre de decouverte, elle reste.
+   · L'essai UGC de 30 jours (UGC_ESSAI_JOURS) ne bouge pas non plus : il ne se
+     donne pas, il se merite en publiant une video sur Creatis.
+
+   Mettre la constante a 0 suffit : `trial_period_days` n'est ajoute a la session
+   que si `trialDays` est verite, et `trialEndsAt` reste nul. */
+const PRO_ESSAI_JOURS = 0;
 
 /* Cette personne a-t-elle DEJA un abonnement en cours ?
    Le 15/09, un client a paye, l'interface a continue de le traiter comme gratuit (son plan

@@ -91,7 +91,7 @@ export const OffreEssai: React.FC<{ duree: number }> = ({ duree }) => {
             paintOrder: "stroke fill",
           }}
         >
-          7 jours
+          14 €
         </div>
         <div
           style={{
@@ -107,7 +107,7 @@ export const OffreEssai: React.FC<{ duree: number }> = ({ duree }) => {
             paintOrder: "stroke fill",
           }}
         >
-          d’essai gratuit
+          par mois
         </div>
 
         <div
@@ -119,7 +119,7 @@ export const OffreEssai: React.FC<{ duree: number }> = ({ duree }) => {
             opacity: paraitre(0.5 * fps),
           }}
         >
-          sur le Pro, puis 14 €/mois
+          150 clips, sans engagement
         </div>
 
         <div

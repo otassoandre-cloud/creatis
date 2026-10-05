@@ -333,7 +333,7 @@ export const Post16Transformation: React.FC = () => (
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={60} name="D · Carton">
-        <CartonFinal clair mention="14 €/mois · 7 jours d'essai" />
+        <CartonFinal clair mention="14 €/mois · sans engagement" />
       </Series.Sequence>
     </Series>
   </AbsoluteFill>

@@ -799,7 +799,8 @@ module.exports = async (req, res) => {
                             cher » n'a pas de sens, ils sont déjà au tarif le plus bas : on
                             envoie un lien de portail Stripe pour corriger la carte.
            jamais_abouti  — paiement bloqué à la souscription (3D Secure le plus souvent), donc
-                            jamais client. On les réinvite, avec l'essai de 7 jours en argument.
+                            jamais client. On les reinvite sur les deux analyses offertes :
+                            depuis le 05/10/2026 il n'y a plus d'essai a leur proposer.
 
          `dry_run=1` renvoie exactement ce qui serait fait, sans rien annuler ni envoyer. */
       /* ═══ Abonnements en double — on n'en garde qu'un, et on le dit ═══
@@ -977,9 +978,9 @@ module.exports = async (req, res) => {
               sujet = 'Ton abonnement annuel est annulé — tu ne dois rien';
               corps = `<p style="line-height:1.7;margin:0 0 16px">Ton essai de 7 jours s'est terminé et le prélèvement annuel de 139 € n'est pas passé.</p>
                 <p style="line-height:1.7;margin:0 0 16px"><strong>On a annulé cet abonnement. Tu ne dois rien</strong>, et plus rien ne sera tenté sur ta carte.</p>
-                <p style="line-height:1.7;margin:0 0 16px">Honnêtement, demander 139 € d'un coup était une mauvaise idée de notre part. On a changé : le <strong>Pro est à 14 €/mois</strong>, et les 7 jours d'essai sont dessus maintenant.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Honnêtement, demander 139 € d'un coup était une mauvaise idée de notre part. On a changé : le <strong>Pro est à 14 €/mois</strong>, sans engagement.</p>
                 <p style="margin:0 0 20px">${CTA(`${appUrl}/paiement.html?plan=pro`, 'Reprendre le Pro — 14 €/mois')}</p>
-                <p style="line-height:1.7;margin:0 0 8px;color:#555;font-size:14px">7 jours gratuits, puis 14 €/mois. Résiliable à tout moment, rien n'est prélevé pendant l'essai.</p>
+                <p style="line-height:1.7;margin:0 0 8px;color:#555;font-size:14px">14 €/mois, prélevés le jour de la souscription. Résiliable à tout moment.</p>
                 <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Si quelque chose n'allait pas dans le produit, réponds à ce mail — je lis tout.</p>`;
             } else if (segment === 'mensuel_impaye') {
               sujet = "Ton renouvellement Créatis n'est pas passé";
@@ -990,9 +991,9 @@ module.exports = async (req, res) => {
             } else {
               sujet = "Ton paiement Créatis n'avait pas abouti";
               corps = `<p style="line-height:1.7;margin:0 0 16px">Tu as essayé de t'abonner à Créatis mais le paiement n'est jamais allé au bout — le plus souvent c'est la validation bancaire (3D Secure) qui bloque.</p>
-                <p style="line-height:1.7;margin:0 0 16px">Entre-temps on a ajouté <strong>7 jours d'essai gratuit sur le Pro</strong> : tu peux tout tester avant que quoi que ce soit ne soit prélevé.</p>
-                <p style="margin:0 0 20px">${CTA(`${appUrl}/paiement.html?plan=pro`, 'Essayer 7 jours gratuitement')}</p>
-                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Puis 14 €/mois, résiliable à tout moment.</p>`;
+                <p style="line-height:1.7;margin:0 0 16px">Tu peux juger sur pièce avant de payer : <strong>deux analyses sont offertes</strong>, sans carte bancaire. Tu colles un lien, tu vois tes clips, et tu décides après.</p>
+                <p style="margin:0 0 20px">${CTA(`${appUrl}/clips-v2.html`, 'Voir mes clips gratuitement')}</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Le Pro est à 14 €/mois, sans engagement, résiliable à tout moment.</p>`;
             }
 
             if (!simulation) {
