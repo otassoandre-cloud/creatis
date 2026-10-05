@@ -5,6 +5,136 @@
 const stripe = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
 const APP_URL = (process.env.APP_URL || 'https://creatis.app').trim();
 
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
+
+/* ── Programme « publie une video, 1 mois offert » : essai Stripe, carte requise ────────────
+   Decision explicite (21/08/2026) : le mois offert n'est pas un octroi silencieux cote base de
+   donnees, c'est un VRAI essai d'abonnement Stripe — la personne entre sa carte, rien n'est
+   preleve pendant UGC_ESSAI_JOURS jours, puis l'abonnement continue tout seul au tarif normal
+   sauf resiliation. C'est le paiement.html reamenage ce matin qui sert de porte d'entree : un
+   lien avec ?essai=<jeton> y ajoute simplement `trial_period_days` a la session Stripe creee
+   ici. Le prix est FORCE au Pro mensuel cote serveur, jamais confie au client — sinon n'importe
+   quelle page pourrait demander l'annuel en essai gratuit avec le meme jeton. */
+const UGC_ESSAI_JOURS = 30;
+const PRIX_PRO_MENSUEL = (process.env.STRIPE_PRICE_PRO || 'price_1Tx8U8AptK6HZtp5DrLkfs5m').trim();
+
+/* ── ANNUEL MENSUALISE (10/09/2026) ──────────────────────────────────────────────────────────
+   Remplace le Pro Annuel preleve 139 EUR d'un coup. Meme total sur l'annee, mais encaisse en
+   douze fois a 11,58 EUR.
+
+   Ce n'est pas un ajustement de confort. Sur les 6 essais annuels arrives a leur terme : 2
+   annulations, 4 IMPAYES, 0 conversion. Les 8 lignes d'echec portent toutes le meme code,
+   `insufficient_funds`, toujours sur 139 EUR. Le 08/09 l'essai a ete deplace vers le mensuel,
+   ce qui a supprime le mur en sortie d'essai — mais l'annuel encaissait alors ses 139 EUR
+   comptant au checkout, donc le mur etait seulement avance. A 11,58 EUR la carte passe.
+
+   ENGAGEMENT. Sans terme, cette offre serait juste un Pro mensuel 17 % moins cher et personne
+   ne prendrait plus celui a 14 EUR. `engagement_fin` voyage dans les metadata, le webhook le
+   pose dans abonnements.engagement_jusqu_au, et la resiliation prend effet a la fin du terme
+   au lieu d'etre immediate. C'est ce qui garde a l'annuel sa valeur : la retention, precieuse
+   avec un churn mensuel mesure a 41 %.
+
+   Tant que STRIPE_PRICE_PRO_ANNUEL_MENSUALISE n'est pas renseignee, rien ne change : l'ancien
+   annuel continue de fonctionner tel quel. */
+const PRIX_ANNUEL_MENSUALISE = (process.env.STRIPE_PRICE_PRO_ANNUEL_MENSUALISE || '').trim();
+const ENGAGEMENT_MOIS = 12;
+
+/* ── Essai gratuit 7 jours : DEPLACE de l'annuel vers le Pro MENSUEL (08/09/2026) ────────────
+   Mecanisme inchange (trial_period_days Stripe, carte requise des le depart, pas de jeton a
+   verifier). Ce qui change, c'est le plan qui le porte, et c'est une decision prise sur mesure :
+
+     4 essais annuels sont arrives a leur terme entre le 02 et le 08/09.
+     AUCUN n'est devenu un abonnement payant — 1 annulation et 3 IMPAYES.
+
+   Le mode d'echec est toujours le meme : a la sortie d'essai, Stripe presente 139 EUR d'un coup
+   et la carte refuse (provision insuffisante). A 14 EUR elle passe. Un essai qui debouche sur
+   une somme que la carte ne peut pas honorer ne fabrique pas des clients, il fabrique des
+   `past_due` — et un impaye gardait l'acces Pro trois semaines avant le correctif du 08/09.
+
+   Le declencheur est le PRIX RESOLU cote serveur, pas le couple `plan`/`annuel` envoye par le
+   client : sinon n'importe quelle page pourrait reclamer un essai sur l'annuel en mentant sur
+   les deux champs. `trial_ends_at` est calcule ICI, au moment ou on connait exactement
+   `trial_period_days`, et voyage dans les metadata de la session ET de l'abonnement : le
+   webhook (checkout.session.completed) le relit tel quel pour peupler
+   abonnements.trial_ends_at, sans requete Stripe supplementaire.
+
+   Les essais annuels DEJA en cours ne sont pas touches : leur abonnement Stripe existe deja. */
+
+/* PLUS D'ESSAI SUR LES PLANS PAYANTS — decision du 05/10/2026.
+   Desormais : on paie, on a l'acces ; on ne paie pas, on ne l'a pas.
+
+   CE QUI N'EST PAS TOUCHE, ET C'EST VOLONTAIRE :
+   · Les essais DEJA EN COURS continuent jusqu'a leur terme. Leur periode vit sur
+     l'abonnement Stripe, cree au moment du paiement : ne plus en accorder de
+     nouveau n'en annule aucun. Aucune action retroactive, aucun acces coupe.
+   · La relance J-2 et tout ce qui lit `trial_ends_at` restent en place — ils
+     servent precisement ces abonnements-la, et devront continuer de tourner
+     jusqu'a ce que le dernier essai se termine.
+   · Le palier GRATUIT ne bouge pas : 2 analyses en apercu, sans carte. Ce n'est
+     pas un essai de plan payant, c'est l'offre de decouverte, elle reste.
+   · L'essai UGC de 30 jours (UGC_ESSAI_JOURS) ne bouge pas non plus : il ne se
+     donne pas, il se merite en publiant une video sur Creatis.
+
+   Mettre la constante a 0 suffit : `trial_period_days` n'est ajoute a la session
+   que si `trialDays` est verite, et `trialEndsAt` reste nul. */
+const PRO_ESSAI_JOURS = 0;
+
+/* Cette personne a-t-elle DEJA un abonnement en cours ?
+   Le 15/09, un client a paye, l'interface a continue de le traiter comme gratuit (son plan
+   n'etait pas remonte) et lui a represente le paywall : il a repaye deux minutes plus tard.
+   Resultat, deux abonnements Stripe et deux clients distincts pour un seul email, soit 28 EUR
+   au lieu de 14 au premier prelevement. Le correctif d'interface evite le cas nominal ; celui-ci
+   est le filet. Un serveur qui sait que l'abonnement existe ne doit pas en ouvrir un second. */
+async function abonnementDejaActif(userId, email) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  const h = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+  try {
+    let id = userId && !userId.includes('@') ? userId : null;
+    if (!id && email) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`, { headers: h });
+      id = (await r.json().catch(() => []))?.[0]?.id || null;
+    }
+    if (!id) return null;
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/abonnements?user_id=eq.${id}&status=in.(active,trialing)&select=id,status,plan,trial_ends_at&limit=1`,
+      { headers: h }
+    );
+    const abo = (await r.json().catch(() => []))?.[0] || null;
+    /* L'identifiant du compte remonte avec : l'appelant en a besoin pour
+       reparer la colonne `plan`, et il ne l'a pas toujours (l'appel peut venir
+       avec un email seul). */
+    return abo ? { ...abo, user_id: id } : null;
+  } catch { return null; }
+}
+
+/* Remet `users.plan` d'aplomb. Volontairement silencieuse : si elle echoue, le
+   refus reste juste et la route `get` de user-sync repare au prochain passage. */
+async function reparerPlan(userId, plan) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !userId || !plan) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ plan, updated_at: new Date().toISOString() }),
+  });
+}
+
+async function ugcSoumissionParJeton(jeton) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !jeton) return null;
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/ugc_soumissions?essai_token=eq.${encodeURIComponent(jeton)}&statut=eq.approuve&essai_utilise=eq.false&select=*`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  );
+  if (!r.ok) return null;
+  const lignes = await r.json();
+  return lignes?.[0] || null;
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', APP_URL);
@@ -17,34 +147,104 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
-  const { priceId, plan, annuel, userId, userEmail, successUrl, cancelUrl, allowPromoCodes } = req.body;
+  const { priceId, plan, annuel, userId, userEmail, successUrl, cancelUrl, allowPromoCodes, essaiToken } = req.body;
 
-  if (!priceId) {
+  // Résolution de l'essai UGC AVANT toute autre validation : elle fige priceId, userId et
+  // customerEmail depuis la soumission approuvée, en ignorant ce que le client a pu envoyer —
+  // sinon quelqu'un pourrait forger le corps de la requête pour obtenir l'annuel, ou créditer
+  // un compte autre que celui qui a réellement soumis la vidéo.
+  let finalPriceId = priceId;
+  let finalUserId = userId;
+  let trialDays = null;
+  let soumissionUGC = null;
+  let engagementFin = null;
+
+  if (essaiToken) {
+    soumissionUGC = await ugcSoumissionParJeton(essaiToken);
+    if (!soumissionUGC) {
+      return res.status(400).json({ error: "Ce lien d'essai n'est plus valide — il a peut-être déjà été utilisé." });
+    }
+    finalPriceId = PRIX_PRO_MENSUEL;
+    finalUserId = soumissionUGC.user_id || userId;
+    trialDays = UGC_ESSAI_JOURS;
+  } else if (!annuel && String(priceId || '').trim() === PRIX_PRO_MENSUEL) {
+    // Automatique, pas de jeton a verifier : choisir le Pro mensuel EST la demande d'essai.
+    // L'annuel n'en a plus (voir l'en-tete : 0 conversion sur 4 essais annuels termines).
+    trialDays = PRO_ESSAI_JOURS;
+  } else if (annuel && PRIX_ANNUEL_MENSUALISE) {
+    /* L'annuel est FORCE sur le prix mensualise cote serveur, quel que soit le priceId envoye :
+       le client ne doit jamais pouvoir reclamer l'ancien tarif comptant a 139 EUR, qui est
+       precisement celui que les cartes refusent. */
+    finalPriceId = PRIX_ANNUEL_MENSUALISE;
+    trialDays = PRO_ESSAI_JOURS;   // meme essai que le mensuel : a 11,58 EUR la sortie passe
+    engagementFin = new Date(
+      new Date().setMonth(new Date().getMonth() + ENGAGEMENT_MOIS)
+    ).toISOString();
+  }
+
+  if (!finalPriceId) {
     return res.status(400).json({ error: 'priceId manquant' });
   }
 
-  // Email fiable : userEmail explicite, sinon userId si c'est un email
-  const customerEmail = userEmail || (userId && userId.includes('@') ? userId : null);
-
-  // Appliquer directement -50% sur le premier mois Pro (sans code promo requis)
-  let launchCouponId = null;
-  if ((plan === 'pro' || !plan) && !annuel) {
-    try {
-      const coupon = await stripe.coupons.create({
-        percent_off: 50,
-        duration: 'once',
-        name: 'Offre lancement -50% 1er mois'
+  /* Le jeton UGC est exclu de ce controle : son abonnement d'essai EST le but de l'operation,
+     et il est consomme une seule fois de toute facon. */
+  if (!essaiToken) {
+    const dejaActif = await abonnementDejaActif(
+      finalUserId,
+      userEmail || (userId && userId.includes('@') ? userId : null)
+    );
+    if (dejaActif) {
+      /* ON REPARE AVANT DE REFUSER.
+       *
+       * Quelqu'un qui arrive ici a un abonnement actif ET vient de recliquer
+       * sur « passer au Pro » : s'il l'a fait, c'est que l'application lui
+       * montre encore le paywall, donc que sa colonne `plan` est restee a
+       * « gratuit ». Refuser sans corriger le laisse exactement dans l'etat qui
+       * l'a amene ici — et il recommence. Mesure du 23/09/2026 : trois
+       * personnes, trois a quatre tentatives chacune, une resiliation.
+       *
+       * On remet donc la colonne d'aplomb au passage. Le refus reste, il
+       * protege du double debit ; ce qu'on ajoute, c'est la sortie. */
+      if (dejaActif.plan && dejaActif.plan !== 'gratuit' && dejaActif.user_id) {
+        try {
+          await reparerPlan(dejaActif.user_id, dejaActif.plan);
+          console.warn(`[checkout] plan de ${dejaActif.user_id} remis a "${dejaActif.plan}" — il voyait encore le paywall`);
+        } catch (e) {
+          console.warn('[checkout] reparation du plan echouee:', e.message);
+        }
+      }
+      return res.status(409).json({
+        error: 'Tu as déjà un abonnement en cours — inutile de repayer.',
+        code: 'DEJA_ABONNE',
+        statut: dejaActif.status,
+        plan: dejaActif.plan || null,
+        essai_jusqu_au: dejaActif.trial_ends_at || null,
       });
-      launchCouponId = coupon.id;
-    } catch (e) { /* silencieux si création échoue */ }
+    }
   }
+
+  // Calcule ici, pas dans le webhook : c'est le seul endroit ou trialDays est connu avec
+  // certitude au moment de la creation. Ecrit dans les 2 metadata (session + abonnement) pour
+  // que checkout.session.completed le relise sans requete Stripe supplementaire.
+  const trialEndsAt = trialDays ? new Date(Date.now() + trialDays * 86400000).toISOString() : null;
+
+  // Email fiable : celui de la soumission approuvée en priorité (garantit que le mois offert
+  // atterrit sur le bon compte même si ce navigateur n'est pas connecté), sinon le chemin normal.
+  const customerEmail = soumissionUGC?.email || userEmail || (userId && userId.includes('@') ? userId : null);
+
+  // Le -50% automatique sur le 1er mois du Pro a été RETIRÉ avec la grille 9,95 / 14 / 149.
+  // Il ramenait le Pro à 7 € le premier mois, donc SOUS le Starter à 9,95 € : l'échelle de prix
+  // s'inversait et le Starter n'avait plus aucune raison d'exister. L'offre d'appel, c'est
+  // désormais le Starter lui-même. Conséquence : le champ code promo natif Stripe redevient
+  // toujours disponible (Stripe interdit discounts + allow_promotion_codes sur la même session).
+  const launchCouponId = null;
 
   const embedded = req.body.embedded === true;
 
   try {
     const sessionParams = {
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: finalPriceId, quantity: 1 }],
       ...(embedded
         ? { ui_mode: 'embedded', return_url: `${APP_URL}/success.html?session_id={CHECKOUT_SESSION_ID}` }
         : {
@@ -53,27 +253,67 @@ module.exports = async (req, res) => {
             cancel_url: cancelUrl || `${APP_URL}/cancel.html`,
           }
       ),
+      // Stripe interdit de combiner discounts + allow_promotion_codes sur une même session —
+      // quand la réduction de lancement s'applique automatiquement, le champ code promo natif
+      // Stripe reste masqué (sinon erreur Stripe). Sinon (annuel, studio, ou coupon indisponible),
+      // le champ natif Stripe s'affiche normalement — y compris en embedded.
       ...(launchCouponId
         ? { discounts: [{ coupon: launchCouponId }] }
-        : (!embedded ? { allow_promotion_codes: allowPromoCodes !== false } : {})),
+        : { allow_promotion_codes: allowPromoCodes !== false }),
       billing_address_collection: 'auto',
       metadata: {
-        plan: plan || 'pro',
-        userId: userId || 'anonymous',
+        plan: 'pro',
+        userId: finalUserId || 'anonymous',
         userEmail: customerEmail || '',
-        annuel: annuel ? 'true' : 'false'
+        annuel: 'false',
+        ...(essaiToken ? { source: 'ugc_essai' } : {}),
+        ...(soumissionUGC ? { ugc_soumission_id: soumissionUGC.id } : {}),
+        ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+        ...(engagementFin ? { engagement_fin: engagementFin } : {}),
       },
       subscription_data: {
-        metadata: { plan: plan || 'pro', userId: userId || 'anonymous', userEmail: customerEmail || '' }
+        metadata: {
+          plan: 'pro', userId: finalUserId || 'anonymous', userEmail: customerEmail || '',
+          ...(trialEndsAt ? { trial_ends_at: trialEndsAt } : {}),
+          // Relu par le webhook pour peupler abonnements.engagement_jusqu_au sans requete Stripe.
+          ...(engagementFin ? { engagement_fin: engagementFin } : {}),
+        },
+        // Coeur du dispositif : carte enregistrée maintenant, aucun prélèvement avant la fin de
+        // l'essai. Stripe gère seul le passage à un abonnement payant — invoice.payment_succeeded
+        // et invoice.payment_failed (déjà gérés dans api/stripe-webhook.js) s'en chargent sans
+        // qu'il y ait quoi que ce soit à ajouter ici.
+        ...(trialDays ? { trial_period_days: trialDays } : {}),
       },
       locale: 'fr'
     };
+    // Hors essai UGC, le plan/l'annualité viennent toujours du client comme avant — ce bloc ne
+    // change rien au tunnel de paiement normal (paiement.html) construit ce matin.
+    if (!essaiToken) {
+      sessionParams.metadata.plan = plan || 'pro';
+      sessionParams.metadata.annuel = annuel ? 'true' : 'false';
+      sessionParams.subscription_data.metadata.plan = plan || 'pro';
+      sessionParams.subscription_data.metadata.annuel = annuel ? 'true' : 'false';
+    }
 
     if (customerEmail) {
       sessionParams.customer_email = customerEmail;
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
+
+    /* Le jeton n'est PLUS consommé ici (29/08/2026).
+       Il l'était juste après la création de la session — c'est-à-dire au simple CHARGEMENT de
+       paiement.html, qui crée la session embarquée pour afficher le formulaire. Résultat : ouvrir
+       son lien une fois suffisait à le brûler. Fermer l'onglet, recharger, ou hésiter cinq
+       minutes, et la personne se retrouvait définitivement devant « Ce lien d'essai n'est plus
+       valide » sans avoir jamais rien payé — signalé par un créateur dont la vidéo venait
+       d'être validée.
+       Le jeton est désormais marqué utilisé par le webhook, sur `checkout.session.completed`,
+       c'est-à-dire quand l'essai démarre réellement. `ugc_soumission_id` voyage dans les
+       métadonnées de la session pour que le webhook sache quelle ligne marquer.
+       Contrepartie assumée : on peut créer plusieurs sessions avec le même jeton. Une seule peut
+       aboutir, et un lien réutilisable vaut mieux qu'un lien à usage unique qui se consomme tout
+       seul. */
 
     res.setHeader('Access-Control-Allow-Origin', APP_URL);
     if (embedded) {

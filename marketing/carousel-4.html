@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a1a; display:flex; flex-wrap:wrap; gap:16px; padding:20px; font-family:'Hanken Grotesk',sans-serif; }
+.slide { width:1080px; height:1080px; background:#080A0F; display:flex; flex-direction:column; justify-content:center; padding:60px; position:relative; overflow:hidden; flex-shrink:0; }
+.slide::before { content:''; position:absolute; width:600px; height:600px; background:radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%); top:-200px; right:-200px; pointer-events:none; }
+.logo { position:absolute; bottom:40px; right:60px; display:flex; align-items:center; gap:8px; font-size:18px; font-weight:800; color:rgba(255,255,255,0.25); }
+.logo-mark { width:30px; height:30px; background:#10b981; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:900; color:#080A0F; }
+.dots { position:absolute; bottom:42px; left:60px; display:flex; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.12); }
+.dot.active { background:#10b981; width:24px; border-radius:4px; }
+.pill { display:inline-block; padding:8px 20px; border:1px solid rgba(16,185,129,0.3); border-radius:99px; font-size:16px; font-weight:700; color:#10b981; margin-bottom:28px; letter-spacing:1px; }
+.big { font-size:80px; font-weight:900; color:#fff; line-height:1.1; letter-spacing:-2px; text-align:center; }
+.green { color:#10b981; }
+.tag { font-size:20px; color:rgba(255,255,255,0.3); margin-top:28px; font-weight:600; text-align:center; }
+.reason-num { font-size:140px; font-weight:900; color:rgba(16,185,129,0.06); position:absolute; top:20px; right:40px; }
+.reason-badge { display:inline-block; padding:6px 14px; background:rgba(239,68,68,0.1); border-radius:6px; font-size:14px; font-weight:800; color:#ef4444; letter-spacing:1px; margin-bottom:16px; }
+.reason-icon { font-size:52px; margin-bottom:16px; }
+.reason-title { font-size:44px; font-weight:900; color:#fff; line-height:1.15; margin-bottom:16px; letter-spacing:-1px; }
+.reason-desc { font-size:24px; color:rgba(255,255,255,0.45); line-height:1.5; font-weight:500; }
+.reason-stat { margin-top:28px; padding:20px 28px; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.15); border-radius:14px; font-size:22px; color:#ef4444; font-weight:700; }
+.fix-box { margin-top:20px; padding:20px 28px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.15); border-radius:14px; }
+.fix-text { font-size:22px; color:#10b981; font-weight:700; line-height:1.4; }
+.cta-text { font-size:52px; font-weight:900; color:#fff; line-height:1.2; letter-spacing:-1px; margin-bottom:36px; text-align:center; }
+.cta-btn { background:linear-gradient(180deg,#10b981,#059669); color:#fff; font-size:24px; font-weight:800; padding:20px 50px; border-radius:99px; box-shadow:0 12px 40px rgba(16,185,129,0.35); }
+.cta-url { margin-top:20px; font-size:20px; color:rgba(255,255,255,0.25); font-weight:600; text-align:center; }
+</style>
+</head>
+<body>
+<div class="slide" style="align-items:center;text-align:center">
+  <div class="pill">DIAGNOSTIC</div>
+  <div class="big">Pourquoi tes<br>Shorts font<br><span style="color:#ef4444">0 vues</span></div>
+  <div class="tag">Les 4 raisons (et comment les fixer) →</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide">
+  <div class="reason-num">01</div>
+  <div class="reason-badge">PROBLÈME N°1</div>
+  <div class="reason-icon">📉</div>
+  <div class="reason-title">Taux de complétion trop bas</div>
+  <div class="reason-desc">Les gens quittent avant la fin. L'algo ne pousse que les vidéos regardées en entier.</div>
+  <div class="reason-stat">📊 Un Short regardé à 100% = 5x plus de reach</div>
+  <div class="fix-box"><div class="fix-text">✅ Raccourcis à 30-45s et ajoute un hook dès la 1ère seconde</div></div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide">
+  <div class="reason-num">02</div>
+  <div class="reason-badge">PROBLÈME N°2</div>
+  <div class="reason-icon">🔇</div>
+  <div class="reason-title">Pas lisible sans le son</div>
+  <div class="reason-desc">75% scrollent en muet. Pas de sous-titres = invisible pour la majorité de ton audience.</div>
+  <div class="reason-stat">📊 Les sous-titres augmentent le watch time de 40%</div>
+  <div class="fix-box"><div class="fix-text">✅ Sous-titres karaoke brûlés dans la vidéo</div></div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide">
+  <div class="reason-num">03</div>
+  <div class="reason-badge">PROBLÈME N°3</div>
+  <div class="reason-icon">👤</div>
+  <div class="reason-title">Visage coupé ou mal cadré</div>
+  <div class="reason-desc">En 9:16, si le visage est pas centré, ça fait amateur. Les viewers font pas confiance.</div>
+  <div class="reason-stat">📊 Face centrée = 2x plus d'engagement</div>
+  <div class="fix-box"><div class="fix-text">✅ Recadrage IA avec face tracking automatique</div></div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide">
+  <div class="reason-num">04</div>
+  <div class="reason-badge">PROBLÈME N°4</div>
+  <div class="reason-icon">🎲</div>
+  <div class="reason-title">Tu choisis les mauvais extraits</div>
+  <div class="reason-desc">Tu coupes au feeling au lieu de laisser l'IA détecter les pics d'émotion et d'engagement.</div>
+  <div class="reason-stat">📊 L'IA score 92/100 les moments viraux vs 45/100 au hasard</div>
+  <div class="fix-box"><div class="fix-text">✅ Score de viralité IA sur chaque moment de ta vidéo</div></div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+</div>
+
+<div class="slide" style="align-items:center;text-align:center">
+  <div class="cta-text">Créatis règle<br>ces 4 problèmes<br><span class="green">en 1 clic.</span></div>
+  <div class="cta-btn">Essaie gratuitement →</div>
+  <div class="cta-url">creatis.app</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
+</div>
+</body>
+</html>

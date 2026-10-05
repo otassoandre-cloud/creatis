@@ -1,0 +1,61 @@
+{
+  "_lisezmoi": "Pieces pretes a publier. statut: 'prêt' = planifiable, 'publié' = fait, 'brouillon' = pas encore rendu. Une piece peut viser plusieurs comptes (cibles) mais jamais deux fois le meme.",
+  "pieces": [
+    {
+      "id": "2026-09-28-short-critere",
+      "titre": "Un bon clip se comprend sans la vidéo d où il sort",
+      "video": "creatis-videos/out/short-yt-2809.mp4",
+      "legende": "social/ig-legende-short-yt.txt",
+      "legendes": {
+        "t1": "Un bon clip se comprend SANS la vidéo d où il sort. Pas le plus fort : le plus autonome. #clipping #montage",
+        "t2": "Le critère que personne ne t explique : un clip doit tenir debout tout seul. #clipping"
+      },
+      "cibles": [
+        "g1",
+        "y1"
+      ],
+      "longue": false,
+      "statut": "prêt",
+      "muet": true,
+      "note": "Short compagnon de la vidéo longue youtu.be/pQZKJoNfJnw — enseigne un critère applicable sans l outil, puis y renvoie.",
+      "deja_publie": {
+        "t1": "2026-09-28 09:32 — TikTok, publique, apres analyse des stats"
+      },
+      "gabarit": "ShortVersYouTube",
+      "promeut": "https://youtu.be/93FaFgFWVvE"
+    },
+    {
+      "id": "2026-09-28-letri",
+      "titre": "Le tri, c est toi",
+      "video": "creatis-videos/out/letri-2809.mp4",
+      "legende": "social/ig-legende-2809.txt",
+      "legendes": {
+        "y1": "Le tri, c est toi"
+      },
+      "cibles": [
+        "y1"
+      ],
+      "longue": false,
+      "statut": "prêt",
+      "muet": true,
+      "deja_publie": {
+        "g1": "2026-09-28 — Instagram, 9:16 correct"
+      },
+      "gabarit": "LeTri"
+    },
+    {
+      "id": "2026-09-28-plein-cadre",
+      "titre": "Ce clip, je ne l ai pas monté",
+      "video": "creatis-videos/out/short-plein-2809.mp4",
+      "legende": "social/ig-legende-plein-2809.txt",
+      "gabarit": "ShortPleinCadre",
+      "promeut": "https://youtu.be/93FaFgFWVvE",
+      "cibles": [],
+      "statut": "publié",
+      "muet": true,
+      "deja_publie": {
+        "g1": "2026-09-28 13:05 — Instagram, 72 publications"
+      }
+    }
+  ]
+}

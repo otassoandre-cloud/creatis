@@ -1,0 +1,19 @@
+Ton texte est peut-être caché derrière l'interface, et tu ne le vois pas.
+
+Je viens de mesurer les zones sur une capture réelle de Reel :
+— la ligne du pseudo commence à 84 % de la hauteur
+— la colonne de boutons (cœur, commentaire, envoi) monte jusqu'à 53 %
+— sur un téléphone 19,5:9, une vidéo 9:16 est agrandie pour remplir la hauteur, donc les côtés sont rognés d'environ 8 %
+
+Conséquences, qui expliquent beaucoup d'échecs :
+— tout texte en dessous de 78 % de la hauteur est recouvert
+— tout ce qui touche un bord latéral disparaît purement et simplement
+— un texte centré verticalement tombe souvent pile sur les sous-titres incrustés de ton extrait
+
+La bande sûre tient entre 45 et 65 % de la hauteur, avec au moins 15 % de marge à gauche et à droite.
+
+Je le dis parce que je viens de corriger mes propres vidéos : ma légende était à 78 %. Elle était illisible et je ne m'en rendais pas compte.
+
+creatis.app
+
+#clipping #montagevideo #reels #sousTitres

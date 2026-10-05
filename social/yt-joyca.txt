@@ -1,0 +1,18 @@
+Ton texte est peut-être caché derrière l'interface, et tu ne le vois pas.
+
+▶ La méthode complète : https://youtu.be/QXVkKtKdwOM
+
+Mesuré sur une capture réelle :
+— la ligne du pseudo commence à 84 % de la hauteur
+— la colonne de boutons monte jusqu'à 53 %
+— sur un téléphone 19,5:9, les côtés d'une vidéo 9:16 sont rognés d'environ 8 %
+
+Donc : tout texte en dessous de 78 % est recouvert, et tout ce qui touche un bord latéral disparaît.
+
+La bande sûre : entre 45 et 65 % de la hauteur, 15 % de marge de chaque côté.
+
+Je le dis parce que je viens de corriger mes propres vidéos — ma légende était à 78 %, illisible, et je ne le voyais pas.
+
+👉 creatis.app
+
+#clipping #montagevideo #shorts #sousTitres

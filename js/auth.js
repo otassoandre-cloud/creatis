@@ -32,6 +32,16 @@ const Auth = (() => {
       const { data } = await client.auth.getSession();
       _session = data?.session || null;
 
+      // Session absente mais un refresh token existe peut-être encore (onglet resté en veille
+      // longtemps sur mobile, réseau pas rétabli au retour) — un essai de refresh avant de
+      // considérer l'utilisateur déconnecté, pour éviter de le renvoyer à tort sur auth.html.
+      if (!_session) {
+        try {
+          const { data: refreshed } = await client.auth.refreshSession();
+          if (refreshed?.session) _session = refreshed.session;
+        } catch {}
+      }
+
       // No active session but user was previously registered → grant access
       // (email confirmation pending, or token expired between visits)
       if (!_session) {
@@ -43,10 +53,12 @@ const Auth = (() => {
 
       client.auth.onAuthStateChange((event, session) => {
         _session = session;
-        if (session) _demoMode = false; // real session restored → exit demo mode
+        if (session) _demoMode = false; // real session restourée → sort du mode démo
         if (event === 'SIGNED_OUT') {
           _demoMode = false;
-          localStorage.removeItem('creatis_user');
+          // Ne pas supprimer creatis_user ici : deconnecter() le fait déjà explicitement pour
+          // une vraie déconnexion. Le garder permet au filet de sécurité ci-dessus de fonctionner
+          // si ce SIGNED_OUT est un faux positif du SDK (refresh pas encore possible au réveil).
         }
       });
     },
@@ -106,10 +118,15 @@ const Auth = (() => {
     async signInWithGoogle() {
       const client = _createClient();
       if (!client) throw new Error('Supabase non configuré');
+      // Purger les anciens artefacts PKCE pour éviter bad_oauth_state
+      try {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('sb-') && (k.endsWith('-auth-token-code-verifier') || k.endsWith('-auth-token')));
+        keys.forEach(k => localStorage.removeItem(k));
+      } catch {}
       const redirectTo = window.location.origin + '/auth/callback';
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo, queryParams: { access_type: 'offline', prompt: 'consent' } }
+        options: { redirectTo }
       });
       if (error) throw new Error(error.message);
     },
@@ -172,7 +189,71 @@ const Auth = (() => {
     /* ── Getters ── */
     estAuthentifie() { return !!_session || _demoMode; },
     estDemoMode() { return _demoMode; },
-    getToken() { return _session?.access_token || null; },
+    /* `_session` n'est qu'une COPIE EN MÉMOIRE de la session : elle est vide tant que `init()`
+       n'a pas fini, et repart à zéro à chaque rechargement de page. Supabase, lui, persiste la
+       vraie session dans localStorage sous `creatis_sb_session`. Sans ce repli, un appel
+       authentifié parti avant la fin de l'init repartait SANS jeton, et le serveur répondait
+       « Connexion requise » à quelqu'un qui était pourtant bien connecté — c'est ce qui cassait
+       l'aperçu des clips sur mobile après une mise en veille de l'onglet. */
+    getToken() {
+      if (_session?.access_token) return _session.access_token;
+      try {
+        const brut = localStorage.getItem('creatis_sb_session');
+        if (!brut) return null;
+        const s = JSON.parse(brut) || {};
+        const src = s.currentSession || s;
+        const jeton = src.access_token;
+        if (!jeton) return null;
+        // `expires_at` est un epoch en SECONDES. Marge de 30 s : un jeton qui expire pendant le
+        // trajet réseau vaut un jeton expiré, autant le refuser tout de suite.
+        if (src.expires_at && Date.now() / 1000 > src.expires_at - 30) return null;
+        return jeton;
+      } catch { return null; }
+    },
+
+    /* Identité de la personne connectée, SANS appel réseau et sans dépendre du miroir
+       `creatis_user` — un simple reflet local que rien ne garantit d'écrit. Un compte parfaitement
+       connecte cote Supabase mais dont ce miroir manque etait traite comme deconnecte : c'est ce
+       qui affichait « Connecte-toi d'abord » a un client qui etait bel et bien connecte.
+       Ordre de confiance : session en memoire, puis session persistee par Supabase, puis le
+       miroir en dernier recours. */
+    identite() {
+      const depuisSession = _session?.user;
+      if (depuisSession?.email) {
+        return { id: depuisSession.id || null, email: depuisSession.email };
+      }
+      try {
+        const brut = localStorage.getItem('creatis_sb_session');
+        if (brut) {
+          const s = JSON.parse(brut) || {};
+          const u = (s.currentSession || s).user;
+          if (u?.email) return { id: u.id || null, email: u.email };
+        }
+      } catch {}
+      try {
+        const u = JSON.parse(localStorage.getItem('creatis_user') || '{}') || {};
+        if (u.email) return { id: u.id || null, email: u.email };
+      } catch {}
+      return null;
+    },
+
+    /* Version asynchrone : tente un vrai rafraîchissement quand plus aucun jeton valide n'est
+       disponible. À utiliser avant un appel authentifié qu'on ne veut pas voir échouer en 401. */
+    async assurerToken() {
+      const direct = this.getToken();
+      if (direct) return direct;
+      const client = _createClient();
+      if (!client) return null;
+      try {
+        const { data } = await client.auth.refreshSession();
+        if (data?.session?.access_token) {
+          _session = data.session;
+          _demoMode = false;
+          return data.session.access_token;
+        }
+      } catch { /* refresh token mort : l'appelant devra proposer une reconnexion */ }
+      return null;
+    },
 
     async getSession() {
       const client = _createClient();
@@ -202,19 +283,41 @@ const Auth = (() => {
     },
 
     /* ── Récupérer le plan et le compteur mensuel depuis Supabase ── */
+    /* `_session` n'est qu'une COPIE EN MEMOIRE, vide tant que `init()` n'a pas fini — le meme
+       piege que pour `getToken()`. Cette methode s'appuyait dessus SEULE : sur une connexion
+       lente, elle repartait `null` avant meme d'essayer, et l'appelant en concluait « gratuit ».
+       Constate sur mobile le 14/09/2026 : un compte Pro voyait les cadenas des clips 3 et
+       suivants, et rien ne relancait l'appel de toute la session.
+       `identite()` porte deja le bon ordre de confiance — memoire, puis session persistee par
+       Supabase, puis le miroir `creatis_user` — on s'en sert. */
+    /* Trois tentatives, pas une. Cette fonction renvoie `null` quand le reseau echoue, et
+       l'appelant traite alors l'utilisateur comme GRATUIT faute de mieux. Un client qui venait
+       de payer s'est vu pour cette raison presenter le paywall cinq fois, puis a paye une
+       seconde fois (session du 15/09, angelo-2000). Une coupure d'une seconde ne doit pas
+       coûter un abonnement en double : on retente deux fois, a 600 ms puis 1,5 s. */
     async getPlanDistant() {
-      if (!_session?.user?.id) return null;
+      const moi = this.identite();
+      if (!moi?.id) return null;
+      for (let essai = 0; essai < 3; essai++) {
+        if (essai) await new Promise(r => setTimeout(r, essai === 1 ? 600 : 1500));
+        const r = await this._planUneFois(moi.id);
+        if (r !== null) return r;
+      }
+      return null;
+    },
+
+    async _planUneFois(id) {
       try {
         const res = await fetch(CONFIG.USER_SYNC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get', userId: _session.user.id })
+          body: JSON.stringify({ action: 'get', userId: id })
         });
         if (!res.ok) return null;
         const { user } = await res.json();
         if (!user) return 'gratuit';
         // Retourner l'objet complet pour que app.js puisse sync le compteur mensuel
-        return { plan: user.plan || 'gratuit', generations_used: user.generations_used || 0, generations_reset_at: user.generations_reset_at || null };
+        return { plan: user.plan || 'gratuit', generations_used: user.generations_used || 0, generations_reset_at: user.generations_reset_at || null, repurpose_count: user.repurpose_count || 0 };
       } catch { return null; }
     }
   };
@@ -223,13 +326,14 @@ const Auth = (() => {
   async function _syncUtilisateur(user, session) {
     if (!user?.email) return;
     try {
+      const source = localStorage.getItem('creatis_source') || 'web';
       await fetch(CONFIG.USER_SYNC_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
-        body: JSON.stringify({ action: 'upsert', userId: user.id, email: user.email, plan: 'gratuit' })
+        body: JSON.stringify({ action: 'upsert', userId: user.id, email: user.email, plan: 'gratuit', source })
       });
     } catch (e) { console.warn('[Auth] Sync utilisateur échoué:', e.message); }
   }

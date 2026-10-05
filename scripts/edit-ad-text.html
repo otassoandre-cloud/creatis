@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Ad Text</title>
+  <style>
+    body { margin: 0; background: #111; display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 16px; }
+    canvas { max-width: 100%; border: 1px solid #333; }
+    button { padding: 12px 24px; background: #10b981; color: #000; border: none; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <button onclick="telecharger()">Télécharger l'image</button>
+
+  <script>
+    const IMG_URL = 'https://d8j0ntlcm91z4.cloudfront.net/user_3DiPJzyKwTidbI4OTzLgGpOygqf/hf_20260529_142515_9f172276-a9c3-4071-a157-3abeedc2180e.png';
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      /* Couvrir uniquement le bloc texte (gauche) — même fond que l'image */
+      const zoneW = img.width * 0.455;
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(0, 0, zoneW, img.height);
+
+      const marginL = img.width * 0.055;
+      ctx.textBaseline = 'top';
+
+      /* Taille de police calée sur l'original */
+      const fontSize = Math.round(img.width * 0.082);
+      const lineH    = fontSize * 1.15;
+      const startY   = img.height * 0.10;
+
+      /* Lignes blanches */
+      ctx.font = `900 ${fontSize}px 'Arial Black', Arial, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      ['Tu filmes tes', 'meilleurs moments.'].forEach((ligne, i) => {
+        ctx.fillText(ligne, marginL, startY + i * lineH);
+      });
+
+      /* Lignes rouges */
+      ctx.fillStyle = '#e8302a';
+      const startY2 = startY + 2 * lineH + fontSize * 0.18;
+      ['On les transforme', 'en Shorts viraux.'].forEach((ligne, i) => {
+        ctx.fillText(ligne, marginL, startY2 + i * lineH);
+      });
+
+      /* Logo Créatis. — même position que l'original */
+      const logoSize = Math.round(img.width * 0.036);
+      ctx.font      = `900 ${logoSize}px 'Arial Black', Arial, sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Créatis.', marginL, img.height * 0.865);
+      const logoW = ctx.measureText('Créatis. ').width;
+      ctx.font      = `500 ${Math.round(logoSize * 0.82)}px Arial, sans-serif`;
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('creatis.app', marginL + logoW, img.height * 0.872);
+    };
+    img.onerror = () => alert('Erreur chargement image — CORS. Ouvre le fichier via un serveur local (node serveur.js) puis accède à localhost:3000/scripts/edit-ad-text.html');
+    img.src = IMG_URL;
+
+    function telecharger() {
+      const a = document.createElement('a');
+      a.download = 'creatis-ad-final.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+  </script>
+</body>
+</html>

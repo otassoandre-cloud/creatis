@@ -170,17 +170,18 @@ Réponds entièrement en français. Pas de commentaires sur ta réponse — livr
       const isShort = (d.format || '').includes('9:16');
       const ratio = isShort ? '9:16 vertical Short format' : '16:9 horizontal';
       const comp = isShort
-        ? 'Portrait vertical composition, subject centered, text in lower third well within frame'
-        : 'Landscape cinematic composition, subject prominent';
+        ? 'Portrait vertical composition, subject centered, completely clean image with no text anywhere'
+        : 'Landscape cinematic composition, subject prominent, completely clean image with no text anywhere';
 
+      const noText = 'NO TEXT, NO WORDS, NO LETTERS, NO SIGNS, NO WATERMARK, NO CAPTIONS, pure photographic image.';
       const styles = {
-        'Réaliste naturel': `Photorealistic YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Natural photography, DSLR quality, natural lighting and colors. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Réaliste naturel': `${noText} Photorealistic photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Natural DSLR photography, authentic lighting, true-to-life colors, highly detailed.`,
 
-        'Lifestyle luxe': `Photorealistic luxury lifestyle YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Warm golden hour sunlight, premium environment, aspirational atmosphere. High-end editorial photography. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Lifestyle luxe': `${noText} Photorealistic luxury lifestyle photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Warm golden hour sunlight, premium environment, aspirational atmosphere, high-end editorial photography.`,
 
-        'Cinématique': `Cinematic photorealistic YouTube thumbnail ${ratio}. Scene: ${desc}. ${personPhrase}${nicheCtx}${comp}. Professional location lighting, dramatic shadows and highlights, movie-quality photography. NO TEXT NO WORDS NO LETTERS NO SIGNS.`,
+        'Cinématique': `${noText} Cinematic photorealistic photograph, ${ratio} format. ${desc}. ${personPhrase}${nicheCtx}${comp}. Professional cinematography lighting, dramatic shadows and highlights, movie-quality visual.`,
 
-        'Avant/Après': `Photorealistic YouTube thumbnail ${ratio}, SPLIT SCREEN. LEFT HALF (BEFORE): ${desc} — darker, before state. RIGHT HALF (AFTER): same scene transformed — brighter, better result. Lightning bolt divider center. ${personPhrase}${nicheCtx}${comp}. NO TEXT NO WORDS NO LETTERS NO SIGNS.`
+        'Avant/Après': `${noText} Photorealistic photograph, ${ratio} format, SPLIT SCREEN. LEFT HALF (BEFORE): ${desc} — darker, before state. RIGHT HALF (AFTER): same scene transformed — brighter, better result. Lightning bolt divider center. ${personPhrase}${nicheCtx}${comp}.`
       };
 
       return styles[styleKey] || styles['Réaliste naturel'];
@@ -452,101 +453,122 @@ Réponds en français.`;
     id: 'analyse-video',
     icone: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
     nom: 'Analyse Vidéo',
-    description: 'Colle l\'URL d\'une vidéo — Créatis analyse titre, stats, description, tags et génère un plan d\'optimisation complet',
+    description: 'Colle une vidéo virale — Créatis décrypte exactement pourquoi elle a explosé et extrait la formule à reproduire sur tes propres vidéos',
     couleur: '#3b82f6',
     type: 'texte',
     inputs: [
       {
         id: 'url_video',
-        label: '🔗 URL de la vidéo YouTube',
+        label: '🔗 URL de la vidéo virale à décrypter',
         type: 'text',
-        placeholder: 'https://youtube.com/watch?v=...',
-        requis: false
-      },
-      {
-        id: 'titre',
-        label: 'Titre (si pas d\'URL)',
-        type: 'text',
-        placeholder: 'ex : J\'ai investi 1000€ en bourse pendant 6 mois',
-        requis: false
-      },
-      {
-        id: 'stats',
-        label: 'Stats (si pas d\'URL)',
-        type: 'textarea',
-        placeholder: 'ex : 12 400 vues · 340 likes · 28 commentaires · 8 min · CTR 3,2%',
-        requis: false
+        placeholder: 'https://youtube.com/watch?v=... ou tiktok.com/@... ou instagram.com/reel/...',
+        requis: true
       },
       {
         id: 'objectif',
-        label: 'Objectif d\'amélioration principal',
+        label: 'Qu\'est-ce que tu veux extraire ?',
         type: 'select',
         options: [
-          'Augmenter le CTR (taux de clic)',
-          'Améliorer le watch time (rétention)',
-          'Obtenir plus de commentaires et d\'engagement',
-          'Mieux ranker sur YouTube / SEO',
-          'Attirer plus d\'abonnés',
-          'Optimiser pour les sponsors'
+          'La formule complète (hook + structure + distribution)',
+          'Le hook et les premiers instants qui accrochent',
+          'Le style de montage et le rythme',
+          'Les déclencheurs émotionnels et psychologiques',
+          'La stratégie de distribution (hashtags, moment, format)'
         ],
         requis: true
       }
     ],
     construirePrompt(d, contexteYT = '') {
       const v = d._videoData?.video;
-      const videoAnalyse = d._videoData?.transcript; // analyse Gemini complète ou VTT
+      const videoAnalyse = d._videoData?.transcript;
       const comments = d._videoData?.comments || [];
 
-      const titre = v?.titre || d.titre || 'Non spécifié';
+      const url = d.url_video || '';
+      const isTikTok = url.includes('tiktok.com');
+      const isInstagram = url.includes('instagram.com');
+      const isYouTube = !isTikTok && !isInstagram;
+      const plateforme = isTikTok ? 'TikTok' : isInstagram ? 'Instagram Reels' : 'YouTube';
+
+      const titre = v?.titre || 'Non spécifié';
       const stats = v
-        ? `${v.vues} vues · ${v.likes} likes · ${v.nombreCommentaires} commentaires · Durée : ${v.duree} · Publié le ${v.datePublication}`
-        : (d.stats || 'Non fournies');
-      const tags = v?.tags?.join(', ') || 'Non fournis';
-      const description = v?.description || 'Non fournie';
-      const topComments = comments.slice(0, 10).map(c => `• [${c.likes}👍] ${c.texte.substring(0, 200)}`).join('\n');
+        ? `${v.vues} vues · ${v.likes} likes · ${v.nombreCommentaires} commentaires · Durée : ${v.duree}`
+        : 'Non fournies';
+      const description = v?.description || '';
+      const topComments = comments.slice(0, 5).map(c => `• [${c.likes}👍] "${c.texte.substring(0, 150)}"`).join('\n');
 
-      // Contexte chaîne uniquement si pas de vidéo externe analysée
-      const hasExternalVideo = !!d._videoData;
-      const chaineContext = !hasExternalVideo && contexteYT ? `CONTEXTE CHAÎNE :\n${contexteYT}\n\n` : '';
+      const chaineContext = contexteYT ? `CHAÎNE DU CRÉATEUR QUI ANALYSE :\n${contexteYT}\n(Adapte les leçons actionnables à sa niche et son style)\n\n` : '';
 
-      return `RÔLE : Tu es le directeur éditorial YouTube d'une agence qui a accompagné 500+ créateurs. Tu analyses chaque vidéo avec précision chirurgicale — titre, description, tags, engagement, tout compte.
+      const hasGeminiAnalysis = !!videoAnalyse;
 
-${chaineContext}VIDÉO À ANALYSER :
-Titre : "${titre}"
-Stats : ${stats}
-Tags : ${tags}
-Description : ${description.substring(0, 800)}
-${topComments ? `\nTOP COMMENTAIRES :\n${topComments}` : ''}
-${videoAnalyse ? `\nANALYSE COMPLÈTE DU CONTENU VIDÉO (Gemini a regardé la vidéo) :\n${videoAnalyse.substring(0, 5000)}` : ''}
+      const geminiBlock = hasGeminiAnalysis
+        ? `\n🤖 GEMINI A REGARDÉ LA VIDÉO — Analyse visuelle frame par frame :\n${videoAnalyse.substring(0, 6000)}\n`
+        : '';
 
-Objectif prioritaire : ${d.objectif}
+      // Quand Gemini a regardé la vidéo : analyse profonde basée sur le visuel réel
+      const rapportAvecGemini = `## 🎯 VERDICT VIRAL
+Score de viralité X/10. En 1 phrase percutante : la raison principale pour laquelle cette vidéo a explosé sur ${plateforme}.
+Puis les 3 mécanismes clés qui expliquent ce score.
 
-RAPPORT EN 6 PARTIES :
+## 🎬 DÉCRYPTAGE SECONDE PAR SECONDE
+Raconte exactement ce qui se passe dans la vidéo et POURQUOI ça fonctionne à chaque moment :
+• **0-3s (Hook)** : Décris précisément le visuel, le son, le mouvement ou le texte d'ouverture. Pourquoi ça force à rester ?
+• **3s-milieu** : Comment la vidéo maintient l'attention ? Quelle tension ou curiosité est créée ?
+• **Fin** : Comment ça se termine ? Y a-t-il un twist, une révélation, un cliffhanger qui pousse à revoir ou partager ?
 
-## 🎯 DIAGNOSTIC GLOBAL
-Score X/10 basé sur le contenu réel de la vidéo. 3 forces + 3 faiblesses concrètes tirées de l'analyse. Verdict en 1 phrase percutante.
+## 🧠 LES MÉCANISMES PSYCHOLOGIQUES
+Quelles émotions précises cette vidéo déclenche, et par quels éléments concrets ?
+(ex : curiosité → "on ne sait pas si la bille va tomber", humour → ..., relatabilité → ...)
+Quel biais cognitif ou déclencheur social est activé ? (FOMO, compétition, surprise, validation sociale...)
 
-## 📌 OPTIMISATION TITRE
-Analyse du titre actuel (longueur, mots-clés, émotion, promesse). 5 alternatives classées par CTR estimé :
-• Titre [CTR estimé X%] — justification 1 ligne.
-Recommandation finale et pourquoi.
+## 🎵 RÔLE DE L'AUDIO
+Si de la musique/un son est utilisé : quel effet précis ça crée ? Est-ce un son trending ? Comment ça amplifie l'émotion ?
+Si voix : quel style de narration ? Pourquoi ça fonctionne ?
 
-## 🖼️ RECOMMANDATIONS MINIATURE
-3 concepts précis basés sur le contenu de la vidéo : composition, couleurs, texte overlay, émotion, style. Lequel choisir et pourquoi.
+## ✂️ MONTAGE & FORMAT
+Style de montage décrypté : fréquence des coupes, transitions, effets. Pourquoi ce rythme est adapté à ce contenu ?
+Format (durée, orientation, textes à l'écran) : en quoi c'est optimisé pour ${plateforme} ?
 
-## 📝 OPTIMISATION DESCRIPTION
-Les 2 premières lignes sont-elles accrocheuses ? Timestamps présents ? Mots-clés placés ?
-Réécris les 5 premières lignes pour maximiser SEO + engagement.
-5 ajouts prioritaires.
+## 📋 LA FORMULE À REPRODUIRE
+La formule exacte de cette vidéo, décrite de façon à pouvoir la répliquer :
+**[Type de hook] + [Tension/émotion maintenue par] + [Résolution/fin] + [Audio] + [Format]**
 
-## 🏷️ OPTIMISATION TAGS
-30 tags optimisés basés sur le vrai sujet de la vidéo : 5 méga + 15 niche + 10 longue traîne. Logique de sélection.
+Puis 5 idées de vidéos concrètes qui utilisent cette même formule, adaptées à la niche du créateur qui analyse.
+Pour chaque idée : titre + comment reproduire le même mécanisme.`;
 
-## 📈 PLAN D'ACTION — ${d.objectif}
-5 actions concrètes par impact (fort/moyen/faible) et effort (rapide/moyen/long).
-Action #1 faisable en moins d'1h. Projection 30 jours si tout est appliqué.
+      // Sans Gemini : analyse basée sur les métadonnées + engagement
+      const rapportSansGemini = `## 🎯 VERDICT VIRAL
+Score de viralité X/10 basé sur les stats disponibles. La raison principale qui explique la performance de cette vidéo.
 
-Réponds en français. Rapport direct sans commentaires introductifs.`;
+## 🔍 CE QU'ON PEUT DÉDUIRE DU SUCCÈS
+À partir du titre, des stats et de l'engagement, explique pourquoi cette vidéo a probablement bien marché :
+• **Le titre/concept** : Qu'est-ce qui crée la curiosité ou l'envie de cliquer ?
+• **Le ratio engagement** : Que révèlent les likes/commentaires/vues sur l'émotion ressentie ?
+• **La durée** : Est-elle optimale pour ${plateforme} ? Qu'est-ce que ça implique sur la rétention ?
+
+## 🧠 LES MÉCANISMES PSYCHOLOGIQUES PROBABLES
+Quels émotions et déclencheurs cette vidéo a probablement activés (curiosité, humour, relatabilité, compétition...) ?
+Base-toi sur le titre/concept pour déduire le mécanisme viral.
+
+## 📋 LA FORMULE PROBABLE
+Reconstitue la formule de cette vidéo à partir des infos disponibles.
+5 idées de vidéos qui reproduisent ce mécanisme, adaptées à la niche.
+
+## ⚠️ LIMITE D'ANALYSE
+Sans avoir regardé la vidéo directement, l'analyse reste partielle. Colle l'URL pour que Gemini regarde la vidéo et donne une analyse complète secondes par secondes.`;
+
+      return `RÔLE : Tu es expert en analyse virale — tu décryptes les mécanismes qui font exploser les vidéos sur ${plateforme}. Ton but n'est PAS d'améliorer la vidéo analysée, mais d'expliquer POURQUOI elle a fonctionné et comment reproduire sa formule.
+
+${chaineContext}VIDÉO VIRALE À DÉCRYPTER (${plateforme}) :
+Titre/légende : "${titre}"
+Stats d'engagement : ${stats}
+${description ? `Description : ${description.substring(0, 400)}` : ''}
+${topComments ? `\nCommentaires (ce que les gens ont ressenti) :\n${topComments}` : ''}
+${geminiBlock}
+Focus de l'analyse : ${d.objectif}
+
+${hasGeminiAnalysis ? rapportAvecGemini : rapportSansGemini}
+
+Réponds en français. Sois précis et concret — cite des éléments spécifiques de la vidéo, pas des généralités. Pas d'intro, va droit au but.`;
     }
   },
 
@@ -564,33 +586,57 @@ Réponds en français. Rapport direct sans commentaires introductifs.`;
 ## CONNAISSANCE DE L'APPLICATION CRÉATIS
 
 **C'est quoi Créatis ?**
-Créatis est un SaaS IA pour créateurs YouTube francophones. Il génère en 30 secondes : scripts complets, titres, descriptions SEO, idées de vidéos, stratégie de croissance, et clips viraux à partir de vidéos uploadées.
+Créatis prend une vidéo longue — podcast, interview, live, vlog — et en sort 10 clips verticaux prêts à publier sur TikTok, Reels et Shorts. C'est le produit principal, et c'est ce qui est vendu. L'application contient aussi six autres agents d'écriture et d'analyse, utiles mais secondaires.
+
+**Ce que Clips Viraux fait vraiment, étape par étape :**
+1. On colle un lien YouTube ou on téléverse un fichier (MP4/MOV)
+2. L'IA transcrit la vidéo, puis repère les moments les plus forts et leur donne un score
+3. Chaque clip sort en 1080x1920, recadré automatiquement avec suivi du visage
+4. Les sous-titres sont incrustés, mot par mot, dans le style choisi
+5. On peut ajouter un hook — une phrase d'accroche incrustée sur les premières secondes ; l'IA en propose un pour chaque clip
+6. Sur un plan filmé à deux personnes, l'écran peut se partager en haut/bas
+7. On ajuste le cadrage, le style et la position des sous-titres avant de télécharger
+
+Compter deux à quatre minutes d'analyse pour une vidéo d'une heure. Les clips restent dans l'historique.
 
 **Les agents disponibles :**
-- YouTube Complet : script + titre + description + hashtags en une génération
-- YouTube Short : script vertical optimisé pour les Shorts
-- Idées Vidéos : 10 idées avec angles et hooks selon la niche
-- Titres Viraux : 10 variantes de titres A/B testables
-- Description SEO : description optimisée avec mots-clés YouTube
-- Miniature IA : génération d'image miniature 16:9 par IA
-- Stratégie Croissance : plan d'action 30 jours personnalisé
-- Clips Viraux : découpe automatique d'une longue vidéo en 10 clips courts 9:16
+- Clips Viraux (agent principal) : transforme n'importe quelle vidéo en 10 clips verticaux prêts à publier
+- YouTube Complet : titres, script complet, plan, description SEO et tags optimisés en une génération
+- Miniature Pro : génère un fond réaliste sur-mesure par IA à partir d'une description
+- Recyclage Contenu : colle l'URL d'une vidéo → récupère le transcript et génère des posts LinkedIn, Twitter/X, Instagram, Newsletter
+- Idées de Vidéos : 30 idées personnalisées basées sur la niche et les tendances actuelles
+- Réponses Commentaires : colle l'URL d'une vidéo → récupère les vrais commentaires et génère des réponses personnalisées
+- Analyse Vidéo : colle une vidéo virale → décrypte pourquoi elle a explosé et extrait la formule à reproduire
 
-**Plans :**
-- Gratuit : 10 générations/mois pour tester, agents de base
-- Pro : générations illimitées, tous les agents, clips viraux
-- Studio : tout illimité, plusieurs chaînes
-- Pour connaître les tarifs exacts ou upgrader : cliquer sur "Upgrade" dans le tableau de bord
+**Plans — ces chiffres sont exacts, ne les arrondis pas et n'en invente pas :**
+- Découverte (gratuit, accordé à l'inscription) : 2 vidéos analysées, aperçu des 2 PREMIERS clips seulement, AUCUN téléchargement. L'analyse et l'aperçu sont gratuits ; télécharger demande un plan payant.
+- Starter — 9,95 €/mois : 5 vidéos analysées et 20 clips téléchargeables par mois
+- Pro — 14 €/mois : 30 vidéos et 150 clips par mois, tous les agents, 30 miniatures. **7 jours d'essai gratuit** : carte requise à l'inscription, rien n'est prélevé si on résilie avant la fin.
+- Pro annuel — 139 € l'année, prélevés 11,58 €/mois sur 12 mois, avec engagement de 12 mois. Soit deux mois offerts par rapport au mensuel. (Le prélèvement en douze fois remplace le paiement comptant depuis le 10/09/2026.)
+- Pour changer de plan : bouton "Upgrade" dans le tableau de bord.
+
+Si quelqu'un demande un plan qui n'est pas dans cette liste, dis que tu n'en as pas connaissance et renvoie vers creatis.app/paiement.html — n'improvise jamais un tarif.
+
+**Un mois offert contre une vidéo (programme créateur) :**
+Publier une vidéo qui PARLE DE CRÉATIS sur TikTok, Instagram ou YouTube, atteindre 300 vues minimum, puis soumettre le lien → un mois de Pro offert. La vidéo doit vraiment parler de l'outil : une vidéo sans rapport est refusée, même avec les vues.
 
 **Programme Affilié :**
-- 30% de commission récurrente à vie sur chaque abonné Pro parrainé
+- 30 % de commission récurrente à vie sur chaque abonné parrainé
+- La commission passe à 40 % à partir de 100 filleuls actifs
 - Accessible via la sidebar "Navigation > Programme Affilié"
 
+**Créatis dans Claude (connecteur MCP) :**
+Créatis peut se brancher comme connecteur dans Claude : on demande des clips en langage naturel, sans ouvrir le site. Le quota du compte s'applique normalement. Pour obtenir le lien du connecteur, écrire à contact@creatis.app.
+
 **Questions fréquentes support :**
-- "Comment uploader une vidéo pour les clips ?" → Dans l'agent Clips Viraux, glisser-déposer ou cliquer pour choisir un fichier MP4/MOV depuis l'appareil
-- "Le téléchargement de clip ne fonctionne pas" → Sur mobile, l'app utilise le partage natif iOS/Android. Sur desktop, le clip se télécharge en MP4.
-- "Comment connecter ma chaîne YouTube ?" → Dans le tableau de bord, section "Chaîne YouTube", cliquer sur "Connecter"
+- "Comment uploader une vidéo pour les clips ?" → Coller un lien YouTube, ou glisser-déposer un fichier MP4/MOV. Depuis un téléphone, la limite est de 150 Mo par fichier : au-delà, coller le lien YouTube ou passer par un ordinateur.
+- "Je ne peux télécharger que 2 clips" → C'est l'aperçu du plan Découverte : les 2 premiers clips sont visibles, le téléchargement demande Starter ou Pro.
+- "Le téléchargement de clip ne fonctionne pas" → Sur mobile, l'app utilise le partage natif iOS/Android. Sur ordinateur, le clip se télécharge en MP4.
+- "L'analyse est longue / semble bloquée" → Compter deux à quatre minutes sur une vidéo d'une heure. Le travail continue côté serveur même si l'écran se met en veille ; on peut revenir plus tard, la génération est dans l'historique.
+- "L'analyse a échoué" → Réessayer une fois. Si le message parle de saturation, attendre deux ou trois minutes : la vidéo n'est pas perdue et le quota n'est pas décompté sur un échec.
+- "Comment connecter ma chaîne YouTube ?" → Dans le tableau de bord, section "Connecte ta chaîne YouTube", entrer son @handle ou l'URL de la chaîne et cliquer sur "Analyser"
 - "Mes générations ne s'affichent plus" → L'historique est accessible via "Navigation > Historique" dans la sidebar
+- "Comment résilier ?" → Depuis le portail de facturation Stripe, accessible dans le tableau de bord. La résiliation prend effet à la fin de la période déjà payée.
 - "Bug ou problème technique persistant" → Écrire à contact@creatis.app en décrivant le problème
 
 **Ce que tu NE peux PAS résoudre (renvoyer vers contact@creatis.app) :**
