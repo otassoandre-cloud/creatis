@@ -138,10 +138,16 @@ const lireOnglet = async (page, onglet) => {
     let n = parseFloat(mv[1].replace(/[  ]/g, '').replace(',', '.'));
     if (mv[2] && /k/i.test(mv[2])) n *= 1000;
     if (mv[2] && /m/i.test(mv[2])) n *= 1000000;
-    /* Une publication de quelques minutes n'affiche pas encore de compteur :
-       le texte capté ne contient aucun nombre et `parseFloat` rend NaN. Zéro
-       est la bonne lecture — afficher « NaN vue » ferait croire à une panne. */
-    if (!Number.isFinite(n)) n = 0;
+    /* ── NE JAMAIS REMPLACER L'ILLISIBLE PAR ZÉRO ──────────────────────
+       Première version : `if (!Number.isFinite(n)) n = 0;`, pour éviter
+       d'afficher « NaN vue ». Conséquence le 05/10 : un Short à 338 vues a
+       été rapporté à ZÉRO pendant 24 h, parce que sa carte n'exposait pas de
+       compteur lisible. J'ai failli conclure que la nouvelle ouverture avait
+       échoué, alors que c'était le meilleur Short de la série.
+
+       Zéro et « je n'ai pas pu lire » sont deux choses différentes. On marque
+       l'inconnu, et le compteur exact vient de la page de la vidéo. */
+    if (!Number.isFinite(n)) n = null;
     out.push({
       id,
       titre: txt.slice(0, txt.indexOf(mv[0])).trim().slice(0, 90),
@@ -153,6 +159,27 @@ const lireOnglet = async (page, onglet) => {
   }
   console.log(`  onglet ${onglet} : ${out.length} publication(s)`);
   return out;
+};
+
+/**
+ * LE COMPTEUR EXACT, depuis la page de la vidéo.
+ *
+ * Les cartes de la chaîne abrègent (« 1,9 k ») et parfois n'affichent rien du
+ * tout. La page de chaque vidéo porte `"viewCount":"338"` en clair : c'est la
+ * seule source qui ne ment pas, et elle coûte une requête par vidéo.
+ */
+const compteurExact = (id) => {
+  try {
+    const html = require('child_process').execFileSync(
+      'curl',
+      ['-s', '--max-time', '20', `https://www.youtube.com/watch?v=${id}`],
+      { encoding: 'utf8', maxBuffer: 48 * 1024 * 1024 },
+    );
+    const m = html.match(/"viewCount":"(\d+)"/);
+    return m ? parseInt(m[1], 10) : null;
+  } catch (e) {
+    return null;
+  }
 };
 
 (async () => {
@@ -171,6 +198,17 @@ try {
      lisant que Vidéos, alors que la chaîne portait 24 Shorts. */
   const tout = [...(await lireOnglet(page, 'videos')), ...(await lireOnglet(page, 'shorts'))];
   await ctx.close().catch(() => {});
+
+  /* On remplace chaque compteur par le chiffre exact de la page de la vidéo.
+     Celui des cartes est abrégé, et parfois absent. */
+  console.log('  compteurs exacts…');
+  let corriges = 0;
+  for (const p of tout) {
+    const n = compteurExact(p.id);
+    if (n !== null && n !== p.vues) corriges++;
+    if (n !== null) p.vues = n;
+  }
+  console.log(`  ${corriges} compteur(s) corrigé(s) par la page de la vidéo`);
 
   if (!tout.length) {
     console.error('Aucune publication lue — la page a changé de forme, ou le handle est faux.');
