@@ -232,6 +232,19 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **LE HOOK PARLE DU SPECTATEUR, PAS DE NOUS.** Releve le 06/10 sur six Shorts
+  de 3,3 a 20 MILLIONS de vues : TROIS n ont aucun visage — ils montrent des
+  MAINS en train de faire quelque chose, en gros plan. Le visage n est donc pas
+  la variable, et ma conclusion de la veille etait fausse.
+  Ce qu ils ont tous : un texte qui nomme la SITUATION DU SPECTATEUR, a la
+  deuxieme personne.
+      < quand t es dans un endroit ou t as pas de reseau >
+      < Voici ce qu il faut faire si ton smartphone prend l eau >
+      < 3 outils IA GRATUITS que personne n utilise >
+  Les miens disaient < Ce clip n existait pas il y a 3 minutes >, < J ai change
+  une seule chose > : je parlais de moi et d un logiciel.
+  REGLE : le hook contient < tu >, < ton >, ou un probleme que la personne
+  reconnait. Jamais < je > ni le nom du produit.
 - **LE PLAFOND A 300 VUES, ET CE QUI LE DEPASSE.** Releve le 06/10 en ouvrant
   enfin les Shorts de la chaine qui depassent mille vues :
     1 967 — un VISAGE en gros plan, webcam, expression marquee, avec DEUX

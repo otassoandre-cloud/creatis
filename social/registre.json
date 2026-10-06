@@ -1034,6 +1034,22 @@
       "son": "musique+clip",
       "muet": false,
       "url": null
+    },
+    {
+      "id": "2026-10-06-carrousel-200-vues-g1",
+      "piece": "carrousel-200-vues",
+      "titre": "carrousel-200-vues",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-06T16:23:01.674Z",
+      "heure": "18 h",
+      "gabarit": "Carrousel",
+      "source": "mesures-semaine",
+      "accroche": "probleme du lecteur",
+      "son": "aucun",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeJ2bkWOkGn/"
     }
   ]
 }

@@ -36,6 +36,7 @@ import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { MiniatureGrille } from "./creatis/MiniatureGrille";
 import { MiniatureOuverture } from "./creatis/MiniatureOuverture";
 import { MiniatureLongCourt } from "./creatis/MiniatureLongCourt";
+import { Carrousel, VIGNETTES } from "./creatis/Carrousel";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
 import { DUREE_ESSAI, EssaiIllustrations } from "./creatis/EssaiIllustrations";
@@ -265,6 +266,19 @@ export const RemotionRoot: React.FC = () => {
           width={1920}
           height={1080}
         />
+        {/* CARROUSEL — une vignette par composition, 4:5. */}
+        {VIGNETTES.map((v, i) => (
+          <Composition
+            key={i}
+            id={`Carrousel${i + 1}`}
+            component={Carrousel}
+            defaultProps={{ v }}
+            durationInFrames={1}
+            fps={30}
+            width={1080}
+            height={1350}
+          />
+        ))}
         <Composition
           id="MiniatureLongCourt"
           component={MiniatureLongCourt}

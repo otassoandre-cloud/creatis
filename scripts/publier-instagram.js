@@ -42,6 +42,12 @@ const publier = process.argv.includes('--publier');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
 
 const VIDEO = arg('video', '');
+/* ── CARROUSEL ────────────────────────────────────────────────────────────
+   Une suite d'images, separees par des virgules. Instagram accepte jusqu'a
+   dix vignettes et les publie en une seule publication qu'on fait defiler.
+   Demande du 06/10 : un carrousel par jour. Le reste du parcours est le meme
+   que pour une video — seul le depot change. */
+const IMAGES = arg('images', '').split(',').map((x) => x.trim()).filter(Boolean);
 const LEGENDE = process.argv.includes('--legende-fichier')
   ? fs.readFileSync(arg('legende-fichier', ''), 'utf8').trim()
   : arg('legende', '');
@@ -67,7 +73,13 @@ const STRATEGIES = [
 ];
 
 (async () => {
-  if (!VIDEO || !fs.existsSync(VIDEO)) {
+  if (IMAGES.length) {
+    const manquante = IMAGES.find((f) => !fs.existsSync(f));
+    if (manquante) {
+      console.error('Image introuvable : ' + manquante);
+      process.exit(2);
+    }
+  } else if (!VIDEO || !fs.existsSync(VIDEO)) {
     console.error('Vidéo introuvable : ' + VIDEO);
     process.exit(1);
   }
@@ -172,7 +184,10 @@ const STRATEGIES = [
     console.log('· dépôt du fichier');
     const champ = page.locator('input[type="file"]').last();
     await champ.waitFor({ state: 'attached', timeout: 20000 });
-    await champ.setInputFiles(path.resolve(VIDEO));
+    await champ.setInputFiles(
+      IMAGES.length ? IMAGES.map((f) => path.resolve(f)) : path.resolve(VIDEO),
+    );
+    if (IMAGES.length) console.log(`  ${IMAGES.length} vignettes déposées`);
     await page.waitForTimeout(9000);
     /* L'avis « Les vidéos sont désormais partagées en tant que reels » se ferme
        par OK. On ne propose PAS « Suivant » ici : ce bouton appartient à l'écran
