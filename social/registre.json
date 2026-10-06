@@ -1050,6 +1050,54 @@
       "son": "aucun",
       "muet": false,
       "url": "https://www.instagram.com/andre.creatis/reel/DeJ2bkWOkGn/"
+    },
+    {
+      "id": "2026-10-06-vocal-gotaga-t1",
+      "piece": "vocal-gotaga",
+      "titre": "vocal-gotaga",
+      "plateforme": "tiktok",
+      "compte": "t1",
+      "statut": "publié",
+      "publie_le": "2026-10-06T17:43:06.642Z",
+      "heure": "19 h",
+      "gabarit": "VocalHookSpectateur",
+      "source": "rec-gotaga",
+      "accroche": "situation du spectateur",
+      "son": "tendance",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-06-vocal-gotaga-g1",
+      "piece": "vocal-gotaga",
+      "titre": "vocal-gotaga",
+      "plateforme": "instagram",
+      "compte": "g1",
+      "statut": "publié",
+      "publie_le": "2026-10-06T17:44:54.900Z",
+      "heure": "19 h",
+      "gabarit": "VocalHookSpectateur",
+      "source": "rec-gotaga",
+      "accroche": "situation du spectateur",
+      "son": "musique+clip",
+      "muet": false,
+      "url": "https://www.instagram.com/andre.creatis/reel/DeKWXa5OyCf/"
+    },
+    {
+      "id": "2026-10-06-vocal-gotaga-y1",
+      "piece": "vocal-gotaga",
+      "titre": "vocal-gotaga",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-06T17:47:23.975Z",
+      "heure": "19 h",
+      "gabarit": "VocalHookSpectateur",
+      "source": "rec-gotaga",
+      "accroche": "situation du spectateur",
+      "son": "musique+clip",
+      "muet": false,
+      "url": null
     }
   ]
 }
