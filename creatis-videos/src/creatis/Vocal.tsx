@@ -66,6 +66,19 @@ type Plan = {
   /** Rectangle UTILE de l'enregistrement, en pixels source : [x, y, l, h]. */
   cadre: [number, number, number, number];
   /**
+   * ACCROCHE : un texte ÉNORME, haut dans le cadre, sur le premier plan.
+   *
+   * Relevé le 06/10 sur les Shorts de la chaîne qui dépassent mille vues : le
+   * meilleur (1 967) ouvre sur un visage en gros plan avec, par-dessus, deux
+   * lignes de texte en très grand et des émojis. Les miens plafonnent à 330
+   * avec une légende discrète à mi-hauteur.
+   *
+   * On ne peut pas fabriquer le visage ici — il appartient au propriétaire de
+   * la chaîne. On peut au moins faire le texte à la bonne taille, au bon
+   * endroit, dès la première image.
+   */
+  accroche?: string;
+  /**
    * Position, en secondes DANS LE CLIP, du son à poser sur ce plan.
    *
    * N'importe quel plan peut porter le son du clip, pas seulement le dernier :
@@ -298,6 +311,37 @@ export const Vocal: React.FC<Partial<ReglagesVocal>> = (reglages) => {
             "linear-gradient(to top, transparent 30%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.78) 52%, rgba(0,0,0,0.5) 62%, transparent 72%)",
         }}
       />
+
+      {/* ── L'ACCROCHE : ce qui décide dans la première seconde ──────────
+          Beaucoup plus grosse que la légende, et plus haute : à 30 % du cadre,
+          au-dessus du regard, là où les Shorts qui marchent la posent. */}
+      {plan.accroche ? (
+        <div
+          style={{
+            position: "absolute",
+            top: height * 0.22,
+            left: 90,
+            right: 90,
+            textAlign: "center",
+            opacity: visible,
+            transform: `scale(${interpolate(visible, [0, 1], [0.94, 1])})`,
+            color: "#fff",
+            fontSize: 96,
+            fontWeight: 900,
+            lineHeight: 1.08,
+            letterSpacing: -2.5,
+            textShadow:
+              "0 0 2px #000, 4px 4px 0 #000, -4px 4px 0 #000, 4px -4px 0 #000, -4px -4px 0 #000, 0 6px 30px rgba(0,0,0,0.9)",
+          }}
+        >
+          {/* Le separateur est un double slash dans le reglage : plus sur a
+              transporter que la sequence d echappement, qui a ete mangee
+              par le shell au premier essai. */}
+          {plan.accroche.split("//").map((ligne, k) => (
+            <div key={k}>{ligne.trim()}</div>
+          ))}
+        </div>
+      ) : null}
 
       {/* Le commentaire, court, en bas. Il NOMME ce que l'écran montre au même
           instant — il ne raconte pas autre chose. */}

@@ -30,6 +30,7 @@ import { CYPRIEN } from "./creatis/VocalCyprien";
 import { MASTU } from "./creatis/VocalMastu";
 import { CROCE } from "./creatis/VocalCroce";
 import { DOMINGO } from "./creatis/VocalDomingo";
+import { NORMAN } from "./creatis/VocalNorman";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
 import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { MiniatureGrille } from "./creatis/MiniatureGrille";
@@ -303,6 +304,15 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1280}
           height={720}
+        />
+        <Composition
+          id="VocalNorman"
+          component={Vocal}
+          defaultProps={NORMAN}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalDomingo"

@@ -232,6 +232,21 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **LE PLAFOND A 300 VUES, ET CE QUI LE DEPASSE.** Releve le 06/10 en ouvrant
+  enfin les Shorts de la chaine qui depassent mille vues :
+    1 967 — un VISAGE en gros plan, webcam, expression marquee, avec DEUX
+            LIGNES DE TEXTE ENORMES par-dessus des la premiere image ;
+    1 332 — un montage sportif avec un badge rouge, lisible en 1/2 seconde.
+  Les miens plafonnaient a 330 en ouvrant sur une interface, legende discrete
+  a mi-hauteur. Deux leviers :
+    1. UN VISAGE en premiere image — demande de filmer le proprietaire de la
+       chaine, je ne peux pas le fabriquer. C'est le plus gros levier.
+    2. Une ACCROCHE enorme et haute des la premiere image (reglage `accroche`
+       du gabarit Vocal, 96 px a 22 % du haut). Celui-la est a ma portee.
+- **Les reperes du tournage peuvent DECROCHER du fichier.** Le 06/10 les
+  reperes allaient a 226,6 s pour un fichier de 203,2 s : Playwright avait
+  perdu les 23 PREMIERES secondes. Comparer la duree du fichier au dernier
+  repere, et relever sur planche contact des qu'ils divergent.
 - **Normaliser le son du clip** a l extraction :
   `ffmpeg -i clip-X.mp4 -vn -af "loudnorm=I=-16:TP=-1.5:LRA=11" son-clip-X.mp3`.
   Le 06/10 un clip sortait a -24 dB de moyenne : sur un film qui mise tout sur
