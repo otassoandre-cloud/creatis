@@ -269,3 +269,49 @@ export const ZonesInterface: React.FC<{
     </div>
   );
 };
+
+/**
+ * DES BARRES, pour faire SENTIR un rapport.
+ *
+ * « Un à cent » se lit sans effet ; deux barres dont l'une est cent fois plus
+ * courte se voit. Les valeurs sont celles mesurées, et l'échelle est linéaire :
+ * tronquer l'axe pour « mieux montrer » serait fabriquer l'écart.
+ */
+export const Barres: React.FC<{
+  valeurs: { etiquette: string; valeur: number; mauvais?: boolean }[];
+  largeur?: number;
+  debut?: number;
+}> = ({ valeurs, largeur = 1180, debut = 0 }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const t = Math.max(0, frame / fps - debut);
+  const max = Math.max(...valeurs.map((v) => v.valeur), 1);
+
+  return (
+    <div style={{ fontFamily: POLICE, width: largeur }}>
+      {valeurs.map((v, k) => {
+        const pousse = interpolate(t, [0.4 + k * 0.5, 1.4 + k * 0.5], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
+        const l = Math.max(10, (v.valeur / max) * (largeur - 320) * pousse);
+        return (
+          <div key={v.etiquette} style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 22 }}>
+            <div style={{ width: 290, fontSize: 34, fontWeight: 700, color: "rgba(255,255,255,0.8)", textAlign: "right" }}>
+              {v.etiquette}
+            </div>
+            <div
+              style={{
+                width: l, height: 54, borderRadius: 8,
+                background: v.mauvais ? ROUGE : VERT,
+              }}
+            />
+            <div style={{ fontSize: 42, fontWeight: 900, color: v.mauvais ? ROUGE : VERT, opacity: pousse }}>
+              {v.valeur}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};

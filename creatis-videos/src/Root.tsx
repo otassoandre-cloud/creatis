@@ -29,14 +29,17 @@ import { MISTERV } from "./creatis/VocalMisterV";
 import { CYPRIEN } from "./creatis/VocalCyprien";
 import { MASTU } from "./creatis/VocalMastu";
 import { CROCE } from "./creatis/VocalCroce";
+import { DOMINGO } from "./creatis/VocalDomingo";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
 import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { MiniatureGrille } from "./creatis/MiniatureGrille";
 import { MiniatureOuverture } from "./creatis/MiniatureOuverture";
+import { MiniatureLongCourt } from "./creatis/MiniatureLongCourt";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
 import { DUREE_ESSAI, EssaiIllustrations } from "./creatis/EssaiIllustrations";
 import { DUREE_OUVERTURE, OuvertureLongue } from "./creatis/OuvertureLongue";
+import { DUREE_LONGCOURT, LongCourtLongue } from "./creatis/LongCourtLongue";
 import { DUREE_METHODE, MethodeClips } from "./creatis/MethodeClips";
 import { DUREE_LANCEMENT, Lancement } from "./creatis/Lancement";
 import { LARGEUR_MINI, HAUTEUR_MINI, Miniature, MINI_DEFAUT } from "./creatis/Miniature";
@@ -220,6 +223,15 @@ export const RemotionRoot: React.FC = () => {
         {/* FORMAT LONG du 03/10 — un seul critere, et ce qu il faut couper. */}
         {/* Planche d essai des illustrations, avant d en batir un film. */}
         {/* FORMAT LONG du 05/10 — chaque point illustre par du materiau reel. */}
+        {/* FORMAT LONG du 06/10 — chiffres mesures, barres a l echelle. */}
+        <Composition
+          id="LongCourtLongue"
+          component={LongCourtLongue}
+          durationInFrames={DUREE_LONGCOURT}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
         <Composition
           id="OuvertureLongue"
           component={OuvertureLongue}
@@ -253,6 +265,14 @@ export const RemotionRoot: React.FC = () => {
           height={1080}
         />
         <Composition
+          id="MiniatureLongCourt"
+          component={MiniatureLongCourt}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
           id="MiniatureOuverture"
           component={MiniatureOuverture}
           durationInFrames={1}
@@ -283,6 +303,15 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1280}
           height={720}
+        />
+        <Composition
+          id="VocalDomingo"
+          component={Vocal}
+          defaultProps={DOMINGO}
+          durationInFrames={DUREE_VOCAL}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalCroce"

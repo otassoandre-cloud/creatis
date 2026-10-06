@@ -232,6 +232,11 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **Normaliser le son du clip** a l extraction :
+  `ffmpeg -i clip-X.mp4 -vn -af "loudnorm=I=-16:TP=-1.5:LRA=11" son-clip-X.mp3`.
+  Le 06/10 un clip sortait a -24 dB de moyenne : sur un film qui mise tout sur
+  sa premiere seconde, l ouverture etait inaudible. Pousser le gain saturerait
+  (crete a -1,4 dB) ; loudnorm amene a -19 dB sans ecreter.
 - **Le format long doit MONTRER, pas seulement dire.** Chaque point expliqué
   s'illustre avec du matériau réel : une forme d'onde avec les silences
   marqués, un clip qui joue, la grille des notes, une capture de Studio. Les
