@@ -205,6 +205,100 @@ for (const c of plan.creneaux || []) {
   }
 }
 
+/* ── LE SON DOIT VENIR DE CE QU'ON VOIT ─────────────────────────────────
+   Le 08/10, un Short sur la rémunération du clipping est parti avec, en fond
+   sonore, la bande-son d'un clip de Koh-Lanta — on entendait parler de
+   coffres et de bateaux sur des images de Whop et d'une grille de clips. Le
+   son d'un clip n'a de sens que si CE clip est à l'image.
+
+   Ce contrôle lit le composant du gabarit : s'il pose un `son-clip-X.mp3`
+   sans qu'un `rec-X` apparaisse dans le même fichier, il refuse. La seule
+   issue correcte est une voix off (`voix/…mp3`), qui parle de ce qu'on voit.
+
+   On lit le fichier source plutôt que d'analyser l'audio : c'est exact,
+   instantané, et ça désigne la ligne à corriger. */
+if (GABARIT) {
+  const fichier = path.join(RACINE, 'creatis-videos', 'src', 'creatis', `${GABARIT}.tsx`);
+  if (fs.existsSync(fichier)) {
+    const code = fs.readFileSync(fichier, 'utf8');
+    const sons = [...code.matchAll(/staticFile\(\s*["`']son-clip-([a-z0-9-]+)\.mp3/gi)].map((m) => m[1]);
+    const orphelins = [...new Set(sons)].filter((x) => !new RegExp(`rec-${x}[-.]`, 'i').test(code));
+    if (orphelins.length) {
+      fautes.push(
+        `${GABARIT} : le son du clip « ${orphelins.join(', ')} » est posé sans que ce clip soit à l'image. ` +
+        `Mettre une voix off qui parle de ce qu'on voit, ou retirer ce son.`,
+      );
+    }
+  }
+}
+
+/* ── LA PROMESSE DE GAIN FACILE EST SANCTIONNÉE PAR YOUTUBE ─────────────
+   Relevé le 12/10 sur la page des infractions de la chaîne : deux sanctions,
+   toutes deux sur du contenu clipping, toutes deux au titre « Contenus
+   nuisibles ou dangereux » — la règle qui couvre les combines
+   d'enrichissement rapide :
+
+     · 27/07 — mise en garde : « Le clipping rentable en 3 étape simple »
+     · 30/07 — 1er avertissement sur 3 : « Si tu veut être rémunéré en
+       clipping fais ça c'est ultra simple. » (expire le 28/10)
+
+   Le point commun n'est pas le chiffre, c'est la FACILITÉ annoncée. Un
+   deuxième avertissement coûte deux semaines sans aucune mise en ligne, et
+   le troisième la chaîne. Tant que celui-ci court, la marge est nulle.
+
+   Donc deux règles, en dur :
+     1. aucun marqueur de facilité dans un titre ou une légende ;
+     2. une somme d'argent annoncée doit être accompagnée de son coût —
+        volume, durée, moyenne, ou mention que ce n'est pas garanti.
+
+   La deuxième est un avis et non un refus : une légende peut cadrer dans sa
+   narration sans que le mot apparaisse. La première refuse. */
+const FACILITE = [
+  /\bultra[- ]simples?\b/i,
+  /\ben \d+ [ée]tapes? simples?\b/i,
+  /\bc'est (?:tr[èe]s )?(?:simple|facile)\b/i,
+  /\bargent facile\b/i,
+  /\bsans (?:rien faire|effort|travailler|bosser)\b/i,
+  /\b(?:revenus?|gains?|argent) (?:passifs?|automatiques?|garantis?)\b/i,
+  /\bgarantis?\b/i,
+  /\bdu jour au lendemain\b/i,
+  /\bsans compétences?\b/i,
+  /\ben pilote automatique\b/i,
+  /\bn'importe qui peut\b/i,
+  /\brichesse\b/i,
+  /\bdevenir riche\b/i,
+];
+const CADRAGE = [
+  /\d+\s*clips?/i, /par semaine/i, /par mois/i, /moyenne/i, /volume/i,
+  /pas garanti/i, /ça prend/i, /r[ée]p[ée]tabl/i, /\bheures?\b/i, /travail/i,
+  /budget/i, /selon/i, /entre .* et /i,
+];
+const SOMME = /(\d[\d  ]*(?:,\d+)?)\s*(?:\$|€|dollars?|euros?)/i;
+
+const TITRE = arg('titre', '');
+const LEGENDE_F = arg('legende', '');
+const texte = [
+  TITRE,
+  LEGENDE_F && fs.existsSync(LEGENDE_F) ? fs.readFileSync(LEGENDE_F, 'utf8') : '',
+].join('\n').trim();
+
+if (texte) {
+  const pris = FACILITE.filter((r) => r.test(texte)).map((r) => (texte.match(r) || [''])[0]);
+  if (pris.length) {
+    fautes.push(
+      `promesse de facilité : « ${pris.join(' », « ')} ». C'est exactement ce que YouTube a ` +
+      `sanctionné les 27 et 30/07 (« contenus nuisibles ou dangereux »), avertissement actif ` +
+      `jusqu'au 28/10. Dire le chiffre, jamais la facilité.`,
+    );
+  }
+  if (SOMME.test(texte) && !CADRAGE.some((r) => r.test(texte))) {
+    avis.push(
+      `une somme est annoncée sans son coût (volume, durée, moyenne). Ajouter ce qu'il faut ` +
+      `faire pour l'atteindre : c'est la différence entre un chiffre et une combine.`,
+    );
+  }
+}
+
 /* ── Rapport ───────────────────────────────────────────────────────────── */
 console.log('CONTRÔLE AVANT PUBLICATION');
 console.log('='.repeat(64));

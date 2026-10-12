@@ -26,6 +26,10 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { prendre } = require('./verrou-profil');
+
+/* Un seul travail Playwright a la fois sur le profil : voir verrou-profil.js. */
+prendre('publier');
 
 const RACINE = path.join(__dirname, '..');
 const arg = (n, d = '') => {
@@ -41,18 +45,34 @@ const PIECE = arg('piece');
 const GABARIT = arg('gabarit');
 const SOURCE = arg('source');
 const VIDEO = arg('video');
+/* Un carrousel Instagram n'a pas de vidéo mais une suite de vignettes. Le
+   contrôle et l'inscription au registre restent EXACTEMENT les mêmes : c'est
+   la raison d'être de ce fichier, et un carrousel publié à la main échappe au
+   garde-fou comme les vidéos l'ont fait pendant quatre jours en octobre. */
+const IMAGES = arg('images');
 const LEGENDE = arg('legende');
 const TITRE = arg('titre');
 const ACCROCHE = arg('accroche');
 const SON = arg('son');
 
-if (!CIBLE || !PIECE || !VIDEO) {
+if (!CIBLE || !PIECE || (!VIDEO && !IMAGES)) {
   console.error('Usage : --cible <tiktok|instagram|youtube> --piece <id> --video <chemin>');
+  console.error('        (ou --images <a.png,b.png,…> pour un carrousel Instagram)');
   console.error('        [--gabarit …] [--source …] [--legende <fichier>] [--titre …]');
   console.error('        [--accroche …] [--son …] [--court]');
   process.exit(2);
 }
-if (!fs.existsSync(VIDEO)) {
+if (IMAGES) {
+  if (CIBLE !== 'instagram') {
+    console.error('--images ne vaut que pour Instagram.');
+    process.exit(2);
+  }
+  const manquante = IMAGES.split(',').map((x) => x.trim()).find((f) => f && !fs.existsSync(f));
+  if (manquante) {
+    console.error(`Vignette introuvable : ${manquante}`);
+    process.exit(2);
+  }
+} else if (!fs.existsSync(VIDEO)) {
   console.error(`Vidéo introuvable : ${VIDEO}`);
   process.exit(2);
 }
@@ -74,6 +94,8 @@ const ctrl = node('controle-avant-publication.js', [
   '--cible', CIBLE, '--piece', PIECE,
   ...(GABARIT ? ['--gabarit', GABARIT] : []),
   ...(SOURCE ? ['--source', SOURCE] : []),
+  ...(TITRE ? ['--titre', TITRE] : []),
+  ...(LEGENDE ? ['--legende', LEGENDE] : []),
 ]);
 if (ctrl.status !== 0) {
   console.error('');
@@ -87,7 +109,11 @@ let pub;
 if (CIBLE === 'tiktok') {
   pub = node('publier-tiktok.js', ['--video', VIDEO, '--legende', legende, '--publier']);
 } else if (CIBLE === 'instagram') {
-  pub = node('publier-instagram.js', ['--cdp', '--video', VIDEO, '--legende', legende, '--publier']);
+  pub = node('publier-instagram.js', [
+    '--cdp',
+    ...(IMAGES ? ['--images', IMAGES] : ['--video', VIDEO]),
+    '--legende', legende, '--publier',
+  ]);
 } else {
   if (!TITRE) {
     console.error('YouTube exige un --titre.');

@@ -232,6 +232,20 @@ niveau laissé bas.
   une chaîne vide, donc « pas de son », donc un morceau tendance par-dessus une
   voix off. Payé deux fois : le film de lancement, puis la commande vocale du
   01/10. Utiliser `spawnSync` (qui rend les deux flux), pas `execFileSync`.
+- **LES QUATRE ERREURS QUI TUENT UNE VIDEO DE SaaS** (methode relevee le 07/10
+  dans < Personne ne veut de ton SaaS >, Leo Grindarss — structure des
+  chapitres et description ; le script integral n a pas pu etre extrait).
+  Les quatre decrivent exactement ce que je produisais :
+    1. LE PRODUIT EST LE SUJET. Mes films montrent l interface, la commande,
+       la grille. Le sujet doit etre le PROBLEME DU SPECTATEUR ; l outil
+       n apparait qu en passant.
+    2. ON PROMET CE QUE FAIT L OUTIL, PAS CE QU IL FAIT GAGNER. < dix clips
+       notes, recadres, sous-titres > est une fonction. Le gain, c est la
+       soiree recuperee, les trente clips de la semaine, les vues.
+    3. ON MONTRE LA FEATURE AU LIEU DU RESULTAT. La commande vocale et la
+       grille sont des features. Le resultat, c est le clip fini qui tourne.
+    4. ON DEVOILE TOUT D UN COUP. Treize secondes qui deroulent tout le
+       processus ne laissent rien a vouloir. Garder une part hors champ.
 - **LE HOOK PARLE DU SPECTATEUR, PAS DE NOUS.** Releve le 06/10 sur six Shorts
   de 3,3 a 20 MILLIONS de vues : TROIS n ont aucun visage — ils montrent des
   MAINS en train de faire quelque chose, en gros plan. Le visage n est donc pas
@@ -336,3 +350,614 @@ niveau laissé bas.
   Chrome — arrêter de chercher de ce côté.
 - **Supprimer le Reel carré** `DdOfSvAIXEZ` du 28/09 et les 2 doublons TikTok du 27/09.
 - **Recharger Together AI** (402 depuis le 15/09).
+
+## Le plafond des 300 vues est franchi — ce qui l'a franchi (08/10)
+
+`resultat-seul`, publié le 07/10 à 9 h : **361 vues à 14 h, 1 207 le lendemain**.
+Les précédents plafonnaient à 232. C'est le premier film de la série qui ne
+montre **ni interface, ni commande vocale, ni grille de notes** : rien que des
+clips finis, un texte qui nomme le problème du spectateur, et `creatis.app` sur
+la dernière seconde.
+
+Ce qu'on garde de ce gabarit, et qu'on ne négocie plus :
+- quatre ou cinq plans, **13 à 14 secondes**. La rétention mesurée le 08/10 le
+  confirme : médiane de 55 % de la vidéo regardée, et le seul 100 % de la chaîne
+  est un Short de 13 s ;
+- le texte **en haut** (7 % de la hauteur), pas dans la bande basse ;
+- chaque plan porte **le son de son propre clip** ;
+- le produit n'est jamais le sujet ; il est la réponse, et elle vient à la fin.
+
+## TikTok plafonne à 250 vues quel que soit le contenu (08/10)
+
+Relevé sur les huit dernières publications : **241, 247, 251, 254, 259, 263, 263**.
+Un contenu qui fait ×5 sur YouTube ne bouge pas d'un pour cent sur TikTok. En
+revanche l'engagement, lui, suit : 10 j'aime sur `resultat-seul` contre 0 à 6.
+
+Conséquence pratique : **ne jamais juger un changement de forme sur TikTok**. La
+mesure se lit sur YouTube, où le compteur réagit.
+
+## Le format long ne marche pas sur cette chaîne, et c'est mesuré (08/10)
+
+Neuf vidéos 16:9 publiées, **1 à 6 vues chacune**, miniature soignée ou non.
+Elles continuent parce qu'elles sont demandées et qu'elles coûtent peu une fois
+la narration écrite — mais aucune décision ne doit s'appuyer sur leurs chiffres,
+et on ne leur sacrifie jamais le Short du jour.
+
+## Vérifier les secondes AVANT de monter (08/10)
+
+Trois plans sur cinq du premier montage du jour étaient inutilisables : écran
+« Téléchargement du clip… », triptyque de gameplay, image floue de mouvement.
+Rien de tout cela ne se voit dans le code.
+
+Le geste : extraire les secondes candidates au ffmpeg, **déjà recadrées**, les
+assembler en planche, les REGARDER.
+
+```sh
+ffmpeg -ss <t> -i public/rec-<x>-h264.mp4 \
+  -vf "crop=540:980:150:300,scale=190:-1,drawtext=text='<x> <t>'..." -frames:v 1 ...
+ffmpeg -i pr-%02d.png -vf "tile=8x2" -frames:v 1 sonde.png
+```
+
+Et `tile` n'accepte pas `-pattern_type glob` sur la build Windows : numéroter
+les fichiers `pr-01.png`, `pr-02.png`…
+
+## Cadrer une image dans Remotion : l'échelle est un MAXIMUM
+
+Pour faire **remplir** un cadre, `e = Math.max(l/cl, h/ch)`. Avec `Math.min` on
+obtient un « contain » : l'interface de l'app reste dans le champ, ce qui est
+exactement ce qu'on cherchait à faire sortir. `CarteClip` utilise `min` à
+dessein (vignette entière visible) — ne pas copier son calcul pour un fond.
+
+Et pour une miniature, ne pas piloter le cadrage depuis Remotion : extraire
+l'image **déjà coupée** au ffmpeg et la poser en `<Img>`. Une image coupée ne
+peut pas se décadrer.
+
+## Chrome CDP : on peut l'ouvrir soi-même
+
+Instagram exige un Chrome branché sur le port 9222. Le profil dédié existe :
+
+```sh
+"/c/Program Files/Google/Chrome/Application/chrome.exe" \
+  --remote-debugging-port=9222 \
+  --user-data-dir="C:\Users\Utilisateur\Desktop\creatis\.chrome-social" \
+  --no-first-run about:blank &
+```
+
+Le Chrome personnel de l'utilisateur peut rester ouvert : les profils sont
+distincts. Ne plus déclarer Instagram « bloqué » sans avoir tenté ça.
+
+## Format long : la cause est le TAUX DE CLIC, pas la distribution (08/10)
+
+Pendant quatre jours j'ai refait des miniatures en croyant que YouTube ne
+montrait pas les vidéos. Mesure faite, c'est l'inverse.
+
+| Impressions | Clics | Vues | Titre |
+|---|---|---|---|
+| 1 537 | **0,5 %** | 14 | Transformer une vidéo YouTube en Short avec l'IA |
+| 1 100 | **0,6 %** | 31 | Créatis — transforme tes vidéos longues en clips |
+| 396 | **0,8 %** | 6 | Noter un clip sur 100 |
+| 195 | 0,5 % | 3 | Découper une vidéo longue en Shorts |
+| 64 | 1,6 % | 3 | J'ai changé une seule chose |
+| 11 · 10 · 5 · 2 | ~0 % | 2–3 | les quatre dernières |
+
+La zone saine est 4–6 %. Sous 2 %, YouTube coupe la distribution : d'où
+l'effondrement de 1 537 à 2 impressions. C'est une spirale, pas un plafond.
+
+**Deux conséquences, contre ce que je croyais :**
+
+1. **Les quatre miniatures refaites n'ont jamais été testées.** Elles sont
+   arrivées sur des vidéos déjà tombées à 5–11 impressions. J'ai conclu
+   « ça ne marche pas » sur un échantillon vide — la même faute que le
+   compteur illisible rendu à zéro le 05/10.
+2. **Nos titres n'étaient pas des requêtes.** Le seul qui en était une
+   (« Transformer une vidéo YouTube en Short ») a reçu le plus d'impressions
+   de toute la chaîne. À dix abonnés il n'y a pas de fil d'accueil : les
+   impressions viennent de la RECHERCHE, et rien d'autre.
+
+**Ce qui change, désormais :**
+- le titre reprend une requête réelle, relevée dans les suggestions YouTube
+  (`scratchpad/suggest.js`, l'autocomplétion est gratuite et sans clé) ;
+- la miniature **montre la transformation** au lieu de proclamer. Une vignette
+  de fil d'accueil (« CE CLIP EST MORT ») ne gagne pas un résultat de
+  recherche : là, on clique sur ce qu'on est venu chercher ;
+- on juge sur le **taux de clic**, pas sur les vues. Référence à battre : 0,5 %.
+
+### Où lire le chiffre
+
+L'onglet « Couverture » de Studio s'affiche **entièrement vide** sous un certain
+volume — pas un zéro, rien. Le chiffre vit derrière le bouton **Mode avancé**,
+qu'il faut CLIQUER (l'URL `…/explore` rend une page blanche) :
+`node scripts/youtube-couverture.js --ids a,b,c`
+
+## Ne jamais lancer deux travaux Playwright sur le même profil (08/10)
+
+La vidéo longue n'est pas partie : mes relevés analytiques tournaient en fond
+sur `.playwright-profile-social` et l'ont verrouillé. Message :
+« Target page, context or browser has been closed ».
+Relevés et publications s'enchaînent, ils ne se chevauchent pas.
+
+## `public/` fait 3,1 Go et Remotion le recopie à chaque rendu (08/10)
+
+Symptôme : « Timed out after 30000ms while setting up the headless browser »,
+précédé de « Copying public dir 3.2 GB ». Le navigateur n'est pas en cause.
+
+Le geste : un dossier réduit aux seuls fichiers du film, puis
+`npx remotion render <id> <sortie> --public-dir=public-mince`.
+114 Mo au lieu de 3,1 Go, et le rendu passe.
+
+## Écrire aux gens : ce qui existe, et ce qui n'existe pas (08/10)
+
+Vérifié plateforme par plateforme, pas supposé :
+
+| | Liste de ceux qui aiment | Message privé | Réponse en commentaire |
+|---|---|---|---|
+| Instagram | **non** sur le web (voir ci-dessous) | oui | oui |
+| TikTok | non | seulement entre comptes liés | oui |
+| YouTube | **non** | **n'existe pas** | oui |
+
+« Qui a regardé » n'existe nulle part. Ne jamais le promettre.
+
+**Instagram ne donne pas la liste des J'aime d'un reel** : `/p/<id>/liked_by/`
+ne rend plus de boîte de dialogue et le compteur n'est pas cliquable. La seule
+source de pseudos réels est le **flux d'activité**
+(`instagram.com/accounts/activity/`), où les lots sont agrégés (« X, Y et 27
+autres personnes ») — on tient donc une PARTIE des gens, et on le dit.
+
+### La chaîne d'outils
+
+```sh
+node scripts/destinataires.js      # qui s'est manifesté → social/destinataires.json
+node scripts/ecrire.js             # ESSAI À BLANC : montre les textes
+node scripts/ecrire.js --envoyer   # 5 par jour, 45-110 s d'écart
+node scripts/reponses.js           # quelle variante fait répondre
+node scripts/repondre.js --reseau youtube --envoyer
+```
+
+### Les garde-fous, et pourquoi ils sont là
+
+- **Cinq messages par jour, plafond en dur.** Instagram coupe l'envoi pendant
+  des jours aux comptes qui écrivent en rafale à des non-abonnés. Sur un compte
+  à 92 abonnés, un blocage coûte plus que trente messages ne rapportent.
+- **Personne n'est écrit deux fois**, jamais (`ecrit_le`).
+- **On ne coche « envoyé » que si le texte est VISIBLE dans la discussion.**
+  Au premier essai le témoin était pris dans la ligne du pseudo, qui contient
+  un émoji : Instagram le rend en nœuds séparés, `innerText` insérait des
+  espaces, et le script a dit « non envoyé » alors que le message était parti.
+  Un relancement l'aurait envoyé deux fois. Témoin dans une ligne de texte NU,
+  comparaison à espaces écrasés.
+- **Un pseudo introuvable est marqué, jamais remplacé par un approchant.**
+  `no.e_brn` n'existe plus ; la recherche propose `noe__brn_`, `noebrnt`… leur
+  écrire serait écrire à des inconnus.
+
+### Par où on envoie, et pas par où on croyait
+
+Le profil n'offre un bouton de message **que si la personne nous suit déjà** :
+sur quatre comptes testés, aucun n'en avait, et le script concluait « compte
+privé » à tort. Le bon chemin est `instagram.com/direct/new/` → recherche →
+clic sur le pseudo exact : le fil s'ouvre directement.
+
+### Le test A/B/C
+
+Trois variantes, une hypothèse chacune, tourniquet sur la file :
+- **A — méthode** : le test des 10 secondes, Créatis en incise.
+- **B — question courte** : trois lignes, aucune méthode, aucun produit.
+- **C — preuve chiffrée** : 48 → 1 207, et les trois causes en échange d'un oui.
+
+Constantes : tutoiement, aucun lien, une question à la fin. `reponses.js`
+compte les réponses par variante — et rappelle que sous une quinzaine d'envois
+un écart d'une ou deux réponses ne départage rien.
+
+### Les commentaires
+
+Le champ de réponse de Studio est un `textarea#textarea` (placeholder
+« Ajouter une réponse… »), **pas** un `contenteditable` : chercher un
+contenteditable rendait « champ introuvable » alors que le champ était ouvert.
+Le bouton d'envoi porte le même libellé que celui qui ouvre le champ — viser
+`#submit-button`.
+
+Règle du lien : jamais dans un message privé, **mais toujours quand on le
+demande**. « Le site pour avoir les 10 clips » appelle `creatis.app`, pas une
+méthode. La condition est volontairement étroite : « ton outil est nul »
+contient « outil » sans rien demander.
+
+## Les zones d'interface, mesurées sur une vraie capture (08/10)
+
+Relevé sur une capture YouTube Shorts, iPhone 1179×2556, fournie par
+l'utilisateur. La légende posée à **7 % de la hauteur passait dans la rangée
+d'icônes de YouTube** — flèche retour, loupe, menu. La deuxième ligne
+disparaissait derrière la loupe.
+
+Les trois zones que les plateformes occupent :
+
+| Zone | Bande | Ce qu'il y a |
+|---|---|---|
+| Haut | 0 → 14 % | retour, recherche, menu |
+| Droite | 49 → 89 % | J'aime, commenter, partager, remixer |
+| Bas | 66 → 92 % | nom de chaîne, légende, vues, bouton Partager |
+
+**La bande libre est 14 → 48 %.** La légende se pose à **30 %** : sous toute
+barre d'outils, au-dessus de la colonne de boutons, et à hauteur des yeux sur
+un plan serré — ce qui était la demande du 05/10. L'adresse `creatis.app` va à
+40 %, jamais en bas.
+
+### Un fond, pas un voile
+
+Le dégradé plein cadre éclaircissait toute l'image sans jamais garantir le
+contraste sous le texte. Un **panneau sombre arrondi** (`rgba(0,0,0,0.70)`,
+rayon 26, padding 26/34) qui épouse le bloc le garantit sur n'importe quelle
+image. Le cerne noir reste par-dessus pour les débordements.
+
+Même traitement pour `creatis.app` : en vert sur une chemise claire, l'adresse
+était illisible — vérifié sur l'image de fin avant publication.
+
+### Le contrôle visuel qui prouve que c'est bon
+
+Avant de publier, superposer les trois zones sur une image du film :
+
+```sh
+ffmpeg -ss 1.5 -i out/<film>.mp4 -vf \
+ "drawbox=x=0:y=0:w=1080:h=269:color=red@0.35:t=fill,\
+  drawbox=x=886:y=941:w=194:h=768:color=red@0.35:t=fill,\
+  drawbox=x=0:y=1267:w=1080:h=499:color=red@0.35:t=fill" -frames:v 1 zones.png
+```
+
+Si du texte touche une bande rouge, il sera recouvert sur le téléphone.
+
+## Le format long devient un TUTORIEL (08/10)
+
+Consigne du 08/10 : arrêter de commenter nos propres statistiques, **apprendre
+un métier**. Exemple donné : comment se faire rémunérer en clipping — montrer
+Whop, montrer le site, montrer le rendu, avec des enregistrements d'écran
+« comme si c'était moi qui présentais sur mon ordinateur ».
+
+### Ce que ça change concrètement
+
+- **Le titre est une requête**, relevée dans l'autocomplétion YouTube
+  (`scratchpad/suggest.js`). « gagner de l'argent avec le clipping » en est
+  une. Les neuf vidéos précédentes avaient des titres-affirmations et 0,5 % de
+  clics.
+- **Des enregistrements d'écran réels**, en 16:9 : `enregistrer-tuto.mjs`
+  (`--whop` ou `--creatis <url>`). Il filme en 1920×1080 et écrit ses repères.
+- **Le film enseigne d'abord, l'outil arrive à la fin** comme réponse au
+  goulot nommé (produire le volume), jamais comme sujet.
+
+### La règle sur ce qu'on filme
+
+On ne filme QUE ce qu'on a réellement ouvert. Les campagnes Whop sont derrière
+un compte ; créer un compte sur un service tiers n'est pas une décision à
+prendre seul. Les chiffres des campagnes sont donc **affichés et attribués**,
+pas mis en scène comme une capture. Filmer une interface qu'on n'a pas ouverte
+serait une démonstration fabriquée — exactement ce qu'on reproche aux autres.
+
+### Montrer une attente de deux minutes en seize secondes
+
+L'enregistrement complet du parcours dure 3 min 57, dont 2 min 40 d'analyse.
+On ne montre pas l'attente, mais on ne la masque pas : **trois plans étiquetés**
+(1 — on colle le lien · 2 — dix passages notés · 3 — le clip fini), et le
+dernier est le clip qui TOURNE, jamais l'écran « Téléchargement du clip ».
+Secondes utiles de ce tournage : lien 10-16 s, grille 174-186 s, clip fini
+213-236 s.
+
+### Les chiffres du clipping rémunéré, relevés le 08/10
+
+| | |
+|---|---|
+| Versé sur Whop | 4,6 milliards $ (lu à l'écran) |
+| Tarif | 0,20 $ à 6 $ pour 1 000 vues, moyenne ≈ 1 $ |
+| Roobet | 1,50 $/1 000, budget 250 000 $ |
+| Mutuum | 6 $/1 000 |
+| Minimum d'abonnés | aucun |
+| Frais plateforme | ~10 % + traitement du paiement |
+
+Source des tarifs : relevés publics openclip.app et findclout.com, 2026.
+**L'arithmétique se dit en entier** : à 1 $ les mille, un million de vues fait
+mille dollars, et notre meilleur Short de la semaine (1 207 vues) vaut 1,20 $.
+Cacher ça ferait une vidéo de plus qui promet de l'argent facile.
+
+## Le son doit venir de ce qu'on voit (08/10)
+
+Faute commise le 08/10 : le Short « Tu veux être payé en clipping » est parti
+avec, en fond, la bande-son d'un clip de Koh-Lanta. On entendait parler de
+coffres et de bateaux sur des images de Whop et d'une grille de clips. J'avais
+posé un `son-clip-*.mp3` juste pour que le film ne soit pas muet.
+
+**Le son d'un clip n'a de sens que si CE clip est à l'image.** Dès que les
+images ne sont pas celles du clip — captures d'écran, typographie, graphiques —
+il faut une **voix off qui parle de ce qu'on voit**. Jamais un fond sonore
+emprunté à autre chose.
+
+Le contrôle le refuse désormais (`controle-avant-publication.js`) : il lit le
+composant du gabarit, et si un `son-clip-X.mp3` y est posé sans qu'un `rec-X`
+apparaisse dans le même fichier, il sort en code 5.
+
+```
+✖ ShortClipping : le son du clip « domingo » est posé sans que ce clip soit à
+  l'image. Mettre une voix off qui parle de ce qu'on voit, ou retirer ce son.
+```
+
+Vérifié sans faux positif sur ResultatSeul2/3, ZeroVues, Clipping, Autonomie
+et QuatreErreurs, où chaque son de clip accompagne bien son enregistrement.
+
+## Les sous-titres incrustés du clip doivent sortir du champ (09/10)
+
+Relevé sur une capture TikTok : les sous-titres **du clip source** occupent
+86 à 96 % du cadre utile. Repris en entier, ils tombent à 82 % de la hauteur
+du film — pile sous le pseudo, la légende et la ligne de musique de la
+plateforme. Trois couches de texte superposées, illisibles.
+
+On ne peut pas les remonter : ils sont au bas du clip, et les amener en zone
+sûre (14-48 %) demanderait un zoom de quatre fois. **On les sort du champ** :
+le cadre utile passe de `[150, 300, 540, 980]` à `[150, 300, 540, 820]`.
+C'est notre légende qui porte le texte — une seule couche.
+
+Effet de bord accepté : l'échelle passe de 2,0 à 2,34, donc 8,5 % de largeur
+rognée de chaque côté. Les clips sont cadrés sur le visage, ça ne coupe rien.
+
+## Ne jamais transcrire un identifiant depuis une capture d'écran (09/10)
+
+J'ai lu `uANCapowfWk` sur une capture du dialogue de partage. Le vrai
+identifiant est `uAnCapowfWk` — un `n` minuscule. Deux tentatives de
+commentaire ont échoué sur « Vidéo non disponible », et j'ai failli croire la
+publication perdue.
+
+Pire : ma vérification cherchait « n'est plus disponible » alors que la page
+dit « n'est **pas** disponible ». J'ai donc déclaré le Short en bon état sur
+un contrôle incapable de détecter la panne.
+
+Les identifiants se lisent dans Studio, jamais à l'œil :
+`studio.youtube.com/channel/<id>/videos/short`, attribut `href` des lignes.
+
+## La passerelle Shorts → format long (09/10)
+
+Les formats longs reçoivent HUIT à NEUF impressions en vingt heures. Titre en
+requête et miniature refaite n'y changent rien : YouTube ne montre pas les
+vidéos longues d'une chaîne à dix abonnés. Pendant ce temps les Shorts font
+700 à 1 200 vues.
+
+Le champ « vidéo associée » n'existe pas sur un Short (vérifié dans Studio).
+La seule passerelle est le **commentaire épinglé** : `scripts/epingler.js`.
+
+Deux pièges du script, déjà payés :
+- l'adresse d'un Short est `youtube.com/shorts/<id>`, pas `watch?v=<id>` ;
+- le bouton d'ouverture des commentaires s'appelle « Afficher **le
+  commentaire** » — au singulier. Chercher « Commentaires » ne trouve rien.
+
+## Le B-roll : filmer les vidéos sources (09/10)
+
+Le kit visuel a supprimé les diaporamas, mais toute notre matière est SOMBRE
+— clips en intérieur, application en thème noir, page Whop qui vire au gris
+dès qu'on la floute. Les vidéos sources, elles, sont lumineuses et montées
+serré : c'est exactement ce qui manquait.
+
+```sh
+node enregistrer-broll.mjs <id-youtube> <depart> <duree> <nom>
+```
+
+### Quatre pièges, tous payés le 09/10
+
+1. **L'embed ne marche pas.** `/embed/<id>` rend « Erreur de configuration du
+   lecteur vidéo » : YouTube le refuse sans origine légitime. On prend
+   `/watch`.
+2. **Le plein écran (`f`) ne tient pas.** On lit la BOÎTE RÉELLE du lecteur
+   (`getBoundingClientRect` sur `video`) et on recadre au ffmpeg. Relevé :
+   `crop=1344:756:16:68` sur une fenêtre 1920×1080.
+3. **Le mur de consentement apparaît en plein tournage** sur un contexte neuf
+   — il s'est retrouvé dans deux plans sur six. Utiliser le profil
+   `.playwright-profile-social`, déjà connecté.
+4. **Les publicités.** Une pré-roll Shopify a mangé 56 secondes sur 70. Le
+   détecteur `#movie_player.ad-showing` ne les voit PAS toutes : il a rendu
+   « 0 fenêtre de publicité » alors que l'écran en montrait. Tant que ce n'est
+   pas fiable, **filmer long et choisir les plages à l'œil sur une planche**.
+
+### Ce qui n'est pas disponible pour les visuels (09/10)
+
+Pas d'images générées : `HF_TOKEN` vide, clé OpenAI du dépôt sans crédits,
+Gemini Image en 429. Ne pas repartir dessus sans avoir revérifié.
+
+### La règle du fond de texte
+
+Un fond de texte doit être **sombre et coloré**. Une source claire floutée et
+assombrie (la page Whop) rend un gris plat : le texte se lit, mais aucune
+image ne porte le plan. Les pages claires servent en plein cadre NET, sans
+texte par-dessus, ou en carte posée.
+
+## Le B-roll ne marche PAS dans un Short (09/10)
+
+Essai du 09/10 : un Short bâti en alternant B-roll lumineux et clip fini.
+Verdict de l'utilisateur, et il est juste : « on ne voit rien, rien n'est
+centré, on ne comprend pas ». Sur quatre plans, deux montraient une table
+basse et un formulaire Amazon zoomé — aucun sujet.
+
+**La cause** : un B-roll est en 16:9. Le recadrer en 9:16 demande 178 % de
+zoom et ne garde que le tiers central de l'image. Le sujet, lui, est rarement
+au centre. En 16:9 (format long) le B-roll fonctionne ; en vertical il perd
+ce qui le rendait utile.
+
+### Ce que disent les chiffres, et qu'on ne discute plus
+
+| Short | Vues | Ce qu'on voit |
+|---|---|---|
+| Ta dernière vidéo contient dix moments | **1 208** | visages en gros plan |
+| Pourquoi tes Shorts de 30 s | **703** | visages en gros plan |
+| Le test des 10 secondes | **698** | visages en gros plan |
+| Tu veux être payé en clipping | **91** | captures d'écran |
+
+**Règle : chaque plan d'un Short montre un VISAGE qui remplit le cadre.** Pas
+une interface, pas une page web, pas un décor. La variété vient de visages
+DIFFÉRENTS — `ClipNarre` accepte une `source` et un `rec` par légende, ce qui
+permet quatre personnes en onze secondes.
+
+Le kit visuel 16:9 (`Visuel.tsx`) reste valable pour le format long, où le
+B-roll est à son format natif.
+
+## Les clips se TÉLÉCHARGENT, ils ne se filment plus (10/10)
+
+Pendant une semaine, les Shorts ont été montés en FILMANT le lecteur de
+l'application : une zone de 540×820 px dans un tournage 1080×1920, qu'il
+fallait ensuite agrandir pour remplir le cadre. Avec le rognage des
+sous-titres du 09/10, l'agrandissement est passé à **234 %**. L'utilisateur
+l'a vu immédiatement sur son téléphone : « c'est zoomé, les clips sont flous ».
+
+```sh
+node telecharger-clips.mjs <url-youtube> <prefixe> [combien]
+```
+
+Le fichier obtenu est **1080×1920 natif**, sous-titres et son compris.
+`ClipNarre` a donc désormais **le plein cadre par défaut** (`[0,0,1080,1920]`,
+échelle 1) : oublier de préciser le cadre ne peut plus ramener le flou.
+
+### Trois pièges du téléchargement, tous payés
+
+1. **Le blob du lecteur n'est PAS le clip.** `#modal-video.src` rend le
+   SEGMENT SOURCE : 1920×1080, sans sous-titres, sans recadrage. C'est
+   l'entrée du traitement. Le clip vertical ne sort qu'au clic sur
+   `#modal-dl-btn` (« Exporter ce clip en 9:16 »), et l'encodage prend une à
+   deux minutes côté serveur.
+2. **La fiche ne se ferme pas toute seule.** `Escape` la laisse ouverte, et
+   `#modal-play-overlay` intercepte le clic suivant — un clip récupéré sur
+   cinq au premier essai. Fermer par `V2.closeModal()` ET cliquer la carte
+   suivante en `{ force: true }`.
+3. **Tous les clips ne montrent pas un visage.** Le tournage Amixem du 10/10
+   était un documentaire maritime : cartes, vagues, bassin. Un clip neuf sans
+   visage ne sert pas — la règle du 09/10 prime.
+
+## Ne jamais enchaîner avec `&&` après un TUBE (10/10, répétition)
+
+```sh
+node scripts/publier.js … | tail -3 && node scripts/youtube-miniature.js …
+```
+
+Le code de sortie d'un tube est celui de sa DERNIÈRE commande — `tail`, qui
+réussit toujours. Le contrôle a refusé la publication, et la miniature s'est
+quand même posée… sur la vidéo longue de la VEILLE, qu'il a fallu restaurer.
+
+C'est exactement le piège que `publier.js` documente depuis le 04/10, et j'y
+suis retombé. La forme correcte :
+
+```sh
+node scripts/publier.js … > /tmp/pub.log 2>&1; code=$?
+if [ $code -eq 0 ]; then node scripts/youtube-miniature.js … ; fi
+```
+
+Et `--derniere` vise la dernière vidéo de la chaîne, pas celle qu'on vient de
+publier : si la publication a échoué, elle désigne une AUTRE vidéo.
+
+## Les miniatures qui gagnent dans la niche (relevé le 10/10)
+
+Capture des résultats YouTube sur « gagner de l'argent avec le clipping ».
+Les deux premiers (24 k et 32 k vues) ont la même recette :
+
+| | |
+|---|---|
+| Chiffre | énorme, JAUNE, cerné de noir, empilé à gauche |
+| Visage | regarde la caméra, à droite du texte |
+| Preuve | un objet à droite (chez eux : téléphone avec les paiements Whop) |
+| Bandeau | vert en bas, « GUIDE COMPLET ✅ » |
+| Fond | clair, rayons, aucune zone sombre |
+
+Nos onze premières miniatures étaient des rectangles sombres avec du texte.
+Correctes, et invisibles à côté.
+
+**Ce qu'on ne reprend pas** : leur chiffre est une somme d'argent. On ne l'a
+pas, et l'inventer se paierait à la rétention. Le chiffre honnête est celui
+du contenu (« 5 critères »), et la preuve est la vraie grille de clips.
+
+**Et vérifier l'image choisie** : le premier tirage montrait un accessoire
+d'Amixem qui ressemble à une arme. Une miniature se regarde avant d'être posée.
+
+## Un format long sort ? Les Shorts du jour y renvoient (10/10)
+
+Demande du 10/10 : quand une vidéo longue sort, les Shorts doivent l'annoncer
+explicitement — « va voir la vidéo complète » — pour lui amener du trafic.
+C'est la seule passerelle réelle : seule, une vidéo longue de cette chaîne
+reçoit huit à neuf impressions.
+
+### Comment on construit la grappe
+
+- **Un Short = UN critère de la vidéo longue**, traité en entier. Un Short qui
+  résume les cinq ne donne aucune raison de cliquer.
+- **Le renvoi est dans la VOIX et à l'image.** `ReglagesClipNarre.renvoi`
+  affiche une carte verte sur le dernier plan ; elle REMPLACE l'adresse —
+  deux appels concurrents sur la même seconde n'en font aboutir aucun.
+- **Le commentaire épinglé porte le lien** (`scripts/epingler.js`), posé sur
+  chaque Short du jour, y compris ceux déjà en ligne.
+- **La légende redit le renvoi** et énumère ce que contient la vidéo longue.
+
+### Le libellé
+
+« Dans la vidéo complète, **sur la chaîne** » — jamais « au-dessus » : sur
+TikTok et Instagram il n'y a rien au-dessus, et une indication fausse coûte
+plus cher qu'une formulation plate. La voix off a été regénérée pour ça.
+
+## Ne jamais parler des statistiques de NOTRE compte (11/10)
+
+Faute commise le 11/10 : un Short disait « j'ai mesuré sur ma chaîne : 56 % en
+moyenne ». Nos chiffres n'intéressent personne et ne montrent rien de ce que
+Créatis sait faire. C'est du nombrilisme déguisé en pédagogie.
+
+**Deux formes autorisées, et deux seulement :**
+1. **Raconter une histoire.**
+2. **Apprendre à se faire rémunérer en clipping** — c'est ce que le public
+   vient chercher, et c'est là qu'est la demande (les vidéos de la niche qui
+   font 24 à 32 k vues parlent toutes d'argent).
+
+Les chiffres cités doivent être **externes et vérifiables** : tarifs des
+campagnes, budgets, durées. Jamais nos vues, notre rétention, nos inscrits.
+
+## La valeur se MONTRE, elle ne s'annonce pas (11/10)
+
+Le spectateur doit comprendre que la valeur vient de Créatis **sans qu'on le
+lui dise**, et sans effet publicitaire. Le moyen : un plan qui montre le
+RÉSULTAT — dix clips notés sortis d'une seule vidéo — posé en carte sur le
+clip (`legendes[].incrust`, entre 44 et 64 % de la hauteur).
+
+Une carte qui montre dix clips dit la valeur en une seconde. Une phrase qui
+l'annonce ne dit que de la réclame.
+
+L'adresse reste discrète, sur la dernière seconde. On ne demande jamais
+d'aller sur le site dans la voix.
+
+## Trois Shorts par jour = trois lots visuels distincts (11/10)
+
+Le contrôle refuse deux publications d'affilée partageant gabarit ET
+réservoir de clips. Il a raison : ce sont les mêmes visages. Prévoir donc
+**un lot par Short**, et faire tourner — on ne renomme jamais la source pour
+passer le garde-fou.
+
+## La chaîne porte un avertissement actif : jamais de promesse de facilité (12/10)
+
+Relevé sur la page des infractions de la chaîne, le 12/10 :
+
+| Date | Sanction | Contenu | Règle invoquée |
+|---|---|---|---|
+| 27/07 | mise en garde | « Le clipping rentable en 3 étape simple » | Contenus nuisibles ou dangereux |
+| 30/07 | **1er avertissement sur 3** | « Si tu veut être rémunéré en clipping fais ça c'est ultra simple. » | Contenus nuisibles ou dangereux |
+
+L'avertissement **expire le 28 octobre 2026**. Jusque-là, la marge est nulle :
+un deuxième avertissement interdit toute mise en ligne pendant **deux
+semaines** — la machine à contenu s'arrête net — et le troisième supprime la
+chaîne. Supprimer la vidéo ne lève pas l'avertissement ; YouTube le dit sur
+cette page.
+
+**Ce qui a été sanctionné n'est pas le chiffre, c'est la facilité annoncée.**
+« Contenus nuisibles ou dangereux » est la règle qui couvre les combines
+d'enrichissement rapide. Les deux vidéos promettaient un revenu *simple*, en
+*3 étapes*. Nos Shorts qui marchent disent au contraire une somme avec son
+coût : « 30 clips par semaine à 5 000 vues : le compte y est », « le métier,
+c'est le volume ». C'est cette forme-là qu'il faut tenir.
+
+Donc, dans un titre, une légende ou une narration :
+
+- **jamais** : ultra simple, en 3 étapes simples, c'est facile, argent facile,
+  sans rien faire, revenus passifs/automatiques, garanti, du jour au
+  lendemain, sans compétences, n'importe qui peut, devenir riche ;
+- **toujours**, dès qu'une somme apparaît : ce qu'elle coûte — un nombre de
+  clips, une durée, une moyenne, ou le fait que ce n'est pas garanti.
+
+Décrire le mode opératoire n'est pas promettre la facilité : « sans jamais
+allumer une caméra » dit ce qu'on fait, pas que c'est sans effort. C'est la
+frontière.
+
+**C'est en code, pas en prose.** `controle-avant-publication.js` reçoit
+désormais `--titre` et `--legende` depuis `publier.js`, refuse les marqueurs de
+facilité, et signale toute somme annoncée sans son coût.
