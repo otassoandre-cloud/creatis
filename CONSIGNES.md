@@ -961,3 +961,33 @@ frontière.
 **C'est en code, pas en prose.** `controle-avant-publication.js` reçoit
 désormais `--titre` et `--legende` depuis `publier.js`, refuse les marqueurs de
 facilité, et signale toute somme annoncée sans son coût.
+
+## Le compte de production a un quota mensuel, et il se vide (13/10)
+
+Trois analyses lancées le 13/10 sur des vidéos sorties dans la semaine (Amixem
+51 min, Konbini 24 min, Konbini 15 min) n'ont rendu **aucun clip**. Le script
+attendait `.clip-card` pendant quinze minutes, puis abandonnait.
+
+Ce n'était ni le script, ni la durée des vidéos, ni une panne : en base,
+`studio-video@creatis.app` est à **30 analyses sur les 30** de son plan Pro
+pour le mois. Les demandes étaient refusées au quota.
+
+```sql
+select u.plan,
+       (select count(*) from clip_generations c
+         where c.user_id = u.id and c.created_at > date_trunc('month', now()))
+from users u where u.email = 'studio-video@creatis.app';
+```
+
+**Le réflexe, avant de lancer une série de téléchargements :** passer cette
+requête. Trois analyses perdues, c'est quarante-cinq minutes.
+
+Et la vérification qui a évité un faux diagnostic : `clip_generations` montrait
+3 analyses le jour même et 16 la veille, par d'autres comptes. Le produit
+marchait ; seul notre compte était à sec. Ne jamais conclure « panne » sans
+regarder si les clients, eux, produisent.
+
+**Ce qui reste à trancher par l'utilisateur** : relever le quota du compte
+interne, ou accepter de réutiliser les lots existants jusqu'au 1er novembre.
+Les trois lots verticaux disponibles sont `sqz2`, `sqz3` et `amx4` — et on
+change au moins les SECONDES, choisies sur planche contact.

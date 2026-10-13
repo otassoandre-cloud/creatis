@@ -32,12 +32,44 @@ import { CROCE } from "./creatis/VocalCroce";
 import { DOMINGO } from "./creatis/VocalDomingo";
 import { NORMAN } from "./creatis/VocalNorman";
 import { GOTAGA } from "./creatis/VocalGotaga";
+import { DUREE_RESULTAT, ResultatSeul } from "./creatis/ResultatSeul";
+import { DUREE_QUATRE, QuatreErreurs } from "./creatis/QuatreErreurs";
+import { DUREE_RESULTAT2, ResultatSeul2 } from "./creatis/ResultatSeul2";
+import { DUREE_RESULTAT3, ResultatSeul3 } from "./creatis/ResultatSeul3";
+import { Autonomie, DUREE_AUTONOMIE } from "./creatis/Autonomie";
+import { DUREE_ZERO, ZeroVues } from "./creatis/ZeroVues";
+import { Clipping, DUREE_CLIPPING } from "./creatis/Clipping";
+import { DUREE_TRENTE, TrenteClips } from "./creatis/TrenteClips";
+import { DUREE_MAQUETTE, Maquette } from "./creatis/Maquette";
+import { ChoisirSource, DUREE_CHOISIR } from "./creatis/ChoisirSource";
+import { Debuter, DUREE_DEBUTER } from "./creatis/Debuter";
+import { Arnaque, DUREE_ARNAQUE } from "./creatis/Arnaque";
+import { DUREE_SHORT_VISUEL, ShortVisuel } from "./creatis/ShortVisuel";
+import { DUREE_SHORT_CLIPPING, ShortClipping } from "./creatis/ShortClipping";
+import {
+  ABANDONNENT, ClipNarre, DUREE_ABANDONNENT, DUREE_GAMEPLAY, DUREE_IDEE_FINIE,
+  DUREE_MILLE_VUES, DUREE_MILLION, DUREE_PERSONNE, DUREE_PREMIER_PLAN, DUREE_PUNCHLINE,
+  DUREE_COMMISSION, DUREE_FORMATION, DUREE_REGLES,
+  DUREE_SANS_CAMERA, DUREE_SIX_DOLLARS, DUREE_TRENTE_SECONDES, DUREE_UN_SUJET, DUREE_ZERO_ABONNE, GAMEPLAY,
+  IDEE_FINIE, MILLE_VUES, MILLION, PERSONNE, PREMIER_PLAN, PUNCHLINE, SIX_DOLLARS,
+  COMMISSION, FORMATION, REGLES,
+  SANS_CAMERA, TRENTE_SECONDES, UN_SUJET, ZERO_ABONNE,
+} from "./creatis/ClipNarre";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
 import { MiniaturePremiere } from "./creatis/MiniaturePremiere";
 import { MiniatureGrille } from "./creatis/MiniatureGrille";
 import { MiniatureOuverture } from "./creatis/MiniatureOuverture";
 import { MiniatureLongCourt } from "./creatis/MiniatureLongCourt";
+import { MiniatureQuatre } from "./creatis/MiniatureQuatre";
+import { MiniatureAutonomie } from "./creatis/MiniatureAutonomie";
+import { MiniatureZeroVues } from "./creatis/MiniatureZeroVues";
+import { MiniatureClipping } from "./creatis/MiniatureClipping";
+import { MiniatureTrente } from "./creatis/MiniatureTrente";
+import { MiniatureChoisir } from "./creatis/MiniatureChoisir";
+import { MiniatureDebuter } from "./creatis/MiniatureDebuter";
+import { MiniatureArnaque } from "./creatis/MiniatureArnaque";
 import { Carrousel, VIGNETTES } from "./creatis/Carrousel";
+import { VIGNETTES_AUTONOMIE } from "./creatis/CarrouselAutonomie";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
 import { DUREE_PREMIERE, PremiereSeconde } from "./creatis/PremiereSeconde";
 import { DUREE_ESSAI, EssaiIllustrations } from "./creatis/EssaiIllustrations";
@@ -268,6 +300,18 @@ export const RemotionRoot: React.FC = () => {
           height={1080}
         />
         {/* CARROUSEL — une vignette par composition, 4:5. */}
+        {VIGNETTES_AUTONOMIE.map((v, i) => (
+          <Composition
+            key={`auto-${i}`}
+            id={`CarrouselAuto${i + 1}`}
+            component={Carrousel}
+            defaultProps={{ v }}
+            durationInFrames={1}
+            fps={30}
+            width={1080}
+            height={1350}
+          />
+        ))}
         {VIGNETTES.map((v, i) => (
           <Composition
             key={i}
@@ -280,6 +324,70 @@ export const RemotionRoot: React.FC = () => {
             height={1350}
           />
         ))}
+        <Composition
+          id="MiniatureDebuter"
+          component={MiniatureDebuter}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureArnaque"
+          component={MiniatureArnaque}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureChoisir"
+          component={MiniatureChoisir}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureTrente"
+          component={MiniatureTrente}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureClipping"
+          component={MiniatureClipping}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureZeroVues"
+          component={MiniatureZeroVues}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureAutonomie"
+          component={MiniatureAutonomie}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureQuatre"
+          component={MiniatureQuatre}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
         <Composition
           id="MiniatureLongCourt"
           component={MiniatureLongCourt}
@@ -319,6 +427,264 @@ export const RemotionRoot: React.FC = () => {
           fps={30}
           width={1280}
           height={720}
+        />
+        {/* Le premier film qui ne montre PAS l outil — 07/10. */}
+        {/* FORMAT LONG du 07/10 — les quatre erreurs, prouvees par nos chiffres. */}
+        <Composition
+          id="SansCamera"
+          component={ClipNarre}
+          defaultProps={{ r: SANS_CAMERA }}
+          durationInFrames={DUREE_SANS_CAMERA}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="SixDollars"
+          component={ClipNarre}
+          defaultProps={{ r: SIX_DOLLARS }}
+          durationInFrames={DUREE_SIX_DOLLARS}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="ZeroAbonne"
+          component={ClipNarre}
+          defaultProps={{ r: ZERO_ABONNE }}
+          durationInFrames={DUREE_ZERO_ABONNE}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Million"
+          component={ClipNarre}
+          defaultProps={{ r: MILLION }}
+          durationInFrames={DUREE_MILLION}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="MilleVues"
+          component={ClipNarre}
+          defaultProps={{ r: MILLE_VUES }}
+          durationInFrames={DUREE_MILLE_VUES}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Abandonnent"
+          component={ClipNarre}
+          defaultProps={{ r: ABANDONNENT }}
+          durationInFrames={DUREE_ABANDONNENT}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Personne"
+          component={ClipNarre}
+          defaultProps={{ r: PERSONNE }}
+          durationInFrames={DUREE_PERSONNE}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Gameplay"
+          component={ClipNarre}
+          defaultProps={{ r: GAMEPLAY }}
+          durationInFrames={DUREE_GAMEPLAY}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="TrenteSecondes"
+          component={ClipNarre}
+          defaultProps={{ r: TRENTE_SECONDES }}
+          durationInFrames={DUREE_TRENTE_SECONDES}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="IdeeFinie"
+          component={ClipNarre}
+          defaultProps={{ r: IDEE_FINIE }}
+          durationInFrames={DUREE_IDEE_FINIE}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="UnSujet"
+          component={ClipNarre}
+          defaultProps={{ r: UN_SUJET }}
+          durationInFrames={DUREE_UN_SUJET}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="PremierPlan"
+          component={ClipNarre}
+          defaultProps={{ r: PREMIER_PLAN }}
+          durationInFrames={DUREE_PREMIER_PLAN}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Punchline"
+          component={ClipNarre}
+          defaultProps={{ r: PUNCHLINE }}
+          durationInFrames={DUREE_PUNCHLINE}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="ShortClipping"
+          component={ShortClipping}
+          durationInFrames={DUREE_SHORT_CLIPPING}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="ShortVisuel"
+          component={ShortVisuel}
+          durationInFrames={DUREE_SHORT_VISUEL}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Debuter"
+          component={Debuter}
+          durationInFrames={DUREE_DEBUTER}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Regles"
+          component={ClipNarre}
+          defaultProps={{ r: REGLES }}
+          durationInFrames={DUREE_REGLES}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Commission"
+          component={ClipNarre}
+          defaultProps={{ r: COMMISSION }}
+          durationInFrames={DUREE_COMMISSION}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Formation"
+          component={ClipNarre}
+          defaultProps={{ r: FORMATION }}
+          durationInFrames={DUREE_FORMATION}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Arnaque"
+          component={Arnaque}
+          durationInFrames={DUREE_ARNAQUE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="ChoisirSource"
+          component={ChoisirSource}
+          durationInFrames={DUREE_CHOISIR}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Maquette"
+          component={Maquette}
+          durationInFrames={DUREE_MAQUETTE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="TrenteClips"
+          component={TrenteClips}
+          durationInFrames={DUREE_TRENTE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Clipping"
+          component={Clipping}
+          durationInFrames={DUREE_CLIPPING}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="ZeroVues"
+          component={ZeroVues}
+          durationInFrames={DUREE_ZERO}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Autonomie"
+          component={Autonomie}
+          durationInFrames={DUREE_AUTONOMIE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="ResultatSeul3"
+          component={ResultatSeul3}
+          durationInFrames={DUREE_RESULTAT3}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="ResultatSeul2"
+          component={ResultatSeul2}
+          durationInFrames={DUREE_RESULTAT2}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="QuatreErreurs"
+          component={QuatreErreurs}
+          durationInFrames={DUREE_QUATRE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="ResultatSeul"
+          component={ResultatSeul}
+          durationInFrames={DUREE_RESULTAT}
+          fps={30}
+          width={1080}
+          height={1920}
         />
         <Composition
           id="VocalGotaga"

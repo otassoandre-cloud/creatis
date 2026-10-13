@@ -658,3 +658,75 @@ export const SANS_CAMERA: ReglagesClipNarre = {
   ],
 };
 export const DUREE_SANS_CAMERA = Math.round(SANS_CAMERA.duree * 30);
+
+/* ── LES TROIS SHORTS DU 13/10 ───────────────────────────────────────────
+   Ils accompagnent le format long « Le clipping, c'est une arnaque ? » et
+   chacun en traite UN morceau en entier — un Short qui résume les trois
+   mensonges ne donne aucune raison de cliquer.
+
+   L'accroche garde la forme qui a fait 1 018 vues le 11/10 contre 117 pour
+   celle du lendemain : un ACTEUR qui agit (une marque paie, une campagne ne
+   paie pas, une plateforme prélève) et un chiffre précis. Les deux Shorts à
+   117 et 131 vues énonçaient une règle abstraite, sans personne dedans.
+
+   Aucun ne promet la facilité : ils disent ce que ça coûte. C'est la ligne
+   imposée par l'avertissement YouTube actif jusqu'au 28/10 (CONSIGNES.md).
+
+   ── POURQUOI PAS DE CLIPS NEUFS AUJOURD'HUI ──────────────────────────
+   Trois analyses lancées ce matin sur des vidéos sorties cette semaine
+   (Amixem 51 min, Konbini 24 min, Konbini 15 min) n'ont rendu aucune carte
+   de clip. Cause relevée en base : le compte studio-video@creatis.app est à
+   30 analyses sur les 30 de son plan Pro pour le mois. Les trois demandes
+   ont été refusées au quota, pas perdues par le script.
+
+   On garde donc les trois lots verticaux existants, mais en prenant des
+   SECONDES qui n'ont jamais servi — chaque plan a été choisi sur planche
+   contact, et chacun montre un visage qui remplit le cadre. */
+
+export const REGLES: ReglagesClipNarre = {
+  source: "clip-sqz2-3.mp4",
+  rec: 8,
+  voix: "narration-regles.mp3",
+  duree: 14.0,
+  adresse: 11.1,
+  renvoi: "Les 3 mensonges sont dans la vidéo complète",
+  legendes: [
+    { a: 0, texte: "Ton clip fait 40 000 vues. La campagne ne te paie pas.", gros: true, source: "clip-sqz2-3.mp4", rec: 8 },
+    { a: 3.2, texte: "Chaque campagne écrit ses règles.", source: "clip-sqz2-4.mp4", rec: 22 },
+    { a: 6.8, texte: "Durée minimale, plateformes acceptées, source autorisée, délai de soumission.", source: "clip-sqz2-3.mp4", rec: 20 },
+    { a: 11.1, texte: "Lis-les avant de publier, jamais après.", source: "clip-sqz2-4.mp4", rec: 8 },
+  ],
+};
+export const DUREE_REGLES = Math.round(REGLES.duree * 30);
+
+export const COMMISSION: ReglagesClipNarre = {
+  source: "clip-sqz3-1.mp4",
+  rec: 6,
+  voix: "narration-commission.mp3",
+  duree: 11.6,
+  adresse: 8.6,
+  renvoi: "Le calcul complet est dans la vidéo sur la chaîne",
+  legendes: [
+    { a: 0, texte: "Sur 100 $ gagnés en clipping, tu en touches 90.", gros: true, source: "clip-sqz3-1.mp4", rec: 6 },
+    { a: 3.9, texte: "La plateforme prend sa commission, autour de 10 %. Le virement a ses propres frais.", source: "clip-sqz3-3.mp4", rec: 6 },
+    { a: 8.6, texte: "Compte-le dès le départ, pas à la fin du mois.", source: "clip-sqz3-4.mp4", rec: 8 },
+  ],
+};
+export const DUREE_COMMISSION = Math.round(COMMISSION.duree * 30);
+
+export const FORMATION: ReglagesClipNarre = {
+  source: "clip-amx4-4.mp4",
+  rec: 8,
+  voix: "narration-formation.mp3",
+  duree: 13.7,
+  adresse: 11.0,
+  renvoi: "Le détail est dans la vidéo complète sur la chaîne",
+  legendes: [
+    { a: 0, texte: "Une formation clipping à 300 €, pour des règles affichées gratuitement.", gros: true, source: "clip-amx4-4.mp4", rec: 8 },
+    { a: 4.75, texte: "Les conditions sont écrites sur la page de la campagne.", source: "clip-amx4-3.mp4", rec: 10 },
+    { a: 7.7, texte: "Le tarif, le budget restant, les sources autorisées.", source: "clip-amx4-2.mp4", rec: 6, incrust: "tuto-grille-h264.mp4" },
+    /* Jamais rec 12 sur amx4-1 : c'est la carte de parrainage L'Oréal. */
+    { a: 11.0, texte: "Tu peux tout lire avant même de créer un compte.", source: "clip-amx4-1.mp4", rec: 22 },
+  ],
+};
+export const DUREE_FORMATION = Math.round(FORMATION.duree * 30);

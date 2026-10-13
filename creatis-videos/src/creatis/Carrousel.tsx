@@ -99,6 +99,10 @@ export const Carrousel: React.FC<{ v: Vignette }> = ({ v }) => {
             color: "rgba(255,255,255,0.80)",
             marginTop: 30,
             lineHeight: 1.42,
+            /* Les `
+` du corps étaient avalés : une réplique citée se
+               retrouvait collée à son explication, sur la même ligne. */
+            whiteSpace: "pre-line",
           }}
         >
           {v.corps}
