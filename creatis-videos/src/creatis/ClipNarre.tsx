@@ -73,6 +73,13 @@ export type ReglagesClipNarre = {
    */
   renvoi?: string;
   /**
+   * OÙ se trouve la vidéo complète. Sans ce champ, le renvoi disait « dans la
+   * vidéo sur la chaîne » — et sur Instagram, où le Short est vu, il n'y a pas
+   * de « chaîne » : le spectateur lit une promesse sans chemin pour y aller.
+   * Relevé par l'utilisateur le 13/10, capture à l'appui.
+   */
+  ou?: string;
+  /**
    * Appel à l'action de fin. Demandé le 12/10 : « lien cliquable en bio ».
    *
    * Vérifié avant de l'écrire, parce qu'une promesse fausse se paie : sur
@@ -271,14 +278,32 @@ export const ClipNarre: React.FC<{ r: ReglagesClipNarre }> = ({ r }) => {
         >
           <div
             style={{
-              maxWidth: 900, textAlign: "center",
-              fontSize: 54, fontWeight: 900, color: "#fff", lineHeight: 1.14,
-              letterSpacing: -1.5, padding: "22px 30px", borderRadius: 24,
-              background: "rgba(16,185,129,0.92)",
+              maxWidth: 940, textAlign: "center",
+              padding: "20px 30px", borderRadius: 24,
+              background: "rgba(16,185,129,0.94)",
               boxShadow: "0 14px 40px rgba(0,0,0,0.6)",
             }}
           >
-            {r.renvoi}
+            <div
+              style={{
+                fontSize: r.ou ? 44 : 54, fontWeight: 900, color: "#fff",
+                lineHeight: 1.14, letterSpacing: -1.2,
+              }}
+            >
+              {r.renvoi}
+            </div>
+            {r.ou ? (
+              <div
+                style={{
+                  marginTop: 10, paddingTop: 10,
+                  borderTop: "3px solid rgba(255,255,255,0.45)",
+                  fontSize: 50, fontWeight: 900, color: "#04120b",
+                  letterSpacing: -1, lineHeight: 1.1,
+                }}
+              >
+                {r.ou}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -689,7 +714,8 @@ export const REGLES: ReglagesClipNarre = {
   voix: "narration-regles.mp3",
   duree: 14.0,
   adresse: 11.1,
-  renvoi: "Les 3 mensonges sont dans la vidéo complète",
+  renvoi: "Les 3 mensonges en entier",
+  ou: "YouTube · @Creatis_officiel",
   legendes: [
     { a: 0, texte: "Ton clip fait 40 000 vues. La campagne ne te paie pas.", gros: true, source: "clip-sqz2-3.mp4", rec: 8 },
     { a: 3.2, texte: "Chaque campagne écrit ses règles.", source: "clip-sqz2-4.mp4", rec: 22 },
@@ -705,7 +731,8 @@ export const COMMISSION: ReglagesClipNarre = {
   voix: "narration-commission.mp3",
   duree: 11.6,
   adresse: 8.6,
-  renvoi: "Le calcul complet est dans la vidéo sur la chaîne",
+  renvoi: "Le calcul complet",
+  ou: "YouTube · @Creatis_officiel",
   legendes: [
     { a: 0, texte: "Sur 100 $ gagnés en clipping, tu en touches 90.", gros: true, source: "clip-sqz3-1.mp4", rec: 6 },
     { a: 3.9, texte: "La plateforme prend sa commission, autour de 10 %. Le virement a ses propres frais.", source: "clip-sqz3-3.mp4", rec: 6 },
@@ -720,7 +747,8 @@ export const FORMATION: ReglagesClipNarre = {
   voix: "narration-formation.mp3",
   duree: 13.7,
   adresse: 11.0,
-  renvoi: "Le détail est dans la vidéo complète sur la chaîne",
+  renvoi: "La vidéo complète",
+  ou: "YouTube · @Creatis_officiel",
   legendes: [
     { a: 0, texte: "Une formation clipping à 300 €, pour des règles affichées gratuitement.", gros: true, source: "clip-amx4-4.mp4", rec: 8 },
     { a: 4.75, texte: "Les conditions sont écrites sur la page de la campagne.", source: "clip-amx4-3.mp4", rec: 10 },

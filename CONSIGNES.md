@@ -991,3 +991,41 @@ regarder si les clients, eux, produisent.
 interne, ou accepter de réutiliser les lots existants jusqu'au 1er novembre.
 Les trois lots verticaux disponibles sont `sqz2`, `sqz3` et `amx4` — et on
 change au moins les SECONDES, choisies sur planche contact.
+
+## Un renvoi doit NOMMER sa destination (13/10)
+
+Capture de l'utilisateur, sur un reel Instagram : la carte verte disait
+« Le calcul complet est dans la vidéo sur la chaîne ». Sur Instagram, **il n'y
+a pas de « chaîne »** — le spectateur lit une promesse sans aucun chemin pour
+y aller. Même chose sur TikTok. Le renvoi ne marchait que sur YouTube, et
+encore : il ne disait pas quelle vidéo.
+
+**Règle : un renvoi porte deux lignes — ce qu'on y trouve, et OÙ.**
+
+```
+  La vidéo complète
+  ─────────────────
+  YouTube · @Creatis_officiel
+```
+
+`ReglagesClipNarre` a donc un champ `ou`, rendu en gros sous le libellé. Le
+handle se lit dans le DOM de la page de chaîne, jamais de mémoire : c'est
+`@Creatis_officiel` (sans accent sur le premier e, contrairement au nom
+affiché « Créatis_officiel »).
+
+Et la même exigence vaut pour la **description** : première ligne = le titre
+exact de la vidéo longue + son URL complète. « Sur la chaîne » ne suffit pas.
+
+### Rattraper une publication déjà en ligne
+
+- **YouTube** : `scripts/epingler.js --video <id> --texte "… <url>"`. Le lien
+  y est cliquable, c'est la meilleure des trois.
+- **Instagram** : un COMMENTAIRE, pas une récriture de légende. Le dialogue
+  « Modifier » ne s'ouvre pas de façon fiable, et un `Ctrl+A` qui rate le
+  champ sélectionne toute la page. Le script est
+  `scratchpad/commenter-ig.js`, avec deux pièges déjà payés :
+  · l'étiquette est « Plus d’options » avec une apostrophe TYPOGRAPHIQUE
+    (U+2019) — un sélecteur avec l'apostrophe droite ne trouve rien ;
+  · « Publier » existe en plusieurs exemplaires dans la page : cliquer le
+    premier venu laisse le texte dans le champ sans rien envoyer. On envoie
+    par la touche **Entrée**, qui vise le formulaire qui a le focus.
