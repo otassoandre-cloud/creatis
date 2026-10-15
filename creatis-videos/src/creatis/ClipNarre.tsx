@@ -758,3 +758,120 @@ export const FORMATION: ReglagesClipNarre = {
   ],
 };
 export const DUREE_FORMATION = Math.round(FORMATION.duree * 30);
+
+/* ── LES TROIS SHORTS DU 15/10 ───────────────────────────────────────────
+   Ils accompagnent le format long « Tes premiers 150 $ en clipping » et
+   reprennent l'angle qui tient : la mesure du 15/10 dit que les Shorts qui
+   énoncent une CONTRAINTE (les règles d'une campagne, la commission, les
+   formations) plafonnent à 231 vues, quand ceux qui énoncent une somme à
+   gagner font 673 et 1 018.
+
+   Mais on ne répète pas la somme : on raconte ce qu'elle COÛTE en heures.
+   Trois heures pour un clip, quatre-vingt-dix heures pour la semaine — c'est
+   la soirée que le spectateur vient de passer, et c'est le vrai sujet du
+   format long.
+
+   Les lots sont les trois seuls réservoirs verticaux disponibles (le compte
+   de production est à 30 analyses sur 30 pour le mois), mais AUCUNE des
+   secondes utilisées le 13/10 n'est reprise : chaque plan a été choisi sur
+   planche contact. */
+
+export const TROIS_HEURES: ReglagesClipNarre = {
+  source: "clip-sqz2-3.mp4",
+  rec: 14,
+  voix: "narration-trois-heures.mp3",
+  duree: 14.0,
+  adresse: 11.5,
+  renvoi: "La méthode complète, en 6 minutes",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Trois heures sur un seul clip.", gros: true, source: "clip-sqz2-3.mp4", rec: 14 },
+    { a: 3.9, texte: "Tu as trouvé le passage, recadré, corrigé les sous-titres un par un.", source: "clip-sqz2-4.mp4", rec: 14 },
+    { a: 7.5, texte: "Et au bout : 5 $.", gros: true, source: "clip-sqz2-3.mp4", rec: 26 },
+    { a: 9.7, texte: "À ce rythme, il faut 90 heures pour 150 $ dans la semaine.", source: "clip-sqz2-4.mp4", rec: 30 },
+  ],
+};
+export const DUREE_TROIS_HEURES = Math.round(TROIS_HEURES.duree * 30);
+
+export const DIX_NOTES: ReglagesClipNarre = {
+  source: "clip-sqz3-1.mp4",
+  rec: 12,
+  voix: "narration-dix-notes.mp3",
+  duree: 12.4,
+  adresse: 10.6,
+  renvoi: "La démonstration entière est sur la vidéo longue",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Une vidéo d'1 h contient 10 passages qui tiennent seuls.", gros: true, source: "clip-sqz3-1.mp4", rec: 12 },
+    { a: 4.8, texte: "Tout le travail, c'est de les trouver.", source: "clip-sqz3-2.mp4", rec: 2 },
+    { a: 6.5, texte: "Une note sur 100 sur chacun. Tu ouvres les mieux notés en premier.", source: "clip-sqz3-4.mp4", rec: 14, incrust: "grille-notee.mp4" },
+    { a: 10.6, texte: "Tu ne regardes plus l'heure entière.", source: "clip-sqz3-1.mp4", rec: 18 },
+  ],
+};
+export const DUREE_DIX_NOTES = Math.round(DIX_NOTES.duree * 30);
+
+export const QUATRE_VINGT_DIX: ReglagesClipNarre = {
+  source: "clip-amx4-2.mp4",
+  rec: 14,
+  voix: "narration-quatre-vingt-dix.mp3",
+  duree: 14.2,
+  adresse: 11.1,
+  renvoi: "Le calcul complet, et la démonstration",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "30 clips montés à la main : 90 heures.", gros: true, source: "clip-amx4-2.mp4", rec: 14 },
+    { a: 3.5, texte: "Les mêmes 30 clips autrement : 1 h 30.", gros: true, source: "clip-amx4-3.mp4", rec: 20 },
+    { a: 7.3, texte: "Même nombre de clips, même tarif, même argent au bout.", source: "clip-amx4-4.mp4", rec: 16 },
+    { a: 11.1, texte: "La seule variable, c'est le temps que tu mets par clip.", source: "clip-amx4-1.mp4", rec: 26 },
+  ],
+};
+export const DUREE_QUATRE_VINGT_DIX = Math.round(QUATRE_VINGT_DIX.duree * 30);
+
+/* ── LE SHORT DU 15/10, 20 h — UN TEST D'ACQUISITION ─────────────────────
+   Analyse du 15/10 : sur YouTube, les Shorts font 34 à 682 vues et le
+   classement est stable — une équivalence chiffrée surprenante gagne (682 et
+   1 018 vues), la perte suit (189-232), la méthode ferme la marche (34-140).
+
+   Mais le chiffre qui compte est ailleurs : AUCUNE de ces vues n'a jamais
+   produit un inscrit attribué. Le lien ne fonctionne nulle part — TikTok ne
+   le rend pas cliquable sous 1 000 abonnés, la bio Instagram est peu
+   ouverte, la description YouTube peu lue.
+
+   On change donc de monnaie : au lieu de demander un CLIC, on demande un
+   COMMENTAIRE. Trois raisons, et elles sont vérifiables demain :
+     1. le commentaire est gratuit pour le spectateur, contrairement au
+        départ de l'application ;
+     2. il nourrit la distribution au lieu de la contrarier ;
+     3. il laisse un PSEUDO, c'est-à-dire quelqu'un à qui répondre — et nous
+        avons déjà les outils (`destinataires.js`, `repondre.js`).
+
+   La promesse doit être tenable sans rien inventer : les tarifs réels des
+   campagnes sont relevés et publics. On les enverra.
+
+   Tout le reste est tenu constant — gabarit, durée, style, voix, zone de
+   légende — pour que l'écart de demain soit attribuable à l'appel. */
+
+export const TARIFS: ReglagesClipNarre = {
+  source: "clip-sqz3-4.mp4",
+  rec: 6,
+  voix: "narration-tarifs.mp3",
+  duree: 14.3,
+  adresse: 11.2,
+  appel: { titre: "COMMENTE « TARIFS »", sous: "je t'envoie les chiffres réels" },
+  /* ── CHOISIR UNE SECONDE NE SUFFIT PAS, IL FAUT UNE PLAGE ──────────
+     Premier montage : cinq plans choisis sur une image chacun. Au rendu,
+     quatre sur cinq montraient un dos — parce qu'un clip exporté contient
+     ses propres COUPES, et que le plan vérifié avait disparu une seconde
+     plus tard. On relève donc rec, rec+1,5 et rec+3, et on ne garde que ce
+     qui tient toute la durée de la légende :
+       clip-sqz3-4 ... plan stable de 6 à 11 s
+       clip-amx4-4 ... plan stable de 14 à 17 s */
+  legendes: [
+    { a: 0, texte: "Le même clip, les mêmes vues, ne rapporte pas la même chose.", gros: true, source: "clip-sqz3-4.mp4", rec: 6 },
+    { a: 3.8, texte: "0,20 $ pour 1 000 vues sur une campagne.", source: "clip-amx4-4.mp4", rec: 14 },
+    { a: 6.4, texte: "6 $ sur une autre.", gros: true, source: "clip-amx4-4.mp4", rec: 16 },
+    { a: 8.1, texte: "30 fois l'écart, pour exactement le même travail.", source: "clip-sqz3-4.mp4", rec: 7 },
+    { a: 11.2, texte: "", source: "clip-sqz3-4.mp4", rec: 8 },
+  ],
+};
+export const DUREE_TARIFS = Math.round(TARIFS.duree * 30);

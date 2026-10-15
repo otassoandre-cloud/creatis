@@ -1029,3 +1029,46 @@ exact de la vidéo longue + son URL complète. « Sur la chaîne » ne suffit pa
   · « Publier » existe en plusieurs exemplaires dans la page : cliquer le
     premier venu laisse le texte dans le champ sans rien envoyer. On envoie
     par la touche **Entrée**, qui vise le formulaire qui a le focus.
+
+## Un plan se vérifie sur une PLAGE, pas sur une image (15/10)
+
+Le premier montage du Short du soir choisissait cinq plans sur une image
+chacun, tous vérifiés à la planche contact, tous montrant un visage. Au
+rendu, **quatre sur cinq montraient un dos**.
+
+La cause : un clip exporté contient ses propres COUPES. Le plan vérifié à la
+seconde 34 avait disparu à la seconde 35. La planche disait vrai, elle ne
+disait simplement pas assez.
+
+**Le geste : relever `rec`, `rec + 1,5` et `rec + 3`**, et ne garder que ce
+qui tient toute la durée de la légende. Sur les lots du moment :
+
+| Clip | Plage stable | Ce qu'on y voit |
+|---|---|---|
+| `clip-sqz3-4` | 6 → 11 s | un visage de face, gros plan |
+| `clip-amx4-4` | 14 → 17 s | un visage de face, casquette |
+| `clip-amx4-2` | 17 s | un visage de face |
+
+Corollaire : **mieux vaut quatre plans qui tiennent que six qui sautent.**
+
+## Le commentaire remplace le clic — test posé le 15/10
+
+Depuis le 25/09 : des milliers de vues cumulées, **zéro inscrit attribué aux
+réseaux**. La cause est structurelle, pas éditoriale — le lien ne marche
+nulle part : TikTok ne le rend pas cliquable sous 1 000 abonnés (556), la bio
+Instagram demande deux gestes, la description d'un Short YouTube est rarement
+ouverte.
+
+D'où l'hypothèse testée sur le Short du 15/10 à 20 h : **demander un
+COMMENTAIRE plutôt qu'un clic**. Il est gratuit pour le spectateur, il
+nourrit la distribution au lieu de la contrarier, et il laisse un pseudo à qui
+répondre.
+
+L'hypothèse, ce qui varie, ce qui est tenu constant, les seuils de décision
+et la promesse à tenir sont écrits dans **`social/hypothese-2026-10-15.md`**.
+À relire demain AVANT de produire quoi que ce soit.
+
+**Et la promesse se tient.** « Commente TARIFS, je t'envoie les chiffres » =
+répondre à chacun avec la fourchette réelle (0,20 à 6 $ pour 1 000 vues,
+moyenne ≈ 1 $) et la mention du budget restant. Une promesse non tenue coûte
+plus cher que l'absence d'appel.

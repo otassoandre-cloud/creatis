@@ -176,10 +176,26 @@ const STRATEGIES = [
     ).first();
     await plus.click({ timeout: 10000 });
     await page.waitForTimeout(2500);
-    /* Le menu Créer s'ouvre avec Publication / Story / Reel / Direct selon le
-       compte. Obligatoire : sans lui la boîte de dépôt ne s'ouvre jamais, et
-       l'échec se manifeste bien plus loin, sur l'absence du champ de fichier. */
-    await cliquer(['Publication', 'Post', 'Reel'], 'menu Créer', true, 12);
+    /* Le menu Créer s'ouvrait avec Publication / Story / Reel / Direct. Depuis
+       le 15/10, sur ce compte, il n'y a PLUS de menu : le clic sur Créer ouvre
+       directement la boîte « Créer une nouvelle publication » avec son bouton
+       « Sélectionner sur l'ordinateur ». Le script cherchait alors une entrée
+       qui n'existe plus et refusait de publier — alors que tout était prêt.
+
+       On regarde donc si la boîte de dépôt est déjà là. Si oui, on passe ; si
+       non, on cherche l'entrée de menu comme avant. L'étape reste obligatoire
+       dans ce second cas : sans elle, l'échec se manifesterait bien plus loin,
+       sur l'absence du champ de fichier. */
+    const boiteOuverte = await page
+      .locator('text=/Sélectionner sur l.ordinateur|Select from computer|Faites glisser les photos/i')
+      .first()
+      .isVisible({ timeout: 6000 })
+      .catch(() => false);
+    if (boiteOuverte) {
+      console.log('  boîte de dépôt déjà ouverte (plus de menu intermédiaire)');
+    } else {
+      await cliquer(['Publication', 'Post', 'Reel'], 'menu Créer', true, 12);
+    }
 
     console.log('· dépôt du fichier');
     const champ = page.locator('input[type="file"]').last();

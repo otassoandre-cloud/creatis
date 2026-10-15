@@ -44,15 +44,17 @@ import { DUREE_MAQUETTE, Maquette } from "./creatis/Maquette";
 import { ChoisirSource, DUREE_CHOISIR } from "./creatis/ChoisirSource";
 import { Debuter, DUREE_DEBUTER } from "./creatis/Debuter";
 import { Arnaque, DUREE_ARNAQUE } from "./creatis/Arnaque";
+import { PremiersEuros, DUREE_PREMIERS_EUROS } from "./creatis/PremiersEuros";
 import { DUREE_SHORT_VISUEL, ShortVisuel } from "./creatis/ShortVisuel";
 import { DUREE_SHORT_CLIPPING, ShortClipping } from "./creatis/ShortClipping";
 import {
   ABANDONNENT, ClipNarre, DUREE_ABANDONNENT, DUREE_GAMEPLAY, DUREE_IDEE_FINIE,
   DUREE_MILLE_VUES, DUREE_MILLION, DUREE_PERSONNE, DUREE_PREMIER_PLAN, DUREE_PUNCHLINE,
-  DUREE_COMMISSION, DUREE_FORMATION, DUREE_REGLES,
+  DUREE_COMMISSION, DUREE_DIX_NOTES, DUREE_TARIFS, DUREE_FORMATION, DUREE_QUATRE_VINGT_DIX,
+  DUREE_REGLES, DUREE_TROIS_HEURES,
   DUREE_SANS_CAMERA, DUREE_SIX_DOLLARS, DUREE_TRENTE_SECONDES, DUREE_UN_SUJET, DUREE_ZERO_ABONNE, GAMEPLAY,
   IDEE_FINIE, MILLE_VUES, MILLION, PERSONNE, PREMIER_PLAN, PUNCHLINE, SIX_DOLLARS,
-  COMMISSION, FORMATION, REGLES,
+  COMMISSION, DIX_NOTES, TARIFS, FORMATION, QUATRE_VINGT_DIX, REGLES, TROIS_HEURES,
   SANS_CAMERA, TRENTE_SECONDES, UN_SUJET, ZERO_ABONNE,
 } from "./creatis/ClipNarre";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
@@ -68,6 +70,7 @@ import { MiniatureTrente } from "./creatis/MiniatureTrente";
 import { MiniatureChoisir } from "./creatis/MiniatureChoisir";
 import { MiniatureDebuter } from "./creatis/MiniatureDebuter";
 import { MiniatureArnaque } from "./creatis/MiniatureArnaque";
+import { MiniaturePremiersEuros } from "./creatis/MiniaturePremiersEuros";
 import { Carrousel, VIGNETTES } from "./creatis/Carrousel";
 import { VIGNETTES_AUTONOMIE } from "./creatis/CarrouselAutonomie";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
@@ -341,6 +344,14 @@ export const RemotionRoot: React.FC = () => {
           height={720}
         />
         <Composition
+          id="MiniaturePremiersEuros"
+          component={MiniaturePremiersEuros}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
           id="MiniatureChoisir"
           component={MiniatureChoisir}
           durationInFrames={1}
@@ -599,9 +610,53 @@ export const RemotionRoot: React.FC = () => {
           height={1920}
         />
         <Composition
+          id="TroisHeures"
+          component={ClipNarre}
+          defaultProps={{ r: TROIS_HEURES }}
+          durationInFrames={DUREE_TROIS_HEURES}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="DixNotes"
+          component={ClipNarre}
+          defaultProps={{ r: DIX_NOTES }}
+          durationInFrames={DUREE_DIX_NOTES}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="QuatreVingtDix"
+          component={ClipNarre}
+          defaultProps={{ r: QUATRE_VINGT_DIX }}
+          durationInFrames={DUREE_QUATRE_VINGT_DIX}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Tarifs"
+          component={ClipNarre}
+          defaultProps={{ r: TARIFS }}
+          durationInFrames={DUREE_TARIFS}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
           id="Arnaque"
           component={Arnaque}
           durationInFrames={DUREE_ARNAQUE}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="PremiersEuros"
+          component={PremiersEuros}
+          durationInFrames={DUREE_PREMIERS_EUROS}
           fps={30}
           width={1920}
           height={1080}

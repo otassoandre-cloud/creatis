@@ -299,3 +299,62 @@ export const Etiquette: React.FC<{
     </div>
   );
 };
+
+/**
+ * UNE ZONE DE L'ÉCRAN, mise en plein cadre.
+ *
+ * Le tournage de la plateforme est en 1920×1080 : le lecteur du clip y fait
+ * 374 pixels de large, le panneau de réglages 356. Projeté tel quel dans une
+ * vidéo regardée sur un téléphone, plus rien n'est lisible — on voit une
+ * interface, on ne lit aucun réglage.
+ *
+ * `zone` est la région du tournage à montrer, en coordonnées du fichier
+ * (relevées sur une capture quadrillée, jamais estimées) :
+ *
+ *   grille complète .... [180,  30, 1380, 776]
+ *   fiche du clip ...... [400,  20, 1180, 664]
+ *   lecteur + début du panneau [540, 50, 900, 506]
+ *   panneau des styles . [1150, 40,  440, 248]
+ *
+ * Le calcul d'échelle est un MAXIMUM : avec `Math.min` on obtient un
+ * « contain » qui laisse le reste de l'interface dans le champ, ce qu'on
+ * cherche précisément à faire sortir.
+ */
+export const Ecran: React.FC<{
+  source: string;
+  depart: number;
+  duree: number;
+  zone: [number, number, number, number];
+  /** Un lent rapprochement, pour que le plan ne soit pas figé. */
+  zoom?: number;
+}> = ({ source, depart, duree, zone, zoom = 1.05 }) => {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const [zx, zy, zl, zh] = zone;
+  const e = Math.max(width / zl, height / zh);
+  const g = interpolate(frame, [0, duree * 30], [1, zoom], { extrapolateRight: "clamp" });
+
+  return (
+    <AbsoluteFill style={{ overflow: "hidden", backgroundColor: "#0a0f0a" }}>
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+        <div
+          style={{
+            width, height, overflow: "hidden", position: "relative",
+            transform: `scale(${g})`,
+          }}
+        >
+          <Video
+            src={staticFile(source)}
+            trimBefore={Math.round(depart * 30)}
+            style={{
+              position: "absolute", width: 1920, height: 1080,
+              transformOrigin: "0 0",
+              transform: `translate(${width / 2 - (zx + zl / 2) * e}px, ${height / 2 - (zy + zh / 2) * e}px) scale(${e})`,
+            }}
+            muted
+          />
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};

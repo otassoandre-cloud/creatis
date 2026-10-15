@@ -25,6 +25,10 @@
 
 const fs = require('fs');
 const path = require('path');
+const { prendre } = require('./verrou-profil');
+
+/* Un seul travail Playwright a la fois sur le profil : voir verrou-profil.js. */
+prendre('youtube-stats');
 
 const RACINE = path.join(__dirname, '..');
 const BRIEFS = path.join(RACINE, 'social', 'briefs');
