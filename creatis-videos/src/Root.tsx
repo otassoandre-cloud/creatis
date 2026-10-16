@@ -45,16 +45,18 @@ import { ChoisirSource, DUREE_CHOISIR } from "./creatis/ChoisirSource";
 import { Debuter, DUREE_DEBUTER } from "./creatis/Debuter";
 import { Arnaque, DUREE_ARNAQUE } from "./creatis/Arnaque";
 import { PremiersEuros, DUREE_PREMIERS_EUROS } from "./creatis/PremiersEuros";
+import { Emrah, DUREE_EMRAH } from "./creatis/Emrah";
 import { DUREE_SHORT_VISUEL, ShortVisuel } from "./creatis/ShortVisuel";
 import { DUREE_SHORT_CLIPPING, ShortClipping } from "./creatis/ShortClipping";
 import {
   ABANDONNENT, ClipNarre, DUREE_ABANDONNENT, DUREE_GAMEPLAY, DUREE_IDEE_FINIE,
   DUREE_MILLE_VUES, DUREE_MILLION, DUREE_PERSONNE, DUREE_PREMIER_PLAN, DUREE_PUNCHLINE,
-  DUREE_COMMISSION, DUREE_DIX_NOTES, DUREE_TARIFS, DUREE_FORMATION, DUREE_QUATRE_VINGT_DIX,
+  DUREE_CINQ_CENTS, DUREE_COMMISSION, DUREE_DIX_NOTES, DUREE_DOUZE_DOLLARS,
+  DUREE_TARIFS, DUREE_TROIS_EMPLOIS, DUREE_FORMATION, DUREE_QUATRE_VINGT_DIX,
   DUREE_REGLES, DUREE_TROIS_HEURES,
   DUREE_SANS_CAMERA, DUREE_SIX_DOLLARS, DUREE_TRENTE_SECONDES, DUREE_UN_SUJET, DUREE_ZERO_ABONNE, GAMEPLAY,
   IDEE_FINIE, MILLE_VUES, MILLION, PERSONNE, PREMIER_PLAN, PUNCHLINE, SIX_DOLLARS,
-  COMMISSION, DIX_NOTES, TARIFS, FORMATION, QUATRE_VINGT_DIX, REGLES, TROIS_HEURES,
+  CINQ_CENTS, COMMISSION, DIX_NOTES, DOUZE_DOLLARS, TARIFS, TROIS_EMPLOIS, FORMATION, QUATRE_VINGT_DIX, REGLES, TROIS_HEURES,
   SANS_CAMERA, TRENTE_SECONDES, UN_SUJET, ZERO_ABONNE,
 } from "./creatis/ClipNarre";
 import { MiniatureLongue } from "./creatis/MiniatureLongue";
@@ -71,6 +73,7 @@ import { MiniatureChoisir } from "./creatis/MiniatureChoisir";
 import { MiniatureDebuter } from "./creatis/MiniatureDebuter";
 import { MiniatureArnaque } from "./creatis/MiniatureArnaque";
 import { MiniaturePremiersEuros } from "./creatis/MiniaturePremiersEuros";
+import { MiniatureEmrah } from "./creatis/MiniatureEmrah";
 import { Carrousel, VIGNETTES } from "./creatis/Carrousel";
 import { VIGNETTES_AUTONOMIE } from "./creatis/CarrouselAutonomie";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
@@ -346,6 +349,14 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="MiniaturePremiersEuros"
           component={MiniaturePremiersEuros}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureEmrah"
+          component={MiniatureEmrah}
           durationInFrames={1}
           fps={30}
           width={1280}
@@ -646,6 +657,33 @@ export const RemotionRoot: React.FC = () => {
           height={1920}
         />
         <Composition
+          id="DouzeDollars"
+          component={ClipNarre}
+          defaultProps={{ r: DOUZE_DOLLARS }}
+          durationInFrames={DUREE_DOUZE_DOLLARS}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="CinqCents"
+          component={ClipNarre}
+          defaultProps={{ r: CINQ_CENTS }}
+          durationInFrames={DUREE_CINQ_CENTS}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="TroisEmplois"
+          component={ClipNarre}
+          defaultProps={{ r: TROIS_EMPLOIS }}
+          durationInFrames={DUREE_TROIS_EMPLOIS}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
           id="Arnaque"
           component={Arnaque}
           durationInFrames={DUREE_ARNAQUE}
@@ -657,6 +695,14 @@ export const RemotionRoot: React.FC = () => {
           id="PremiersEuros"
           component={PremiersEuros}
           durationInFrames={DUREE_PREMIERS_EUROS}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="Emrah"
+          component={Emrah}
+          durationInFrames={DUREE_EMRAH}
           fps={30}
           width={1920}
           height={1080}

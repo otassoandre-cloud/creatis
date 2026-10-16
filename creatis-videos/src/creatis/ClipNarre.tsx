@@ -875,3 +875,69 @@ export const TARIFS: ReglagesClipNarre = {
   ],
 };
 export const DUREE_TARIFS = Math.round(TARIFS.duree * 30);
+
+/* ── LES TROIS SHORTS DU 16/10 ───────────────────────────────────────────
+   Ils sont tirés du court-métrage du jour, qui raconte l'histoire d'Emrah
+   Bayraktar (NPR, 12/05/2026) : trois emplois, une première notification à
+   12 $, 2 500 $ deux semaines plus tard, et les 500 clips qu'il y a entre
+   les deux.
+
+   Deux mesures du 16/10 commandent ces trois pièces :
+     · « Une vidéo d'1 h contient 10 passages » a fait 734 vues — la forme
+       « fait surprenant énoncé platement » tient le haut du classement ;
+     · le Short publié à 20 h a fait UNE vue, et celui du 12/10 publié à
+       19 h 29 en avait fait huit en trois jours. **On ne publie plus le
+       soir** : ces trois-là partent entre 10 h et 14 h. */
+
+export const DOUZE_DOLLARS: ReglagesClipNarre = {
+  source: "clip-sqz3-4.mp4",
+  rec: 6,
+  voix: "narration-douze-dollars.mp3",
+  duree: 14.4,
+  adresse: 10.4,
+  renvoi: "Son histoire en entier, en 5 minutes",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Sa première notification de clipping affichait 12 $.", gros: true, source: "clip-sqz3-4.mp4", rec: 6 },
+    { a: 3.5, texte: "Douze. Pour des semaines de travail accumulé.", source: "clip-amx4-4.mp4", rec: 14 },
+    { a: 6.4, texte: "La plupart des gens ferment l'application à ce moment-là.", source: "clip-amx4-4.mp4", rec: 16 },
+    { a: 8.9, texte: "Lui a continué.", gros: true, source: "clip-sqz3-4.mp4", rec: 8 },
+    { a: 10.4, texte: "Deux semaines plus tard : 2 500 $.", gros: true, source: "clip-sqz3-4.mp4", rec: 9 },
+  ],
+};
+export const DUREE_DOUZE_DOLLARS = Math.round(DOUZE_DOLLARS.duree * 30);
+
+export const CINQ_CENTS: ReglagesClipNarre = {
+  source: "clip-amx4-4.mp4",
+  rec: 14,
+  voix: "narration-cinq-cents.mp3",
+  duree: 11.5,
+  adresse: 9.3,
+  renvoi: "L'histoire complète est sur la chaîne",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Entre 12 $ et 2 500 $, il y a 500 clips.", gros: true, source: "clip-amx4-4.mp4", rec: 14 },
+    { a: 4.1, texte: "À une soirée par clip, ça fait 500 soirées.", source: "clip-sqz3-4.mp4", rec: 6 },
+    { a: 7.0, texte: "C'est exactement là que tout le monde abandonne.", source: "clip-amx4-4.mp4", rec: 16 },
+    { a: 9.3, texte: "Pas sur le talent. Sur le volume.", gros: true, source: "clip-sqz3-4.mp4", rec: 9 },
+  ],
+};
+export const DUREE_CINQ_CENTS = Math.round(CINQ_CENTS.duree * 30);
+
+export const TROIS_EMPLOIS: ReglagesClipNarre = {
+  source: "clip-sqz3-4.mp4",
+  rec: 7,
+  voix: "narration-trois-emplois.mp3",
+  duree: 16.2,
+  adresse: 13.2,
+  renvoi: "Son parcours en entier, en 5 minutes",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Il lavait des voitures. Il faisait les nuits en entrepôt.", gros: true, source: "clip-sqz3-4.mp4", rec: 7 },
+    { a: 3.9, texte: "Et il préparait des sandwichs derrière un comptoir.", source: "clip-amx4-4.mp4", rec: 15 },
+    { a: 7.0, texte: "Le soir, il découpait des interviews en passages courts.", source: "clip-sqz3-4.mp4", rec: 9 },
+    { a: 11.0, texte: "Trois ans plus tard, il en vit.", gros: true, source: "clip-amx4-4.mp4", rec: 16 },
+    { a: 13.2, texte: "Aucun diplôme, aucune audience au départ.", source: "clip-sqz3-4.mp4", rec: 10 },
+  ],
+};
+export const DUREE_TROIS_EMPLOIS = Math.round(TROIS_EMPLOIS.duree * 30);

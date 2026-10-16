@@ -1072,3 +1072,92 @@ et la promesse à tenir sont écrits dans **`social/hypothese-2026-10-15.md`**.
 répondre à chacun avec la fourchette réelle (0,20 à 6 $ pour 1 000 vues,
 moyenne ≈ 1 $) et la mention du budget restant. Une promesse non tenue coûte
 plus cher que l'absence d'appel.
+
+## Le format long devient un COURT-MÉTRAGE (16/10)
+
+Demande du 16/10 : « Faut que ce soit comme une histoire, un court-métrage.
+Il y a des images, il y a des plans, il y a une histoire. » Et : rester sur le
+thème — prendre quelqu'un qui a réellement gagné de l'argent en clipping,
+raconter son parcours, et placer Créatis à l'intérieur.
+
+### Ce qui change dans la fabrication
+
+| Avant | Maintenant |
+|---|---|
+| un fond par paragraphe | **un plan par idée** (≈ 40 plans de 4 à 9 s) |
+| trois B-rolls de 10 à 17 s, recyclés | une banque libre, un plan par propos |
+| un exposé illustré | un récit : situation, bascule, conséquence |
+
+`chercher-plans.mjs <mot-clé>` télécharge des plans 1080p depuis **Mixkit**,
+sans compte ni clé, licence commerciale sans attribution. C'est la seule voie
+ouverte : vérifié le 16/10, `HF_TOKEN` est vide, OpenAI rend
+« credit_balance_exhausted » et Gemini image est en 429.
+
+Mots-clés qui donnent : `typing`, `office`, `warehouse`, `money`, `night`,
+`city`, `hands`, `smartphone`, `editing`, `kitchen`, `food`, `car`,
+`celebration`, `notification`. Ceux qui ne donnent rien : `car-wash`,
+`working-late`, `computer-screen`, `success`, `night-city`.
+
+### Trois pièges du plan stock, déjà payés
+
+1. **Vérifier les DIMENSIONS, pas seulement le contenu.** `tel-3` fait
+   1280×2276 — vertical. Posé dans un cadre 16:9, il a laissé deux bandes
+   noires sur toute une scène.
+2. **Alléger avant de rendre.** Les fichiers d'origine font 1,5 Go à vingt-six
+   plans ; Remotion recopie le dossier à chaque rendu et expire. Un passage en
+   CRF 26 / 1280 de large ramène à 80 Mo, sans perte visible.
+3. Et toujours : **regarder la planche contact** avant de monter.
+
+### L'histoire doit être VRAIE, et la source citée
+
+Le film du 16/10 raconte Emrah Bayraktar — trois emplois, 12 $ de première
+notification, 2 500 $ deux semaines après, six pages et 1,1 M d'abonnés trois
+ans plus tard. Source : NPR, « The clipping economy », 12/05/2026.
+
+**Et il n'a jamais utilisé Créatis.** Le film ne le laisse pas entendre : son
+histoire donne la LEÇON (l'écart, ce sont 500 clips), l'outil arrive ensuite
+comme notre réponse au goulot, pas comme la sienne. Inventer un témoignage,
+ou laisser croire qu'un tiers utilise le produit, serait un faux — et c'est
+précisément le registre qui a valu l'avertissement du 30/07.
+
+## Ne plus publier de Short le soir (16/10)
+
+| Short | Heure | Vues à 24 h |
+|---|---|---|
+| Une vidéo d'1 h contient 10 passages | 12 h 39 | **734** |
+| Sur 100 $ tu en touches 90 | journée | 190 |
+| 30 clips : 90 h ou 1 h 30 | 13 h 47 | 120 |
+| 3 heures sur un seul clip | 11 h 34 | 90 |
+| TARIFS | **20 h 01** | **1** |
+| 150 $ par semaine | **19 h 29** | **8** (en 3 jours) |
+
+Deux Shorts publiés après 19 h, deux distributions mortes. **Les créneaux
+sont 10 h → 14 h.** Conséquence directe : le test « commente TARIFS » du
+15/10 n'a rien prouvé — avec une vue, zéro commentaire ne dit rien de
+l'appel. Il est à refaire en journée.
+
+## Le test « commente un mot-clé » est tranché : non (16/10)
+
+Short « TARIFS », publié le 15/10 à 20 h avec un appel au commentaire dans la
+voix ET sur une carte verte.
+
+| | Vues 24 h | Commentaires |
+|---|---|---|
+| Instagram | **325** | **0** |
+| YouTube | 1 | 0 |
+
+YouTube ne dit rien : avec une vue, l'appel n'a pas été vu. **Instagram, si** :
+325 personnes ont regardé, aucune n'a commenté.
+
+Donc l'appel au commentaire avec mot-clé ne prend pas sur cette audience. On
+n'y revient pas sous cette forme.
+
+**Au passage, une nuance qui change la règle du soir** : l'effondrement de 20 h
+est propre à YOUTUBE. Sur Instagram, le même Short au même moment a fait 325
+vues — dans la moyenne haute du compte. La règle devient donc : *pas de Short
+le soir SUR YOUTUBE* ; Instagram et TikTok s'en accommodent.
+
+**La piste suivante, non testée** : la question ouverte, qui ne promet rien et
+ne demande qu'un chiffre — « tu sors combien de clips par semaine ? ». Elle
+coûte moins au spectateur qu'un mot-clé à recopier contre une promesse de
+livraison. À essayer en journée, une seule variable à la fois.
