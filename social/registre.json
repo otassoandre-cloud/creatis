@@ -2474,6 +2474,38 @@
       "son": "voix-off",
       "muet": false,
       "url": "https://www.instagram.com/andre.creatis/reel/DejW4edu8R8/"
+    },
+    {
+      "id": "2026-10-16-douze-dollars-y1",
+      "piece": "douze-dollars",
+      "titre": "douze-dollars",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-16T11:49:11.750Z",
+      "heure": "13 h",
+      "gabarit": "ClipNarre",
+      "source": "sqz3-amx4-recit",
+      "accroche": "histoire",
+      "son": "voix-off",
+      "muet": false,
+      "url": null
+    },
+    {
+      "id": "2026-10-16-emrah-v2-y1",
+      "piece": "emrah-v2",
+      "titre": "emrah-v2",
+      "plateforme": "youtube",
+      "compte": "y1",
+      "statut": "publié",
+      "publie_le": "2026-10-16T13:35:39.482Z",
+      "heure": "15 h",
+      "gabarit": "Emrah",
+      "source": "stock-mixkit",
+      "accroche": "histoire",
+      "son": "voix-off",
+      "muet": false,
+      "url": null
     }
   ]
 }

@@ -908,36 +908,38 @@ export const DOUZE_DOLLARS: ReglagesClipNarre = {
 export const DUREE_DOUZE_DOLLARS = Math.round(DOUZE_DOLLARS.duree * 30);
 
 export const CINQ_CENTS: ReglagesClipNarre = {
-  source: "clip-amx4-4.mp4",
-  rec: 14,
+  source: "clip-amx7-4.mp4",
+  rec: 12,
   voix: "narration-cinq-cents.mp3",
   duree: 11.5,
   adresse: 9.3,
   renvoi: "L'histoire complète est sur la chaîne",
   ou: "YouTube · @Creatis_officiel",
+  /* Lot amx7, téléchargé le 16/10 : les premiers clips neufs depuis le 12.
+     Plans choisis sur rec, rec+1,5 et rec+3 — amx7-4 tient de 12 à 15 s. */
   legendes: [
-    { a: 0, texte: "Entre 12 $ et 2 500 $, il y a 500 clips.", gros: true, source: "clip-amx4-4.mp4", rec: 14 },
-    { a: 4.1, texte: "À une soirée par clip, ça fait 500 soirées.", source: "clip-sqz3-4.mp4", rec: 6 },
-    { a: 7.0, texte: "C'est exactement là que tout le monde abandonne.", source: "clip-amx4-4.mp4", rec: 16 },
-    { a: 9.3, texte: "Pas sur le talent. Sur le volume.", gros: true, source: "clip-sqz3-4.mp4", rec: 9 },
+    { a: 0, texte: "Entre 12 $ et 2 500 $, il y a 500 clips.", gros: true, source: "clip-amx7-4.mp4", rec: 12 },
+    { a: 4.1, texte: "À une soirée par clip, ça fait 500 soirées.", source: "clip-amx7-2.mp4", rec: 12 },
+    { a: 7.0, texte: "C'est exactement là que tout le monde abandonne.", source: "clip-amx7-3.mp4", rec: 12 },
+    { a: 9.3, texte: "Pas sur le talent. Sur le volume.", gros: true, source: "clip-amx7-2.mp4", rec: 4 },
   ],
 };
 export const DUREE_CINQ_CENTS = Math.round(CINQ_CENTS.duree * 30);
 
 export const TROIS_EMPLOIS: ReglagesClipNarre = {
-  source: "clip-sqz3-4.mp4",
-  rec: 7,
+  source: "clip-amx7-4.mp4",
+  rec: 12,
   voix: "narration-trois-emplois.mp3",
   duree: 16.2,
   adresse: 13.2,
   renvoi: "Son parcours en entier, en 5 minutes",
   ou: "YouTube · @Creatis_officiel",
   legendes: [
-    { a: 0, texte: "Il lavait des voitures. Il faisait les nuits en entrepôt.", gros: true, source: "clip-sqz3-4.mp4", rec: 7 },
-    { a: 3.9, texte: "Et il préparait des sandwichs derrière un comptoir.", source: "clip-amx4-4.mp4", rec: 15 },
-    { a: 7.0, texte: "Le soir, il découpait des interviews en passages courts.", source: "clip-sqz3-4.mp4", rec: 9 },
-    { a: 11.0, texte: "Trois ans plus tard, il en vit.", gros: true, source: "clip-amx4-4.mp4", rec: 16 },
-    { a: 13.2, texte: "Aucun diplôme, aucune audience au départ.", source: "clip-sqz3-4.mp4", rec: 10 },
+    { a: 0, texte: "Il lavait des voitures. Il faisait les nuits en entrepôt.", gros: true, source: "clip-amx7-4.mp4", rec: 12 },
+    { a: 3.9, texte: "Et il préparait des sandwichs derrière un comptoir.", source: "clip-amx7-2.mp4", rec: 12 },
+    { a: 7.0, texte: "Le soir, il découpait des interviews en passages courts.", source: "clip-amx7-2.mp4", rec: 4 },
+    { a: 11.0, texte: "Trois ans plus tard, il en vit.", gros: true, source: "clip-amx7-3.mp4", rec: 12 },
+    { a: 13.2, texte: "Aucun diplôme, aucune audience au départ.", source: "clip-amx7-4.mp4", rec: 13 },
   ],
 };
 export const DUREE_TROIS_EMPLOIS = Math.round(TROIS_EMPLOIS.duree * 30);

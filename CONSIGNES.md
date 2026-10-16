@@ -1178,3 +1178,43 @@ le soir SUR YOUTUBE* ; Instagram et TikTok s'en accommodent.
 ne demande qu'un chiffre — « tu sors combien de clips par semaine ? ». Elle
 coûte moins au spectateur qu'un mot-clé à recopier contre une promesse de
 livraison. À essayer en journée, une seule variable à la fois.
+
+## Les bornes se prennent sur la VOIX RENDUE, jamais sur `silencedetect` seul (16/10)
+
+Remarque de l'utilisateur, et elle était juste : « parfois les images et les
+textes ne sont pas du tout corrélés avec la voix, c'est décalé ».
+
+Mesuré sur le court-métrage du jour : la voix dit « il lavait des voitures »
+à **3,0 s**, le texte l'affichait à **6,0 s**. **Treize bornes sur
+trente-neuf** tombaient à plus de deux secondes de leur phrase, jusqu'à
+treize secondes d'écart.
+
+**La cause.** Les bornes venaient de `silencedetect`, et j'associais les
+phrases aux silences dans l'ordre où je les imaginais. Un silence est une
+frontière : il dit qu'une phrase se termine, pas LAQUELLE commence. Dès qu'un
+silence détecté n'est pas une frontière de phrase — une respiration au milieu
+d'une énumération suffit — tout le bloc décale d'un cran.
+
+**Le geste, désormais obligatoire avant publication d'un format long :**
+
+```sh
+node controle-synchro.mjs out/<film>.mp4 --bornes 0,3.0,6.1,9.4,…
+```
+
+Il transcrit l'audio du film **rendu** — pas le texte qu'on croit avoir
+écrit, le son qui sort vraiment — et confronte chaque borne au début réel de
+sa phrase. Il sort en code 6 s'il en trouve une à plus de deux secondes.
+
+Les bornes du montage se relèvent d'un coup :
+
+```sh
+grep -oE "b: \[[0-9.]+," src/creatis/<Film>.tsx | grep -oE "[0-9.]+" | paste -sd, -
+```
+
+**Deux pièges du contrôle lui-même :**
+- Whisper **fusionne** parfois vingt secondes en un segment sans ponctuation.
+  Impossible de conclure dessus : ces bornes sont marquées « ? », pas « ✖ ».
+  Un contrôle qui crie au loup sur des cas corrects finit par être ignoré.
+- Pour trancher un « ? », retranscrire **cette fenêtre seule**
+  (`ffmpeg -ss <t> -t 20`) : sur un extrait court, Whisper segmente bien plus
+  fin et rend la vraie borne.
