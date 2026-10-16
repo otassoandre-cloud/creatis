@@ -987,10 +987,27 @@ Et la vérification qui a évité un faux diagnostic : `clip_generations` montra
 marchait ; seul notre compte était à sec. Ne jamais conclure « panne » sans
 regarder si les clients, eux, produisent.
 
-**Ce qui reste à trancher par l'utilisateur** : relever le quota du compte
-interne, ou accepter de réutiliser les lots existants jusqu'au 1er novembre.
-Les trois lots verticaux disponibles sont `sqz2`, `sqz3` et `amx4` — et on
-change au moins les SECONDES, choisies sur planche contact.
+**CORRECTION DU 16/10 — ce diagnostic était incomplet.** Le quota était bien
+à 30 sur 30, mais ce n'était pas lui qui produisait le symptôme. Compteur
+remis à zéro, le même téléchargement a échoué de la même façon. En lançant
+l'analyse à la main et en LISANT ce que l'application affiche, on voit
+qu'elle marche : récupération de la transcription, Whisper, « clips
+identifiés », puis plusieurs minutes à 70 % sur « identification des
+meilleurs moments ». Elle est simplement plus lente que les quinze minutes
+que `telecharger-clips.mjs` accordait. Délai porté à trente.
+
+**La leçon, et elle vaut au-delà de ce cas :** un timeout n'est pas un
+diagnostic. Deux causes plausibles se superposaient (quota atteint ET analyse
+lente) et j'ai retenu la première parce qu'elle était visible en base. Le
+geste qui tranche : **ouvrir l'application et regarder l'écran**, en écoutant
+les réponses de l'API — `page.on("response")` sur `/api/` dit en trois lignes
+ce qu'un sélecteur muet cache pendant un quart d'heure.
+
+**Quota, par ailleurs :** `studio-video@creatis.app` ne consomme plus le quota
+client. L'exception est nominative dans `verifierQuotaVideos`
+(`api/repurpose.js`) et ne fait qu'élargir. Piège trouvé en la posant :
+`getUserPlan` ne sélectionnait pas `email`, donc le test ne se serait jamais
+déclenché — le champ a été ajouté au `select`.
 
 ## Un renvoi doit NOMMER sa destination (13/10)
 
