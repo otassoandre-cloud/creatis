@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    background: #070d07;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Fond grille */
+  .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Glow central */
+  .glow {
+    position: absolute;
+    top: -120px; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 500px;
+    background: radial-gradient(ellipse at center, rgba(16,185,129,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .content {
+    position: relative; z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 80px;
+    padding: 0 80px;
+    width: 100%;
+  }
+
+  /* Gauche — texte */
+  .left { flex: 1; }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: #10b981;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 900; color: #fff;
+  }
+  .logo-name { font-size: 20px; font-weight: 800; color: #fff; }
+  .logo-name span { color: #10b981; }
+
+  .headline {
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    margin-bottom: 20px;
+  }
+  .headline em {
+    font-style: normal;
+    color: #10b981;
+  }
+
+  .sub {
+    font-size: 19px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.5;
+    margin-bottom: 32px;
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.35);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 15px; font-weight: 700; color: #10b981;
+  }
+  .badge-price {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(249,115,22,0.12);
+    border: 1px solid rgba(249,115,22,0.4);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-size: 15px; font-weight: 700; color: #f97316;
+    margin-left: 10px;
+  }
+
+  /* Droite — mockup clips */
+  .right {
+    width: 420px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .clip-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .clip-card.highlight {
+    background: rgba(16,185,129,0.08);
+    border-color: rgba(16,185,129,0.25);
+  }
+
+  .clip-thumb {
+    width: 44px; height: 72px;
+    background: rgba(16,185,129,0.15);
+    border-radius: 6px;
+    border: 1px solid rgba(16,185,129,0.2);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .clip-info { flex: 1; }
+  .clip-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .clip-meta { font-size: 11px; color: rgba(255,255,255,.4); }
+
+  .clip-score {
+    font-size: 22px; font-weight: 900;
+    color: #10b981;
+    flex-shrink: 0;
+  }
+
+  .processing-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .processing-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 99px;
+  }
+
+  .label-top {
+    font-size: 11px; font-weight: 700; color: rgba(16,185,129,0.7);
+    letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+<button onclick="exportPNG()" style="position:fixed;top:10px;right:10px;z-index:999;background:#10b981;color:#000;border:none;border-radius:8px;padding:10px 18px;font-weight:800;font-size:13px;cursor:pointer;">⬇ Exporter PNG</button>
+<script>
+async function exportPNG() {
+  const btn = document.querySelector('button');
+  btn.style.display = 'none';
+  const canvas = await html2canvas(document.body, { width: 1200, height: 630, scale: 2, backgroundColor: '#070d07' });
+  btn.style.display = '';
+  const a = document.createElement('a');
+  a.download = 'og-clips-viraux.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+</script>
+<div class="grid-bg"></div>
+<div class="glow"></div>
+
+<div class="content">
+  <!-- Gauche -->
+  <div class="left">
+    <div class="logo">
+      <div class="logo-icon">C</div>
+      <div class="logo-name">Créatis<span>.</span></div>
+    </div>
+
+    <div class="headline">
+      Tes vidéos<br>
+      en <em>clips viraux</em><br>
+      automatiquement.
+    </div>
+
+    <div class="sub">
+      L'IA identifie les meilleurs moments,<br>
+      coupe, recadre en 9:16 et sous-titre.
+    </div>
+
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span class="badge">✦ Clips illimités en Pro</span>
+      <span class="badge-price">9,50€ le 1er mois</span>
+    </div>
+  </div>
+
+  <!-- Droite -->
+  <div class="right">
+    <div class="label-top">Clips détectés — The Finals</div>
+
+    <div class="clip-card highlight">
+      <div class="clip-thumb">🎬</div>
+      <div class="clip-info">
+        <div class="clip-title">JE POUVAIS PAS RATER ÇA.</div>
+        <div class="clip-meta">00:59 · 60s · Moment fort</div>
+        <div class="processing-bar" style="margin-top:6px"><div class="processing-fill" style="width:100%"></div></div>
+      </div>
+      <div class="clip-score">95</div>
+    </div>
+
+    <div class="clip-card">
+      <div class="clip-thumb">🎬</div>
+      <div class="clip-info">
+        <div class="clip-title">ON ÉTAIT MORTS… OU PAS.</div>
+        <div class="clip-meta">04:20 · 60s · Choc émotionnel</div>
+        <div class="processing-bar" style="margin-top:6px"><div class="processing-fill" style="width:80%"></div></div>
+      </div>
+      <div class="clip-score">92</div>
+    </div>
+
+    <div class="clip-card">
+      <div class="clip-thumb">🎬</div>
+      <div class="clip-info">
+        <div class="clip-title">LA FUITE LA PLUS FOLLE.</div>
+        <div class="clip-meta">06:22 · 60s · Réaction forte</div>
+        <div class="processing-bar" style="margin-top:6px"><div class="processing-fill" style="width:65%"></div></div>
+      </div>
+      <div class="clip-score">90</div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:4px;font-size:12px;color:rgba(255,255,255,0.25);">
+      <span>⚡</span> creatis.app
+    </div>
+  </div>
+</div>
+</body>
+</html>

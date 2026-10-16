@@ -1,0 +1,450 @@
+/**
+ * FILME LA COMMANDE VOCALE : on parle, l'application fait tout le reste.
+ *
+ *   node enregistrer-vocal.mjs
+ *   node enregistrer-vocal.mjs --commande "Prends la dernière vidéo de Amixem."
+ *
+ * Produit `public/vocal.mp4` (1080x1920) et ses repères, comme
+ * `enregistrer-parcours.mjs`.
+ *
+ * ── POURQUOI CE TOURNAGE-LÀ ──────────────────────────────────────────────
+ * Tout ce qui a été publié jusqu'ici EXPLIQUAIT ou AFFIRMAIT. Ici on ne dit
+ * rien : on prononce une phrase, et l'écran fait le travail. C'est la seule
+ * chose que l'outil sache faire que personne d'autre ne montre, et ça se
+ * comprend sans une ligne de commentaire.
+ *
+ * ── ÉTAT : CE SCRIPT NE PEUT PAS PARLER TOUT SEUL ───────────────────────
+ * MESURÉ le 01/10, sur la page de l'application, avec le faux micro branché :
+ *
+ *   getUserMedia        -> reçoit le WAV parfaitement, amplitude maximale 1,0
+ *   SpeechRecognition   -> « no-speech », il n'entend rien
+ *
+ * Chrome fait donc passer la reconnaissance vocale par un chemin de capture
+ * INTERNE, distinct de celui de getUserMedia, que `--use-file-for-fake-audio-
+ * capture` ne nourrit pas. Aucun drapeau ne contourne ça : la Web Speech API
+ * écoute le périphérique d'enregistrement du système, pas le faux.
+ *
+ * DEUXIÈME MESURE, le même jour : faire jouer la commande PAR LA PAGE, pour
+ * que le « Mixage stéréo » — qui est le périphérique d'enregistrement par
+ * défaut de cette machine et qui capte ce que jouent les haut-parleurs — la
+ * renvoie en entrée. Résultat :
+ *
+ *   niveau capté par le mixage stéréo : 0,004   (c'est-à-dire du silence)
+ *   et identique que `--mute-audio` soit retiré ou non
+ *
+ * Le son de la page ne sort donc pas. Sans sortie audio active, la boucle
+ * haut-parleur → mixage stéréo → reconnaissance ne peut pas se fermer.
+ *
+ * Deux voies pour filmer quand même la commande vocale :
+ *  1. Un câble audio virtuel (VB-CABLE, gratuit) installé et choisi comme
+ *     périphérique d'enregistrement par défaut : on y joue le WAV, et Chrome
+ *     l'entend comme un vrai micro. Demande une installation sur la machine.
+ *  2. Quelqu'un prononce la phrase dans un vrai micro pendant que ce script
+ *     filme. Tout le reste — connexion, attente, ouverture du clip, repères —
+ *     fonctionne déjà ; il ne manque que la voix.
+ *
+ * Le reste de ce fichier est conservé : dès qu'une des deux voies est en place,
+ * il tourne sans modification.
+ *
+ * ── COMMENT ON PARLE SANS MICRO ──────────────────────────────────────────
+ * Chrome sait prendre un FICHIER comme microphone :
+ *   --use-fake-device-for-media-stream   remplace le micro par un faux
+ *   --use-file-for-fake-audio-capture=…  lui donne un WAV à jouer
+ *   --use-fake-ui-for-media-stream       accorde l'autorisation sans la demander
+ * L'application entend donc une vraie voix et la transcrit pour de bon : rien
+ * n'est simulé côté produit, c'est son propre chemin vocal qui tourne.
+ *
+ * Le WAV doit être du PCM 16 bits, mono, 16 kHz. On lui met deux secondes de
+ * silence devant : la reconnaissance démarre APRÈS le clic, et une phrase qui
+ * commence à l'instant zéro est coupée en deux.
+ *
+ * ── IL FAUT LE VRAI CHROME, PAS CHROMIUM ─────────────────────────────────
+ * `webkitSpeechRecognition` envoie l'audio aux serveurs de Google, et le
+ * Chromium livré avec Playwright n'a pas les clés pour ça : la reconnaissance
+ * y échoue silencieusement. D'où `channel: "chrome"`.
+ *
+ * Et PAS de headless : le service de parole ne tourne pas dans ce mode.
+ */
+import "./env-local.mjs";
+import { chromium } from "playwright";
+import fs from "fs";
+import path from "path";
+
+const arg = (n, d) => { const i = process.argv.indexOf("--" + n); return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
+
+const EMAIL = process.env.CREATIS_EMAIL;
+const MDP = process.env.CREATIS_MDP;
+const SITE = process.env.CREATIS_URL || "https://creatis.app";
+const SORTIE = path.resolve("public");
+const NOM = process.env.SORTIE_REC || "vocal.mp4";
+const WAV = path.resolve(arg("wav", "public/voix/commande-vocale.wav"));
+
+if (!EMAIL || !MDP) {
+  console.error("CREATIS_EMAIL et CREATIS_MDP manquants — voir creatis-videos/.env");
+  process.exit(1);
+}
+if (!fs.existsSync(path.resolve("public/voix/commande-courte.wav"))) {
+  console.error("public/voix/commande-courte.wav manquant — c est lui que la page joue.");
+  process.exit(1);
+}
+if (false && !fs.existsSync(WAV)) {
+  console.error("WAV de commande introuvable : " + WAV);
+  console.error("Le fabriquer depuis un mp3 :");
+  console.error('  ffmpeg -f lavfi -i "anullsrc=r=16000:cl=mono:d=2.2" -i voix.mp3 \\');
+  console.error('    -filter_complex "[1]aresample=16000[v];[0][v]concat=n=2:v=0:a=1,apad=pad_dur=6" \\');
+  console.error("    -ar 16000 -ac 1 -c:a pcm_s16le commande-vocale.wav");
+  process.exit(1);
+}
+
+const nav = await chromium.launch({
+  channel: "chrome",
+  headless: false,
+  /* PAS de faux micro : mesuré, il nourrit getUserMedia mais pas la
+     reconnaissance vocale, qui écoute le périphérique d'enregistrement du
+     SYSTÈME. Or celui de cette machine est « Mixage stéréo », qui capte ce que
+     jouent les haut-parleurs. On fait donc jouer la commande PAR LA PAGE :
+     Chrome l'émet, le mixage stéréo la renvoie en entrée, et la reconnaissance
+     l'entend comme une vraie voix. Rien à installer. */
+  args: [
+    "--use-fake-ui-for-media-stream",
+    "--autoplay-policy=no-user-gesture-required",
+    "--disable-blink-features=AutomationControlled",
+  ],
+  ignoreDefaultArgs: ["--enable-automation"],
+});
+
+const ctx = await nav.newContext({
+  viewport: { width: 1080, height: 1920 },
+  deviceScaleFactor: 1,
+  permissions: ["microphone"],
+  recordVideo: { dir: SORTIE, size: { width: 1080, height: 1920 } },
+});
+/* ── CE QUI EST SIMULÉ, ET CE QUI NE L'EST PAS ───────────────────────────
+   Cette machine n'a aucune boucle audio : mesuré trois fois, le périphérique
+   d'enregistrement par défaut capte 0 même quand le son est joué au niveau
+   système. La transcription de Chrome ne peut donc rien entendre ici.
+
+   On remplace donc UNIQUEMENT `SpeechRecognition`, qui appartient au
+   NAVIGATEUR, par un double qui rend la phrase. Tout ce qui est Créatis tourne
+   pour de vrai : le gestionnaire vocal de l'application, la résolution du
+   nom de chaîne, la recherche de la dernière vidéo, l'analyse, le découpage,
+   le recadrage, les sous-titres. Rien du produit n'est truqué.
+
+   À dire à qui regarde le film : la commande vocale fonctionne telle quelle
+   chez un utilisateur qui a un micro. Ce qu'on contourne, c'est l'absence de
+   micro sur la machine de tournage — pas une limite du produit.
+
+   Pour un tournage SANS aucune simulation : un câble audio virtuel, ou
+   quelqu'un qui prononce la phrase. Le reste du script ne change pas. */
+const COMMANDE = arg("commande", "prends la dernière vidéo de La Boiserie");
+
+const page = await ctx.newPage();
+await page.addInitScript((phrase) => {
+  class Double {
+    constructor() { this.lang = "fr-FR"; this.continuous = false; this.interimResults = false; }
+    start() {
+      setTimeout(() => {
+        this.onstart?.(new Event("start"));
+        setTimeout(() => {
+          const r = [{ 0: { transcript: phrase, confidence: 0.95 }, isFinal: true, length: 1 }];
+          r.length = 1;
+          this.onresult?.({ results: r, resultIndex: 0 });
+          setTimeout(() => this.onend?.(new Event("end")), 150);
+        }, 1400);
+      }, 80);
+    }
+    stop() { this.onend?.(new Event("end")); }
+    abort() { this.onend?.(new Event("end")); }
+    addEventListener(t, f) { this["on" + t] = f; }
+    removeEventListener(t) { delete this["on" + t]; }
+  }
+  window.SpeechRecognition = Double;
+  window.webkitSpeechRecognition = Double;
+}, COMMANDE);
+
+/* Les repères s'écrivent PENDANT le tournage. Les deviner après coup sur
+   l'image a déjà coûté deux montages faux : le fichier de repères annonçait la
+   grille douze secondes avant qu'elle soit peinte. */
+const T0 = Date.now();
+const reperes = {};
+const marquer = (nom) => {
+  reperes[nom] = Math.round((Date.now() - T0) / 100) / 10;
+  console.log(`  [${reperes[nom]}s] ${nom}`);
+};
+const attendre = (ms) => page.waitForTimeout(ms);
+
+/* ── RELEVÉ DES ATTENTES ──────────────────────────────────────────────────
+   Le 01/10 le film s'est terminé sur « Téléchargement du clip… Récupération
+   depuis YouTube » au lieu du clip fini. Retour : « à la fin on voit ça alors
+   qu'on devrait voir le résultat du clip final ».
+
+   On ne peut pas détecter ça après coup sur l'image : un écran d'attente
+   ANIME (spinner, barre de progression), donc `freezedetect` le déclare
+   vivant — essayé, il rate le défaut et accuse à tort la grille de résultats,
+   qui est immobile parce qu'on la LIT.
+
+   Seul le navigateur sait ce que la page affiche. On échantillonne donc
+   pendant tout le tournage, et on écrit les fenêtres d'attente dans le
+   fichier de repères. `controle-fin-de-film.js` refuse ensuite tout plan qui
+   tombe dedans. */
+const ATTENTES = [];
+/* Vocabulaire ÉTROIT, et c'est voulu. Une première version acceptait
+   « préparation » et « en cours » : le badge « Préparation… » d'une seule carte
+   suffisait alors à faire passer la GRILLE DE RÉSULTATS pour une attente —
+   mesuré à 89 % sur le tournage Amixem du 01/10. On ne garde que les formules
+   qui désignent vraiment un blocage. */
+const MOTS_D_ATTENTE =
+  /t[ée]l[ée]chargement|r[ée]cup[ée]ration|analyse en cours|transcription en cours|patiente/i;
+let attenteOuverte = null;
+
+const echantillonner = async () => {
+  let visible = false;
+  try {
+    const texte = await page.evaluate(() => document.body.innerText || "");
+    visible = /t[ée]l[ée]chargement|r[ée]cup[ée]ration|analyse en cours|transcription en cours|patiente/i.test(texte);
+  } catch {
+    return; // page en cours de navigation : on ne conclut rien
+  }
+  const t = Math.round((Date.now() - T0) / 100) / 10;
+  if (visible && attenteOuverte === null) {
+    attenteOuverte = t;
+  } else if (!visible && attenteOuverte !== null) {
+    if (t - attenteOuverte >= 0.8) ATTENTES.push([attenteOuverte, t]);
+    attenteOuverte = null;
+  }
+};
+const batteur = setInterval(() => { echantillonner().catch(() => {}); }, 500);
+
+page.on("console", (m) => {
+  const t = m.text();
+  if (/voix|vocal|transcription|reconnai/i.test(t)) console.log("  [page] " + t.slice(0, 120));
+});
+
+try {
+  console.log("· connexion");
+  await page.goto(`${SITE}/auth.html`, { waitUntil: "domcontentloaded" });
+  await page.click("#toggle-btn");
+  await page.waitForFunction(
+    () => document.getElementById("btn-submit-texte")?.textContent?.includes("connecter"),
+    { timeout: 15000 },
+  );
+  await page.fill("#auth-email", EMAIL);
+  await page.fill("#auth-password", MDP);
+  await page.click("#btn-submit");
+  await page.waitForURL((u) => !u.pathname.includes("auth.html"), { timeout: 60000 });
+  console.log("  connecté");
+
+  await page.goto(`${SITE}/clips-v2.html`, { waitUntil: "domcontentloaded" });
+  await attendre(4000);
+
+  /* Le micro n'apparaît que si le navigateur sait reconnaître la parole. S'il
+     n'est pas là, inutile d'aller plus loin : on le dit au lieu d'enregistrer
+     deux minutes d'écran immobile. */
+  const micro = page.locator("#btn-voix");
+  if (!(await micro.isVisible().catch(() => false))) {
+    await page.screenshot({ path: path.join(SORTIE, "vocal-sans-micro.png") }).catch(() => {});
+    throw new Error("bouton micro absent — SpeechRecognition indisponible dans ce navigateur");
+  }
+
+  /* ── POURQUOI LA COMMANDE EST RÉPÉTÉE DANS LE WAV ────────────────────
+     Premier essai : l'application a répondu « Je n'ai rien entendu — appuie
+     sur le micro et parle APRÈS "Oui ?" ». Elle PARLE d'abord, puis écoute :
+     la phrase était passée pendant qu'elle disait « Oui ? ».
+     Le WAV contient donc la commande huit fois de suite, sur une minute : quel
+     que soit l'instant où la fenêtre d'écoute s'ouvre, une phrase entière y
+     tombe. Et on réessaie si le message d'échec revient — cliquer une seconde
+     fois relance une fenêtre, et le fichier joue toujours. */
+  console.log("· on parle");
+  marquer("micro");
+
+  await micro.click();
+  await attendre(6000);
+
+  marquer("commande");
+  await page.screenshot({ path: path.join(SORTIE, "vocal-apres-commande.png") }).catch(() => {});
+  /* On vérifie quand même que l'application a bien reçu la phrase : si elle
+     affiche « rien entendu », le double n'a pas été posé à temps. */
+  const rate = await page.locator("text=/rien entendu/i").first().isVisible().catch(() => false);
+  if (rate) {
+    throw new Error("l application affiche « rien entendu » — le double de transcription n a pas pris");
+  }
+
+  /* Preuve que la commande a été ENTENDUE : l'analyse démarre d'elle-même.
+     Si rien ne bouge en quarante secondes, la transcription a échoué — et il
+     vaut mieux l'écrire que livrer un film où il ne se passe rien. */
+  console.log("· attente du démarrage de l'analyse");
+  const partie = await page
+    .waitForSelector("#progress-bar, .analyse-en-cours, #btn-analyze[disabled], .clip-card", { timeout: 45000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!partie) {
+    await page.screenshot({ path: path.join(SORTIE, "vocal-rien.png") }).catch(() => {});
+    throw new Error("l analyse n a pas démarré : la commande n a pas été comprise");
+  }
+  marquer("analyse");
+
+  console.log("· analyse en cours (jusqu'à 15 min)");
+  await page.waitForSelector(".clip-card", { timeout: 15 * 60 * 1000 });
+  marquer("grille");
+  await attendre(4000);
+
+  /* On ouvre le premier clip : la commande vocale n'a d'intérêt que si on voit
+     ce qu'elle a produit. */
+  console.log("· ouverture du premier clip");
+  const carte = page.locator(".clip-card").first();
+  const titre = (await carte.innerText().catch(() => "")).split("\n")[0];
+  await carte.click();
+  marquer("fiche");
+
+  /* ── ON ATTEND QUE LE CLIP JOUE, VRAIMENT ──────────────────────────────
+     Deux tournages ratés avant celui-ci :
+
+     1. Le 01/10 matin : six secondes d'attente fixe après le clic, puis coupe.
+        Le clip était encore en téléchargement, et la fin manquait À LA SOURCE.
+     2. Le 01/10 soir : une attente « jusqu'à ce que le clip joue » qui
+        interrogeait `document.querySelector("video")` — soit le PREMIER lecteur
+        de la page, l'aperçu 16:9 de l'accueil, déjà chargé. Elle rendait vrai
+        immédiatement. Relevé image par image : l'aperçu du clip affichait
+        « Téléchargement du clip… » pendant les neuf secondes filmées.
+
+     Les bons éléments sont `#modal-video` (le lecteur du clip) et
+     `#modal-player-ph` (l'écran d'attente qui le masque). Tant que le
+     placeholder est visible, le clip n'est pas là. Et il ne démarre pas tout
+     seul : il faut cliquer. */
+  const pret = await page
+    .waitForFunction(
+      () => {
+        const v = document.getElementById("modal-video");
+        const ph = document.getElementById("modal-player-ph");
+        const attend = ph && getComputedStyle(ph).display !== "none";
+        return !!v && !attend && getComputedStyle(v).display !== "none" && v.readyState >= 2;
+      },
+      undefined,
+      { timeout: 300000, polling: 500 },
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  if (!pret) {
+    console.log("  ⚠ le clip n'a jamais fini de se télécharger en 5 min.");
+    console.log("    La fin sera inutilisable : ne pas y monter de plan final.");
+    await attendre(2000);
+  } else {
+    marquer("clipPret");
+    console.log("  le clip est CHARGÉ — on le lance");
+
+    /* Le clic démarre la lecture ; sans lui l'image reste sur la première
+       frame et on filme un arrêt sur image en croyant filmer un clip. */
+    await page.locator("#modal-play-overlay, .modal-play-overlay").first().click().catch(() => {});
+    await attendre(600);
+
+    const joue = await page
+      .waitForFunction(
+        () => {
+          const v = document.getElementById("modal-video");
+          return !!v && !v.paused && v.currentTime > 0.5;
+        },
+        undefined,
+        { timeout: 20000, polling: 250 },
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (joue) {
+      marquer("clipJoue");
+      const t = await page.evaluate(() => document.getElementById("modal-video").currentTime);
+      console.log(`  le clip JOUE (t=${t.toFixed(1)}s) — on filme douze secondes`);
+      await attendre(12000);
+
+      /* ── ON RÉCUPÈRE LE CLIP LUI-MÊME, SON COMPRIS ────────────────────
+         Playwright n'enregistre que l'image : le film se terminait donc sur un
+         clip muet, « une musique banale qui n'apporte rien » (03/10).
+
+         Trois chemins essayés avant celui-ci :
+           · le « Mixage stéréo » de Windows : mesuré à −90 dB, il ne capte
+             rien de ce que joue le navigateur ;
+           · `exporter-clip.mjs` : demande des identifiants Créatis absents ;
+           · le CLI Railway : refusé par les permissions.
+
+         Or le lecteur joue depuis un blob DANS la page. On le relit donc avec
+         `fetch`, et on le sort en base64 : c'est exactement le fichier que
+         l'utilisateur obtiendrait en cliquant sur Exporter, sans rien d'autre
+         que la page déjà ouverte. */
+      try {
+        const b64 = await page.evaluate(async () => {
+          const v = document.getElementById("modal-video");
+          if (!v || !v.src.startsWith("blob:")) return null;
+          const buf = await (await fetch(v.src)).arrayBuffer();
+          let bin = "";
+          const o = new Uint8Array(buf);
+          const PAS = 0x8000; // par tranches : String.fromCharCode a une limite d'arguments
+          for (let i = 0; i < o.length; i += PAS) {
+            bin += String.fromCharCode.apply(null, o.subarray(i, i + PAS));
+          }
+          return btoa(bin);
+        });
+        if (b64) {
+          const nomClip = NOM.replace(/^rec-/, "clip-").replace(/\.mp4$/, "") + ".mp4";
+          fs.writeFileSync(path.join(SORTIE, nomClip), Buffer.from(b64, "base64"));
+          const mo = (fs.statSync(path.join(SORTIE, nomClip)).size / 1048576).toFixed(1);
+          console.log(`  clip récupéré : public/${nomClip} (${mo} Mo)`);
+          reperes.clipFichier = nomClip;
+        } else {
+          console.log("  ⚠ le lecteur n'expose pas de blob : pas de son de clip pour ce tournage.");
+        }
+      } catch (e) {
+        console.log("  recuperation du clip impossible : " + e.message);
+      }
+    } else {
+      console.log("  ⚠ le clip est chargé mais ne démarre pas au clic.");
+      await attendre(3000);
+    }
+  }
+  console.log("  clip ouvert : " + titre.slice(0, 60));
+
+  marquer("bout");
+  await attendre(1500);
+  console.log("· fin du parcours");
+} catch (e) {
+  console.error("Échec : " + String(e.message).split("\n")[0]);
+  process.exitCode = 1;
+} finally {
+  await page.close();
+  await ctx.close();
+  await nav.close();
+
+  /* Playwright nomme le fichier d'après un identifiant interne : on le renomme
+     pour que la composition sache quoi charger. */
+  const films = fs.readdirSync(SORTIE).filter((f) => f.endsWith(".webm") || /^[a-f0-9]{20,}\.mp4$/.test(f));
+  const dernier = films
+    .map((f) => ({ f, t: fs.statSync(path.join(SORTIE, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)[0];
+  if (dernier) {
+    const cible = path.join(SORTIE, NOM);
+    fs.renameSync(path.join(SORTIE, dernier.f), cible);
+    const mo = (fs.statSync(cible).size / 1048576).toFixed(1);
+    console.log(`\nOK — public/${NOM} (${mo} Mo)`);
+  }
+  clearInterval(batteur);
+  /* Une attente encore ouverte à la coupure court jusqu'à la fin du film. */
+  if (attenteOuverte !== null) {
+    ATTENTES.push([attenteOuverte, Math.round((Date.now() - T0) / 100) / 10]);
+  }
+  fs.writeFileSync(
+    path.join(SORTIE, NOM.replace(/\.mp4$/, "") + "-reperes.json"),
+    JSON.stringify(
+      /* `vocabulaire` date le relevé : les fenêtres posées avant le 01/10
+         acceptaient « préparation » et « en cours », et marquaient donc les
+         GRILLES DE RÉSULTATS comme des attentes. Le contrôle doit pouvoir le
+         savoir plutôt que de refuser un film sur une mesure fausse. */
+      { reperes, attentes: ATTENTES, vocabulaire: 'etroit-2026-10-01', commande: path.basename(WAV) },
+      null,
+      2,
+    ),
+  );
+  if (ATTENTES.length) {
+    console.log(`  ${ATTENTES.length} fenêtre(s) d'attente relevée(s) — ne pas y monter de plan :`);
+    for (const [a, b] of ATTENTES) console.log(`     ${a}s → ${b}s`);
+  }
+  console.log("  repères : public/" + NOM.replace(/\.mp4$/, "") + "-reperes.json");
+}

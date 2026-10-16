@@ -233,7 +233,6 @@ module.exports = async (req, res) => {
    * SEND_OUTREACH — ajoute à Brevo + envoie email de prospection
    * ================================================================ */
   if (action === 'send_outreach') {
-    return res.status(503).json({ error: 'Envoi emails désactivé', disabled: true });
     const { channel } = params;
     if (!channel?.email) return res.status(400).json({ error: 'email manquant' });
 
@@ -283,7 +282,6 @@ module.exports = async (req, res) => {
    * SEND_OUTREACH_BULK — envoie à tous les channels avec email
    * ================================================================ */
   if (action === 'send_outreach_bulk') {
-    return res.status(503).json({ error: 'Envoi emails désactivé', disabled: true });
     const { channels = [] } = params;
     const withEmail = channels.filter(c => c.email);
     let sent = 0, errors = 0;
@@ -467,7 +465,6 @@ module.exports = async (req, res) => {
    * TIKTOK_SEND — envoyer à 1 créateur TikTok
    * ================================================================ */
   if (action === 'tiktok_send') {
-    return res.status(503).json({ error: 'Envoi emails désactivé', disabled: true });
     const { handle } = params;
     const creator = TIKTOK_CREATORS.find(c => c.handle === handle);
     if (!creator) return res.status(404).json({ error: 'creator not found' });

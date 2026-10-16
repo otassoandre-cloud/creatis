@@ -1,0 +1,13 @@
+On colle le lien d'une vidéo longue. La plateforme récupère la transcription, lit toute la vidéo, et rend une grille.
+
+Dix passages. Chacun porte une note sur cent. La note mesure si le passage se comprend sans le reste de la vidéo, s'il accroche dans ses trois premières secondes, et s'il se termine sur quelque chose. Tu ouvres les mieux notés en premier.
+
+On ouvre un clip. Il est déjà recadré en neuf seizièmes, centré sur la personne qui parle. En dessous, la transcription, mot par mot.
+
+Les sous-titres sont écrits. Onze styles, tu changes d'un clic. Tu règles la taille. Et surtout, tu les attrapes et tu les déplaces où tu veux dans le cadre, à la main. C'est le détail qui compte le plus : selon la plateforme où tu publies, l'interface mange le bas de l'écran, et des sous-titres cachés, c'est un clip perdu.
+
+Au-dessus, tu écris ton bandeau d'accroche. Celui que le spectateur lit avant même d'entendre la première syllabe.
+
+Et tu exportes. Le fichier qui sort fait mille quatre-vingts par mille neuf cent vingt, sous-titres incrustés, prêt à publier. Aucun logiciel de montage n'a été ouvert.
+
+Une vidéo source donne huit à douze passages. Tu en gardes cinq. Trois vidéos dans la semaine, et tu as tes quinze clips.

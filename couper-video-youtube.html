@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Couper une vidéo YouTube en ligne — extraits verticaux | Créatis</title>
+  <meta name="description" content="Colle un lien YouTube et récupère les meilleurs passages découpés, recadrés en 9:16 et sous-titrés. Sans téléchargement ni logiciel de montage.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://creatis.app/couper-video-youtube.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Couper une vidéo YouTube">
+  <meta property="og:description" content="Colle un lien YouTube et récupère les meilleurs passages découpés, recadrés en 9:16 et sous-titrés. Sans téléchargement ni logiciel de montage.">
+  <meta property="og:url" content="https://creatis.app/couper-video-youtube.html">
+  <meta property="og:locale" content="fr_FR">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Couper une vidéo YouTube",
+  "description": "Colle un lien YouTube et récupère les meilleurs passages découpés, recadrés en 9:16 et sous-titrés. Sans téléchargement ni logiciel de montage.",
+  "url": "https://creatis.app/couper-video-youtube.html",
+  "applicationCategory": "MultimediaApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "inLanguage": "fr"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Comment couper une vidéo YouTube sans logiciel ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "En collant son adresse dans un outil en ligne. Ici, tu n'as pas besoin d'indiquer où couper : l'outil lit la transcription, repère les passages qui se tiennent seuls et propose les bornes, que tu peux ensuite ajuster."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Faut-il télécharger la vidéo d'abord ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Non. L'adresse suffit, le traitement se fait côté serveur. Tu peux aussi envoyer un fichier depuis ton ordinateur si la vidéo n'est pas en ligne."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Où faut-il couper pour qu'un extrait fonctionne ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Commencer sur l'idée elle-même et non sur sa mise en place, couper dès que la chute est passée, et vérifier que l'extrait se comprend sans avoir vu ce qui précède. Ce dernier critère élimine la grande majorité des passages candidats."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Pourquoi le format vertical dégrade-t-il l'image ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Parce qu'un recadrage 9:16 dans une source 1920×1080 ne garde que 607 pixels de large, soit moins d'un tiers, ensuite agrandis pour remplir l'écran. Plus la source est petite, plus ce recadrage punit."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Peut-on couper la vidéo de quelqu'un d'autre ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Techniquement oui, mais la bonne pratique est de demander l'autorisation du créateur et de le créditer visiblement — beaucoup l'encouragent parce que ça leur amène de l'audience. Attention aussi à la musique présente dans la source, qui peut faire bloquer la publication."
+      }
+    }
+  ]
+}
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <style>
+    .outil-page { max-width: 880px; margin: 0 auto; padding: 52px 24px 80px; }
+    .outil-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--vert, #10b981); padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+    .outil-page h1 { font-size: clamp(27px, 5vw, 40px); line-height: 1.15; margin: 0 0 14px; }
+    .outil-page h1 span { color: var(--vert, #10b981); }
+    .outil-sub { color: #9ca3af; font-size: 17px; line-height: 1.7; margin: 0 0 30px; max-width: 640px; }
+    .outil-form { display: flex; gap: 8px; flex-wrap: wrap; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 8px; margin-bottom: 10px; }
+    .outil-form input { flex: 1 1 260px; background: none; border: none; outline: none; color: #fff; font-size: 15px; font-family: inherit; padding: 12px 14px; }
+    .outil-form button { background: var(--vert, #10b981); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; }
+    .outil-hint { font-size: 13px; color: #f97316; margin: 0 0 18px; display: none; }
+    .outil-rassure { font-size: 13px; color: #6b7280; margin: 0 0 44px; }
+    .outil-page h2 { font-size: 23px; margin: 40px 0 14px; }
+    .outil-page h3 { font-size: 17px; margin: 26px 0 8px; color: var(--vert, #10b981); }
+    .outil-page p, .outil-page li { color: #d1d5db; line-height: 1.8; }
+    .etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 22px 0; }
+    .etape { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; padding: 18px; }
+    .etape b { display: block; color: #fff; margin-bottom: 6px; }
+    .etape span { font-size: 14px; color: #9ca3af; line-height: 1.6; }
+    .outil-faq details { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 14px 0; }
+    .outil-faq summary { cursor: pointer; font-weight: 600; color: #fff; }
+    .outil-faq p { margin: 10px 0 0; font-size: 14.5px; }
+    .outil-cta { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); border-radius: 16px; padding: 28px; text-align: center; margin-top: 44px; }
+    .outil-cta h3 { margin: 0 0 8px; font-size: 20px; color: #fff; }
+    .outil-cta p { color: #9ca3af; margin: 0 0 18px; font-size: 14.5px; }
+    .outil-cta a { display: inline-block; background: var(--vert, #10b981); color: #000; padding: 14px 30px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08);max-width:1100px;margin:0 auto">
+  <a href="/" style="color:#fff;text-decoration:none;font-weight:800">Créatis</a>
+  <a href="/outils.html" style="color:#9ca3af;text-decoration:none;font-size:14px">Tous les outils</a>
+</nav>
+
+<main class="outil-page">
+  <div class="outil-badge">✂️ En ligne · rien à installer</div>
+  <h1>Couper une vidéo <span>YouTube</span></h1>
+  <p class="outil-sub">Colle l'adresse d'une vidéo YouTube. Plutôt que de te demander où couper, l'outil repère lui-même les passages qui tiennent tout seuls et te les rend au format vertical, sous-titres incrustés.</p>
+
+  <form class="outil-form" onsubmit="return demarrer(event)">
+    <input type="text" id="lien" placeholder="https://youtu.be/…" inputmode="url"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button type="submit">Couper ⚡</button>
+  </form>
+  <p class="outil-hint" id="hint"></p>
+  <p class="outil-rassure">Analyse gratuite · sans carte bancaire · tu vois les clips avant de payer</p>
+
+<h2>Couper où, exactement ?</h2>
+  <p>C'est la vraie difficulté, et les outils de découpage classiques ne la traitent pas : ils te donnent deux curseurs et te laissent chercher. Or sur une vidéo d'une heure, trouver les cinq passages qui valent le coup prend plus de temps que le découpage lui-même.</p>
+  <p>Ici, les bornes sont proposées : l'outil lit la transcription, repère les passages les plus forts et coupe autour, en cherchant un début et une fin qui se comprennent sans contexte. Tu ajustes ensuite si tu veux.</p>
+
+  <h2>Ce qui distingue un bon point de coupe</h2>
+  <div class="etapes">
+    <div class="etape"><b>Le début</b><span>Commencer sur l'idée, jamais sur sa mise en place. « Ce que je vais vous dire va vous surprendre » est du remplissage.</span></div>
+    <div class="etape"><b>La fin</b><span>Couper dès que la chute est passée. Un extrait qui traîne après son point culminant perd tout son effet.</span></div>
+    <div class="etape"><b>L'autonomie</b><span>L'extrait doit se comprendre seul, sans avoir vu ce qui précède. C'est le critère qui élimine le plus de candidats.</span></div>
+  </div>
+  <p>Le détail de la méthode est dans <a href="/blog/decouper-video-shorts-automatiquement.html">découper une vidéo en Shorts automatiquement</a>.</p>
+
+  <h2>Du 16:9 au 9:16 : ce qu'on perd</h2>
+  <p>Un point souvent découvert trop tard : une source 1920×1080 recadrée en vertical ne conserve que <strong>607 pixels de large</strong>, soit moins d'un tiers de l'image. Ce n'est pas un réglage cosmétique, c'est une décision de cadrage sur chaque plan.</p>
+  <p>D'où le suivi automatique du visage plutôt qu'un recadrage centré, qui coupe le sujet dès qu'il se déplace. Voir <a href="/blog/pourquoi-ton-crop-9-16-est-rate.html">pourquoi ton crop 9:16 est raté</a>.</p>
+
+  <h2>Et si la vidéo n'est pas la mienne ?</h2>
+  <p>C'est le cas le plus fréquent, et il mérite d'être dit clairement : la bonne pratique est de demander l'autorisation du créateur et de le créditer visiblement. Beaucoup encouragent le clipping de leur contenu parce que ça leur amène de l'audience, et l'indiquent dans leur description.</p>
+  <p>Attention aussi à la musique déjà présente dans la source : un générique de dix secondes pris dans tes bornes suffit à faire bloquer la publication. Décaler le début de deux secondes règle le problème la plupart du temps. Voir <a href="/blog/musique-clips-droits.html">musique sur un clip : ce qui est autorisé</a>.</p>
+
+  <h2>Questions fréquentes</h2>
+  <div class="outil-faq">
+    <details>
+      <summary>Comment couper une vidéo YouTube sans logiciel ?</summary>
+      <p>En collant son adresse dans un outil en ligne. Ici, tu n'as pas besoin d'indiquer où couper : l'outil lit la transcription, repère les passages qui se tiennent seuls et propose les bornes, que tu peux ensuite ajuster.</p>
+    </details>
+    <details>
+      <summary>Faut-il télécharger la vidéo d'abord ?</summary>
+      <p>Non. L'adresse suffit, le traitement se fait côté serveur. Tu peux aussi envoyer un fichier depuis ton ordinateur si la vidéo n'est pas en ligne.</p>
+    </details>
+    <details>
+      <summary>Où faut-il couper pour qu'un extrait fonctionne ?</summary>
+      <p>Commencer sur l'idée elle-même et non sur sa mise en place, couper dès que la chute est passée, et vérifier que l'extrait se comprend sans avoir vu ce qui précède. Ce dernier critère élimine la grande majorité des passages candidats.</p>
+    </details>
+    <details>
+      <summary>Pourquoi le format vertical dégrade-t-il l'image ?</summary>
+      <p>Parce qu'un recadrage 9:16 dans une source 1920×1080 ne garde que 607 pixels de large, soit moins d'un tiers, ensuite agrandis pour remplir l'écran. Plus la source est petite, plus ce recadrage punit.</p>
+    </details>
+    <details>
+      <summary>Peut-on couper la vidéo de quelqu'un d'autre ?</summary>
+      <p>Techniquement oui, mais la bonne pratique est de demander l'autorisation du créateur et de le créditer visiblement — beaucoup l'encouragent parce que ça leur amène de l'audience. Attention aussi à la musique présente dans la source, qui peut faire bloquer la publication.</p>
+    </details>
+  </div>
+
+  <div class="outil-cta">
+    <h3>Une adresse YouTube, une série d’extraits</h3>
+    <p>Analyse gratuite · sans carte bancaire</p>
+    <a href="/clips-v2.html">⚡ Essayer maintenant</a>
+  </div>
+</main>
+
+<footer style="text-align:center;padding:32px 24px;color:#6b7280;font-size:13px;border-top:1px solid rgba(255,255,255,0.08);margin-top:40px">
+  © 2026 Créatis · <a href="/outils.html" style="color:#9ca3af">Outils</a> · <a href="/blog.html" style="color:#9ca3af">Blog</a> · <a href="/cgu.html" style="color:#9ca3af">CGU</a>
+</footer>
+
+<script>
+/* Meme comportement que le hero de l'accueil : on memorise le lien puis on passe par
+   l'inscription. Le lien n'est pas perdu en route, c'est tout l'interet. */
+function demarrer(e) {
+  e.preventDefault();
+  var champ = document.getElementById('lien');
+  var hint = document.getElementById('hint');
+  var v = (champ && champ.value || '').trim();
+  var estYT = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\//i.test(v);
+  if (v && !estYT) {
+    hint.textContent = "Ce lien n'est pas une URL YouTube — exemple : https://youtu.be/xxxxxxxxxxx";
+    hint.style.display = 'block';
+    champ.focus();
+    return false;
+  }
+  hint.style.display = 'none';
+  if (v) { try { localStorage.setItem('creatis_pending_yt', JSON.stringify({ url: v, ts: Date.now() })); } catch (_) {} }
+  window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+  return false;
+}
+</script>
+</body>
+</html>

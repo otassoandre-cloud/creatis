@@ -435,11 +435,13 @@ class AppCreatis {
           </div>
         </div>
 
+        ${plan === 'gratuit' ? `
         <div class="credits-separator">ou</div>
 
         <button class="btn-primaire" style="width:100%" onclick="app._upgraderPlan(); document.getElementById('modal-credits-mini').remove()">
-          🚀 Passer au plan ${plan === 'gratuit' ? 'Pro' : 'Studio'} — miniatures incluses chaque mois
+          🚀 Passer au plan Pro — 30 miniatures incluses chaque mois
         </button>
+        ` : ''}
 
         <p class="credits-attente">
           <button class="btn-ghost btn-sm" onclick="document.getElementById('modal-credits-mini').remove()">
@@ -484,14 +486,24 @@ class AppCreatis {
     const nav = document.getElementById('agents-nav');
     const chatNav = document.getElementById('chat-nav');
 
-    const renderBtn = agent => `
-      <button class="agent-btn" id="btn-${agent.id}" onclick="app.selectionnerAgent('${agent.id}')" title="${agent.description}">
+    const user = this.getUtilisateur();
+    const plan = user?.plan || 'gratuit';
+    const autorisés = CONFIG.PLANS[plan]?.agents || CONFIG.PLANS.gratuit.agents;
+
+    const renderBtn = agent => {
+      const actif = autorisés === 'tous' || autorisés.includes(agent.id);
+      const onClick = actif
+        ? `app.selectionnerAgent('${agent.id}')`
+        : `document.getElementById('modal-upgrade').classList.add('visible')`;
+      return `
+      <button class="agent-btn${actif ? '' : ' agent-btn-locked'}" id="btn-${agent.id}" onclick="${onClick}" title="${agent.description}">
         <span class="agent-btn-icone">${agent.icone}</span>
         <span class="agent-btn-info">
-          <span class="agent-btn-nom">${agent.nom}</span>
+          <span class="agent-btn-nom">${agent.nom}${actif ? '' : ' <small style="color:var(--texte-muted);font-weight:400">Pro</small>'}</span>
           <span class="agent-btn-desc">${agent.description.substring(0, 45)}${agent.description.length > 45 ? '…' : ''}</span>
         </span>
       </button>`;
+    };
 
     const agentsPrincipaux = AGENTS.filter(a => a.id !== 'chat-libre');
     const chatLibre = AGENTS.find(a => a.id === 'chat-libre');
@@ -601,6 +613,27 @@ class AppCreatis {
 
     // Fermer sidebar sur mobile
     this.fermerSidebarMobile();
+  }
+
+  /* ===== QUESTION RAPIDE DEPUIS LE WIDGET IA DU DASHBOARD ===== */
+  lancerQuestionRapide() {
+    const input = document.getElementById('dash-ai-quick-input');
+    const texte = input?.value.trim();
+    if (!texte) {
+      this.selectionnerAgent('chat-libre');
+      return;
+    }
+    input.value = '';
+    this.selectionnerAgent('chat-libre');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const chatInput = document.getElementById('chat-input-chat-libre');
+        if (chatInput) {
+          chatInput.value = texte;
+          this.envoyerMessageChat('chat-libre');
+        }
+      }, 80);
+    });
   }
 
   /* ===== RESTAURER UNE GÉNÉRATION DEPUIS L'HISTORIQUE ===== */
@@ -913,23 +946,58 @@ class AppCreatis {
     try {
       let resultat;
 
-      // Auto-fetch données vidéo YouTube si url_video fournie
+      // Auto-fetch données vidéo si url_video fournie (YouTube uniquement via API)
       if (donnees.url_video) {
-        try {
-          this.afficherToast('📡 Analyse de la vidéo en cours...', 'info', 6000);
-          const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
-          const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
-          const vr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video', videoUrl: donnees.url_video }) });
-          if (vr.ok) {
-            donnees._videoData = await vr.json();
-            const src = donnees._videoData.transcriptSource;
-            const srcLabel = src === 'gemini' ? '🤖 Gemini a regardé la vidéo' : src === 'vtt' ? '📝 Sous-titres récupérés' : '📊 Données YouTube récupérées';
-            this.afficherToast(`✅ ${srcLabel} — génération en cours...`, 'succes', 3000);
-          } else {
-            const er = await vr.json().catch(() => ({}));
-            this.afficherToast(`⚠️ ${er.error || 'Impossible d\'analyser la vidéo'} — génération avec les données disponibles`, 'info', 4000);
-          }
-        } catch { this.afficherToast('⚠️ Analyse vidéo échouée — génération en cours quand même', 'info', 3000); }
+        const _u = donnees.url_video;
+        const _isYT = _u.includes('youtube.com') || _u.includes('youtu.be');
+        if (_isYT) {
+          try {
+            this.afficherToast('📡 Analyse de la vidéo YouTube en cours...', 'info', 6000);
+            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+            const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+            const vr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video', videoUrl: _u }) });
+            if (vr.ok) {
+              donnees._videoData = await vr.json();
+              const src = donnees._videoData.transcriptSource;
+              const srcLabel = src === 'gemini' ? '🤖 Gemini a regardé la vidéo' : src === 'vtt' ? '📝 Sous-titres récupérés' : '📊 Données YouTube récupérées';
+              this.afficherToast(`✅ ${srcLabel} — génération en cours...`, 'succes', 3000);
+            } else {
+              const er = await vr.json().catch(() => ({}));
+              this.afficherToast(`⚠️ ${er.error || 'Impossible d\'analyser la vidéo'} — génération avec les données disponibles`, 'info', 4000);
+            }
+          } catch { this.afficherToast('⚠️ Analyse vidéo échouée — génération en cours quand même', 'info', 3000); }
+        } else {
+          const _plt = _u.includes('tiktok.com') ? 'TikTok' : 'Instagram';
+          try {
+            this.afficherToast(`📡 Récupération des données ${_plt}...`, 'info', 6000);
+            const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+            const hdrs = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+            const mr = await fetch('/api/youtube', { method: 'POST', headers: hdrs, body: JSON.stringify({ type: 'video-meta', url: _u }) });
+            if (mr.ok) {
+              const meta = await mr.json();
+              donnees._videoData = {
+                video: {
+                  titre: meta.titre,
+                  vues: meta.vues?.toLocaleString('fr-FR') || '0',
+                  likes: meta.likes?.toLocaleString('fr-FR') || '0',
+                  nombreCommentaires: meta.commentaires?.toLocaleString('fr-FR') || '0',
+                  duree: meta.duree,
+                  datePublication: meta.datePublication,
+                  tags: meta.tags || [],
+                  description: meta.description || '',
+                },
+                comments: [],
+                transcript: meta.transcript || null,
+                transcriptSource: meta.transcriptSource || 'none',
+              };
+              const hasGemini = meta.transcriptSource === 'gemini';
+              const label = hasGemini ? `🤖 Gemini a regardé la vidéo ${_plt}` : `📊 Données ${_plt} récupérées`;
+              this.afficherToast(`✅ ${label} — génération en cours...`, 'succes', 3000);
+            } else {
+              this.afficherToast(`⚠️ Impossible de récupérer les données ${_plt} — colle le titre et les stats manuellement`, 'info', 5000);
+            }
+          } catch { this.afficherToast(`⚠️ Erreur récupération ${_plt} — génération avec les données disponibles`, 'info', 3000); }
+        }
       }
 
       // Récupère le contexte YouTube personnalisé pour cet agent
@@ -1004,10 +1072,14 @@ class AppCreatis {
     panneau.style.cssText = 'padding:0;overflow:hidden;position:relative;';
     const iframe = document.createElement('iframe');
     iframe.src = '/clips-v2.html';
+    // Sans ça, la commande vocale de clips-v2 est bloquée en `not-allowed` :
+    // une iframe n'hérite pas de l'autorisation micro de la page parente.
+    iframe.allow = 'microphone';
     iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#050505;';
     iframe.onload = () => { try { iframe.contentDocument.querySelector('.nav').style.display = 'none'; } catch(e) {} };
     panneau.appendChild(iframe);
     workspace.appendChild(panneau);
+    installerVoixPourIframe();
   }
 
   _onClipsFileSelect(agentId, input) {
@@ -2175,7 +2247,14 @@ class AppCreatis {
         messages: [
           {
             role: 'system',
-            content: 'Tu es Créatis, un assistant IA expert en création de contenu YouTube pour créateurs francophones. Tu génères du contenu de haute qualité, optimisé pour YouTube et adapté au marché francophone. Réponds toujours en français.'
+            /* Ce prompt sert aux agents d'ECRITURE (titres, scripts, idees, analyses),
+               pas au chat : l'assistant conversationnel construit le sien dans
+               js/agents.js (`chat-libre`), avec toute la connaissance du produit.
+               Celui-ci reste volontairement generique — il ne doit affirmer NI tarif NI
+               fonctionnalite, sous peine de contredire l'assistant a chaque changement
+               de grille. Il disait encore que Creatis sert a "la creation de contenu
+               YouTube", ce qui n'est plus le produit vendu depuis longtemps. */
+            content: 'Tu es Créatis, un assistant IA pour créateurs de contenu francophones. Créatis sert avant tout à découper une vidéo longue en clips verticaux prêts à publier ; tu interviens ici sur l’écriture et l’analyse. Produis du contenu concret et directement utilisable, adapté au marché francophone. Réponds toujours en français.'
           },
           { role: 'user', content: prompt }
         ],
@@ -2584,17 +2663,25 @@ class AppCreatis {
     const statsCompact = document.getElementById('dash-stats-compact');
     if (statsCompact) statsCompact.style.display = gens > 0 ? '' : 'none';
 
-    // Greeting personnalisé
+    // Greeting personnalisé (bicolore : salutation en blanc, accroche en vert)
     const greetingEl = document.getElementById('dash-greeting');
     if (greetingEl) {
       const user = this.getUtilisateur();
-      const nom = user?.nom || (user?.email && user.email !== 'demo@creatis.fr' ? user.email.split('@')[0] : '');
+      const prenom = (user?.nom || (user?.email && user.email !== 'demo@creatis.fr' ? user.email.split('@')[0] : '')).split(' ')[0];
       const heure = new Date().getHours();
       const salut = heure < 18 ? 'Bonjour' : 'Bonsoir';
-      greetingEl.textContent = nom ? `${salut} ${nom}` : salut;
+      const partSalut = prenom ? `${salut} ${prenom}.` : `${salut}.`;
+      greetingEl.innerHTML = `${partSalut} <span class="dash-greeting-accent">Voici ton espace.</span>`;
     }
 
-    // Date en haut à droite
+    const sousTitreEl = document.getElementById('dash-greeting-sub');
+    if (sousTitreEl) {
+      sousTitreEl.textContent = gens > 0
+        ? `${gens} génération${gens > 1 ? 's' : ''} depuis ton inscription — continue comme ça.`
+        : 'Lance ta première génération pour démarrer.';
+    }
+
+    // Date en éyebrow au-dessus de la salutation
     const dateEl = document.getElementById('dash-header-date');
     if (dateEl) {
       const now = new Date();
@@ -2787,7 +2874,7 @@ class AppCreatis {
     const upgradeBtn = document.getElementById('dash-upgrade-btn');
     if (badge) badge.textContent = planConfig.nom;
     if (desc) desc.textContent = planConfig.description;
-    if (upgradeBtn) upgradeBtn.style.display = (plan === 'studio') ? 'none' : '';
+    if (upgradeBtn) upgradeBtn.style.display = (plan === 'pro' || plan === 'studio') ? 'none' : '';
 
     if (plan === 'gratuit') {
       const count = this.getGenerations();
@@ -2818,15 +2905,33 @@ class AppCreatis {
     const plan = user?.plan || 'gratuit';
     const agentsAutorisés = CONFIG.PLANS[plan]?.agents || CONFIG.PLANS.gratuit.agents;
     const hasLocked = AGENTS.some(a => !(agentsAutorisés === 'tous' || agentsAutorisés.includes(a.id)));
+    const estActif = (agent) => agentsAutorisés === 'tous' || agentsAutorisés.includes(agent.id);
+    const onClickPour = (agent) => estActif(agent)
+      ? `app.selectionnerAgent('${agent.id}')`
+      : `document.getElementById('modal-upgrade').classList.add('visible')`;
 
-    grid.innerHTML = AGENTS.map(agent => {
-      const actif = agentsAutorisés === 'tous' || agentsAutorisés.includes(agent.id);
-      const featured = agent.id === 'clips-viraux';
-      const onClick = actif
-        ? `app.selectionnerAgent('${agent.id}')`
-        : `document.getElementById('modal-upgrade').classList.add('visible')`;
-      return `<button class="dash-agent-btn${actif ? '' : ' dash-agent-locked'}${featured ? ' dash-agent-featured' : ''}"
-        onclick="${onClick}">
+    const featuredAgent = AGENTS.find(a => a.id === 'clips-viraux') || AGENTS[0];
+    const autresAgents = AGENTS.filter(a => a.id !== featuredAgent.id);
+
+    // Carte "Agent principal"
+    const heroZone = document.getElementById('dash-agent-hero');
+    if (heroZone) {
+      const actif = estActif(featuredAgent);
+      heroZone.innerHTML = `<button class="dash-hero-agent" onclick="${onClickPour(featuredAgent)}">
+        <div class="dash-hero-thumb">${featuredAgent.icone}</div>
+        <div class="dash-hero-body">
+          <span class="dash-hero-tag">Agent principal</span>
+          <h3 class="dash-hero-nom">${featuredAgent.nom}</h3>
+          <p class="dash-hero-desc">${featuredAgent.description}</p>
+        </div>
+        <span class="dash-hero-cta">${actif ? 'Utiliser' : 'Débloquer'} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+      </button>`;
+    }
+
+    // Grille "Autres agents" — 3 par défaut, extensible
+    const renderCard = (agent) => {
+      const actif = estActif(agent);
+      return `<button class="dash-agent-btn${actif ? '' : ' dash-agent-locked'}" onclick="${onClickPour(agent)}">
         <div class="dash-agent-content">
           <div class="dash-agent-icone">${agent.icone}</div>
           <div class="dash-agent-nom">${agent.nom}</div>
@@ -2838,32 +2943,57 @@ class AppCreatis {
             : `<span class="dash-agent-lock-lbl"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Pro</span>`}
         </div>
       </button>`;
-    }).join('');
+    };
+
+    const limite = this._dashAgentsEtendu ? autresAgents.length : 3;
+    grid.innerHTML = autresAgents.slice(0, limite).map(renderCard).join('');
+
+    const toggle = document.getElementById('dash-agents-toggle');
+    if (toggle) {
+      toggle.style.display = autresAgents.length > 3 ? '' : 'none';
+      toggle.textContent = this._dashAgentsEtendu ? 'Réduire ←' : `Voir les ${AGENTS.length} →`;
+    }
 
     const hint = document.getElementById('dash-pro-hint');
     if (hint) hint.style.display = (plan === 'gratuit' && hasLocked) ? '' : 'none';
   }
 
+  toggleAutresAgents() {
+    this._dashAgentsEtendu = !this._dashAgentsEtendu;
+    this._dashMettreAJourAgents();
+  }
+
   _dashMettreAJourHistorique() {
     const zone = document.getElementById('dash-historique');
-    if (!zone) return;
+    const zoneRecente = document.getElementById('dash-activite-recente');
+    if (!zone && !zoneRecente) return;
 
     const _render = (hist) => {
-      if (!hist.length) {
-        zone.innerHTML = '<p class="dash-vide-msg">Aucune génération pour l\'instant — lance un agent !</p>';
-        return;
+      if (zone) {
+        zone.innerHTML = hist.length
+          ? hist.slice(0, 8).map((h, i) => `
+            <div class="dash-hist-item" onclick="app.restaurerGeneration(${i})" style="cursor:pointer">
+              ${h.imageUrl
+                ? `<img src="${h.imageUrl}" style="width:48px;height:27px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`
+                : `<span class="dash-hist-icone">${(AGENTS.find(a => a.id === (h.agentId || h.agent_id))?.icone) || h.icone || ''}</span>`}
+              <div class="dash-hist-info">
+                <span class="dash-hist-agent">${h.agentNom || h.agent_nom || 'Agent'}</span>
+                <span class="dash-hist-sujet">${h.sujet || '—'}</span>
+              </div>
+              <span class="dash-hist-date">${h.dateRel || this._dateRel(new Date(h.created_at).getTime())}</span>
+            </div>`).join('')
+          : '<p class="dash-vide-msg">Aucune génération pour l\'instant — lance un agent !</p>';
       }
-      zone.innerHTML = hist.slice(0, 8).map((h, i) => `
-        <div class="dash-hist-item" onclick="app.restaurerGeneration(${i})" style="cursor:pointer">
-          ${h.imageUrl
-            ? `<img src="${h.imageUrl}" style="width:48px;height:27px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">`
-            : `<span class="dash-hist-icone">${(AGENTS.find(a => a.id === (h.agentId || h.agent_id))?.icone) || h.icone || ''}</span>`}
-          <div class="dash-hist-info">
-            <span class="dash-hist-agent">${h.agentNom || h.agent_nom || 'Agent'}</span>
-            <span class="dash-hist-sujet">${h.sujet || '—'}</span>
-          </div>
-          <span class="dash-hist-date">${h.dateRel || this._dateRel(new Date(h.created_at).getTime())}</span>
-        </div>`).join('');
+      if (zoneRecente) {
+        zoneRecente.innerHTML = hist.length
+          ? hist.slice(0, 5).map((h, i) => `
+            <div class="dash-act-item" onclick="app.restaurerGeneration(${i})">
+              <span class="dash-act-dot"></span>
+              <span class="dash-act-texte"><strong>${h.agentNom || h.agent_nom || 'Agent'}</strong> — ${h.sujet || '—'}</span>
+              <span class="dash-act-date">${h.dateRel || this._dateRel(new Date(h.created_at).getTime())}</span>
+            </div>`).join('')
+          : '<p class="dash-vide-msg">Aucune activité pour l\'instant — lance ton premier agent !</p>';
+      }
     };
 
     // Afficher d'abord localStorage (immédiat)
@@ -2884,6 +3014,45 @@ class AppCreatis {
         _render(data.history);
       }).catch(() => {});
     }
+  }
+
+  async _rafraichirChaineYT() {
+    const ctxCache = (() => { try { return JSON.parse(localStorage.getItem('creatis_yt_context') || 'null'); } catch { return null; } })();
+    const channelId = ctxCache?.chaine?.id;
+
+    // Chaîne connectée via OAuth (token utilisateur toujours valide)
+    if (typeof YouTube !== 'undefined' && YouTube.estConnecte()) {
+      this.afficherToast('🔄 Actualisation des données de ta chaîne…', 'info', 2000);
+      YouTubeContext.viderCache();
+      await this._initialiserContexteYT();
+      this.mettreAJourDashboard();
+      return;
+    }
+
+    // Chaîne connectée via analyse publique par @handle/ID — on refetch avec l'ID déjà connu
+    if (channelId) {
+      this.afficherToast('🔄 Actualisation des données de ta chaîne…', 'info', 2000);
+      try {
+        const token = (typeof Auth !== 'undefined') ? Auth.getToken() : null;
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/youtube', { method: 'POST', headers, body: JSON.stringify({ type: 'channel', input: channelId }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+
+        localStorage.setItem('creatis_yt_context', JSON.stringify(data));
+        const user = this.getUtilisateur() || {};
+        user.chaine = data.chaine;
+        this.setUtilisateur(user);
+        this.mettreAJourDashboard();
+        this.afficherToast(`⚡ Données actualisées — ${data.chaine.abonnes.toLocaleString('fr-FR')} abonnés`, 'succes', 4000);
+      } catch (err) {
+        this.afficherToast(`❌ Actualisation impossible : ${err.message}`, 'erreur');
+      }
+      return;
+    }
+
+    this.afficherToast('Connecte ta chaîne YouTube pour personnaliser les agents', 'erreur');
   }
 
   _dashMettreAJourChaine() {
@@ -2911,6 +3080,26 @@ class AppCreatis {
       if (statsEl) {
         const sourceLabel = ctxCache ? '⚡ Données YouTube' : '✏️ Profil manuel';
         statsEl.textContent = `${(chaineYT.abonnes || 0).toLocaleString('fr-FR')} abonnés · ${(chaineYT.videos || 0)} vidéos · ${sourceLabel}`;
+      }
+      // Les données (OAuth ou fetch public par handle) ne se rafraîchissent jamais toutes seules —
+      // on signale quand elles datent, avec un vrai bouton d'actualisation (pas juste cosmétique).
+      const badgeEl = document.getElementById('dash-chaine-badge');
+      if (badgeEl) {
+        const ageMs = ctxCache?.timestampCollecte ? (Date.now() - ctxCache.timestampCollecte) : 0;
+        const perime = ctxCache && ageMs > 24 * 60 * 60 * 1000; // + de 24h
+        if (!perime) {
+          badgeEl.className = 'badge badge-vert';
+          badgeEl.style.cursor = 'default';
+          badgeEl.title = 'Données à jour';
+          badgeEl.onclick = null;
+          badgeEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0;"></span> Connectée';
+        } else {
+          badgeEl.className = 'badge badge-jaune';
+          badgeEl.style.cursor = 'pointer';
+          badgeEl.title = 'Données pas à jour — clique pour actualiser';
+          badgeEl.onclick = () => this._rafraichirChaineYT();
+          badgeEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0;"></span> Actualisation recommandée';
+        }
       }
       this._dashMettreAJourSuggestions(chaineYT);
       return;
@@ -3136,11 +3325,21 @@ class AppCreatis {
     }
   }
 
+  _libelleVideoUrl(url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '').split('.')[0];
+      const plateformes = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', 'youtu': 'YouTube' };
+      return `Vidéo ${plateformes[host] || host}`;
+    } catch {
+      return 'Vidéo';
+    }
+  }
+
   _sauvegarderHistorique(agent, donnees, resultat = null) {
     const hist = this._getHistorique();
     const sujet = donnees.sujet || donnees.titre || donnees.sujet_video || donnees.niche || donnees.marque
       || donnees.description
-      || (donnees.url_video ? `Vidéo : ${donnees.url_video.replace(/.*[?&]v=/, '').substring(0, 20)}` : null)
+      || (donnees.url_video ? this._libelleVideoUrl(donnees.url_video) : null)
       || '—';
 
     // Pour les miniatures : garder l'imageUrl. Pour le texte : garder les 8000 premiers chars.
@@ -3650,7 +3849,7 @@ class AppCreatis {
         }).catch(() => {});
       }
     }
-    this._onbEtape(3);
+    this._onbEtape(4);
   }
 
   _onbSauvegarderPlateformes() {
@@ -3758,9 +3957,93 @@ class AppCreatis {
 
 /* ===== INITIALISATION ===== */
 let app;
+/* ─── VOIX POUR L'IFRAME CLIPS ──────────────────────────────────────────────────
+   Safari attribue speechSynthesis.speak() au contexte qui l'appelle. Appelé depuis
+   l'iframe /clips-v2.html, l'énoncé est jeté sur iOS : ni erreur, ni événement, ni son —
+   le moteur rapporte pause=false, attente=false, parle=false, comme si rien n'avait été
+   demandé. Appeler parent.speechSynthesis depuis l'enfant ne change rien : c'est toujours
+   l'enfant qui appelle.
+
+   La page parente parle donc à la place de l'iframe, sur demande via postMessage : le
+   speak() part alors réellement du contexte de plus haut niveau. Son moteur doit avoir été
+   débloqué par un geste dans SON contexte — le clic qui a ouvert le panneau Clips en est un,
+   et tout autre appui sur la page parente sert de rattrapage. */
+let _voixIframeInstallee = false;
+
+/* Amorce du moteur vocal du parent. iOS n'autorise la synthèse qu'après un énoncé prononcé
+   DANS la pile d'appels d'un vrai geste — un appel au chargement de page ne débloque rien.
+   On ne marque donc l'amorce réussie que si l'événement `start` arrive vraiment : sinon on
+   retente au geste suivant. C'est ce qui manquait — le drapeau était posé dès le chargement,
+   ce qui empêchait la seule amorce qui comptait, celle du clic ouvrant le panneau Clips. */
+let _voixParentAmorcee = false;
+
+function amorcerVoixParent() {
+  if (_voixParentAmorcee || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance('ok');
+    u.volume = 0.01;   // pas 0 : iOS peut traiter un énoncé muet comme inexistant
+    u.lang = 'fr-FR';
+    u.addEventListener('start', () => { _voixParentAmorcee = true; });
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function installerVoixPourIframe() {
+  if (!window.speechSynthesis) return;
+  amorcerVoixParent();   // appelé depuis l'ouverture du panneau : on est dans la pile du clic
+  if (_voixIframeInstallee) return;
+  _voixIframeInstallee = true;
+  // Sans `once` : tant que l'amorce n'a pas réellement démarré, chaque geste sur la page
+  // parente lui donne une nouvelle chance.
+  document.addEventListener('pointerdown', amorcerVoixParent, { passive: true });
+
+  window.addEventListener('message', (ev) => {
+    // L'iframe est de même origine : tout message venant d'ailleurs n'a rien à faire ici.
+    if (ev.origin !== window.location.origin) return;
+    const d = ev.data;
+    // L'iframe a décidé de parler elle-même : on se tait, sinon la phrase sort en double.
+    if (d && d.type === 'creatis-tts-stop') {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      return;
+    }
+    if (!d || d.type !== 'creatis-tts' || !d.texte) return;
+    const repondre = (etat) => {
+      try { ev.source.postMessage({ type: 'creatis-tts-etat', etat, id: d.id }, ev.origin); } catch (e) {}
+    };
+    try {
+      const u = new SpeechSynthesisUtterance(d.texte);
+      // Même débit que dans l'iframe : c'est le parent qui prononce, un écart s'entendrait.
+      u.lang = 'fr-FR'; u.rate = 0.98;
+      // La voix choisie par l'iframe doit être appliquée ICI : c'est le parent qui prononce,
+      // et sans ça le système imposait sa voix par défaut — le réglage de l'utilisateur
+      // n'avait donc aucun effet dans l'application.
+      // On l'applique SAUF sur iOS, où assigner un objet SpeechSynthesisVoice fait échouer
+      // l'énoncé en silence : là-bas mieux vaut une voix par défaut qu'aucun son.
+      const estIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || ((navigator.platform === 'MacIntel' || /Mac/.test(navigator.userAgent))
+            && navigator.maxTouchPoints > 1);
+      if (d.voix && !estIOS) {
+        const v = (speechSynthesis.getVoices() || []).find(x => x.name === d.voix);
+        if (v) u.voice = v;
+      }
+      u.addEventListener('start', () => repondre('debut'));
+      u.addEventListener('end', () => repondre('fin'));
+      u.addEventListener('error', () => repondre('erreur'));
+      speechSynthesis.resume();
+      speechSynthesis.speak(u);
+      speechSynthesis.resume();
+    } catch (e) { repondre('erreur'); }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   app = new AppCreatis();
   if(typeof window._appFlush==='function') window._appFlush(app);
   else window.app = app;
+  // Installée dès le chargement, et pas seulement à la création du panneau Clips : si l'iframe
+  // est atteinte par un autre chemin, le parent n'écoutait pas et la voix restait muette sur
+  // iOS. La fonction est idempotente, l'appeler deux fois ne coûte rien.
+  installerVoixPourIframe();
 });
 

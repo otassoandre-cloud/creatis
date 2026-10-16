@@ -1,0 +1,2692 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ===== SEO PRIMAIRE ===== -->
+  <title>Créatis — Générateur de contenu YouTube IA en français | Titres, Scripts, Miniatures style top créateurs YouTube</title>
+  <meta name="description" content="Créatis transforme tes vidéos en 10 Shorts viraux 9:16 automatiquement. Clips viraux, scripts, miniatures et SEO YouTube en français grâce à l'IA. 1 essai gratuit.">
+  <meta name="keywords" content="générateur contenu YouTube IA, miniature YouTube style top créateurs YouTube, script YouTube IA français, titre YouTube cliquable, SEO YouTube France, créateur YouTube IA">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="Créatis SAS">
+  <link rel="canonical" href="https://creatis.app/">
+
+  <!-- ===== OPEN GRAPH ===== -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Créatis">
+  <meta property="og:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
+  <meta property="og:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta property="og:image" content="https://creatis.app/images/og-clips-viraux.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://creatis.app/">
+  <meta property="og:locale" content="fr_FR">
+
+  <!-- ===== TWITTER CARD ===== -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@creatisapp">
+  <meta name="twitter:title" content="Créatis — Tes vidéos en clips viraux automatiquement">
+  <meta name="twitter:description" content="L'IA identifie les meilleurs moments, coupe, recadre en 9:16 et sous-titre. Clips illimités en Pro — 9,90€ le 1er mois.">
+  <meta name="twitter:image" content="https://creatis.app/images/og-clips-viraux.png">
+
+  <!-- ===== SCHEMA.ORG SaaS ===== -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Créatis",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "url": "https://creatis.app",
+    "description": "Plateforme IA pour créateurs de contenu YouTube francophones. Génère titres, scripts, miniatures et stratégie de contenu en quelques secondes.",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Plan Gratuit",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "description": "1 génération gratuite pour découvrir, sans carte bancaire"
+      },
+      {
+        "@type": "Offer",
+        "name": "Plan Pro",
+        "price": "19",
+        "priceCurrency": "EUR",
+        "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" }
+      },
+      {
+        "@type": "Offer",
+        "name": "Plan Studio",
+        "price": "49",
+        "priceCurrency": "EUR",
+        "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": "P1M" }
+      }
+    ],
+    "provider": {
+      "@type": "Organization",
+      "name": "Créatis SAS",
+      "url": "https://creatis.app",
+      "contactPoint": { "@type": "ContactPoint", "email": "contact@creatis.app", "contactType": "customer support" }
+    }
+  }
+  </script>
+
+  <!-- ===== FAQ SCHEMA ===== -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Comment générer des titres YouTube avec l'IA ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Créatis génère automatiquement 5 titres YouTube optimisés pour le CTR en quelques secondes. Connecte ta chaîne YouTube et remplis le sujet de ta vidéo." }
+      },
+      {
+        "@type": "Question",
+        "name": "Comment créer une miniature YouTube style top créateurs YouTube ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "L'agent Miniature Pro de Créatis génère des visuels HD 1536×1024px via l'IA gpt-image-1, style top créateurs YouTube. Télécharge en un clic." }
+      },
+      {
+        "@type": "Question",
+        "name": "Créatis est-il gratuit ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui, Créatis propose 1 génération gratuite pour découvrir, sans carte bancaire. Le plan Pro à 19€/mois donne accès à 50 générations/mois." }
+      }
+    ]
+  }
+  </script>
+
+  <meta name="google-site-verification" content="KI3TQKbEzXyIm7-KqaM_ZZre44B3F2cLR_5zraNAePc" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" as="image" href="images/showcase/parachute.webp" fetchpriority="high">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init','953153460847578');fbq('track','PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=953153460847578&ev=PageView&noscript=1"/></noscript>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <script>
+  (function(){var _p=null,_pi=null;
+    window.lancerDemo=function(){_p='url';};
+    window.lancerDemoFichier=function(i){_p='file';_pi=i;};
+    window.ouvrirModal=function(){_p=_p||'modal';};
+    window.fermerModal=function(){};
+    window.soumettreLead=function(){};
+    window._lpFlush=function(){
+      if(_p==='url'){window.lancerDemo();}
+      else if(_p==='file'&&_pi){window.lancerDemoFichier(_pi);}
+      else if(_p==='modal'){window.ouvrirModal();}
+    };
+  })();
+  </script>
+  <script>
+    window.addEventListener('error', function(e) {
+      const src = (e.filename || '');
+      if (!src || src.indexOf('creatis.app') === -1 && src.indexOf('localhost') === -1 && src.indexOf('127.0.0.1') === -1) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  </script>
+<style>
+/* ── override hero centré, sans min-height ── */
+.lp-hero-wrap { min-height:unset !important; padding:0 !important; }
+.lp-hero-wrap .hero-conteneur { grid-template-columns:1fr; justify-items:center; text-align:center; padding:195px 24px 20px; }
+.lp-hero-wrap .hero-contenu  { align-items:center; max-width:900px; }
+.lp-hero-wrap h1 { font-size:clamp(30px,3vw,50px); line-height:1.1; letter-spacing:-2px; margin-bottom:16px; }
+.lp-hero-wrap .hero-sous-titre { text-align:center; max-width:640px; font-size:17px; margin-bottom:24px; }
+.lp-hero-wrap .hero-cta { display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:12px; }
+/* Badge texte uppercase */
+.lp-badge-txt { font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--texte-doux); margin-bottom:14px; }
+
+/* ── Input row horizontal (OpusClip style) ── */
+.lp-input-row {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;
+  width:100%; max-width:680px;
+}
+.lp-pill {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.06); border:1.5px solid var(--bordure);
+  border-radius:999px; padding:6px 6px 6px 18px;
+  flex:1; min-width:220px; transition:border-color .2s;
+}
+.lp-pill:focus-within { border-color: rgba(16,185,129,.5); }
+.lp-pill svg { color:var(--texte-muted); flex-shrink:0; }
+.lp-pill input {
+  flex:1; background:none; border:none; outline:none;
+  font-size:14px; color:var(--texte-doux); font-family:inherit; min-width:0;
+}
+.lp-pill input::placeholder { color:var(--texte-muted); }
+.lp-pill input:focus { color:var(--texte); }
+.lp-pill-hint { flex:1; font-size:14px; color:var(--texte-muted); min-width:0; }
+.lp-pill-cta {
+  background:#fff; color:#0a0f0a; font-weight:800; font-size:14px;
+  padding:10px 18px; border-radius:999px; border:none; cursor:pointer;
+  white-space:nowrap; flex-shrink:0; font-family:inherit; transition:opacity .15s;
+}
+.lp-pill-cta:hover { opacity:.88; }
+.lp-ou { font-size:14px; color:var(--texte-muted); flex-shrink:0; }
+.lp-upload {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.06); border:1.5px solid var(--bordure);
+  border-radius:999px; padding:11px 22px; font-size:14px; font-weight:600;
+  color:var(--texte-doux); cursor:pointer; flex-shrink:0; font-family:inherit;
+  transition:border-color .15s, color .15s; position:relative; overflow:hidden;
+  touch-action:manipulation;
+}
+.lp-upload:hover { border-color:rgba(16,185,129,.5); color:var(--texte); }
+#lp-file { position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+
+/* ── Carte démo animée ── */
+.lp-demo-card {
+  max-width:860px; width:calc(100% - 32px); margin:12px auto 0;
+  background:#0e0e10; border:1px solid var(--bordure); border-radius:20px; overflow:hidden;
+  padding:28px 24px 20px; text-align:center;
+}
+
+/* ── Agent Demo ── */
+.ad-tab{padding:5px 13px;border-radius:20px;border:1px solid #222;background:transparent;color:#555;font-size:10.5px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.ad-tab.on{background:#10b981;color:#000;border-color:#10b981;}
+.ad-nav-item.on{background:#111!important;color:#10b981!important;border-left-color:#10b981!important;}
+.ad-nav-item.on svg{stroke:#10b981;}
+.ad-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.ad-panel.on{display:flex;}
+.ad-hdr{padding:11px 16px;border-bottom:1px solid #181818;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ad-hdr-ico{width:24px;height:24px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ad-hdr-ico svg{width:12px;height:12px;stroke:#10b981;}
+.ad-hdr-t{font-size:12px;font-weight:700;color:#eee;}
+.ad-hdr-d{font-size:9.5px;color:#333;margin-top:1px;}
+.ad-cnt{flex:1;display:flex;overflow:hidden;}
+.ad-form{width:285px;padding:12px 14px;border-right:1px solid #181818;overflow-y:auto;flex-shrink:0;}
+.ad-fld{margin-bottom:10px;}
+.ad-lbl{font-size:9px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.ad-inp{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 8px;font-size:10px;color:#bbb;font-family:inherit;outline:none;resize:none;}
+.ad-inp.on{border-color:rgba(16,185,129,.45);}
+.ad-sel{width:100%;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 8px;font-size:10px;color:#444;font-family:inherit;outline:none;appearance:none;}
+.ad-sel.on{color:#ddd;border-color:rgba(16,185,129,.3);}
+.ad-btn{width:100%;background:#10b981;color:#000;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;cursor:pointer;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:5px;}
+.ad-btn svg{width:11px;height:11px;}
+.ad-btn.ld{opacity:.65;}
+.ad-res{flex:1;padding:12px 14px;overflow-y:auto;}
+.ad-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;}
+.ad-ph svg{width:26px;height:26px;stroke:#1e1e1e;}
+.ad-ph p{font-size:10px;color:#2a2a2a;}
+.ad-rc{display:none;}.ad-rc.on{display:block;}
+.ad-thk{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.ad-dot{width:5px;height:5px;background:#10b981;border-radius:50%;animation:adpulse 1s infinite;}
+.ad-dot:nth-child(2){animation-delay:.2s;}.ad-dot:nth-child(3){animation-delay:.4s;}
+@keyframes adpulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.ad-thk-lbl{font-size:9.5px;color:#10b981;}
+.ad-item{background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:8px 10px;margin-bottom:6px;opacity:0;transform:translateY(4px);transition:all .3s;}
+.ad-item.on{opacity:1;transform:translateY(0);}
+.ad-item.bl{filter:blur(5px);}
+.ad-item-lbl{font-size:8px;font-weight:700;color:#10b981;margin-bottom:2px;text-transform:uppercase;}
+.ad-item-t{font-size:10.5px;font-weight:700;color:#ddd;line-height:1.4;}
+.ad-item-t.dim{color:#555;font-weight:400;}
+.ad-item-d{font-size:9px;color:#3a3a3a;margin-top:2px;line-height:1.4;}
+.ad-item-body{font-size:9.5px;color:#666;line-height:1.55;}
+.ad-item-body strong{color:#aaa;}
+.ad-cmt-orig{font-size:9px;color:#444;border-left:2px solid #252525;padding-left:6px;margin-bottom:5px;line-height:1.4;}
+.ad-cmt-rep{font-size:10px;color:#bbb;line-height:1.45;margin-bottom:3px;}
+.ad-cmt-strat{font-size:8.5px;color:#333;font-style:italic;}
+.ad-mini-preview{width:100%;aspect-ratio:16/9;border-radius:7px;overflow:hidden;margin-bottom:6px;position:relative;background:#111;border:1px solid #1e1e1e;opacity:0;transition:opacity .5s;}
+.ad-mini-preview.on{opacity:1;}
+.ad-mini-preview img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+.ad-mini-ov{position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(to top,rgba(0,0,0,.88) 60%,transparent);}
+.ad-mini-t1{font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.9);line-height:1.2;}
+.ad-mini-t2{font-size:9px;color:rgba(255,255,255,.6);margin-bottom:2px;}
+.ad-chat-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+.ad-chat-msgs{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:7px;}
+.ad-msg{max-width:86%;padding:8px 11px;border-radius:11px;font-size:10px;line-height:1.5;opacity:0;transform:translateY(3px);transition:all .3s;}
+.ad-msg.on{opacity:1;transform:translateY(0);}
+.ad-msg.u{background:#1a1a1a;color:#bbb;align-self:flex-end;border-radius:11px 11px 2px 11px;}
+.ad-msg.a{background:#0e1a0e;color:#c0e0c0;align-self:flex-start;border-radius:11px 11px 11px 2px;border:1px solid #1a2a1a;}
+.ad-msg.a strong{color:#10b981;}
+.ad-chat-row{padding:8px 12px;border-top:1px solid #181818;display:flex;gap:6px;flex-shrink:0;}
+.ad-chat-inp{flex:1;background:#111;border:1px solid #1e1e1e;border-radius:7px;padding:6px 9px;font-size:10px;color:#bbb;font-family:inherit;outline:none;}
+.ad-chat-inp.on{border-color:rgba(16,185,129,.4);}
+.ad-chat-send{background:#10b981;color:#000;border:none;border-radius:6px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;}
+
+/* ── Main Carousel (style OpusClip) ── */
+.main-car-wrap{margin:12px 0 0;}
+/* Tabs navigation */
+.mct-tabs{display:flex;gap:6px;padding:0 max(28px,calc(50% - 430px)) 14px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.mct-tabs::-webkit-scrollbar{display:none;}
+.mct-tab{flex-shrink:0;padding:7px 16px;border-radius:999px;border:1px solid #252525;background:transparent;color:#555;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;}
+.mct-tab.act{background:rgba(16,185,129,.1);border-color:#10b981;color:#10b981;}
+/* Carousel region */
+.main-car-region{position:relative;overflow:hidden;}
+.main-car-outer{overflow:hidden;}
+.main-car-track{display:flex;gap:20px;transition:transform .45s cubic-bezier(.25,.1,.25,1);padding-left:max(24px,calc(50% - 430px));}
+.main-car-slide{flex-shrink:0;width:min(860px,82vw);background:#0e0e10;border:1px solid var(--bordure);border-radius:20px;overflow:hidden;}
+.main-car-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;width:44px;height:44px;border-radius:50%;background:rgba(20,20,20,.92);border:1px solid rgba(255,255,255,.07);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(8px);}
+.main-car-btn:hover:not(:disabled){background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#10b981;}
+.main-car-btn:disabled{opacity:.12;cursor:default;}
+.main-car-prev{left:max(12px,calc(50% - 455px));}
+.main-car-next{right:max(12px,calc(50% - 455px));}
+/* Feature tags */
+.feat-tags-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:22px 24px 0;}
+.feat-tag{padding:6px 14px;border-radius:999px;border:1px solid #252525;font-size:11.5px;font-weight:600;color:#555;white-space:nowrap;}
+@media(max-width:640px){
+  .main-car-slide{width:calc(100vw - 60px);}
+  .main-car-track{padding-left:20px;}
+  .mct-tabs{padding-left:20px;}
+  .main-car-prev{left:6px;}.main-car-next{right:6px;}
+  .ad-cnt{flex-direction:column;}
+  .ad-form{width:100%;border-right:none;border-bottom:1px solid #181818;max-height:220px;}
+  .ad-res{max-height:160px;}
+}
+
+.lp-anim-vid {
+  width:280px; height:157px; background:#1a1a2e; border-radius:14px; overflow:hidden;
+  position:relative; display:flex; align-items:center; justify-content:center;
+  transition:width 1.1s cubic-bezier(0.65,0,0.35,1),height 1.1s cubic-bezier(0.65,0,0.35,1),border-radius .9s ease,opacity .6s ease;
+  margin:0 auto;
+}
+.lp-anim-label {
+  position:absolute; top:9px; left:11px; font-size:9px; font-weight:800;
+  letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.7);
+  background:rgba(0,0,0,.5); padding:2px 7px; border-radius:4px; z-index:2;
+}
+.lp-anim-dur {
+  position:absolute; bottom:9px; right:11px; font-size:11px; color:#aaa;
+  background:rgba(0,0,0,.6); padding:2px 6px; border-radius:4px;
+  transition:opacity .4s; z-index:2;
+}
+.lp-anim-url {
+  display:inline-flex; align-items:center; gap:8px;
+  background:#1a1a1a; border:1px solid #2a2a2a; border-radius:50px;
+  padding:8px 8px 8px 16px; margin:14px 0 18px;
+  width:340px; max-width:calc(100% - 16px); transition:border-color .5s;
+}
+.lp-anim-url span { font-size:13px; color:#555; flex:1; text-align:left; white-space:nowrap; overflow:hidden; transition:color .4s; }
+.lp-anim-url button {
+  padding:8px 18px; background:var(--vert); color:#000; border:none; border-radius:40px;
+  font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  font-family:inherit; transition:background .15s;
+}
+.lp-anim-url button:hover { background:var(--vert-clair); }
+.lp-anim-shorts {
+  display:flex; gap:8px; justify-content:center;
+  opacity:0; transform:translateY(20px);
+  transition:opacity .7s ease,transform .7s ease;
+}
+.lp-anim-short { width:72px; height:128px; border-radius:10px; overflow:hidden; position:relative; flex-shrink:0; background:#111; }
+.lp-anim-plat {
+  position:absolute; top:7px; right:7px; width:19px; height:19px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+}
+.lp-anim-score { position:absolute; bottom:7px; left:7px; font-size:7px; color:#aaa; font-weight:600; letter-spacing:.5px; }
+.lp-anim-score span { display:block; font-size:15px; font-weight:800; color:#f0a500; line-height:1; }
+.lp-anim-st { font-size:11px; color:#555; height:18px; margin-top:12px; transition:opacity .3s; }
+
+/* ── Icônes plateformes ── */
+.lp-platforms {
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  padding:20px 24px; flex-wrap:wrap;
+}
+.lp-plat {
+  width:38px; height:38px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  opacity:.45; transition:opacity .15s; cursor:default;
+}
+.lp-plat:hover { opacity:.9; }
+.lp-plat svg { width:22px; height:22px; }
+
+/* ── Clips grid ── */
+.clips-section { max-width:1100px; margin:0 auto; padding:16px 24px 72px; }
+.clips-label {
+  text-align:center; font-size:12px; font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--texte-muted); margin-bottom:24px;
+}
+.clips-row {
+  display:flex; gap:16px; justify-content:center;
+  overflow-x:auto; padding:4px 0 8px; scrollbar-width:none;
+  scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+}
+.clips-row::-webkit-scrollbar { display:none; }
+.cc { scroll-snap-align:start; }
+.cc {
+  width:168px; flex-shrink:0; border-radius:16px; overflow:hidden;
+  position:relative; aspect-ratio:9/16;
+  border:1.5px solid var(--bordure); background:var(--bg-card);
+  opacity:0; transform:translateY(16px) scale(.95);
+  transition:opacity .5s ease, transform .5s ease, border-color .2s;
+}
+.cc.in { opacity:1; transform:translateY(0) scale(1); }
+.cc.blurred { filter:blur(5px); pointer-events:none; }
+.cc:not(.blurred):hover { border-color:var(--vert); transform:scale(1.03); }
+.cc-bg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:42px; }
+.cc-ov { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.92) 35%,rgba(0,0,0,.04) 100%); }
+.cc-score { position:absolute; top:8px; right:8px; background:#f59e0b; color:#000; font-weight:900; font-size:11px; padding:3px 7px; border-radius:6px; z-index:2; }
+.cc-dur { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.75); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; z-index:2; }
+.cc-plats { position:absolute; bottom:38px; left:8px; display:flex; gap:4px; z-index:2; }
+.cc-plat { background:rgba(255,255,255,.14); border-radius:4px; padding:2px 5px; font-size:9px; font-weight:700; color:#fff; }
+.cc-hook { position:absolute; bottom:0; left:0; right:0; padding:7px 8px 10px; z-index:2; }
+.cc-hook-txt { font-size:10px; font-weight:700; color:#fff; line-height:1.3; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.cc-lock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:4; font-size:22px; }
+
+/* ── Loader ── */
+#lp-loader { display:none; padding:80px 24px; text-align:center; max-width:480px; margin:0 auto; }
+.lp-ldr-title { font-size:20px; font-weight:800; margin-bottom:8px; }
+.lp-ldr-sub { font-size:14px; color:var(--texte-doux); margin-bottom:36px; }
+.lp-prog-track { background:var(--bordure); border-radius:99px; height:3px; overflow:hidden; margin-bottom:32px; }
+.lp-prog-fill { height:100%; background:linear-gradient(90deg,var(--vert),#f59e0b); border-radius:99px; width:0%; transition:width .5s ease; }
+.lp-steps { display:flex; flex-direction:column; gap:14px; text-align:left; }
+.lp-step { display:flex; align-items:center; gap:12px; font-size:14px; color:var(--texte-doux); transition:color .3s; }
+.lp-step.actif { color:var(--texte); }
+.lp-step.done { color:var(--vert); }
+.lp-step-dot { width:7px; height:7px; border-radius:50%; background:var(--bordure); flex-shrink:0; transition:background .3s; }
+.lp-step.actif .lp-step-dot { background:var(--vert); box-shadow:0 0 7px var(--vert); animation:dp 1s infinite; }
+.lp-step.done .lp-step-dot { background:var(--vert); }
+@keyframes dp{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Résultats ── */
+#lp-results { display:none; max-width:960px; margin:0 auto; padding:0 24px 80px; }
+.lp-res-hd { text-align:center; margin-bottom:36px; }
+.lp-res-hd h2 { font-size:24px; font-weight:900; margin-bottom:6px; }
+.lp-res-hd .lp-vtitle { color:var(--vert); }
+.lp-res-hd p { font-size:14px; color:var(--texte-doux); }
+.lp-res-stats { display:flex; justify-content:center; gap:32px; flex-wrap:wrap; margin-top:18px; }
+.stat-v { font-size:28px; font-weight:900; color:var(--vert); }
+.stat-l { font-size:11px; color:var(--texte-doux); }
+.lp-res-grid { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:40px; }
+.lp-res-clip { width:160px; border-radius:14px; overflow:hidden; position:relative; aspect-ratio:9/16; border:1.5px solid var(--bordure); background:var(--bg-card); animation:ci .4s ease forwards; opacity:0; }
+.lp-res-clip.blurred { filter:blur(6px); pointer-events:none; user-select:none; }
+@keyframes ci{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.lp-blur-zone { position:relative; margin-top:-80px; }
+.lp-blur-ov { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 0%,var(--bg) 50%); pointer-events:none; }
+.lp-cta-block { text-align:center; padding:20px 16px 0; position:relative; z-index:2; }
+.lp-cta-block h3 { font-size:22px; font-weight:900; margin-bottom:8px; }
+.lp-cta-block p { font-size:14px; color:var(--texte-doux); margin-bottom:22px; max-width:380px; margin-left:auto; margin-right:auto; }
+
+/* ── Modal ── */
+.lp-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); z-index:1000; align-items:flex-end; justify-content:center; padding:16px; }
+.lp-modal-bg.visible { display:flex; }
+@media(min-width:480px){ .lp-modal-bg { align-items:center; } }
+.lp-modal { background:var(--bg-surface); border:1px solid var(--bordure); border-radius:20px; padding:36px 32px; max-width:420px; width:100%; text-align:center; position:relative; max-height:90vh; overflow-y:auto; }
+.lp-modal-close { position:absolute; top:14px; right:16px; background:none; border:none; color:var(--texte-doux); font-size:18px; cursor:pointer; line-height:1; }
+.lp-modal h3 { font-size:22px; font-weight:900; margin-bottom:8px; }
+.lp-modal-desc { font-size:14px; color:var(--texte-doux); line-height:1.6; margin-bottom:24px; }
+.lp-modal-preview { background:var(--bg-card); border:1px solid var(--bordure); border-radius:8px; padding:10px 14px; font-size:12px; color:var(--texte-doux); text-align:left; margin-bottom:20px; line-height:1.5; }
+.lp-modal-preview strong { color:var(--texte); font-size:13px; }
+.lp-modal-form { display:flex; flex-direction:column; gap:10px; }
+.lp-modal-input { background:var(--bg-card); border:1.5px solid var(--bordure); border-radius:10px; padding:13px 16px; font-size:15px; color:var(--texte); outline:none; transition:border-color .15s; width:100%; font-family:inherit; }
+.lp-modal-input:focus { border-color:var(--vert); }
+.lp-modal-input::placeholder { color:var(--texte-muted); }
+.lp-modal-err { color:#ef4444; font-size:13px; display:none; margin-top:4px; }
+
+@media(max-width:640px){
+  /* Hero */
+  .lp-hero-wrap .hero-conteneur { padding:120px 20px 16px; }
+  .lp-hero-wrap h1 { font-size:clamp(24px,6.5vw,36px); letter-spacing:-1px; word-break:break-word; }
+  .lp-badge-txt { font-size:11px; letter-spacing:.04em; word-break:break-word; }
+  .lp-hero-wrap .hero-sous-titre { font-size:14px; }
+  /* Input row */
+  .lp-input-row { flex-direction:column; align-items:stretch; gap:8px; }
+  .lp-pill { flex-direction:column; border-radius:16px; padding:10px 12px; gap:8px; }
+  .lp-pill-cta { width:100%; text-align:center; border-radius:10px; padding:11px; }
+  .lp-ou { text-align:center; }
+  .lp-upload { justify-content:center; }
+  /* Demo card */
+  .lp-demo-card { padding:20px 16px 16px; }
+  .lp-anim-vid { width:240px !important; height:135px !important; }
+  .lp-anim-shorts { gap:5px; }
+  .lp-anim-short { width:56px; height:100px; }
+  .lp-demo-bottom-input { width:calc(100% - 32px); }
+  /* Clips démo */
+  .clips-row { justify-content:flex-start; padding:4px 20px 12px; }
+  .cc { width:120px; }
+  .lp-modal { padding:28px 20px; }
+  /* Tarifs scroll */
+  .tarifs-grille { display:flex !important; overflow-x:auto !important; scroll-snap-type:x mandatory !important; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:16px !important; padding:8px 16px 20px !important; max-width:unset !important; grid-template-columns:unset !important; }
+  .tarifs-grille::-webkit-scrollbar { display:none; }
+  .carte-tarif { min-width:calc(100vw - 48px) !important; max-width:340px !important; flex-shrink:0 !important; scroll-snap-align:start; transform:none !important; box-sizing:border-box !important; }
+  .carte-tarif p, .carte-tarif-desc { white-space:normal !important; overflow-wrap:break-word; }
+  .carte-tarif .garanties, .carte-tarif [style*="flex-wrap"] { flex-wrap:wrap !important; }
+}
+</style>
+<script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.people.toString()+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonPropertiesForFlags".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||(window.posthog=[]));
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ', { api_host: 'https://eu.i.posthog.com', person_profiles: 'identified_only', session_recording: { recordCrossOriginIframes: true } });
+</script>
+</head>
+<body>
+
+  <!-- ===== BANDEAU OFFRE DE LANCEMENT ===== -->
+  <div id="bandeau-lancement" style="background:linear-gradient(90deg,#059669,#10b981);padding:10px 20px;text-align:center;font-size:13px;font-weight:700;color:#000;position:relative;z-index:100">
+    🎁 Offre de lancement — <strong>-50% le 1er mois</strong> · Limité dans le temps
+    <a href="#tarifs" style="color:#000;text-decoration:underline;margin-left:10px;font-weight:800">En profiter →</a>
+    <button onclick="document.getElementById('bandeau-lancement').style.display='none';document.getElementById('navbar').style.top='0'" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#000;opacity:.6;line-height:1">✕</button>
+  </div>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-conteneur">
+      <a href="index.html" class="logo">Créatis<span class="logo-point">.</span></a>
+
+      <div class="nav-liens" id="nav-liens">
+        <a href="#fonctionnalites" class="lien">Fonctionnalités</a>
+        <a href="#comment-ca-marche" class="lien">Comment ça marche</a>
+        <a href="#tarifs" class="lien">Tarifs</a>
+        <a href="auth.html" class="btn-ghost btn-sm">Se connecter</a>
+        <a href="auth.html" class="btn-primaire btn-sm">Commencer gratuitement</a>
+      </div>
+
+      <button class="nav-burger" id="nav-burger" onclick="toggleMenu()" aria-label="Menu">
+        ☰
+      </button>
+    </div>
+  </nav>
+
+  <!-- Menu mobile overlay (hors navbar pour stacking context correct) -->
+  <div class="nav-mobile-overlay" id="nav-mobile-overlay">
+    <a href="#fonctionnalites" class="lien" onclick="fermerMenu()">Fonctionnalités</a>
+    <a href="#exemple-reel" class="lien" onclick="fermerMenu()">Exemple réel</a>
+    <a href="#comment-ca-marche" class="lien" onclick="fermerMenu()">Comment ça marche</a>
+    <a href="#vs-chatgpt" class="lien" onclick="fermerMenu()">Créatis vs ChatGPT</a>
+    <a href="#tarifs" class="lien" onclick="fermerMenu()">Tarifs</a>
+    <a href="affiliation" class="lien" onclick="fermerMenu()">Affiliation</a>
+    <a href="auth.html" class="btn-ghost" style="margin-top:8px">Se connecter</a>
+    <a href="auth.html" class="btn-primaire">Commencer gratuitement</a>
+  </div>
+
+<!-- HERO CENTRÉ -->
+<section class="hero lp-hero-wrap" id="lp-hero-section">
+  <div class="hero-conteneur">
+    <div class="hero-contenu">
+
+      <p class="lp-badge-txt">Outil de clips viraux IA n° 1 pour créateurs francophones</p>
+
+      <h1>Crée ton contenu <span class="surligne">10× plus vite,</span> 1 vidéo → 10 Shorts viraux.</h1>
+
+      <p class="hero-sous-titre">
+        Créatis transforme tes longues vidéos en Shorts, Reels et TikToks viraux prêts à publier sur toutes tes plateformes en un clic.
+      </p>
+
+      <!-- CTA upload uniquement -->
+      <div class="lp-input-row" style="justify-content:center">
+        <label class="lp-upload" style="padding:14px 32px;font-size:16px;font-weight:700;border-radius:100px;background:var(--vert);color:#000;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;">
+          <input type="file" id="lp-file" accept="video/*,video/mp4,video/quicktime,video/mov" onchange="lancerDemoFichier(this)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Uploader ma vidéo — Gratuit →
+        </label>
+      </div>
+
+      <div class="hero-cta" style="margin-top:8px">
+        <p class="hero-note"><span>Gratuit</span> · Sans carte bancaire · <span>1 essai gratuit</span></p>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000">A</div>
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#4f46e5);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:-6px">M</div>
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:-6px;color:#000">S</div>
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#be185d);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:-6px">L</div>
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#14b8a6,#0d9488);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:-6px">R</div>
+          </div>
+          <span style="font-size:13px;color:var(--texte-doux)"><strong style="color:var(--texte)">+120 créateurs</strong> utilisent déjà Créatis</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- Flèche scroll vers tarifs — desktop uniquement -->
+  <div style="text-align:center;padding:18px 0 0;display:none;" class="arr-tarifs-wrap">
+    <a href="#tarifs" style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:var(--texte-doux);font-size:12px;font-weight:600;letter-spacing:.06em;opacity:.6;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.6'">
+      VOIR LES TARIFS
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:bounce-arr .9s ease-in-out infinite alternate"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </a>
+  </div>
+</section>
+<style>
+@keyframes bounce-arr{from{transform:translateY(0)}to{transform:translateY(5px)}}
+@media(min-width:768px){.arr-tarifs-wrap{display:block!important;}}
+</style>
+
+<!-- PREUVE SOCIALE réelle — Polaroïds style -->
+<div style="max-width:960px;margin:0 auto 8px;padding:0 24px;">
+
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;color:#10b981;text-transform:uppercase;margin-bottom:6px;">Résultats réels · TikTok Creator Programme</div>
+    <div style="font-size:22px;font-weight:900;color:#fff;">4 clips générés avec Créatis</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-top:4px;">5,4M de vues · 1 049€ de revenus directs</div>
+  </div>
+
+  <!-- Polaroïds desktop / grille mobile -->
+  <style>
+    .polaroid-wrap { display:flex; align-items:center; justify-content:center; gap:0; }
+    .pol { border-radius:10px; overflow:hidden; border:4px solid #fff; background:#fff; flex-shrink:0; }
+    .pol img { width:100%; display:block; height:200px; object-fit:cover; object-position:top; }
+    .pol-label { padding:8px 8px 12px; text-align:center; }
+    .pol-eur { font-size:22px; font-weight:900; color:#10b981; line-height:1; }
+    .pol-vues { font-size:10px; color:#999; margin-top:3px; }
+    @media(min-width:601px){
+      .polaroid-wrap { height:310px; }
+      .pol-1 { transform:rotate(-6deg) translateX(20px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:150px; z-index:1; }
+      .pol-2 { transform:rotate(-1.5deg); border-color:#10b981!important; box-shadow:0 16px 50px rgba(16,185,129,.35); width:170px; z-index:3; position:relative; }
+      .pol-2 img { height:218px; }
+      .pol-2 .pol-eur { font-size:28px; }
+      .pol-3 { transform:rotate(4deg) translateX(-10px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:150px; z-index:2; }
+      .pol-4 { transform:rotate(8deg) translateX(-20px); box-shadow:0 10px 30px rgba(0,0,0,.7); width:145px; z-index:1; }
+    }
+    @media(max-width:600px){
+      .polaroid-wrap { height:200px; }
+      .pol-1 { transform:rotate(-6deg) translateX(14px)!important; width:100px!important; }
+      .pol-2 { transform:rotate(-1.5deg)!important; width:115px!important; }
+      .pol-2 img { height:130px!important; }
+      .pol-2 .pol-eur { font-size:18px!important; }
+      .pol-3 { transform:rotate(4deg) translateX(-8px)!important; width:100px!important; }
+      .pol-4 { transform:rotate(8deg) translateX(-14px)!important; width:96px!important; }
+      .pol img { height:120px!important; }
+      .pol-eur { font-size:15px!important; }
+      .pol-label { padding:5px 5px 8px!important; }
+      .pol-vues { font-size:8px!important; }
+    }
+  </style>
+
+  <div class="polaroid-wrap">
+
+    <div class="pol pol-1">
+      <img src="images/IMG_2383.PNG" alt="Sasuke 339€">
+      <div class="pol-label">
+        <div class="pol-eur">339€</div>
+        <div class="pol-vues">1,28M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-2">
+      <div style="position:absolute;top:8px;right:8px;background:#10b981;color:#000;font-size:8px;font-weight:900;padding:3px 8px;border-radius:20px;z-index:4;letter-spacing:.06em;">MEILLEUR</div>
+      <img src="images/IMG_2382.PNG" alt="Hitachi 532€">
+      <div class="pol-label">
+        <div class="pol-eur">532€</div>
+        <div class="pol-vues">1,28M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-3">
+      <img src="images/IMG_2380.PNG" alt="Gojo 78€">
+      <div class="pol-label">
+        <div class="pol-eur">78€</div>
+        <div class="pol-vues">1,69M vues</div>
+      </div>
+    </div>
+
+    <div class="pol pol-4">
+      <img src="images/IMG_2381.PNG" alt="Batman 98€">
+      <div class="pol-label">
+        <div class="pol-eur">98€</div>
+        <div class="pol-vues">142K vues</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Totaux -->
+  <div class="proof-totaux" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;margin-top:20px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:10px;overflow:hidden;">
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">5,4M</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">vues au total</div></div>
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">1 049€</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">revenus générés</div></div>
+    <div style="text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,0.06);"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">4 clips</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">détectés par l'IA</div></div>
+    <div style="text-align:center;padding:12px 8px;"><div style="font-size:18px;font-weight:900;color:#10b981;white-space:nowrap;">4,35x</div><div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">RPM multiplié</div></div>
+  </div>
+  <style>@media(max-width:480px){.proof-totaux{grid-template-columns:1fr 1fr!important;}}</style>
+
+</div>
+
+<!-- CAROUSEL PRINCIPAL (style OpusClip) -->
+<div class="main-car-wrap" id="main-car-wrap">
+  <!-- Tabs au-dessus du carousel -->
+  <div class="mct-tabs" id="mct-tabs">
+    <button class="mct-tab act" onclick="goSlide(0)">✂️ Clips Viraux</button>
+    <button class="mct-tab" onclick="goSlide(1)">💡 Idées de Vidéos <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(2)">🎬 YouTube Complet <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(3)">💬 Réponses Comm. <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(4)">♻️ Recyclage <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(5)">🖼️ Miniature Pro <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+    <button class="mct-tab" onclick="goSlide(6)">🤖 Assistant IA <span style="background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px;margin-left:4px">Pro</span></button>
+  </div>
+
+  <!-- Région carousel avec flèches -->
+  <div class="main-car-region">
+    <button class="main-car-btn main-car-prev" id="main-car-prev" onclick="goSlide(slidePos-1)" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="main-car-btn main-car-next" id="main-car-next" onclick="goSlide(slidePos+1)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  <div class="main-car-outer">
+    <div class="main-car-track" id="main-car-track">
+
+      <!-- Slide 0 : Demo clips animée -->
+      <div class="main-car-slide" id="lp-demo-card" style="padding:28px 24px 20px;text-align:center;">
+        <div id="la-vid" class="lp-anim-vid">
+          <div id="la-bg" style="position:absolute;inset:0;transition:background .5s;"></div>
+          <img id="la-thumb" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;transition:opacity .5s;opacity:0;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.25);z-index:1;border-radius:inherit;"></div>
+          <svg id="la-play" viewBox="0 0 24 24" width="40" height="40" style="position:absolute;z-index:2;filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));transition:opacity .4s;"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.55)"/><polygon points="10,8 18,12 10,16" fill="#fff"/></svg>
+          <svg id="la-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" style="position:absolute;z-index:2;transition:opacity .4s;opacity:0;"></svg>
+          <span id="la-label" class="lp-anim-label" style="z-index:3;"></span>
+          <span id="la-dur" class="lp-anim-dur" style="z-index:3;"></span>
+        </div>
+        <div class="lp-anim-url" id="la-url">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" style="flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span id="la-txt">Colle une vidéo longue et…</span>
+          <button onclick="laStart()">Get clips</button>
+        </div>
+        <div class="lp-anim-shorts" id="la-shorts"></div>
+        <div class="lp-anim-st" id="la-st"></div>
+      </div>
+
+      <!-- Slides 1-6 : un agent par slide -->
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-idees"><div id="ad-ws-idees" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-yt"><div id="ad-ws-yt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-cmt"><div id="ad-ws-cmt" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-rec"><div id="ad-ws-rec" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-mini"><div id="ad-ws-mini" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+      <div class="main-car-slide" style="display:flex;flex-direction:column;height:480px;" id="ad-slide-chat"><div id="ad-ws-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div></div>
+
+    </div>
+  </div>
+  </div><!-- /main-car-region -->
+</div>
+
+
+<!-- CTA sous les plateformes -->
+<div style="text-align:center;padding:32px 24px 72px">
+  <button class="btn-primaire btn-lg" onclick="ouvrirModal()" style="border-radius:999px">
+    Générer mes clips viraux — Gratuit →
+  </button>
+  <p style="font-size:12px;color:var(--texte-muted);margin-top:12px">1 essai gratuit · Aucune carte bancaire</p>
+</div>
+
+
+<!-- LOADER -->
+<div id="lp-loader">
+  <p class="lp-ldr-title">Génération des clips…</p>
+  <p class="lp-ldr-sub" id="lp-loader-sub">Téléchargement de la vidéo</p>
+  <div class="lp-prog-track"><div class="lp-prog-fill" id="lp-fill"></div></div>
+  <div class="lp-steps">
+    <div class="lp-step" id="st1"><div class="lp-step-dot"></div><span>📥 Téléchargement de la vidéo</span></div>
+    <div class="lp-step" id="st2"><div class="lp-step-dot"></div><span>🎙️ Transcription avec timestamps</span></div>
+    <div class="lp-step" id="st3"><div class="lp-step-dot"></div><span>🔥 Identification des moments viraux (IA)</span></div>
+    <div class="lp-step" id="st4"><div class="lp-step-dot"></div><span>✂️ Découpe + recadrage 9:16</span></div>
+    <div class="lp-step" id="st5"><div class="lp-step-dot"></div><span>🔤 Sous-titres brûlés, clips finalisés</span></div>
+  </div>
+</div>
+
+<!-- RÉSULTATS -->
+<section id="lp-results">
+  <div class="lp-res-hd">
+    <h2>Clips générés depuis :<br><span class="lp-vtitle" id="lp-vid-title">"ta vidéo"</span></h2>
+    <p>Voici tes meilleurs moments — crée ton compte pour les télécharger</p>
+    <div class="lp-res-stats">
+      <div><div class="stat-v">97</div><div class="stat-l">Score viral moyen</div></div>
+      <div><div class="stat-v">10</div><div class="stat-l">Clips générés</div></div>
+      <div><div class="stat-v">45s</div><div class="stat-l">Durée moyenne</div></div>
+    </div>
+  </div>
+  <div class="lp-res-grid" id="lp-result-grid"></div>
+  <div class="lp-blur-zone">
+    <div class="lp-blur-ov"></div>
+    <div class="lp-cta-block">
+      <h3>Télécharge tes 10 clips viraux 🔓</h3>
+      <p>Crée ton compte gratuit pour télécharger et générer depuis tes propres vidéos.</p>
+      <button class="btn-primaire btn-lg" onclick="ouvrirModal()" style="border-radius:999px">Télécharger mes clips — Gratuit →</button>
+      <p style="font-size:12px;color:var(--texte-muted);margin-top:10px">1 essai gratuit · Aucune carte bancaire</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL -->
+<div class="lp-modal-bg" id="lp-modal-bg" onclick="if(event.target===this)fermerModal()">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="fermerModal()">✕</button>
+    <h3>Génère tes clips viraux</h3>
+    <p class="lp-modal-desc">Crée ton compte en 30 secondes.<br>1 essai gratuit, aucune carte bancaire.</p>
+    <div class="lp-modal-preview">
+      <strong>Vidéo :</strong><br>
+      <span id="modal-vid-title" style="color:var(--vert)">En attente d'une URL…</span>
+    </div>
+    <div class="lp-modal-form">
+      <input class="lp-modal-input" type="email" id="modal-email" placeholder="ton@email.com" autocomplete="email">
+      <div class="lp-modal-err" id="modal-err"></div>
+      <button class="btn-primaire" id="modal-btn" onclick="soumettreLead()" style="width:100%;padding:14px;font-size:15px;border-radius:10px;font-family:inherit">Accéder aux clips →</button>
+    </div>
+    <p style="font-size:11px;color:var(--texte-muted);margin-top:8px">En créant un compte, tu acceptes nos <a href="/cgu" style="color:var(--vert)">CGU</a>. Pas de spam.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+let videoUrl='', videoTitle='';
+
+// Anim clips + scroll navbar
+function initDemo(){
+  document.querySelectorAll('.cc').forEach((c,i)=>setTimeout(()=>c.classList.add('in'),200+i*140));
+  document.querySelectorAll('.sn').forEach(el=>{
+    const t=parseInt(el.textContent,10),s=t-10;let cur=s;
+    const tick=()=>{if(cur<t){cur++;el.textContent=cur;setTimeout(tick,55);}};
+    setTimeout(tick,600+Math.random()*400);
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initDemo);
+else initDemo();
+
+window.addEventListener('scroll',()=>{
+  document.getElementById('navbar')?.classList.toggle('defilé',window.scrollY>20);
+},{ passive: true });
+
+// oEmbed preview
+let oT=null;
+document.getElementById('lp-url')?.addEventListener('input',function(){
+  clearTimeout(oT);
+  if(isYT(this.value.trim()))
+    oT=setTimeout(async()=>{
+      const m=await getMeta(this.value.trim());
+      if(m)document.getElementById('modal-vid-title').textContent=m.title;
+    },700);
+});
+
+function isYT(u){return /^https?:\/\/(www\.)?(youtube\.com\/(watch\?.*v=|shorts\/)|youtu\.be\/)/.test(u);}
+async function getMeta(u){
+  try{const r=await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(u)}&format=json`);
+  if(!r.ok)return null;const d=await r.json();return{title:d.title};}catch{return null;}
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function animer(){
+  const fill=document.getElementById('lp-fill'),sub=document.getElementById('lp-loader-sub');
+  const steps=[
+    {id:'st1',label:'Téléchargement de la vidéo',pct:15,delay:1200},
+    {id:'st2',label:'Transcription audio avec timestamps',pct:40,delay:2800},
+    {id:'st3',label:'Identification des moments viraux (Gemini IA)',pct:65,delay:2000},
+    {id:'st4',label:'Découpe + recadrage automatique 9:16',pct:85,delay:1800},
+    {id:'st5',label:'Sous-titres brûlés, clips finalisés',pct:100,delay:1200},
+  ];
+  for(let i=0;i<steps.length;i++){
+    const s=steps[i];
+    if(i>0)document.getElementById(steps[i-1].id)?.classList.replace('actif','done');
+    document.getElementById(s.id)?.classList.add('actif');
+    sub.textContent=s.label+'…';fill.style.width=s.pct+'%';
+    await sleep(s.delay);
+  }
+  document.getElementById('st5')?.classList.replace('actif','done');
+}
+
+function genClips(t){
+  const k=t.toLowerCase().replace(/[^\w\s]/g,'').split(/\s+/).filter(m=>m.length>3)[0]||'ce sujet';
+  const c=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  return[
+    {emoji:'🎯',bg:'linear-gradient(160deg,#0f2027,#203a43)',hook:`La vérité sur ${k} que personne ne dit`,score:99,dur:'0:47',plats:['TikTok','Reels']},
+    {emoji:'🚀',bg:'linear-gradient(160deg,#0a1a0a,#1e3a1e)',hook:`${c(k)} — l'erreur que tout le monde fait`,score:97,dur:'0:52',plats:['Shorts','Reels']},
+    {emoji:'💡',bg:'linear-gradient(160deg,#1a0533,#3d0066)',hook:`Ce que j'aurais aimé savoir sur ${k}`,score:95,dur:'0:38',plats:['TikTok','Shorts']},
+    {emoji:'⚡',bg:'linear-gradient(160deg,#1a1500,#3a3000)',hook:`La méthode qui change tout pour ${k}`,score:93,dur:'0:44',plats:['Reels']},
+    {emoji:'🎬',bg:'linear-gradient(160deg,#001a1a,#003333)',hook:`Pourquoi 99% ratent ${k}`,score:91,dur:'0:58',plats:['Shorts']},
+  ];
+}
+
+function renderRes(clips){
+  const g=document.getElementById('lp-result-grid');g.innerHTML='';
+  clips.forEach((c,i)=>{
+    const fl=i>=2,el=document.createElement('div');
+    el.className='lp-res-clip'+(fl?' blurred':'');
+    el.style.animationDelay=(i*110)+'ms';
+    el.innerHTML=`<div class="cc-bg" style="background:${c.bg}">${c.emoji}</div>
+      <div class="cc-ov"></div><div class="cc-score">🔥 ${c.score}</div>
+      <div class="cc-dur">${c.dur}</div>
+      <div class="cc-plats">${c.plats.map(p=>`<span class="cc-plat">${p}</span>`).join('')}</div>
+      <div class="cc-hook"><div class="cc-hook-txt">${c.hook}</div></div>
+      ${fl?'<div class="cc-lock">🔒</div>':''}`;
+    g.appendChild(el);
+  });
+}
+
+function hideHero(){
+  document.getElementById('lp-hero-section').style.display='none';
+  document.getElementById('main-car-wrap').style.display='none';
+  document.querySelector('.lp-platforms').style.display='none';
+  document.getElementById('lp-loader').style.display='block';
+}
+
+async function showRes(title){
+  renderRes(genClips(title));
+  document.getElementById('lp-loader').style.display='none';
+  document.getElementById('lp-vid-title').textContent=`"${title}"`;
+  document.getElementById('modal-vid-title').textContent=title;
+  const r=document.getElementById('lp-results');
+  r.style.display='block';r.style.opacity='0';r.style.transition='opacity .5s';
+  requestAnimationFrame(()=>{r.style.opacity='1';});
+}
+
+window.lancerDemo=async function(){
+  const input=document.getElementById('lp-url'),url=input.value.trim();
+  if(!url){input.focus();return;}
+  if(!isYT(url)){
+    input.style.outline='2px solid #ef4444';
+    setTimeout(()=>input.style.outline='',2000);
+    alert('Entre une URL YouTube valide');return;
+  }
+  videoUrl=url;
+  if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_url'});
+  hideHero();
+  const[meta]=await Promise.all([getMeta(url),animer()]);
+  videoTitle=meta?.title||'ta vidéo';
+  await showRes(videoTitle);
+};
+
+function _lpSaveIDB(file){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('creatis_lp',1);
+      req.onupgradeneeded=e=>e.target.result.createObjectStore('videos');
+      req.onsuccess=e=>{
+        const tx=e.target.result.transaction('videos','readwrite');
+        tx.objectStore('videos').put(file,'pending');
+        tx.oncomplete=()=>resolve(true);tx.onerror=()=>resolve(false);
+      };
+      req.onerror=()=>resolve(false);
+    }catch(e){resolve(false);}
+  });
+}
+
+window.lancerDemoFichier=function(input){
+  const f=input.files[0];if(!f)return;
+  videoTitle=f.name.replace(/\.[^.]+$/,'')||'ta vidéo';
+  videoUrl='';
+  _lpSaveIDB(f); // arrière-plan, non-bloquant
+  localStorage.setItem('creatis_lp_file_name',videoTitle);
+  localStorage.setItem('creatis_lp_pending_ts',Date.now().toString());
+  if(typeof fbq!=='undefined')fbq('track','Lead',{content_name:'lp_clips_file'});
+  const t=document.getElementById('modal-vid-title');
+  if(t)t.textContent=videoTitle;
+  window.ouvrirModal();
+  setTimeout(()=>{input.value='';},100); // reset après ouverture modal
+};
+
+window.ouvrirModal=function(){
+  document.getElementById('lp-modal-bg').classList.add('visible');
+  setTimeout(()=>document.getElementById('modal-email')?.focus(),100);
+};
+window.fermerModal=function(){document.getElementById('lp-modal-bg').classList.remove('visible');};
+window.soumettreLead=function(){
+  const email=document.getElementById('modal-email').value.trim();
+  const err=document.getElementById('modal-err'),btn=document.getElementById('modal-btn');
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    err.textContent='Entre un email valide';err.style.display='block';return;
+  }
+  err.style.display='none';btn.disabled=true;btn.textContent='Redirection…';
+  localStorage.setItem('creatis_lp_ref','clips-viraux');
+  if(videoUrl)localStorage.setItem('creatis_clips_pending',videoUrl);
+  if(typeof fbq!=='undefined')fbq('track','CompleteRegistration',{content_name:'lp_clips_signup'});
+  const p=new URLSearchParams({ref:'lp-clips',returnUrl:'app.html'});
+  window.location.href=`/auth.html?${p}#email=${encodeURIComponent(email)}`;
+};
+if(typeof window._lpFlush==='function')window._lpFlush();
+})();
+</script>
+<script>
+(function(){
+  const VIDEOS=[
+    {label:'Gaming',dur:'42:10',bg:'linear-gradient(135deg,#1a0533,#0d0117)',thumb:'/images/clips/demo-gaming.webp',
+     icon:`<rect x="2" y="6" width="20" height="12" rx="2" stroke="#a855f7" stroke-width="1.5" fill="none"/><line x1="6" y1="12" x2="10" y2="12" stroke="#a855f7" stroke-width="1.5"/><line x1="8" y1="10" x2="8" y2="14" stroke="#a855f7" stroke-width="1.5"/><circle cx="16" cy="11" r="1" fill="#a855f7"/><circle cx="18" cy="13" r="1" fill="#a855f7"/>`,
+     url:'gaming-stream-live.mp4',
+     shorts:[
+       {score:99,hook:'IMPOSSIBLE ??? Je viens de le faire',ts:'7:42',tint:'rgba(168,85,247,.08)',img:'/images/clips/short-gaming-1.webp'},
+       {score:97,hook:'Le clutch du siècle 🏆',ts:'15:30',tint:'rgba(139,92,246,.07)',img:'/images/clips/short-gaming-2.webp'},
+       {score:95,hook:"Comment j'ai trompé tout le monde",ts:'23:15',tint:'rgba(124,58,237,.06)',img:'/images/clips/short-gaming-3.webp'},
+       {score:93,hook:'GG WP les gars',ts:'31:08',tint:'rgba(109,40,217,.05)',img:'/images/clips/short-gaming-4.webp'},
+       {score:91,hook:"Le move qui m'a coûté la game",ts:'39:55',tint:'rgba(91,33,182,.04)',img:'/images/clips/short-gaming-5.webp'}
+     ]},
+    {label:'Podcast',dur:'1:24:32',bg:'linear-gradient(135deg,#2a1800,#0d0a00)',thumb:'/images/clips/demo-podcast.webp',
+     icon:`<path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#10b981" stroke="none"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#10b981" stroke-width="1.5" fill="none"/><line x1="12" y1="19" x2="12" y2="23" stroke="#10b981" stroke-width="1.5"/><line x1="8" y1="23" x2="16" y2="23" stroke="#10b981" stroke-width="1.5"/>`,
+     url:'podcast-interview.mp4',
+     shorts:[
+       {score:99,hook:"Je n'aurais JAMAIS dû dire ça…",ts:'2:14',tint:'rgba(255,140,50,.05)',img:'/images/clips/short-podcast-1.webp'},
+       {score:97,hook:'La vérité que personne ne dit',ts:'8:47',tint:'rgba(255,110,30,.04)',img:'/images/clips/short-podcast-2.webp'},
+       {score:95,hook:"Sa réponse m'a laissé sans mots",ts:'34:22',tint:'rgba(240,90,20,.04)',img:'/images/clips/short-podcast-3.webp'},
+       {score:93,hook:'Le moment qui a tout changé',ts:'48:05',tint:'rgba(200,70,10,.04)',img:'/images/clips/short-podcast-4.webp'},
+       {score:91,hook:'Il a finalement tout avoué',ts:'1:12:30',tint:'rgba(180,50,5,.03)',img:'/images/clips/short-podcast-5.webp'}
+     ]}
+  ];
+  const PLATS=[
+    {c:'#ff0000',s:`<path d="M23 7s-.3-1.9-1.2-2.7c-1.1-1.2-2.4-1.2-3-1.3C16.2 3 12 3 12 3s-4.2 0-6.8.1c-.6.1-1.9.1-3 1.3C1.3 5.2 1 7 1 7S.7 9 .7 11v1.9c0 2 .3 4 .3 4s.3 1.9 1.2 2.7c1.1 1.2 2.6 1.1 3.3 1.2C7.1 21 12 21 12 21s4.2 0 6.8-.2c.6-.1 1.9-.1 3-1.3.9-.8 1.2-2.7 1.2-2.7s.3-2 .3-4V11c0-2-.3-4-.3-4z"/><polygon fill="white" points="9.75,15.02 15.5,12 9.75,8.98"/>`},
+    {c:'radial-gradient(circle at 30% 110%,#fd5 0%,#f73 30%,#f09 60%,#c13584 100%)',s:`<rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="white" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="white" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1" fill="white"/>`},
+    {c:'#0077b5',s:`<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>`},
+    {c:'#010101',s:`<path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.3 6.3 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.75a8.18 8.18 0 0 0 4.78 1.53V6.83a4.85 4.85 0 0 1-1.01-.14z"/>`},
+    {c:'#1877f2',s:`<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>`}
+  ];
+  let idx=0,running=false,loopT;
+  const elVid=document.getElementById('la-vid'),elBg=document.getElementById('la-bg'),
+        elIcon=document.getElementById('la-icon'),elLabel=document.getElementById('la-label'),
+        elDur=document.getElementById('la-dur'),elUrl=document.getElementById('la-url'),
+        elTxt=document.getElementById('la-txt'),elShorts=document.getElementById('la-shorts'),
+        elSt=document.getElementById('la-st'),
+        elThumb=document.getElementById('la-thumb'),elPlay=document.getElementById('la-play');
+
+  function setSt(t){elSt.style.opacity=0;setTimeout(()=>{elSt.textContent=t;elSt.style.opacity=1;},150);}
+
+  function buildShorts(v){
+    elShorts.innerHTML='';
+    v.shorts.forEach((s,i)=>{
+      const p=PLATS[i],d=document.createElement('div');
+      d.className='lp-anim-short';
+      d.innerHTML=`
+        <div style="position:absolute;inset:0;background-image:url(${s.img});background-size:cover;background-position:center top;"></div>
+        <div style="position:absolute;inset:0;background:${s.tint};"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 32%,rgba(0,0,0,.1) 65%,rgba(0,0,0,0) 100%);"></div>
+        <div class="lp-anim-plat" style="background:${p.c}"><svg width="11" height="11" viewBox="0 0 24 24" fill="white">${p.s}</svg></div>
+        <div style="position:absolute;top:5px;left:5px;font-size:6px;color:rgba(255,255,255,.85);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:2px;font-weight:700;letter-spacing:.3px;">${s.ts}</div>
+        <div style="position:absolute;bottom:20px;left:5px;right:5px;font-size:7.5px;font-weight:800;color:#fff;line-height:1.25;text-shadow:0 1px 4px rgba(0,0,0,.95);">${s.hook}</div>
+        <div class="lp-anim-score">SCORE<span>${s.score}</span></div>`;
+      elShorts.appendChild(d);
+    });
+  }
+
+  function prep(v){
+    elVid.style.width='280px';elVid.style.height='157px';elVid.style.borderRadius='14px';elVid.style.opacity='1';
+    elBg.style.background=v.bg;elIcon.innerHTML=v.icon;elIcon.style.opacity='0';
+    elLabel.textContent=v.label;elDur.textContent=v.dur;elDur.style.opacity='1';
+    if(v.thumb){elThumb.src=v.thumb;elThumb.style.opacity='1';}else{elThumb.style.opacity='0';}
+    if(elPlay)elPlay.style.opacity='1';
+    elTxt.textContent='Colle une vidéo longue et…';elTxt.style.color='#555';
+    elUrl.style.borderColor='#2a2a2a';
+    elShorts.style.opacity='0';elShorts.style.transform='translateY(20px)';
+    setSt('');
+  }
+
+  function run(){
+    if(running)return;running=true;clearTimeout(loopT);
+    const v=VIDEOS[idx];prep(v);
+    setTimeout(()=>{elTxt.textContent=v.url;elTxt.style.color='#888';elUrl.style.borderColor='rgba(16,185,129,.4)';setSt('Analyse en cours…');},400);
+    setTimeout(()=>{setSt('Détection des moments viraux…');elVid.style.width='200px';elVid.style.height='112px';elIcon.style.opacity='.3';elDur.style.opacity='.3';if(elPlay)elPlay.style.opacity='0';},1000);
+    setTimeout(()=>{setSt('Formatage en 9:16…');elVid.style.width='70px';elVid.style.height='124px';elVid.style.borderRadius='10px';},2100);
+    setTimeout(()=>{elVid.style.opacity='0';},3000);
+    setTimeout(()=>{buildShorts(v);elShorts.style.opacity='1';elShorts.style.transform='translateY(0)';setSt('10 clips viraux prêts !');elTxt.style.color='#10b981';elUrl.style.borderColor='rgba(16,185,129,.5)';},3400);
+    setTimeout(()=>{running=false;loopT=setTimeout(()=>{idx=(idx+1)%VIDEOS.length;run();},4000);},3900);
+  }
+
+  prep(VIDEOS[0]);
+  (function(){
+    const _t=document.getElementById('lp-demo-card');
+    if('IntersectionObserver' in window&&_t){
+      const _io=new IntersectionObserver(e=>{if(e[0].isIntersecting){_io.disconnect();setTimeout(run,400);}},{threshold:0.1,rootMargin:'100px'});
+      _io.observe(_t);
+    }else{setTimeout(run,800);}
+  })();
+  window.laStart=run;
+})();
+</script>
+
+
+  <!-- ===== STATS ===== -->
+  <div class="stats-barre">
+    <div class="stats-grille">
+      <div class="stat-item">
+        <h3>+120</h3>
+        <p>Créateurs de contenu inscrits</p>
+      </div>
+      <div class="stat-item">
+        <h3>30s</h3>
+        <p>De l'idée au script complet</p>
+      </div>
+      <div class="stat-item">
+        <h3>100%</h3>
+        <p>Francophone, calibré YouTube FR</p>
+      </div>
+      <div class="stat-item">
+        <h3>0€</h3>
+        <p>Pour commencer — sans CB</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BANDE PROMESSE ===== -->
+  <div style="background:#0d1a10;border-top:1px solid rgba(16,185,129,.15);border-bottom:1px solid rgba(16,185,129,.15);padding:32px 20px">
+    <div style="max-width:900px;margin:0 auto;text-align:center">
+      <p style="color:var(--texte-doux);font-size:13px;text-transform:uppercase;letter-spacing:.08em;margin:0 0 20px">Tu donnes le sujet → tu reçois en 30 secondes</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:12px">
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">5 titres accrocheurs</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Script complet avec timecodes</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Description SEO + 30 tags</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">Miniature IA 1280×720</span>
+        </div>
+        <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--vert);font-size:18px">✦</span>
+          <span style="font-weight:600;font-size:14px">10 Clips Viraux 9:16</span>
+        </div>
+      </div>
+      <a href="auth.html" style="display:inline-block;margin-top:24px;background:var(--vert);color:#000;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px">Générer mon premier script gratuitement →</a>
+    </div>
+  </div>
+
+  <!-- ===== DÉMO ANIMÉE (supprimée) ===== -->
+  <section class="demo-section" id="demo" style="display:none">
+    <div class="section-entete">
+      <span class="section-label">Démo live</span>
+      <h2>Créatis en action — génération en direct</h2>
+      <p>Exactement comme dans l'app — en quelques secondes.</p>
+    </div>
+    <div class="demo-gif-outer">
+      <div class="demo-browser-bar">
+        <div class="demo-dots"><span></span><span></span><span></span></div>
+        <div class="demo-url-bar">creatis.app/app</div>
+        <div style="width:60px"></div>
+      </div>
+      <img src="/images/demo-dashboard.gif" alt="Démo Créatis — dashboard en action" class="demo-gif-img" loading="lazy">
+    </div>
+  </section>
+
+  <!-- ===== SHOWCASE RÉSULTATS RÉELS (supprimé) ===== -->
+  <section class="showcase-section" id="exemple-reel" style="display:none">
+    <div class="section-entete">
+      <span class="section-label">Vrais résultats</span>
+      <h2>Ce que Créatis génère — sur une vraie chaîne</h2>
+      <p>Tous les exemples ci-dessous ont été générés par Créatis pour la chaîne réelle <strong>FlemoNoSekai</strong>.<br>6 660 abonnés · 4 014 019 vues totales · tutos dessin manga. Aucune retouche.</p>
+    </div>
+
+    <!-- Stat bar chaîne -->
+    <div class="showcase-stats-bar">
+      <div class="sc-stat"><div class="sc-stat-val">6 660</div><div class="sc-stat-lab">abonnés</div></div>
+      <div class="sc-stat-sep"></div>
+      <div class="sc-stat"><div class="sc-stat-val">4 014 019</div><div class="sc-stat-lab">vues totales</div></div>
+      <div class="sc-stat-sep"></div>
+      <div class="sc-stat sc-stat-hit"><div class="sc-stat-val">2 616 146</div><div class="sc-stat-lab">vues · top vidéo</div></div>
+      <div class="sc-stat-sep"></div>
+      <div class="sc-stat"><div class="sc-stat-val">49</div><div class="sc-stat-lab">vidéos publiées</div></div>
+    </div>
+
+    <!-- Tabs navigation — miniatures en premier -->
+    <div class="showcase-tabs" id="showcase-tabs">
+      <button class="stab actif" onclick="showcaseTab('clips',this)">✂️ Clips Viraux</button>
+      <button class="stab" onclick="showcaseTab('miniature',this)">🖼️ Miniatures Pro</button>
+      <button class="stab" onclick="showcaseTab('analyse',this)">📊 Analyse Vidéo</button>
+      <button class="stab" onclick="showcaseTab('complet',this)">🎬 YouTube Complet</button>
+      <button class="stab" onclick="showcaseTab('recyclage',this)">♻️ Recyclage</button>
+      <button class="stab" onclick="showcaseTab('idees',this)">💡 30 Idées</button>
+    </div>
+
+    <!-- ── Tab 0 : Clips Viraux (premier) ── -->
+    <div class="showcase-panel actif" id="stab-clips">
+      <div class="showcase-mini-intro" style="text-align:center;max-width:680px;margin:0 auto 32px">
+        <h3 style="font-size:clamp(20px,3vw,28px);font-weight:800;margin-bottom:12px">1 vidéo longue → 10 Shorts viraux 9:16</h3>
+        <p style="color:var(--texte-doux);font-size:15px">Téléverse n'importe quelle vidéo (jusqu'à 24 Go). L'IA détecte les 10 meilleurs moments, découpe et recadre en 9:16 automatiquement.</p>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;align-items:flex-start;padding:0 24px">
+        <div style="flex:1;min-width:280px;max-width:420px;background:var(--bg-card);border:1px solid var(--bordure);border-radius:16px;padding:24px">
+          <div style="font-size:12px;color:var(--texte-muted);margin-bottom:8px;font-weight:600;letter-spacing:.5px">ÉTAPES DE TRAITEMENT</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px"><span style="width:28px;height:28px;background:rgba(245,158,11,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">1</span><span>Téléverse ta vidéo (MP4, MOV, toute taille)</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px"><span style="width:28px;height:28px;background:rgba(245,158,11,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">2</span><span>Extraction audio locale (aucun upload complet)</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px"><span style="width:28px;height:28px;background:rgba(245,158,11,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">3</span><span>Transcription Whisper + détection IA des moments viraux</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px"><span style="width:28px;height:28px;background:rgba(245,158,11,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">4</span><span>Découpe + recadrage 9:16 automatique</span></div>
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--vert)"><span style="width:28px;height:28px;background:rgba(16,185,129,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px">✓</span><span><strong>10 clips prêts à publier</strong></span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <div class="cc in" style="width:110px;height:196px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0">
+            <div style="position:absolute;inset:0;background-image:url(images/clips/ad-finance.webp);background-size:cover;background-position:top center;"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.9) 35%,rgba(0,0,0,.1) 70%);"></div>
+            <div style="position:absolute;top:8px;right:8px;background:#ff0000;border-radius:4px;padding:2px 5px;font-size:9px;font-weight:700">YouTube</div>
+            <div style="position:absolute;bottom:8px;left:8px;font-size:9px;color:#aaa;font-weight:600">SCORE<br><span style="font-size:18px;color:#f0a500;font-weight:800">99</span></div>
+            <div style="position:absolute;bottom:28px;left:8px;right:8px;font-size:10px;font-weight:700;line-height:1.3;color:#fff">La vérité sur l'argent que personne ne dit</div>
+          </div>
+          <div class="cc in" style="width:110px;height:196px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0">
+            <div style="position:absolute;inset:0;background-image:url(images/clips/ad-podcast.webp);background-size:cover;background-position:top center;"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.9) 35%,rgba(0,0,0,.1) 70%);"></div>
+            <div style="position:absolute;top:8px;right:8px;background:#010101;border-radius:4px;padding:2px 5px;font-size:9px;font-weight:700">TikTok</div>
+            <div style="position:absolute;bottom:8px;left:8px;font-size:9px;color:#aaa;font-weight:600">SCORE<br><span style="font-size:18px;color:#f0a500;font-weight:800">97</span></div>
+            <div style="position:absolute;bottom:28px;left:8px;right:8px;font-size:10px;font-weight:700;line-height:1.3;color:#fff">L'erreur que font 99% des créateurs</div>
+          </div>
+          <div class="cc in" style="width:110px;height:196px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0">
+            <div style="position:absolute;inset:0;background-image:url(images/clips/ad-gaming.webp);background-size:cover;background-position:top center;"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.9) 35%,rgba(0,0,0,.1) 70%);"></div>
+            <div style="position:absolute;top:8px;right:8px;background:radial-gradient(circle at 30% 110%,#fd5 0%,#f73 30%,#f09 60%,#c13584 100%);border-radius:4px;padding:2px 5px;font-size:9px;font-weight:700">Reels</div>
+            <div style="position:absolute;bottom:8px;left:8px;font-size:9px;color:#aaa;font-weight:600">SCORE<br><span style="font-size:18px;color:#f0a500;font-weight:800">95</span></div>
+            <div style="position:absolute;bottom:28px;left:8px;right:8px;font-size:10px;font-weight:700;line-height:1.3;color:#fff">Ce que j'aurais aimé savoir plus tôt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 1 : Miniatures ── -->
+    <div class="showcase-panel" id="stab-miniature">
+      <div class="showcase-mini-intro">
+        <div class="smi-block">
+          <div class="smi-label">Miniatures générées pour @FlemonoSekai <span class="smi-badge">Manga · Tuto dessin</span></div>
+          <div class="showcase-mini-grid showcase-mini-grid-pro" style="margin-bottom:10px;">
+            <div class="showcase-mini-item">
+              <img src="images/showcase/mini-yeux-16x9.webp" alt="Miniature Yeux Réaliste 16:9" loading="lazy">
+              <div class="showcase-mini-caption">Yeux réaliste · 16:9</div>
+            </div>
+            <div class="showcase-mini-item">
+              <img src="images/showcase/mini-mains-16x9.webp" alt="Miniature Mains Manga 16:9" loading="lazy">
+              <div class="showcase-mini-caption">Mains manga · 16:9</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+            <div class="showcase-mini-item" style="aspect-ratio:9/16;">
+              <img src="images/showcase/mini-yeux-9x16.webp" alt="Miniature Short Yeux Réaliste 9:16" loading="lazy">
+              <div class="showcase-mini-caption">Yeux réaliste · Short 9:16</div>
+            </div>
+            <div class="showcase-mini-item" style="aspect-ratio:9/16;">
+              <img src="images/showcase/mini-mains-9x16.webp" alt="Miniature Short Mains 9:16" loading="lazy">
+              <div class="showcase-mini-caption">Mains manga · Short 9:16</div>
+            </div>
+          </div>
+          <span style="font-size:11px;color:var(--texte-muted);">⚡ Généré en 45s · 16:9 et Short 9:16</span>
+        </div>
+        <div class="smi-arrow">→</div>
+        <div class="smi-block">
+          <div class="smi-label">Créatis s'adapte à toutes les niches <span class="smi-badge">Plan Pro</span></div>
+          <div class="showcase-mini-grid showcase-mini-grid-pro">
+            <div class="showcase-mini-item">
+              <img src="images/showcase/argent-youtube.webp" alt="Miniature finance" loading="lazy">
+              <div class="showcase-mini-caption">Finance · cinématique</div>
+            </div>
+            <div class="showcase-mini-item">
+              <img src="images/showcase/argent-choc.webp" alt="Miniature réaction" loading="lazy">
+              <div class="showcase-mini-caption">Réaction · clickbait</div>
+            </div>
+            <div class="showcase-mini-item">
+              <img src="images/showcase/voiture.webp" alt="Miniature voiture" loading="lazy">
+              <div class="showcase-mini-caption">Lifestyle · luxe</div>
+            </div>
+            <div class="showcase-mini-item">
+              <img src="images/showcase/voyage.webp" alt="Miniature voyage" loading="lazy">
+              <div class="showcase-mini-caption">Voyage · soleil</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 2 : Analyse Vidéo ── -->
+    <div class="showcase-panel" id="stab-analyse">
+      <div class="showcase-cols">
+        <div class="showcase-input">
+          <div class="sinput-label">Vidéo analysée — données réelles</div>
+          <div class="sinput-champ"><span class="sinput-key">Vidéo</span><span class="sinput-val">Tuto dessin des dents #dessin #animeeart #drawing #art</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Vues</span><span class="sinput-val">2 616 146 — sur une chaîne de 6 660 abonnés</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Likes</span><span class="sinput-val">28 640 likes · 146 commentaires</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Format</span><span class="sinput-val">Short · 18 secondes · publiée mars 2025</span></div>
+          <div class="sinput-timer">⚡ Analysé en 19 secondes</div>
+        </div>
+        <div class="showcase-output">
+          <div class="sout-score-zone">
+            <div class="sout-score">
+              <div class="sout-score-val">91</div>
+              <div class="sout-score-label">Score global</div>
+            </div>
+            <div class="sout-score-bars">
+              <div class="sout-bar-item"><span>Vues/abonnés</span><div class="sout-bar"><div class="sout-bar-fill" style="width:96%"></div></div><span>×393</span></div>
+              <div class="sout-bar-item"><span>Taux de like</span><div class="sout-bar"><div class="sout-bar-fill" style="width:82%"></div></div><span>1,1%</span></div>
+              <div class="sout-bar-item"><span>Viralité</span><div class="sout-bar"><div class="sout-bar-fill" style="width:95%"></div></div><span>exceptionnel</span></div>
+            </div>
+          </div>
+          <div class="sout-bloc">
+            <div class="sout-titre sout-vert">Pourquoi cette vidéo a explosé</div>
+            <div class="sout-recom">Contenu ultra-concentré de 18 secondes répondant à une question très précise des débutants en dessin manga — les dents étant un détail crucial pour les portraits. La brièveté et la clarté en font un contenu extrêmement partageable. 2,6M vues sur une chaîne de 6 600 abonnés, soit un ratio ×393 : c'est une performance que 99% des créateurs n'atteignent jamais.</div>
+          </div>
+          <div class="sout-analyse-cols">
+            <div class="sout-bloc" style="flex:1">
+              <div class="sout-titre sout-vert">✅ Points forts</div>
+              <ul class="sout-analyse-list">
+                <li>Sujet ultra-spécifique — répond à une douleur précise des débutants dessin manga</li>
+                <li>Format 18s — rétention maximale, algorithme Shorts propulseur</li>
+                <li>1,1% de taux de like — bien au-dessus de la moyenne (0,4% sur les Shorts)</li>
+              </ul>
+            </div>
+            <div class="sout-bloc" style="flex:1">
+              <div class="sout-titre sout-orange">⚠️ Axes d'amélioration</div>
+              <ul class="sout-analyse-list">
+                <li>Capitaliser avec une série structurée : bouche → dents → yeux → nez → expressions</li>
+                <li>Ajouter un CTA vers l'eBook dans les 3 premières secondes de description</li>
+                <li>Créer une miniature 16:9 accrochante pour la version longue (tutoriel complet)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="sout-bloc">
+            <div class="sout-titre">💡 Prochaine vidéo recommandée par Créatis</div>
+            <div class="sout-recom">"Comment dessiner des yeux manga en 5 étapes (même si tu es nul en dessin)" — capitalise directement sur le momentum de la vidéo dents, sujet encore plus recherché, potentiel 3M+ vues estimé sur le même format Short.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 3 : YouTube Complet ── -->
+    <div class="showcase-panel" id="stab-complet">
+      <div class="showcase-cols">
+        <div class="showcase-input">
+          <div class="sinput-label">Ce que FlemoNoSekai a rempli</div>
+          <div class="sinput-champ"><span class="sinput-key">Sujet</span><span class="sinput-val">Comment dessiner un œil manga en 5 étapes (même si tu es nul en dessin)</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Chaîne</span><span class="sinput-val">FlemoNoSekai · 6 660 abonnés · tutos dessin manga</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Durée</span><span class="sinput-val">7–10 minutes</span></div>
+          <div class="sinput-timer">⚡ Généré en 28 secondes</div>
+        </div>
+        <div class="showcase-output">
+          <div class="sout-bloc">
+            <div class="sout-titre">5 titres proposés</div>
+            <ul class="sout-titres">
+              <li><span class="sout-badge">🔴</span>Dessine des yeux manga incroyables sans avoir de talent !</li>
+              <li><span class="sout-badge">📈</span>Les 5 étapes pour dessiner un œil manga parfait (tuto complet)</li>
+              <li><span class="sout-badge">✏️</span>Apprends à dessiner des yeux manga en 7 minutes — du zéro au résultat</li>
+              <li><span class="sout-badge">💡</span>Tuto dessin manga : les yeux, c'est plus facile que tu crois</li>
+              <li><span class="sout-badge">🎯</span>Crée des personnages manga avec des yeux réalistes — méthode étape par étape</li>
+            </ul>
+          </div>
+          <div class="sout-bloc">
+            <div class="sout-titre">Script — extrait</div>
+            <div class="sout-script">
+              <div class="sout-line"><span class="timecode">[00:00]</span> <strong>HOOK :</strong> "Salut les dessinateurs en herbe ! Aujourd'hui, on apprend à dessiner un œil manga en 5 étapes simples. Même si tu es débutant, tu vas réussir — promis."</div>
+              <div class="sout-line"><span class="timecode">[00:35]</span> <strong>Étape 1 :</strong> Forme de l'œil — un œil manga est en amande, coin intérieur plus pointu que la réalité. Je te montre avec un repère simple.</div>
+              <div class="sout-line"><span class="timecode">[01:20]</span> <strong>Étape 2 :</strong> Iris et pupilles — les iris manga sont plus grands que la réalité. Astuce : commence toujours par le cercle extérieur.</div>
+              <div class="sout-line"><span class="timecode">[02:30]</span> <strong>Étape 3 :</strong> Paupières — la paupière supérieure plus épaisse, légèrement courbée. C'est elle qui donne le caractère.</div>
+              <div class="sout-line"><span class="timecode">[04:00]</span> <strong>Étapes 4 &amp; 5 :</strong> Cils + ombres + highlights — les 3 détails qui font passer du "correct" au "wow".</div>
+              <div class="sout-line sout-suite">… script complet · 1 800 mots · 8 timecodes · adapté à ta niche</div>
+            </div>
+          </div>
+          <div class="sout-bloc">
+            <div class="sout-titre">Description SEO + tags</div>
+            <div class="sout-desc">Apprends à dessiner des yeux manga avec ce tuto en 5 étapes simples. Dans cette vidéo, on voit la forme en amande, les iris surdimensionnés, les paupières expressives, les cils et les highlights qui font tout. Que tu débutes ou que tu veuilles progresser, cette méthode s'applique à tous les styles manga et anime.<br><span class="sout-tags">Tags : dessin manga · tuto dessin yeux · yeux manga · comment dessiner · apprendre à dessiner · manga tutorial · dessin anime · dessin facile · tuto débutant · FlemoNoSekai…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 4 : Recyclage ── -->
+    <div class="showcase-panel" id="stab-recyclage">
+      <div class="showcase-cols">
+        <div class="showcase-input">
+          <div class="sinput-label">Une vidéo virale → 4 formats</div>
+          <div class="sinput-champ"><span class="sinput-key">Source</span><span class="sinput-val">Tuto dessin des dents — 2 616 146 vues</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Formats</span><span class="sinput-val">LinkedIn · Twitter · Instagram · Newsletter</span></div>
+          <div class="sinput-timer">⚡ Généré en 22 secondes</div>
+        </div>
+        <div class="showcase-output">
+          <div class="sout-tabs-mini">
+            <button class="stab-mini actif" onclick="recyclageTab('linkedin',this)">LinkedIn</button>
+            <button class="stab-mini" onclick="recyclageTab('twitter',this)">Twitter</button>
+            <button class="stab-mini" onclick="recyclageTab('instagram',this)">Instagram</button>
+            <button class="stab-mini" onclick="recyclageTab('newsletter',this)">Newsletter</button>
+          </div>
+          <div class="sout-recyc actif" id="recyc-linkedin">
+            <div class="sout-script" style="white-space:pre-line">6 660 abonnés. 2 600 000 vues. Une vidéo de 18 secondes.
+
+Voici ce que cette performance enseigne sur la création de contenu en 2025.
+
+La clé n'est pas la quantité. C'est la précision.
+
+Un Short de 18 secondes sur "comment dessiner des dents manga" a explosé car il répond à une question TRÈS spécifique que des milliers de débutants se posent mais ne trouvent pas.
+
+✅ Ce qui a fonctionné :
+→ Sujet ultra-précis (pas "dessiner un visage" — mais "les dents")
+→ Format court : l'algo Shorts a propulsé naturellement
+→ Clarté maximale : en 18s, la question est posée ET résolue
+
+La leçon pour tout créateur : avant de demander "quel sujet ?" — demande "quelle douleur précise ?"
+
+Ton meilleur contenu n'est pas le plus spectaculaire. C'est le plus utile.</div>
+          </div>
+          <div class="sout-recyc" id="recyc-twitter">
+            <div class="sout-script" style="white-space:pre-line">🧵 6 660 abonnés. 2 600 000 vues. Une seule vidéo de 18 secondes. Voici ce qui s'est passé :
+
+→ Le sujet : "comment dessiner des dents manga". Pas sexy. Pas viral en apparence. Mais ULTRA précis.
+
+→ L'algo YouTube Shorts a propulsé la vidéo car la rétention était maximale — les gens regardent 18 secondes jusqu'au bout. Taux de complétion proche de 100%.
+
+→ Résultat : ×393 le nombre d'abonnés en vues. La chaîne totalisait 4M de vues grâce à ce format.
+
+La leçon : le contenu qui performe n'est pas le plus grand. C'est le plus précis.
+
+Trouve la douleur spécifique de ton audience. Résous-la en moins de 30 secondes.
+
+C'est ça la vraie formule Short. 🎯</div>
+          </div>
+          <div class="sout-recyc" id="recyc-instagram">
+            <div class="sout-script" style="white-space:pre-line">2 600 000 vues avec 18 secondes et 6 600 abonnés. 🤯
+
+Le secret ?
+
+Un sujet ULTRA précis.
+Pas "comment dessiner un visage".
+Juste… les dents.
+
+Parce que les débutants cherchent exactement ça.
+Pas des généralités — des réponses concrètes à des problèmes précis.
+
+C'est la formule des Shorts qui explosent :
+→ Question précise
+→ Réponse en 20 secondes
+→ Valeur immédiate
+
+Peu importe ta niche. Cette formule marche.
+
+#dessinmanga #tutodessin #youtubeshorts #createur #flemonosekai #artmanga #conseilsyoutube</div>
+          </div>
+          <div class="sout-recyc" id="recyc-newsletter">
+            <div class="sout-script" style="white-space:pre-line">Salut,
+
+Il y a quelques semaines, j'ai publié un Short de 18 secondes sur "comment dessiner des dents manga".
+
+Je ne m'attendais à rien de particulier.
+
+Aujourd'hui : 2 616 146 vues.
+
+Ce que j'ai compris : les gens ne cherchent pas des cours complets. Ils cherchent des réponses précises à des problèmes précis. "Comment dessiner des dents" — pas "comment dessiner un visage". Cette précision-là fait toute la différence.
+
+Créatis m'a aidé à analyser pourquoi cette vidéo a performé — et à planifier la suite logique. Prochaine étape : les yeux. Même format, même précision.
+
+À la prochaine vidéo,
+Flemo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab 5 : 30 Idées ── -->
+    <div class="showcase-panel" id="stab-idees">
+      <div class="showcase-cols">
+        <div class="showcase-input">
+          <div class="sinput-label">Paramètres de ta chaîne</div>
+          <div class="sinput-champ"><span class="sinput-key">Niche</span><span class="sinput-val">Tutoriels dessin manga / anime</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Style</span><span class="sinput-val">Direct, tutoiement, exemples concrets</span></div>
+          <div class="sinput-champ"><span class="sinput-key">Audience</span><span class="sinput-val">Débutants dessin, 15-35 ans</span></div>
+          <div class="sinput-timer">⚡ 30 idées générées en 18 secondes</div>
+        </div>
+        <div class="showcase-output">
+          <div class="sout-bloc">
+            <div class="sout-titre">12 idées à fort potentiel — extrait des 30</div>
+            <div class="sout-idees">
+              <div class="sout-idee"><span class="sidee-format short">short</span><div><div class="sidee-titre">5 erreurs courantes sur les visages manga (et comment les corriger)</div><div class="sidee-accroche">Douleur précise des débutants — même format que la vidéo à 2.6M</div></div></div>
+              <div class="sout-idee"><span class="sidee-format tutoriel">tutoriel</span><div><div class="sidee-titre">Tuto dessin de cheveux manga réalistes — de la base au résultat</div><div class="sidee-accroche">Cheveux = deuxième sujet le plus cherché après les yeux</div></div></div>
+              <div class="sout-idee"><span class="sidee-format challenge">challenge</span><div><div class="sidee-titre">Dessine un personnage manga complet en 10 minutes — chrono</div><div class="sidee-accroche">Format challenge = fort taux de partage et commentaires</div></div></div>
+              <div class="sout-idee"><span class="sidee-format short">short</span><div><div class="sidee-titre">Les 3 règles de base pour des proportions correctes (Short 20s)</div><div class="sidee-accroche">Reprend la formule exacte de la vidéo virale</div></div></div>
+              <div class="sout-idee"><span class="sidee-format serie">série</span><div><div class="sidee-titre">Série complète : dessiner un visage manga de A à Z (6 épisodes)</div><div class="sidee-accroche">Fidélisation audience + abonnements boostés</div></div></div>
+              <div class="sout-idee"><span class="sidee-format tutoriel">tutoriel</span><div><div class="sidee-titre">Comment dessiner des yeux manga qui expriment des émotions</div><div class="sidee-accroche">Suite naturelle de la série dents/bouche — fort potentiel viral</div></div></div>
+              <div class="sout-idee"><span class="sidee-format short">short</span><div><div class="sidee-titre">Top 5 outils dessin numérique pour créer des mangas</div><div class="sidee-accroche">Potentiel sponsoring Procreate / Clip Studio Paint</div></div></div>
+              <div class="sout-idee"><span class="sidee-format challenge">challenge</span><div><div class="sidee-titre">Dessine un animal manga en 5 minutes — défi live</div><div class="sidee-accroche">Format fun qui attire un public plus large</div></div></div>
+              <div class="sout-idee"><span class="sidee-format tutoriel">tutoriel</span><div><div class="sidee-titre">Ombres et lumières manga — la technique qui change tout</div><div class="sidee-accroche">Progression naturelle pour les suiveurs des tutos anatomie</div></div></div>
+              <div class="sout-idee"><span class="sidee-format serie">série</span><div><div class="sidee-titre">Histoire du manga : des origines à aujourd'hui (mini-série)</div><div class="sidee-accroche">Diversification contenu + SEO long terme</div></div></div>
+              <div class="sout-idee"><span class="sidee-format tutoriel">tutoriel</span><div><div class="sidee-titre">Mains et pieds manga réalistes — la bête noire des débutants</div><div class="sidee-accroche">Douleur universelle en dessin = fort potentiel Shorts</div></div></div>
+              <div class="sout-idee"><span class="sidee-format challenge">challenge</span><div><div class="sidee-titre">Redessine ton personnage préféré — avant / après challenge</div><div class="sidee-accroche">UGC : incite l'audience à partager ses propres versions</div></div></div>
+              <div class="sout-plus">+ 18 autres idées adaptées à FlemoNoSekai →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="exemple-cta">
+      <a href="auth.html" class="btn-primaire">Générer mon contenu gratuitement →</a>
+      <p style="margin-top:12px;font-size:13px;color:var(--texte-muted)">Sans carte bancaire · Résultat en moins de 30 secondes</p>
+    </div>
+  </section>
+
+  <script>
+  function showcaseTab(id, btn) {
+    document.querySelectorAll('.showcase-panel').forEach(p => p.classList.remove('actif'));
+    document.querySelectorAll('#showcase-tabs .stab').forEach(b => b.classList.remove('actif'));
+    document.getElementById('stab-' + id).classList.add('actif');
+    btn.classList.add('actif');
+  }
+  function recyclageTab(id, btn) {
+    document.querySelectorAll('.sout-recyc').forEach(p => p.classList.remove('actif'));
+    document.querySelectorAll('.stab-mini').forEach(b => b.classList.remove('actif'));
+    document.getElementById('recyc-' + id).classList.add('actif');
+    btn.classList.add('actif');
+  }
+  </script>
+
+  <!-- ===== POURQUOI PAS CHATGPT ===== -->
+  <section class="vs-chatgpt" id="vs-chatgpt">
+    <div class="section-entete">
+      <span class="section-label">La vraie différence</span>
+      <h2>Pourquoi pas ChatGPT ?</h2>
+      <p>ChatGPT est excellent. Mais il ne sait pas qui tu es, combien d'abonnés tu as, ni quelle est ta niche.</p>
+    </div>
+
+    <div class="vs-grille">
+      <div class="vs-col vs-col-chatgpt">
+        <div class="vs-col-header">
+          <span class="vs-badge vs-badge-gris">ChatGPT / Claude</span>
+        </div>
+        <ul class="vs-liste">
+          <li class="vs-item vs-non">Tu dois écrire un prompt à chaque fois</li>
+          <li class="vs-item vs-non">Il ne connaît pas ta chaîne ni ton audience</li>
+          <li class="vs-item vs-non">Tu dois reformuler pour YouTube spécifiquement</li>
+          <li class="vs-item vs-non">Pas de miniature, pas de tags, pas de SEO</li>
+          <li class="vs-item vs-non">Pas de découpage automatique en Shorts 9:16</li>
+          <li class="vs-item vs-non">Résultat générique → à retravailler</li>
+        </ul>
+      </div>
+
+      <div class="vs-col vs-col-creatis">
+        <div class="vs-col-header">
+          <span class="vs-badge vs-badge-vert">Créatis</span>
+        </div>
+        <ul class="vs-liste">
+          <li class="vs-item vs-oui">Interface guidée — 0 prompt à écrire</li>
+          <li class="vs-item vs-oui">Connecté à ta vraie chaîne YouTube</li>
+          <li class="vs-item vs-oui">Calibré YouTube : titre, script, SEO, tags</li>
+          <li class="vs-item vs-oui">Miniature HD générée en même temps</li>
+          <li class="vs-item vs-oui">10 Clips viraux 9:16 générés automatiquement</li>
+          <li class="vs-item vs-oui">Résultat prêt à copier-coller</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="vs-conclusion">
+      <div class="vs-conclusion-inner">
+        <strong>En résumé :</strong> ChatGPT, c'est un couteau suisse. Créatis, c'est le copilote qui connaît ta chaîne, ton audience et ton objectif — et qui travaille pendant que tu filmes.
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COMMENT ÇA MARCHE ===== -->
+  <section class="comment-ca-marche" id="comment-ca-marche">
+    <div class="section-entete">
+      <span class="section-label">En 3 étapes</span>
+      <h2>Simple comme bonjour</h2>
+      <p>Pas besoin d'être expert en IA. Tu décris, Créatis génère.</p>
+    </div>
+
+    <div class="etapes">
+      <div class="etape">
+        <div class="etape-numero">01.</div>
+        <h3>Connecte ta chaîne</h3>
+        <p>Entre ton @handle YouTube, TikTok ou ton pseudo. Créatis analyse ta niche et ton style pour personnaliser tous les résultats.</p>
+        <a href="auth.html" class="etape-lien">Commencer →</a>
+      </div>
+      <div class="etape actif">
+        <div class="etape-numero">02.</div>
+        <h3>L'IA détecte les moments viraux</h3>
+        <p>Créatis analyse ta vidéo, identifie les 10 meilleurs moments à fort potentiel viral et les découpe automatiquement en 9:16.</p>
+        <a href="auth.html" class="etape-lien">Voir la démo →</a>
+      </div>
+      <div class="etape">
+        <div class="etape-numero">03.</div>
+        <h3>Télécharge tes clips prêts à publier</h3>
+        <p>Sous-titres brûlés, format 9:16, hook optimisé — prêts pour TikTok, Reels et Shorts en un clic.</p>
+        <a href="auth.html" class="etape-lien">Essayer gratuitement →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FONCTIONNALITÉS (supprimée — remplacée par carousel) ===== -->
+  <section class="fonctionnalites" id="fonctionnalites" style="display:none">
+    <div class="section-entete">
+      <span class="section-label">8 agents inclus</span>
+      <h2>Tout le workflow d'un créateur de contenu,<br>sans ouvrir ChatGPT</h2>
+      <p>Chaque outil est conçu pour une tâche précise. Pas de prompts à écrire — tu remplis un formulaire, tu obtiens un résultat exploitable.</p>
+    </div>
+
+    <div class="agents-grille" id="agents-grille">
+
+      <div class="agent-carte" style="--couleur-agent: #f59e0b">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12l2-2 2 2"/></svg></span>
+            <h3>Clips Viraux ✨</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Transforme n'importe quelle vidéo en 10 Shorts 9:16 viraux prêts à publier. Détection IA des meilleurs moments, recadrage automatique.</p>
+        <span class="agent-tag">Shorts · Reels · TikTok · 9:16</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #10b981">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+            <h3>YouTube Complet</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Génère en une fois : 5 titres accrocheurs, le script complet avec timecodes, la description SEO et 30 tags optimisés.</p>
+        <span class="agent-tag">Script · Titre · SEO · Tags</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #8b5cf6">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></span>
+            <h3>Miniature IA</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Génère une vraie image de miniature YouTube HD avec gpt-image-1. Format 16:9 classique ou Short 9:16. Style pro, accrocheur, à fort CTR.</p>
+        <span class="agent-tag">gpt-image-1 · 16:9 & Short 9:16</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #06b6d4">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>
+            <h3>Recyclage Contenu</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Transforme une vidéo en posts LinkedIn, thread Twitter/X, légende Instagram et newsletter. Un contenu, cinq formats.</p>
+        <span class="agent-tag">LinkedIn · Twitter · Newsletter</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #10b981">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></span>
+            <h3>Idées de Vidéos</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>30 idées personnalisées et un calendrier éditorial 4 semaines, basés sur ta niche et les tendances actuelles.</p>
+        <span class="agent-tag">30 idées · Calendrier éditorial</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #ec4899">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <h3>Réponses Commentaires</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Répond automatiquement à tes commentaires YouTube — positifs, négatifs, questions — avec le bon ton et la stratégie communauté.</p>
+        <span class="agent-tag">Engagement · Communauté</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #14b8a6">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+            <h3>Analyse Vidéo</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Décortique n'importe quelle vidéo YouTube — structure, hooks, points forts, pistes d'amélioration et inspirations pour ta prochaine vidéo.</p>
+        <span class="agent-tag">Diagnostic · Hooks · Optimisation</span>
+      </div>
+
+      <div class="agent-carte" style="--couleur-agent: #6366f1">
+        <div class="agent-carte-header">
+          <div class="agent-carte-header-left">
+            <span class="agent-icone"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg></span>
+            <h3>Chat IA Libre</h3>
+          </div>
+          <span class="agent-carte-chevron">+</span>
+        </div>
+        <p>Pose n'importe quelle question sur ta chaîne, ta stratégie ou ton contenu. Un assistant conversationnel au courant de tout ton univers.</p>
+        <span class="agent-tag">Conversation · Stratégie · Conseils</span>
+      </div>
+
+    </div>
+  </section>
+
+
+  </section>
+
+  <!-- ===== TARIFS ===== -->
+  <!-- ===== BANNIÈRE COUNTDOWN CREATIS20 ===== -->
+  <div class="early-banner" id="early-banner">
+    <div class="early-banner-inner">
+      <span>🎁 Offre de lancement — <strong>-50% le 1er mois</strong> · Limité dans le temps ·</span>
+      <span class="early-countdown" id="early-countdown">⏳ expire dans <strong id="early-temps">47:59:59</strong></span>
+      <button class="early-fermer" onclick="document.getElementById('early-banner').style.display='none'">✕</button>
+    </div>
+  </div>
+
+  <section class="tarifs" id="tarifs">
+    <div class="section-entete">
+      <span class="section-label">Tarifs</span>
+      <h2>Tes concurrents utilisent déjà l'IA.<br><span class="surligne">Et toi ?</span></h2>
+      <p>Commence gratuitement. Passe au Pro quand tu es prêt à scaler.</p>
+    </div>
+
+    <!-- Toggle mensuel/annuel -->
+    <div class="tarifs-toggle-wrap">
+      <span class="toggle-label" id="toggle-label-mens">Mensuel</span>
+      <button class="toggle-switch" id="toggle-facturation" onclick="toggleFacturation()" aria-label="Toggle annuel/mensuel">
+        <span class="toggle-thumb" id="toggle-thumb"></span>
+      </button>
+      <span class="toggle-label" id="toggle-label-ann">Annuel <span class="badge-promo">-20%</span></span>
+    </div>
+
+    <div class="tarifs-grille">
+
+      <!-- Gratuit -->
+      <div class="carte-tarif">
+        <h3>Gratuit</h3>
+        <div class="prix">
+          <span class="prix-montant gratuit">0€</span>
+          <span class="prix-periode">pour toujours</span>
+        </div>
+        <p class="carte-tarif-desc">Pour découvrir Créatis et générer ton premier clip viral.</p>
+        <div class="tarif-garanties">
+          <span>✓ Sans carte bancaire</span>
+          <span>✓ Accès immédiat</span>
+        </div>
+        <ul class="fonctionnalites-liste">
+          <li><span class="check">✓</span> <strong>1 clip viral</strong> gratuit, sans CB</li>
+          <li><span class="check">✓</span> Sous-titres automatiques brûlés</li>
+          <li><span class="check">✓</span> Format 9:16 prêt TikTok / Reels / Shorts</li>
+          <li><span class="check">✓</span> Détection IA des moments viraux</li>
+          <li><span class="croix">✗</span> Clips illimités</li>
+          <li><span class="croix">✗</span> Miniatures HD, Script, Titres, Idées…</li>
+          <li><span class="croix">✗</span> Tous les outils créateur Pro</li>
+        </ul>
+        <a href="auth.html" class="btn-secondaire w-100 texte-centre">Commencer gratuitement</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="carte-tarif populaire">
+        <span class="badge-populaire" style="background:#f59e0b;color:#000">-50% le 1er mois</span>
+        <h3>Pro</h3>
+        <div class="prix">
+          <span class="prix-devise">€</span>
+          <span class="prix-montant" id="prix-pro">9,90</span>
+          <span class="prix-periode">le 1er mois</span>
+        </div>
+        <p style="font-size:12px;color:var(--texte-muted);margin:-8px 0 12px">puis <span id="prix-pro-normal">19,90€</span><span id="prix-pro-normal-periode">/mois</span> · résiliable à tout moment</p>
+        <p class="carte-tarif-desc">Pour les créateurs sérieux qui veulent scaler leur contenu.</p>
+        <div class="tarif-garanties">
+          <span>✓ Essai 7 jours</span>
+          <span>✓ Sans CB requise</span>
+          <span>✓ Garantie 30 jours</span>
+        </div>
+        <ul class="fonctionnalites-liste">
+          <li><span class="check">✓</span> Clips Viraux <strong>illimités</strong></li>
+          <li><span class="check">✓</span> Script, titres, miniatures, idées IA</li>
+          <li><span class="check">✓</span> <strong>Tous les outils créateur</strong> débloqués</li>
+          <li><span class="check">✓</span> <strong>30 crédits image</strong> / mois</li>
+          <li><span class="check">✓</span> Recyclage multiplateforme</li>
+          <li><span class="check">✓</span> Support prioritaire</li>
+        </ul>
+        <div id="launch50-block" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:8px;padding:8px 12px;margin-bottom:10px;text-align:center;font-size:12px;color:#f59e0b;">
+          🎁 <strong>-50% le 1er mois</strong> · Offre de lancement limitée
+        </div>
+        <a href="auth.html?plan=pro" class="btn-primaire w-100 texte-centre">Démarrer le Pro →</a>
+      </div>
+
+      <!-- Studio -->
+      <div class="carte-tarif" style="opacity:0.6;position:relative;">
+        <span class="badge-populaire" style="background:#6b7280;color:#fff;top:16px;right:16px;left:auto;">Bientôt disponible</span>
+        <h3>Studio</h3>
+        <div class="prix">
+          <span class="prix-devise">€</span>
+          <span class="prix-montant" id="prix-studio">49</span>
+          <span class="prix-periode">par mois</span>
+        </div>
+        <p class="carte-tarif-desc">Pour les agences et créateurs qui gèrent 2-3 chaînes YouTube.</p>
+        <ul class="fonctionnalites-liste">
+          <li><span class="check">✓</span> Clips Viraux + tous outils <strong>illimités</strong></li>
+          <li><span class="check">✓</span> Tous les outils créateur débloqués</li>
+          <li><span class="check">✓</span> <strong>100 crédits image</strong> / mois</li>
+          <li><span class="check">✓</span> <strong>3 chaînes YouTube</strong> indépendantes</li>
+          <li><span class="check">✓</span> Recyclage multiplateforme</li>
+          <li><span class="check">✓</span> Support dédié par email</li>
+        </ul>
+        <button disabled class="btn-secondaire w-100 texte-centre" style="cursor:not-allowed;opacity:0.5;">Coming Soon</button>
+      </div>
+
+    </div>
+
+    <!-- Tableau comparatif -->
+    <div class="tarifs-comparatif">
+      <h4 class="comparatif-titre">Comparaison détaillée</h4>
+      <div class="comparatif-scroll">
+        <table class="comparatif-table">
+          <thead>
+            <tr>
+              <th>Fonctionnalité</th>
+              <th>Gratuit</th>
+              <th class="col-populaire">Pro ⭐</th>
+              <th>Studio <span style="display:inline-block;background:#374151;color:#9ca3af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;vertical-align:middle;letter-spacing:.04em">Bientôt</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Clips Viraux</td><td>1 essai</td><td class="col-populaire">Illimités</td><td>Illimités</td></tr>
+            <tr><td>Outils créateur (script, titres, idées…)</td><td>—</td><td class="col-populaire">✅ Tous</td><td>✅ Tous</td></tr>
+            <tr><td>Générations IA totales</td><td>1 gratuite</td><td class="col-populaire">50/mois</td><td>Illimitées</td></tr>
+            <tr><td>Miniatures HD / mois</td><td>5</td><td class="col-populaire">30</td><td>100</td></tr>
+            <tr><td>Connexion YouTube</td><td>✅</td><td class="col-populaire">✅</td><td>✅</td></tr>
+            <tr><td>Recyclage contenu</td><td>—</td><td class="col-populaire">✅</td><td>✅</td></tr>
+            <tr><td>Nombre de chaînes</td><td>1</td><td class="col-populaire">1</td><td>3</td></tr>
+            <tr><td>Support</td><td>—</td><td class="col-populaire">Prioritaire</td><td>Dédié</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ===== OUTILS GRATUITS SEO ===== -->
+  <section style="padding:80px 24px;background:var(--bg)">
+    <div style="max-width:1100px;margin:0 auto">
+      <div class="section-entete" style="text-align:center;margin-bottom:40px">
+        <span class="section-label">Inclus dans le plan gratuit</span>
+        <h2 style="font-size:clamp(24px,4vw,36px);margin-top:12px">Commence gratuitement dès maintenant</h2>
+        <p style="color:var(--texte-doux);margin-top:12px;max-width:520px;margin-left:auto;margin-right:auto">1 génération gratuite pour découvrir — sans carte bancaire, sans engagement.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+        <a href="auth.html" style="text-decoration:none;display:block;background:var(--bg-card);border:1px solid rgba(245,158,11,.4);border-radius:var(--radius-lg);padding:28px;transition:border-color 0.2s" onmouseover="this.style.borderColor='#f59e0b'" onmouseout="this.style.borderColor='rgba(245,158,11,.4)'">
+          <div style="width:44px;height:44px;background:rgba(245,158,11,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px">✂️</div>
+          <h3 style="font-size:16px;margin-bottom:8px;color:var(--texte)">Clips Viraux <span style="font-size:11px;background:rgba(245,158,11,.2);color:#f59e0b;border-radius:4px;padding:2px 6px;margin-left:4px">1 essai gratuit</span></h3>
+          <p style="font-size:14px;color:var(--texte-doux);line-height:1.6;margin-bottom:16px">Téléverse ta vidéo — l'IA détecte les 10 meilleurs moments et génère des Shorts 9:16 prêts à publier.</p>
+          <span style="font-size:13px;color:#f59e0b;font-weight:600">Essayer maintenant →</span>
+        </a>
+        <a href="auth.html" style="text-decoration:none;display:block;background:var(--bg-card);border:1px solid var(--bordure);border-radius:var(--radius-lg);padding:28px;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+          <div style="width:44px;height:44px;background:rgba(16,185,129,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px">🎬</div>
+          <h3 style="font-size:16px;margin-bottom:8px;color:var(--texte)">YouTube Complet</h3>
+          <p style="font-size:14px;color:var(--texte-doux);line-height:1.6;margin-bottom:16px">Titres accrocheurs, script complet avec timecodes, description SEO et 30 tags — en une génération.</p>
+          <span style="font-size:13px;color:var(--vert);font-weight:600">Essayer gratuitement →</span>
+        </a>
+        <a href="auth.html" style="text-decoration:none;display:block;background:var(--bg-card);border:1px solid var(--bordure);border-radius:var(--radius-lg);padding:28px;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+          <div style="width:44px;height:44px;background:rgba(16,185,129,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px">💡</div>
+          <h3 style="font-size:16px;margin-bottom:8px;color:var(--texte)">Idées de Vidéos</h3>
+          <p style="font-size:14px;color:var(--texte-doux);line-height:1.6;margin-bottom:16px">30 idées personnalisées + calendrier éditorial 4 semaines basés sur ta niche et les tendances.</p>
+          <span style="font-size:13px;color:var(--vert);font-weight:600">Essayer gratuitement →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SECTION AFFILIATION ===== -->
+  <section style="background:#0a0f0a;padding:72px 24px;text-align:center;border-top:1px solid #1a2a1a">
+    <div style="max-width:520px;margin:0 auto">
+      <div style="display:inline-block;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:20px;padding:5px 14px;font-size:12px;color:#10b981;margin-bottom:20px;letter-spacing:0.3px">Programme Affilié</div>
+      <h2 style="font-size:clamp(24px,4vw,36px);font-weight:800;margin:0 0 14px;line-height:1.2;color:#fff">Recommande Créatis.<br><span style="color:#10b981">Gagne une commission à vie.</span></h2>
+      <p style="font-size:15px;color:#555;margin:0 0 32px;line-height:1.6">Partage ton lien affilié. Pour chaque abonné Pro actif, tu touches une commission récurrente — sans limite de durée.</p>
+      <a href="/affiliation" style="display:inline-block;background:#10b981;color:#000;padding:13px 32px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none">Obtenir mon lien affilié →</a>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-conteneur">
+      <div class="footer-haut">
+        <div>
+          <a href="index.html" class="logo">Créatis<span class="logo-point">.</span></a>
+          <p class="footer-desc">
+            La plateforme IA pour créateurs YouTube.
+            Génère du contenu professionnel en quelques secondes.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+            <li><a href="#tarifs">Tarifs</a></li>
+            <li><a href="app.html">Application</a></li>
+            <li><a href="#comment-ca-marche">Comment ça marche</a></li>
+            <li><a href="/affiliation">Programme affilié 30%</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Agents IA</h4>
+          <ul>
+            <li><a href="app.html">YouTube Complet</a></li>
+            <li><a href="app.html">Miniature IA</a></li>
+            <li><a href="app.html">YouTube Short</a></li>
+            <li><a href="app.html">Prospection Sponsors</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Légal</h4>
+          <ul>
+            <li><a href="mentions-legales.html">Mentions légales</a></li>
+            <li><a href="cgu.html">CGU</a></li>
+            <li><a href="confidentialite.html">Politique de confidentialité</a></li>
+            <li><a href="mailto:contact@creatis.app">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bas">
+        <p>© 2025 Créatis · <a href="cgu.html">CGU</a> · <a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Politique de confidentialité</a> · <a href="mailto:contact@creatis.app">contact@creatis.app</a></p>
+        <p>Fait avec ❤️ pour les créateurs de contenu</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== TOAST ===== -->
+  <div class="toast-conteneur" id="toast-conteneur"></div>
+
+  <!-- ===== SCRIPTS PRICING ===== -->
+  <script>
+    let annuel = false;
+    const prixMens = { pro: 19, studio: 49 };
+    const prixAnn  = { pro: 15, studio: 39 };
+    document.addEventListener('DOMContentLoaded', toggleFacturation);
+
+    function toggleFacturation() {
+      annuel = !annuel;
+      const thumb = document.getElementById('toggle-thumb');
+      const labelMens = document.getElementById('toggle-label-mens');
+      const labelAnn = document.getElementById('toggle-label-ann');
+      if (thumb) thumb.style.transform = annuel ? 'translateX(22px)' : '';
+      if (labelMens) labelMens.style.color = annuel ? 'var(--texte-muted)' : 'var(--texte)';
+      if (labelAnn) labelAnn.style.color = annuel ? 'var(--texte)' : 'var(--texte-muted)';
+
+      // Pro
+      const elPro = document.getElementById('prix-pro');
+      const elProNormal = document.getElementById('prix-pro-normal');
+      const elProSub = elProNormal ? elProNormal.closest('p') : null;
+      const elProPeriode = elPro ? elPro.closest('.prix').querySelector('.prix-periode') : null;
+      if (elPro) elPro.textContent = annuel ? '7,90' : '9,90';
+      if (elProPeriode) elProPeriode.textContent = 'le 1er mois';
+      if (elProNormal) elProNormal.textContent = annuel ? '15,90€' : '19,90€';
+      const elProNormalPeriode = document.getElementById('prix-pro-normal-periode');
+      if (elProNormalPeriode) elProNormalPeriode.textContent = annuel ? '/mois, facturé annuellement' : '/mois';
+      if (elProSub) elProSub.style.display = '';
+
+      // Label CREATIS50
+      const elLaunch = document.getElementById('launch50-label');
+      if (elLaunch) elLaunch.textContent = '-50% sur le 1er mois';
+
+      // Studio
+      const elStudio = document.getElementById('prix-studio');
+      const elStudioPeriode = elStudio ? elStudio.closest('.prix').querySelector('.prix-periode') : null;
+      if (elStudio) elStudio.textContent = annuel ? prixAnn.studio : prixMens.studio;
+      if (elStudioPeriode) elStudioPeriode.textContent = annuel ? 'par mois, facturé annuellement' : 'par mois';
+
+      document.querySelectorAll('[href*="plan="]').forEach(a => {
+        const planMatch = a.href.match(/plan=(\w+)/);
+        if (planMatch) a.href = `auth.html?plan=${planMatch[1]}` + (annuel ? '&billing=annual' : '');
+      });
+    }
+
+    // Countdown CREATIS20 — 48h depuis première visite
+    (function() {
+      let deadline = localStorage.getItem('creatis_early20_deadline');
+      if (!deadline) {
+        deadline = Date.now() + 48 * 3600 * 1000;
+        localStorage.setItem('creatis_early20_deadline', deadline);
+      }
+      deadline = parseInt(deadline);
+
+      function tick() {
+        const diff = deadline - Date.now();
+        if (diff <= 0) {
+          const banner = document.getElementById('early-banner');
+          if (banner) banner.style.display = 'none';
+          return;
+        }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        const el = document.getElementById('early-temps');
+        if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+
+  <!-- ===== BANDEAU COOKIES RGPD ===== -->
+  <div id="bandeau-cookies" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--bg-card);border-top:1px solid var(--bordure);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <p style="margin:0;font-size:12px;color:var(--texte-doux);flex:1;min-width:0;">
+      Cookies fonctionnels uniquement — <a href="confidentialite.html" style="color:var(--vert);">En savoir plus</a>
+    </p>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button onclick="accepterCookies()" class="btn-primaire btn-sm" style="padding:5px 12px;font-size:12px;">Accepter</button>
+      <button onclick="refuserCookies()" class="btn-ghost btn-sm" style="padding:5px 12px;font-size:12px;">Refuser</button>
+    </div>
+  </div>
+
+  <script>
+    // Bandeau cookies RGPD
+    (function() {
+      const choix = localStorage.getItem('creatis_cookies');
+      if (!choix) {
+        document.getElementById('bandeau-cookies').style.display = 'flex';
+      }
+    })();
+
+    function accepterCookies() {
+      localStorage.setItem('creatis_cookies', 'accepte');
+      document.getElementById('bandeau-cookies').style.display = 'none';
+    }
+
+    function refuserCookies() {
+      localStorage.setItem('creatis_cookies', 'refuse');
+      document.getElementById('bandeau-cookies').style.display = 'none';
+    }
+  </script>
+
+  <script>
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+      const navbar = document.getElementById('navbar');
+      if (!navbar) return;
+      if (window.scrollY > 50) navbar.classList.add('defilé');
+      else navbar.classList.remove('defilé');
+    });
+
+    // Menu burger
+    function toggleMenu() {
+      const overlay = document.getElementById('nav-mobile-overlay');
+      const burger = document.getElementById('nav-burger');
+      const isOpen = overlay.classList.toggle('ouvert');
+      burger.textContent = isOpen ? '✕' : '☰';
+    }
+
+    function fermerMenu() {
+      document.getElementById('nav-mobile-overlay').classList.remove('ouvert');
+      document.getElementById('nav-burger').textContent = '☰';
+    }
+  </script>
+  <script defer src="js/animations.js"></script>
+
+  <!-- ===== ACCORDÉON AGENTS MOBILE ===== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const bandeau = document.getElementById('bandeau-lancement');
+      const navbar = document.getElementById('navbar');
+      if (bandeau && navbar) {
+        const h = bandeau.offsetHeight;
+        navbar.style.top = h + 'px';
+        window.addEventListener('scroll', function() {
+          if (window.scrollY > h) navbar.style.top = '0';
+          else navbar.style.top = (h - window.scrollY) + 'px';
+        });
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      function initAccordeon() {
+        if (window.innerWidth > 768) return;
+        document.querySelectorAll('#agents-grille .agent-carte').forEach(function(carte) {
+          carte.addEventListener('click', function() {
+            const ouvert = this.classList.contains('ouvert');
+            document.querySelectorAll('#agents-grille .agent-carte').forEach(function(c) {
+              c.classList.remove('ouvert');
+              const ch = c.querySelector('.agent-carte-chevron');
+              if (ch) ch.textContent = '+';
+            });
+            if (!ouvert) {
+              this.classList.add('ouvert');
+              const ch = this.querySelector('.agent-carte-chevron');
+              if (ch) ch.textContent = '×';
+            }
+          });
+        });
+      }
+      initAccordeon();
+    });
+  </script>
+
+  <!-- ===== LIGHTBOX MINIATURES ===== -->
+  <div id="lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 8px 48px rgba(0,0,0,.8)">
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.showcase-mini-item img, .mockup-carte img').forEach(function(img) {
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const lb = document.getElementById('lightbox');
+          document.getElementById('lightbox-img').src = this.src;
+          lb.style.display = 'flex';
+        });
+      });
+    });
+  </script>
+
+  <script>
+    // Stocker le ?ref= pour le parrainage
+    (function() {
+      const urlRef = new URLSearchParams(window.location.search).get('ref');
+      if (urlRef) localStorage.setItem('creatis_ref', urlRef);
+    })();
+  </script>
+
+  <script>
+  /* ===== DÉMO ANIMÉE ===== */
+  (function () {
+    const SUBJECT = 'Comment dessiner les yeux réalistes';
+
+    const SHORT_PARTS = [
+      { type: 'h', text: 'Accroches virales' },
+      { type: 'title', text: '"T\'as essayé les yeux manga et ça ressemble à... rien ?"' },
+      { type: 'title', text: '"Le secret de l\'éclat manga que 90% des débutants ignorent"' },
+      { type: 'h', text: 'Script · 45 secondes', mt: true },
+      { type: 'line', ts: '[0:00]', text: '"T\'as déjà essayé les yeux manga et le résultat te déçoit toujours ?"' },
+      { type: 'line', ts: '[0:08]', text: 'Étape 1 : l\'amande — traits fins, légèrement inclinés vers l\'extérieur' },
+      { type: 'line', ts: '[0:18]', text: 'Étape 2 : pupille en ovale, bien plus grande qu\'un œil réel' },
+      { type: 'line', ts: '[0:28]', text: 'Étape 3 : le highlight blanc — c\'est ça qui donne l\'éclat manga' },
+      { type: 'line', ts: '[0:38]', text: '"Abonne-toi pour le tuto complet avec ombres et couleurs !"' },
+      { type: 'h', text: 'Tags SEO', mt: true },
+      { type: 'title', text: '#dessinmanga · #tutomanga · #yeux · #manga · #drawing · #anime' },
+    ];
+
+    const $ = id => document.getElementById(id);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    function typeText(el, text, speed) {
+      return new Promise(resolve => {
+        let i = 0;
+        (function step() {
+          el.textContent = text.slice(0, i++);
+          if (i <= text.length) setTimeout(step, speed);
+          else resolve();
+        })();
+      });
+    }
+
+    function animProgress(fill, ms) {
+      return new Promise(resolve => {
+        const t0 = performance.now();
+        (function step(now) {
+          const p = Math.min(100, ((now - t0) / ms) * 100);
+          fill.style.width = p + '%';
+          p < 100 ? requestAnimationFrame(step) : resolve();
+        })(t0);
+      });
+    }
+
+    async function buildParts(body, parts) {
+      body.innerHTML = '';
+      for (const part of parts) {
+        await sleep(150);
+        if (part.type === 'h') {
+          const el = document.createElement('p');
+          el.className = 'dr-h' + (part.mt ? ' mt' : '');
+          el.textContent = part.text;
+          body.appendChild(el);
+        } else if (part.type === 'title') {
+          const el = document.createElement('div');
+          el.className = 'dr-title';
+          el.textContent = part.text;
+          body.appendChild(el);
+          await sleep(10); el.classList.add('show');
+        } else if (part.type === 'line') {
+          const el = document.createElement('div');
+          el.className = 'dr-line';
+          el.innerHTML = `<span class="dr-ts">${part.ts}</span><span>${part.text}</span>`;
+          body.appendChild(el);
+          await sleep(10); el.classList.add('show');
+        }
+        body.scrollTop = body.scrollHeight;
+      }
+    }
+
+    function setNavActive(id) {
+      document.querySelectorAll('.demo-nav-btn').forEach(b => b.classList.remove('demo-nav-actif'));
+      const btn = $(id);
+      if (btn) btn.classList.add('demo-nav-actif');
+    }
+
+    function setHeader(icon, title) {
+      const i = $('demo-ws-icon'), t = $('demo-ws-title');
+      if (i) i.textContent = icon;
+      if (t) t.textContent = title;
+    }
+
+    function resetPanels() {
+      const fp = document.querySelector('.demo-form-panel');
+      const rp = $('demo-result-panel');
+      if (fp) fp.innerHTML = `
+        <div class="demo-form-field">
+          <label>Sujet de la vidéo *</label>
+          <div class="demo-input-wrap"><span id="dfi-sujet"></span><span class="demo-cursor" id="demo-cursor">|</span></div>
+        </div>
+        <div class="demo-form-field">
+          <label>Niche / Thématique</label>
+          <div class="demo-input-wrap demo-input-pre">Manga · Tuto dessin</div>
+        </div>
+        <div class="demo-form-field">
+          <label>Format</label>
+          <div class="demo-input-wrap demo-input-pre">Short viral — 30 à 60 secondes</div>
+        </div>
+        <button class="demo-btn-gen" id="demo-btn-gen">✨ Générer avec l'IA</button>
+        <div class="demo-progress-wrap" id="demo-progress-wrap">
+          <div class="demo-progress-track"><div class="demo-progress-fill" id="demo-progress-fill"></div></div>
+          <span class="demo-progress-lbl">Génération en cours…</span>
+        </div>`;
+      if (rp) {
+        rp.innerHTML = `
+          <div class="demo-result-header">
+            <span>Résultat · YouTube Short</span>
+            <span class="demo-result-time" id="demo-result-time"></span>
+          </div>
+          <div class="demo-result-body" id="demo-result-body"></div>`;
+        rp.classList.remove('visible');
+        rp.style.opacity = '0';
+      }
+    }
+
+    async function phaseShort() {
+      setNavActive('dna-short');
+      setHeader('⚡', 'YouTube Short');
+      resetPanels();
+      await sleep(50);
+
+      const subjEl = $('dfi-sujet'), cursor = $('demo-cursor');
+      const btn = $('demo-btn-gen'), pw = $('demo-progress-wrap');
+      const fill = $('demo-progress-fill'), rp = $('demo-result-panel');
+      const rb = $('demo-result-body'), rt = $('demo-result-time');
+
+      await sleep(600);
+      await typeText(subjEl, SUBJECT, 48);
+      await sleep(500);
+
+      cursor.style.display = 'none';
+      btn.classList.add('clicking');
+      await sleep(180); btn.classList.remove('clicking');
+
+      pw.classList.add('visible');
+      await animProgress(fill, 1600);
+      await sleep(200);
+      pw.classList.remove('visible'); fill.style.width = '0%';
+
+      rt.textContent = '⚡ 2.9s';
+      rp.style.opacity = '1'; rp.classList.add('visible');
+      await buildParts(rb, SHORT_PARTS);
+      await sleep(3500);
+    }
+
+    async function phaseMini() {
+      setNavActive('dna-mini');
+      setHeader('🖼️', 'Miniature Pro');
+
+      // Swap form content
+      const fp = document.querySelector('.demo-form-panel');
+      const rp = $('demo-result-panel');
+      if (rp) { rp.classList.remove('visible'); rp.style.opacity = '0'; rp.innerHTML = ''; }
+
+      fp.innerHTML = `
+        <div class="demo-form-field">
+          <label>Sujet de la vidéo *</label>
+          <div class="demo-input-wrap demo-input-pre">Comment dessiner les yeux manga</div>
+        </div>
+        <div class="demo-form-field">
+          <label>Style visuel</label>
+          <div class="demo-input-wrap"><span id="dfi-style"></span><span class="demo-cursor" id="demo-cursor-m">|</span></div>
+        </div>
+        <div class="demo-form-field">
+          <label>Format</label>
+          <div class="demo-input-wrap demo-input-pre">YouTube Standard — 16:9</div>
+        </div>
+        <button class="demo-btn-gen" id="demo-btn-mini">✨ Générer la miniature</button>
+        <div class="demo-progress-wrap" id="demo-pw-mini">
+          <div class="demo-progress-track"><div class="demo-progress-fill" id="demo-pf-mini"></div></div>
+          <span class="demo-progress-lbl">Génération image en cours… (gpt-image-1)</span>
+        </div>`;
+
+      if (rp) rp.innerHTML = `
+        <div class="demo-result-header">
+          <span>Résultat · Miniature Pro</span>
+          <span class="demo-result-time" id="demo-rt-mini"></span>
+        </div>
+        <div id="demo-mini-body" style="padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;">
+          <img id="demo-mini-img" src="images/showcase/mini-yeux-16x9.webp"
+            style="width:100%;border-radius:8px;border:1px solid #1e2e1e;opacity:0;transition:opacity .9s;">
+          <div style="font-size:11px;color:#555;text-align:center;">1280×720px · éditeur de texte intégré</div>
+          <button style="padding:8px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:default;opacity:0;transition:opacity .5s;" id="demo-dl-btn">⬇️ Télécharger 1280×720</button>
+        </div>`;
+
+      await sleep(600);
+
+      const styleEl = $('dfi-style'), cursorM = $('demo-cursor-m');
+      const btnM = $('demo-btn-mini'), pwM = $('demo-pw-mini');
+      const fillM = $('demo-pf-mini');
+
+      await typeText(styleEl, 'Crayon + encre, gros plan, fond blanc épuré', 45);
+      await sleep(500);
+
+      cursorM.style.display = 'none';
+      btnM.classList.add('clicking');
+      await sleep(180); btnM.classList.remove('clicking');
+
+      pwM.classList.add('visible');
+      await animProgress(fillM, 2200);
+      await sleep(200);
+      pwM.classList.remove('visible'); fillM.style.width = '0%';
+
+      const rt = $('demo-rt-mini');
+      if (rt) rt.textContent = '⚡ 5.1s';
+      rp.style.opacity = '1'; rp.classList.add('visible');
+
+      await sleep(100);
+      const img = $('demo-mini-img');
+      if (img) img.style.opacity = '1';
+      await sleep(900);
+      const dlBtn = $('demo-dl-btn');
+      if (dlBtn) dlBtn.style.opacity = '1';
+
+      await sleep(4000);
+    }
+
+    async function runDemo() {
+      if (!document.querySelector('.demo-section')) return;
+      await phaseShort();
+      await sleep(400);
+      await phaseMini();
+      await sleep(400);
+      runDemo();
+    }
+
+    const section = document.querySelector('.demo-section');
+    if (section && 'IntersectionObserver' in window) {
+      let started = false;
+      new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && !started) { started = true; runDemo(); }
+      }, { threshold: 0.2 }).observe(section);
+    } else if (section) {
+      runDemo();
+    }
+  })();
+  </script>
+  <!-- ===== STICKY CTA MOBILE ===== -->
+  <div id="sticky-mobile-cta" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:linear-gradient(to top,#0a0f0a 60%,transparent);padding:16px 20px 24px;text-align:center">
+    <a href="auth.html" style="display:block;background:var(--vert);color:#000;font-weight:800;font-size:15px;padding:14px 20px;border-radius:10px;text-decoration:none">
+      Générer mon premier script — Gratuit →
+    </a>
+  </div>
+  <script>
+    // Afficher le sticky CTA mobile uniquement sur mobile après 3 secondes
+    if (window.innerWidth < 768) {
+      setTimeout(() => {
+        const el = document.getElementById('sticky-mobile-cta');
+        if (el) el.style.display = 'block';
+      }, 3000);
+      // Cacher si l'utilisateur clique sur le CTA principal
+      document.querySelectorAll('a[href="auth.html"]').forEach(a => {
+        a.addEventListener('click', () => {
+          const el = document.getElementById('sticky-mobile-cta');
+          if (el) el.style.display = 'none';
+        });
+      });
+    }
+  </script>
+
+  <script>
+    // Hero slider
+    (function() {
+      const heroSlides = document.querySelectorAll('.hero-slide');
+      const heroDots = document.querySelectorAll('.hero-dot');
+      if (!heroSlides.length) return;
+      let heroIdx = 0;
+      function heroSlide(n) {
+        if (heroSlides[heroIdx]) heroSlides[heroIdx].classList.remove('actif');
+        if (heroDots[heroIdx]) heroDots[heroIdx].classList.remove('actif');
+        heroIdx = n;
+        if (heroSlides[heroIdx]) heroSlides[heroIdx].classList.add('actif');
+        if (heroDots[heroIdx]) heroDots[heroIdx].classList.add('actif');
+      }
+      window.heroSlide = heroSlide;
+      setInterval(() => heroSlide((heroIdx + 1) % heroSlides.length), 4000);
+    })();
+  </script>
+<script>
+/* ── AGENTS DEMO ── */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+async function tp(el,txt,spd=40){el.value='';el.classList.add('on');for(let c of txt){el.value+=c;await sl(spd+Math.random()*18);}el.classList.remove('on');}
+function sv(el,v){el.value=v;el.classList.add('on');}
+const ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+
+const AGENTS=[
+  {id:'idees',lbl:'Idées de Vidéos',navId:'ad-n-idees'},
+  {id:'yt',lbl:'YouTube Complet',navId:'ad-n-yt'},
+  {id:'cmt',lbl:'Réponses Comm.',navId:'ad-n-cmt'},
+  {id:'rec',lbl:'Recyclage',navId:'ad-n-rec'},
+  {id:'mini',lbl:'Miniature Pro',navId:'ad-n-mini'},
+  {id:'chat',lbl:'Assistant IA',navId:'ad-n-chat'},
+];
+
+// Injecter les onglets (navigation via mct-tabs, ad-tabs optionnel)
+const tabsEl=document.querySelector('.ad-tabs');
+if(tabsEl)AGENTS.forEach(a=>{
+  const b=document.createElement('button');
+  b.className='ad-tab'+(a.id==='idees'?' on':'');
+  b.textContent=a.lbl;b.dataset.agent=a.id;
+  b.onclick=()=>adGo(a.id);
+  tabsEl.appendChild(b);
+});
+
+// Injection lazy — exécutée seulement quand le carousel entre en vue
+let _panelsReady=false;
+function _doInjectPanels(){
+  if(_panelsReady)return;_panelsReady=true;
+  const _ws0=document.getElementById('ad-ws-idees');
+if(_ws0){_ws0.innerHTML=`
+<!-- IDÉES -->
+<div class="ad-panel on" id="ad-p-idees">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg></div><div><div class="ad-hdr-t">Idées de Vidéos</div><div class="ad-hdr-d">30 idées personnalisées basées sur ta niche</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Ta niche *</div><input class="ad-inp" id="ad-i-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Format *</div><select class="ad-sel" id="ad-i-fmt"><option value="">Sélectionner…</option><option>Listes / Top 10</option><option>Tutoriels / How-to</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Objectif *</div><select class="ad-sel" id="ad-i-obj"><option value="">Sélectionner…</option><option>Gagner des abonnés rapidement</option><option>Augmenter les revenus</option></select></div>
+    <button class="ad-btn" id="ad-i-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-i-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-i-res"><div class="ad-thk" id="ad-i-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération de 30 idées…</span></div><div id="ad-i-list"></div></div></div></div>
+</div>
+<!-- YT COMPLET -->
+<div class="ad-panel" id="ad-p-yt">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div><div class="ad-hdr-t">YouTube Complet</div><div class="ad-hdr-d">Titres, script, description SEO et tags</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Sujet *</div><input class="ad-inp" id="ad-y-sujet" type="text" placeholder="ex : Investir 1000€ en bourse" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Niche *</div><input class="ad-inp" id="ad-y-niche" type="text" placeholder="ex : Finance personnelle" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Durée *</div><select class="ad-sel" id="ad-y-dur"><option value="">Sélectionner…</option><option>10 à 15 minutes</option><option>5 à 10 minutes</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton *</div><select class="ad-sel" id="ad-y-ton"><option value="">Sélectionner…</option><option>Éducatif et pédagogue</option><option>Expert et professionnel</option></select></div>
+    <button class="ad-btn" id="ad-y-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-y-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-y-res"><div class="ad-thk" id="ad-y-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération du package…</span></div><div id="ad-y-list"></div></div></div></div>
+</div>
+<!-- RÉPONSES -->
+<div class="ad-panel" id="ad-p-cmt">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><div class="ad-hdr-t">Réponses Commentaires</div><div class="ad-hdr-d">Réponses personnalisées pour ta communauté</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">URL vidéo</div><input class="ad-inp" id="ad-c-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton de ta chaîne *</div><select class="ad-sel" id="ad-c-ton"><option value="">Sélectionner…</option><option>Décontracté et proche</option><option>Professionnel et bienveillant</option></select></div>
+    <div class="ad-fld"><div class="ad-lbl">Ton prénom</div><input class="ad-inp" id="ad-c-nom" type="text" placeholder="ex : Alex" readonly></div>
+    <button class="ad-btn" id="ad-c-btn">${ICON}Générer avec l'IA</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-c-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-c-res"><div class="ad-thk" id="ad-c-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Analyse des commentaires…</span></div><div id="ad-c-list"></div></div></div></div>
+</div>
+<!-- RECYCLAGE -->
+<div class="ad-panel" id="ad-p-rec">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div><div class="ad-hdr-t">Recyclage Contenu</div><div class="ad-hdr-d">LinkedIn, Twitter/X, Instagram depuis ta vidéo</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">URL vidéo</div><input class="ad-inp" id="ad-r-url" type="text" placeholder="https://youtube.com/watch?v=..." readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Titre vidéo</div><input class="ad-inp" id="ad-r-titre" type="text" placeholder="ex : Comment investir 1000€" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Plateformes *</div><select class="ad-sel" id="ad-r-plat"><option value="">Sélectionner…</option><option>Toutes (LinkedIn + X + Instagram)</option><option>LinkedIn uniquement</option></select></div>
+    <button class="ad-btn" id="ad-r-btn">${ICON}Recycler ma vidéo</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-r-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-r-res"><div class="ad-thk" id="ad-r-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Recyclage en cours…</span></div><div id="ad-r-list"></div></div></div></div>
+</div>
+<!-- MINIATURE -->
+<div class="ad-panel" id="ad-p-mini">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="ad-hdr-t">Miniature Pro</div><div class="ad-hdr-d">Génère un fond réaliste sur-mesure</div></div></div>
+  <div class="ad-cnt"><div class="ad-form">
+    <div class="ad-fld"><div class="ad-lbl">Décris ta miniature *</div><textarea class="ad-inp" id="ad-m-desc" rows="3" placeholder="ex : Dessin réaliste au crayon..." readonly></textarea></div>
+    <div class="ad-fld"><div class="ad-lbl">Texte overlay</div><input class="ad-inp" id="ad-m-t1" type="text" placeholder="ex : YEUX RÉALISTE" readonly></div>
+    <div class="ad-fld"><div class="ad-lbl">Style *</div><select class="ad-sel" id="ad-m-style"><option value="">Sélectionner…</option><option>Cinématique</option><option>Lifestyle luxe</option></select></div>
+    <button class="ad-btn" id="ad-m-btn">${ICON}Générer la miniature</button>
+  </div>
+  <div class="ad-res"><div class="ad-ph" id="ad-m-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>Remplis et génère</p></div>
+  <div class="ad-rc" id="ad-m-res"><div class="ad-thk" id="ad-m-thk"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div><span class="ad-thk-lbl">Génération image IA…</span></div>
+  <div id="ad-m-imgwrap" style="display:none"><div class="ad-mini-preview" id="ad-m-prev"><img src="/images/showcase/mini-mains-16x9.webp" alt=""><div class="ad-mini-ov"><div class="ad-mini-t2">Tuto dessin</div><div class="ad-mini-t1">Mains Manga</div></div></div><div style="font-size:9px;color:#333;text-align:center;">✅ Miniature générée — prête à télécharger</div></div>
+  </div></div></div>
+</div>
+<!-- ASSISTANT -->
+<div class="ad-panel" id="ad-p-chat">
+  <div class="ad-hdr"><div class="ad-hdr-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div><div><div class="ad-hdr-t">Assistant IA</div><div class="ad-hdr-d">Support, stratégie, questions — répond à tout</div></div></div>
+  <div class="ad-cnt" style="flex-direction:column;"><div class="ad-chat-wrap"><div class="ad-chat-msgs" id="ad-ch-msgs"></div><div class="ad-chat-row"><input class="ad-chat-inp" id="ad-ch-inp" placeholder="Pose une question…" readonly><button class="ad-chat-send">Envoyer</button></div></div></div>
+</div>`;
+// Distribuer chaque panel dans sa propre slide
+['yt','cmt','rec','mini','chat'].forEach(id=>{
+  const p=document.getElementById('ad-p-'+id);
+  const ws=document.getElementById('ad-ws-'+id);
+  if(p&&ws){p.className='ad-panel on';ws.appendChild(p);}
+});
+const _pi=document.getElementById('ad-p-idees');if(_pi)_pi.className='ad-panel on';
+}} // fin _doInjectPanels
+
+let adCurrent='idees';
+
+function adGo(agent){
+  adCurrent=agent;
+  // Chaque panel est dans sa propre slide — on lance juste l'animation
+  ({idees:adIdees,yt:adYT,cmt:adCmt,rec:adRec,mini:adMini,chat:adChat}[agent])();
+}
+
+function adReset(btnId,listId,phId,resId,thkId,extraIds=[]){
+  const b=$('ad-'+btnId+'-btn');if(b){b.innerHTML=ICON+"Générer avec l'IA";b.classList.remove('ld');}
+  const l=$('ad-'+listId);if(l)l.innerHTML='';
+  const ph=$('ad-'+phId+'-ph');if(ph)ph.style.display='flex';
+  const res=$('ad-'+resId+'-res');if(res)res.className='ad-rc';
+  const thk=$('ad-'+thkId+'-thk');if(thk)thk.style.display='flex';
+  extraIds.forEach(id=>{const e=$(id);if(e)e.style.display='none';});
+}
+
+async function addItems(listId,items,cls='ad-item'){
+  const l=$(listId);
+  for(let item of items){
+    const d=document.createElement('div');
+    d.className=cls+(item.bl?' bl':'');
+    d.innerHTML=item.html;
+    l.appendChild(d);await sl(50);d.classList.add('on');await sl(130);
+  }
+}
+
+// IDÉES
+async function adIdees(){
+  $('ad-i-niche').value='';$('ad-i-fmt').value='';$('ad-i-fmt').className='ad-sel';$('ad-i-obj').value='';$('ad-i-obj').className='ad-sel';
+  adReset('i','i-list','i','i','i');
+  await sl(600);
+  await tp($('ad-i-niche'),'Finance personnelle · jeunes actifs');
+  await sl(280);sv($('ad-i-fmt'),'Listes / Top 10');await sl(220);sv($('ad-i-obj'),'Gagner des abonnés rapidement');
+  await sl(280);$('ad-i-btn').innerHTML=ICON+'Génération…';$('ad-i-btn').classList.add('ld');
+  $('ad-i-ph').style.display='none';$('ad-i-res').className='ad-rc on';
+  await sl(1400);$('ad-i-thk').style.display='none';
+  await addItems('ad-i-list',[
+    {html:`<div class="ad-item-lbl">Idée #1</div><div class="ad-item-t">J'ai investi 1€/jour pendant 1 an — résultat</div><div class="ad-item-d">💡 Résultat concret + curiosité → fort CTR</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #2</div><div class="ad-item-t">Les 5 erreurs des débutants en bourse</div><div class="ad-item-d">💡 Format liste éducatif — très partageable</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #3</div><div class="ad-item-t">Pourquoi ton salaire ne te rendra jamais riche</div><div class="ad-item-d">💡 Angle controversé — fort potentiel viral</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Idée #4</div><div class="ad-item-t">J'ai testé la méthode des riches pendant 30 jours</div><div class="ad-item-d">💡 Challenge personnel — fort engagement</div>`,bl:true},
+    {html:`<div class="ad-item-lbl">Idée #5</div><div class="ad-item-t">Ce que les riches font différemment</div><div class="ad-item-d">💡 Exclusivité perçue — fort taux de clic</div>`,bl:true},
+  ]);
+  $('ad-i-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-i-btn').classList.remove('ld');
+  await sl(4000);if(adCurrent==='idees')adIdees();
+}
+
+// YT COMPLET
+async function adYT(){
+  $('ad-y-sujet').value='';$('ad-y-niche').value='';$('ad-y-dur').value='';$('ad-y-dur').className='ad-sel';$('ad-y-ton').value='';$('ad-y-ton').className='ad-sel';
+  adReset('y','y-list','y','y','y');
+  await sl(600);
+  await tp($('ad-y-sujet'),'Comment investir 1000€ en bourse',46);
+  await sl(220);await tp($('ad-y-niche'),'Finance personnelle',46);
+  await sl(220);sv($('ad-y-dur'),'10 à 15 minutes');await sl(200);sv($('ad-y-ton'),'Éducatif et pédagogue');
+  await sl(280);$('ad-y-btn').innerHTML=ICON+'Génération…';$('ad-y-btn').classList.add('ld');
+  $('ad-y-ph').style.display='none';$('ad-y-res').className='ad-rc on';
+  await sl(1600);$('ad-y-thk').style.display='none';
+  await addItems('ad-y-list',[
+    {html:`<div class="ad-item-lbl">Titres optimisés</div><div class="ad-item-t">Comment investir 1000€ en bourse quand on est débutant (2025)</div><div class="ad-item-t dim" style="margin-top:3px">1000€ en bourse : la méthode que j'aurais voulu connaître à 20 ans</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Introduction (hook)</div><div class="ad-item-body"><strong>Hook :</strong> "Si tu as 1000€ de côté, cette vidéo va changer ta façon de voir l'argent."<br><strong>Intro :</strong> Je te montre pas à pas comment investir depuis zéro…</div>`,bl:false},
+    {html:`<div class="ad-item-lbl">Description SEO</div><div class="ad-item-body">💰 Dans cette vidéo, je t'explique comment investir 1000€...<br>⏱️ 0:00 Intro · 1:30 Pourquoi · 4:00 Plateforme...<br>#investissement #bourse #financeperso</div>`,bl:true},
+  ]);
+  $('ad-y-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-y-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='yt')adYT();
+}
+
+// RÉPONSES
+async function adCmt(){
+  $('ad-c-url').value='';$('ad-c-ton').value='';$('ad-c-ton').className='ad-sel';$('ad-c-nom').value='';
+  adReset('c','c-list','c','c','c');$('ad-c-btn').innerHTML=ICON+"Générer avec l'IA";
+  await sl(600);
+  await tp($('ad-c-url'),'youtube.com/watch?v=dQw4w9WgXcQ',32);
+  await sl(250);sv($('ad-c-ton'),'Décontracté et proche');
+  await sl(220);await tp($('ad-c-nom'),'Alex',55);
+  await sl(280);$('ad-c-btn').innerHTML=ICON+'Analyse…';$('ad-c-btn').classList.add('ld');
+  $('ad-c-ph').style.display='none';$('ad-c-res').className='ad-rc on';
+  await sl(1600);$('ad-c-thk').style.display='none';
+  await addItems('ad-c-list',[
+    {html:`<div class="ad-cmt-orig">💬 "Super vidéo ! Tu peux faire un tuto sur les ETF ?"</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">Merci ! 🙏 Les ETF c'est prévu — dis-moi en commentaire si tu préfères ETF monde ou thématiques, ça m'aide à prioriser !</div><div class="ad-cmt-strat">🧠 Engagement + teasing → booste les commentaires</div>`,bl:false},
+    {html:`<div class="ad-cmt-orig">💬 "Encore une arnaque ces conseils..."</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">Je comprends le scepticisme ! 💯 Je montre mes vrais résultats avec preuves. Regarde jusqu'à la fin — si pas convaincu, dis-moi ce qui t'a semblé faux.</div><div class="ad-cmt-strat">🧠 Gestion crise → transforme un détracteur en spectateur</div>`,bl:false},
+    {html:`<div class="ad-cmt-orig">💬 "+18% en 3 mois avec ta méthode 🚀"</div><div class="ad-item-lbl">Réponse</div><div class="ad-cmt-rep">INCROYABLE ! 🚀 +18% en 3 mois c'est vraiment solide, partage ça avec la communauté !</div><div class="ad-cmt-strat">🧠 Fidélisation → crée de la preuve sociale</div>`,bl:true},
+  ]);
+  $('ad-c-btn').innerHTML=ICON+"Générer avec l'IA";$('ad-c-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='cmt')adCmt();
+}
+
+// RECYCLAGE
+async function adRec(){
+  $('ad-r-url').value='';$('ad-r-titre').value='';$('ad-r-plat').value='';$('ad-r-plat').className='ad-sel';
+  adReset('r','r-list','r','r','r');$('ad-r-btn').innerHTML=ICON+'Recycler ma vidéo';
+  await sl(600);
+  await tp($('ad-r-url'),'youtube.com/watch?v=abc123',32);
+  await sl(250);await tp($('ad-r-titre'),'Comment investir 1000€ en bourse',46);
+  await sl(220);sv($('ad-r-plat'),'Toutes (LinkedIn + X + Instagram)');
+  await sl(280);$('ad-r-btn').innerHTML=ICON+'Recyclage…';$('ad-r-btn').classList.add('ld');
+  $('ad-r-ph').style.display='none';$('ad-r-res').className='ad-rc on';
+  await sl(1500);$('ad-r-thk').style.display='none';
+  await addItems('ad-r-list',[
+    {html:`<div class="ad-item-lbl" style="color:#0077b5">LinkedIn</div><div class="ad-item-body">💰 J'ai investi 1000€ en bourse à 23 ans. Résultat aujourd'hui : +340%.<br><br>Voici les 3 décisions qui ont tout changé :<br>1️⃣ J'ai arrêté de timer le marché...</div>`,bl:false},
+    {html:`<div class="ad-item-lbl" style="color:#1d9bf0">Twitter/X</div><div class="ad-item-body">Thread 🧵 — Comment investir 1000€ quand on est débutant<br><br>1/ La plupart des gens attendent "le bon moment". C'est leur plus grosse erreur...</div>`,bl:false},
+    {html:`<div class="ad-item-lbl" style="color:#e1306c">Instagram</div><div class="ad-item-body">POV : tu découvres que 1000€ investis à 20 ans → 25 000€ à 45 ans 🤯<br>Save ce post et commence MAINTENANT...</div>`,bl:true},
+  ]);
+  $('ad-r-btn').innerHTML=ICON+'Recycler ma vidéo';$('ad-r-btn').classList.remove('ld');
+  await sl(4500);if(adCurrent==='rec')adRec();
+}
+
+// MINIATURE
+async function adMini(){
+  $('ad-m-desc').value='';$('ad-m-t1').value='';$('ad-m-style').value='';$('ad-m-style').className='ad-sel';
+  adReset('m','m-list','m','m','m',['ad-m-imgwrap']);
+  $('ad-m-btn').innerHTML=ICON+'Générer la miniature';
+  await sl(600);
+  await tp($('ad-m-desc'),"Dessin au crayon graphite hyperréaliste d'un œil humain, main tenant un crayon, fond blanc épuré",36);
+  await sl(280);await tp($('ad-m-t1'),'Yeux Réaliste',52);
+  await sl(220);sv($('ad-m-style'),'Cinématique');
+  await sl(280);$('ad-m-btn').innerHTML=ICON+'Génération IA…';$('ad-m-btn').classList.add('ld');
+  $('ad-m-ph').style.display='none';$('ad-m-res').className='ad-rc on';
+  await sl(2000);$('ad-m-thk').style.display='none';
+  $('ad-m-imgwrap').style.display='block';
+  await sl(50);$('ad-m-prev').classList.add('on');
+  $('ad-m-btn').innerHTML=ICON+'Générer la miniature';$('ad-m-btn').classList.remove('ld');
+  await sl(4000);$('ad-m-prev').classList.remove('on');
+  await sl(400);if(adCurrent==='mini')adMini();
+}
+
+// CHAT
+const AD_CHAT=[
+  {r:'u',t:'Comment augmenter mon taux de clic sur mes miniatures ?'},
+  {r:'a',t:'<strong>3 leviers qui marchent :</strong><br><br>1️⃣ <strong>Visage + émotion forte</strong> — +38% de CTR en moyenne<br>2️⃣ <strong>Texte 3-5 mots max</strong> — lisible en 1 seconde sur mobile<br>3️⃣ <strong>Contraste fort</strong> — fond sombre + texte clair<br><br>Tu veux que je génère 3 concepts pour ta prochaine vidéo ? 🎨'},
+  {r:'u',t:'Oui ! Ma prochaine vidéo parle de dessin réaliste'},
+  {r:'a',t:'🔥 <strong>Concept 1 :</strong> Ton œil redessiné au crayon, texte "TU PEUX LE FAIRE"<br>💡 <strong>Concept 2 :</strong> Split avant/après croquis, texte "30 JOURS DE PRATIQUE"<br>🚀 <strong>Concept 3 :</strong> Gros plan crayon sur papier, texte "MA TECHNIQUE SECRÈTE"<br><br>→ Utilise Miniature Pro pour les générer en 30s !'},
+];
+async function adChat(){
+  $('ad-ch-msgs').innerHTML='';$('ad-ch-inp').value='';$('ad-ch-inp').className='ad-chat-inp';
+  await sl(700);
+  for(let i=0;i<AD_CHAT.length;i++){
+    const m=AD_CHAT[i];
+    if(m.r==='u'){
+      await tp($('ad-ch-inp'),m.t,36);await sl(350);
+      const d=document.createElement('div');d.className='ad-msg u';d.textContent=m.t;
+      $('ad-ch-msgs').appendChild(d);await sl(40);d.classList.add('on');
+      $('ad-ch-inp').value='';$('ad-ch-inp').classList.remove('on');
+    } else {
+      const d=document.createElement('div');d.className='ad-msg a';
+      d.innerHTML='<div class="ad-thk" style="margin:0"><div class="ad-dot"></div><div class="ad-dot"></div><div class="ad-dot"></div></div>';
+      $('ad-ch-msgs').appendChild(d);await sl(40);d.classList.add('on');
+      await sl(1300);d.innerHTML=m.t;
+    }
+    $('ad-ch-msgs').scrollTop=$('ad-ch-msgs').scrollHeight;
+    await sl(i<AD_CHAT.length-1?1600:4500);
+  }
+  if(adCurrent==='chat')adChat();
+}
+
+// Activer nav items au click
+document.querySelectorAll('.ad-nav-item').forEach(n=>{
+  const agent=n.id.replace('ad-n-','');
+  n.onclick=()=>adGo(agent);
+});
+
+// Démarre — IntersectionObserver pour ne charger qu'en vue
+const _n=document.getElementById('ad-n-idees');if(_n)_n.classList.add('on');
+(function(){
+  function _startAgents(){_doInjectPanels();adIdees();}
+  const _t=document.getElementById('main-car-wrap');
+  if('IntersectionObserver' in window&&_t){
+    const _io=new IntersectionObserver(e=>{if(e[0].isIntersecting){_io.disconnect();_startAgents();}},{threshold:0.1,rootMargin:'200px'});
+    _io.observe(_t);
+  }else{_startAgents();}
+})();
+
+// Carousel principal — 7 positions (0=clips, 1-6=agents)
+const MCT_AGENTS=['idees','yt','cmt','rec','mini','chat'];
+window.slidePos=0;
+window.goSlide=function(n){
+  window.slidePos=Math.max(0,Math.min(n,6));
+  // Mettre à jour les tabs
+  document.querySelectorAll('.mct-tab').forEach((t,i)=>t.classList.toggle('act',i===window.slidePos));
+  // 7 slides physiques — navigation directe
+  const slides=document.querySelectorAll('.main-car-slide');
+  if(!slides.length)return;
+  const w=slides[0].offsetWidth+20;
+  document.getElementById('main-car-track').style.transform=`translateX(-${window.slidePos*w}px)`;
+  // Démarrer l'animation de l'agent si on entre dans un slide agent
+  if(window.slidePos>0)adGo(MCT_AGENTS[window.slidePos-1]);
+  // Mettre à jour les flèches
+  const p=document.getElementById('main-car-prev'),nx=document.getElementById('main-car-next');
+  if(p)p.disabled=window.slidePos===0;
+  if(nx)nx.disabled=window.slidePos===6;
+};
+window.mainCarIdx=0;
+(function(){
+  const outer=document.querySelector('.main-car-outer');
+  if(!outer)return;
+  let sx=0;
+  outer.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+  outer.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>40)window.goSlide(window.slidePos+(dx<0?1:-1));},{passive:true});
+})();
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a[href*="auth.html"], a[href*="auth.html?"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      if (btn.dataset.loading) return e.preventDefault();
+      btn.dataset.loading = '1';
+      const orig = btn.innerHTML;
+      btn.style.pointerEvents = 'none';
+      btn.style.opacity = '0.75';
+      btn.innerHTML = '<svg style="animation:rotation .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Chargement…';
+      setTimeout(function() {
+        if (btn.dataset.loading) {
+          btn.innerHTML = orig;
+          btn.style.pointerEvents = '';
+          btn.style.opacity = '';
+          delete btn.dataset.loading;
+        }
+      }, 8000);
+    });
+  });
+});
+</script>
+</body>
+</html>
