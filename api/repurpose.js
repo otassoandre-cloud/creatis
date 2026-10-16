@@ -158,9 +158,21 @@ function _compteurDuMois(valeur, cleReset) {
   return cleReset === _moisCourant() ? (valeur || 0) : 0;
 }
 
+/* Les comptes INTERNES de production de contenu. Ils tournent sur le produit
+   réel — c'est voulu : une démonstration filmée doit montrer ce que les clients
+   voient, pas une maquette. Mais ils consomment le quota d'un client payant, et
+   le 13/10 trois analyses ont été refusées en plein tournage parce que celui du
+   studio était à 30 sur 30.
+
+   L'exception est NOMINATIVE et ne fait qu'élargir : aucun compte client n'est
+   affecté, et un compte absent de cette liste garde exactement le quota de son
+   plan. */
+const COMPTES_INTERNES = new Set(['studio-video@creatis.app']);
+
 /* Vérifie le quota de vidéos analysées. Retourne null si OK, sinon la réponse d'erreur à renvoyer. */
 function verifierQuotaVideos(userData) {
   const plan = userData?.plan || 'gratuit';
+  if (userData?.email && COMPTES_INTERNES.has(String(userData.email).toLowerCase())) return null;
   const max = (QUOTAS[plan] || QUOTAS.gratuit).videos;
   const used = _compteurDuMois(userData?.videos_count, userData?.videos_reset);
   if (used < max) return null;
@@ -288,7 +300,7 @@ function planEffectif(user) {
 async function getUserPlan(userId) {
   if (!process.env.SUPABASE_SERVICE_KEY) return 'gratuit';
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,repurpose_count,repurpose_reset,videos_count,videos_reset,abonnements(status,past_due_depuis)`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=email,plan,repurpose_count,repurpose_reset,videos_count,videos_reset,abonnements(status,past_due_depuis)`, {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
