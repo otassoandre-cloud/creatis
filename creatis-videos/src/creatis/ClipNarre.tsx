@@ -943,3 +943,70 @@ export const TROIS_EMPLOIS: ReglagesClipNarre = {
   ],
 };
 export const DUREE_TROIS_EMPLOIS = Math.round(TROIS_EMPLOIS.duree * 30);
+
+/* ── LES TROIS SHORTS DU 17/10 ───────────────────────────────────────────
+   Mesure du jour, et elle tranche : sur la chaîne, « Une vidéo d'une heure
+   contient 10 passages qui tiennent seuls » a fait 941 vues. Les sept autres
+   Shorts de la semaine — tous construits sur une somme d'argent — plafonnent
+   entre 49 et 187.
+
+   Le seul qui parle de SAVOIR-FAIRE fait cinq à sept fois les autres. C'est
+   exactement ce que disait l'analyse de la chaîne concurrente le 16/10 : sa
+   vidéo sur le montage fait 135 k, celle sur ses 20 000 € en fait 15 k.
+
+   Ces trois-là portent donc des observations de métier, vérifiables et
+   contre-intuitives, et aucune somme d'argent.
+
+   Lot `mbt` : clips téléchargés ce matin d'une vidéo sortie hier. Plans
+   choisis sur rec, rec+1,5 et rec+3 — mbt-2 et mbt-3 tiennent de 5 à 8 s. */
+
+export const SOUS_TITRES_CACHES: ReglagesClipNarre = {
+  source: "clip-mbt-3.mp4",
+  rec: 5,
+  voix: "narration-sous-titres-caches.mp3",
+  duree: 12.6,
+  adresse: 10.6,
+  renvoi: "Tout le processus, filmé en entier",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Tes sous-titres sont cachés, et tu ne le sais pas.", gros: true, source: "clip-mbt-3.mp4", rec: 5 },
+    { a: 3.1, texte: "Le bas de l'écran est mangé par le pseudo, la légende et les boutons.", source: "clip-mbt-2.mp4", rec: 5 },
+    { a: 8.4, texte: "Un sous-titre posé là est recouvert.", gros: true, source: "clip-mbt-4.mp4", rec: 5 },
+    { a: 10.6, texte: "Remonte-les au tiers de la hauteur.", source: "clip-mbt-3.mp4", rec: 7 },
+  ],
+};
+export const DUREE_SOUS_TITRES_CACHES = Math.round(SOUS_TITRES_CACHES.duree * 30);
+
+export const FIN_DE_PHRASE: ReglagesClipNarre = {
+  source: "clip-mbt-2.mp4",
+  rec: 5,
+  voix: "narration-fin-de-phrase.mp3",
+  duree: 12.5,
+  adresse: 10.3,
+  renvoi: "Le parcours complet est sur la chaîne",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Un clip qui commence au milieu d'une phrase est déjà perdu.", gros: true, source: "clip-mbt-2.mp4", rec: 5 },
+    { a: 3.3, texte: "Le spectateur entend la fin d'une idée qu'il n'a pas suivie. Il balaie.", source: "clip-mbt-3.mp4", rec: 5 },
+    { a: 7.6, texte: "Vérifie toujours la première seconde avant de publier.", source: "clip-mbt-4.mp4", rec: 6 },
+    { a: 10.3, texte: "C'est elle qui décide, pas la suite.", gros: true, source: "clip-mbt-2.mp4", rec: 7 },
+  ],
+};
+export const DUREE_FIN_DE_PHRASE = Math.round(FIN_DE_PHRASE.duree * 30);
+
+export const FENETRE_DUREE: ReglagesClipNarre = {
+  source: "clip-mbt-4.mp4",
+  rec: 5,
+  voix: "narration-fenetre-duree.mp3",
+  duree: 11.0,
+  adresse: 8.3,
+  renvoi: "Les 3 critères sont dans la vidéo complète",
+  ou: "YouTube · @Creatis_officiel",
+  legendes: [
+    { a: 0, texte: "Ta source fait moins de 20 minutes ? Tu n'en sortiras pas 10 clips.", gros: true, source: "clip-mbt-4.mp4", rec: 5 },
+    { a: 2.3, texte: "Au-dessus d'1 h 30, elle se dilue.", source: "clip-mbt-3.mp4", rec: 6 },
+    { a: 4.1, texte: "L'analyse coûte cher pour ce qu'elle rend.", source: "clip-mbt-2.mp4", rec: 6 },
+    { a: 8.3, texte: "La bonne fenêtre : 20 minutes à 1 h 30.", gros: true, source: "clip-mbt-5.mp4", rec: 8 },
+  ],
+};
+export const DUREE_FENETRE_DUREE = Math.round(FENETRE_DUREE.duree * 30);

@@ -1,0 +1,1 @@
+Tes sous-titres sont cachés, et tu ne le sais pas. Sur un téléphone, le bas de l'écran est mangé par le pseudo, la légende et la colonne de boutons. Un sous-titre posé là est recouvert. Remonte-les au tiers de la hauteur.

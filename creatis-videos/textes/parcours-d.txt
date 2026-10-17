@@ -1,0 +1,13 @@
+Le clip s'ouvre.
+
+Première chose, à gauche : il est déjà recadré en neuf seizièmes, et cadré sur la personne qui parle. Ce n'est pas un recadrage au centre : quand quelqu'un se déplace dans le cadre, le cadrage suit. C'est tout le travail qu'on fait d'habitude image par image.
+
+En dessous du lecteur, la transcription, mot par mot, avec le temps de chaque mot. Tu vois exactement ce qui est dit, et à quelle seconde. Si une phrase commence mal, tu le vois là avant de l'avoir montée.
+
+Et la barre du bas, c'est la timeline du clip. Les vignettes sont les images du passage. C'est là que tu ajustes le début et la fin si l'extraction a pris une demi-seconde de trop.
+
+Je lance la lecture pour vérifier une chose, et une seule : est-ce que la première seconde accroche. Parce que c'est elle qui décide. Un clip dont la première seconde montre quelqu'un qui finit sa phrase précédente est un clip perdu, quelle que soit la suite.
+
+Celui-là commence sur une phrase entière. On garde.
+
+Maintenant, la partie que tout le monde bâcle, et qui fait la différence entre un clip regardé et un clip balayé : les sous-titres.

@@ -1,0 +1,13 @@
+Je tape l'adresse dans la barre de recherche. Créatis point app.
+
+Le site s'ouvre. Ce qui nous intéresse est dans l'application : on crée un compte, et on arrive sur le studio.
+
+Maintenant il me faut une vidéo source. Et le choix de cette vidéo décide de presque tout, alors prenons trente secondes dessus.
+
+Trois critères, et ils se vérifient vite. Premièrement, il faut que ça parle : un gameplay sans commentaire, un clip musical, un montage muet ne donneront rien, parce qu'il n'y a pas de transcription à lire. Les interviews, les podcasts, les émissions de plateau, les vidéos de défi commentées : ça, c'est de la matière.
+
+Deuxièmement, la durée. Entre vingt minutes et une heure trente. En dessous il n'y a pas assez de moments, au-dessus la vidéo se dilue.
+
+Troisièmement, et c'est le plus important : est-ce que les passages tiennent tout seuls ? Fais le test. Ouvre la vidéo, va au milieu, regarde trente secondes au hasard. Si tu comprends de quoi on parle sans avoir vu le début, elle se clippera. Si tu es perdu, elle est trop narrative, et aucun passage ne tiendra hors contexte.
+
+Je prends une interview. Je copie son lien, je reviens sur le studio, je le colle dans le champ, et je lance.
