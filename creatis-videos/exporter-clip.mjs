@@ -27,6 +27,7 @@
  * refus — YouTube renvoie régulièrement des 429 à cette IP — on bascule sur
  * Whisper (`/transcribe-segments`), qui ne dépend pas non plus du budget LLM.
  */
+import "./env-local.mjs";
 import { writeFileSync } from "node:fs";
 
 const [VIDEO_ID, DEBUT, FIN, SORTIE, CADRAGE] = process.argv.slice(2);

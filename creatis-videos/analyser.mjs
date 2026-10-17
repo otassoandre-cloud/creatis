@@ -22,6 +22,7 @@
  * Choisir court n'est pas une coquetterie, c'est ce qui laisse de la place aux
  * clients.
  */
+import "./env-local.mjs";
 const URL_VIDEO = process.argv[2];
 const EMAIL = process.env.CREATIS_EMAIL;
 const MDP = process.env.CREATIS_MDP;

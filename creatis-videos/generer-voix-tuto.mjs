@@ -1,9 +1,15 @@
 /**
  * Voix off du tutoriel quotidien.
  *
- *   node generer-voix-tuto.mjs                  → le texte du jour
- *   node generer-voix-tuto.mjs --texte "..."    → un autre texte
+ *   node generer-voix-tuto.mjs                      → le texte du jour
+ *   node generer-voix-tuto.mjs --texte "..."        → un autre texte
+ *   node generer-voix-tuto.mjs --fichier t.txt      → le texte lu dans un fichier
+ *   node generer-voix-tuto.mjs --duree 80           → un format long, pas un tuto
  *   node generer-voix-tuto.mjs --nom autre.mp3
+ *
+ * `--fichier` existe parce que les apostrophes et les accents d'un texte passé
+ * en ligne de commande se font massacrer par le shell : un commentaire qui
+ * part en « l'outil » se lit « l antislash outil ».
  *
  * ── LA LONGUEUR N'EST PAS AU CHOIX ───────────────────────────────────────
  * Mesuré sur la voix « Charon » : 166 mots/minute. Une vidéo de 45 s tient donc
@@ -35,8 +41,12 @@ const SORTIE = join(ICI, "public", "voix");
    fait ecrire des textes trop maigres — la premiere voix laissait douze
    secondes de silence. */
 const MOTS_PAR_MINUTE = 190;
-const DUREE_CIBLE = 36;
-const PLAFOND = Math.round((MOTS_PAR_MINUTE / 60) * DUREE_CIBLE); // 124
+const arg0 = (n, d) => { const i = process.argv.indexOf("--" + n); return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : d; };
+/* 36 s pour un tuto ; `--duree` sert aux formats longs, qui tournent autour de
+   80 s. Le plafond suit la durée demandée — on garde donc le refus, qui est le
+   point du garde-fou, sans l'immobiliser sur un seul gabarit. */
+const DUREE_CIBLE = Number(arg0("duree", 36));
+const PLAFOND = Math.round((MOTS_PAR_MINUTE / 60) * DUREE_CIBLE);
 
 const env = {};
 for (const l of readFileSync(join(DEPOT, ".env"), "utf8").split(/\r?\n/)) {
@@ -58,7 +68,10 @@ Créatis prend ta vidéo longue, trouve les moments qui se tiennent seuls, les r
 Toi, tu choisis. Et tu publies.
 `.trim().replace(/\s+/g, " ");
 
-const TEXTE = arg("texte", TEXTE_DU_JOUR);
+const FICHIER = arg("fichier", "");
+const TEXTE = FICHIER
+  ? readFileSync(FICHIER, "utf8").trim().replace(/\s+/g, " ")
+  : arg("texte", TEXTE_DU_JOUR);
 const NOM = arg("nom", "tuto-du-jour.mp3");
 const mots = TEXTE.split(/\s+/).length;
 

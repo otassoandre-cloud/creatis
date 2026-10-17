@@ -358,3 +358,73 @@ export const Ecran: React.FC<{
     </AbsoluteFill>
   );
 };
+
+/**
+ * LE CURSEUR, dessiné d'après la trace réelle du tournage.
+ *
+ * Playwright pilote la souris mais ne la DESSINE pas : un tournage
+ * d'écran fait avec lui montre des choses qui s'ouvrent et des champs qui
+ * se remplissent, sans qu'on voie jamais ce qui les provoque. Demande du
+ * 16/10 : « une souris qui parcourt l'écran, qui va cliquer, qui va
+ * glisser ».
+ *
+ * `enregistrer-parcours-complet.mjs` journalise chaque position avec sa
+ * seconde. On repose le pointeur sur ces coordonnées — il est donc exact,
+ * et non rejoué au jugé après coup.
+ *
+ * `decalage` fait la conversion : le plan commence à une seconde du film et
+ * montre le tournage à partir d'une autre.
+ */
+export const Curseur: React.FC<{
+  trace: { t: number; x: number; y: number; clic: boolean }[];
+  /** Seconde du tournage à laquelle ce plan commence. */
+  depart: number;
+  /** Largeur du tournage d'origine, pour mettre à l'échelle. */
+  largeurSource?: number;
+}> = ({ trace, depart, largeurSource = 1920 }) => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+  const t = depart + frame / fps;
+  const e = width / largeurSource;
+
+  /* Le point courant, interpolé entre les deux relevés qui l'encadrent. */
+  let avant = trace[0];
+  let apres = trace[trace.length - 1];
+  for (let i = 0; i < trace.length - 1; i += 1) {
+    if (trace[i].t <= t && trace[i + 1].t >= t) { avant = trace[i]; apres = trace[i + 1]; break; }
+  }
+  if (!avant) return null;
+  const span = apres.t - avant.t;
+  const k = span > 0 ? Math.min(1, Math.max(0, (t - avant.t) / span)) : 0;
+  const x = (avant.x + (apres.x - avant.x) * k) * e;
+  const y = (avant.y + (apres.y - avant.y) * k) * e;
+
+  /* Un halo au moment du clic : sans lui, on ne voit pas que ça a cliqué. */
+  const clicRecent = trace.some((p) => p.clic && t - p.t >= 0 && t - p.t < 0.45);
+  const dernier = trace.filter((p) => p.clic && t - p.t >= 0 && t - p.t < 0.45)[0];
+  const age = dernier ? t - dernier.t : 1;
+  const halo = clicRecent ? 1 - age / 0.45 : 0;
+
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {halo > 0 ? (
+        <div
+          style={{
+            position: "absolute", left: x - 26, top: y - 26, width: 52, height: 52,
+            borderRadius: "50%", border: "3px solid rgba(255,255,255,0.9)",
+            opacity: halo, transform: `scale(${0.5 + (1 - halo) * 1.1})`,
+          }}
+        />
+      ) : null}
+      <svg
+        width="30" height="44" viewBox="0 0 30 44"
+        style={{ position: "absolute", left: x - 2, top: y - 2 }}
+      >
+        <path
+          d="M3 2 L3 32 L11 25 L16 37 L21 35 L16 23 L26 23 Z"
+          fill="#fff" stroke="#111" strokeWidth="2.2" strokeLinejoin="round"
+        />
+      </svg>
+    </AbsoluteFill>
+  );
+};
