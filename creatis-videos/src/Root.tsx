@@ -48,6 +48,7 @@ import { PremiersEuros, DUREE_PREMIERS_EUROS } from "./creatis/PremiersEuros";
 import { Emrah, DUREE_EMRAH } from "./creatis/Emrah";
 import { ParcoursComplet, DUREE_PARCOURS_COMPLET } from "./creatis/ParcoursComplet";
 import { PlacerSousTitres, DUREE_PLACER } from "./creatis/PlacerSousTitres";
+import { SansVisage, DUREE_SANS_VISAGE } from "./creatis/SansVisage";
 import { DUREE_SHORT_VISUEL, ShortVisuel } from "./creatis/ShortVisuel";
 import { DUREE_SHORT_CLIPPING, ShortClipping } from "./creatis/ShortClipping";
 import {
@@ -77,7 +78,9 @@ import { MiniatureDebuter } from "./creatis/MiniatureDebuter";
 import { MiniatureArnaque } from "./creatis/MiniatureArnaque";
 import { MiniaturePremiersEuros } from "./creatis/MiniaturePremiersEuros";
 import { MiniatureEmrah } from "./creatis/MiniatureEmrah";
+import { ClipBrut, KIFFE_1, KIFFE_2, KIFFE_3, DUREE_KIFFE_1, DUREE_KIFFE_2, DUREE_KIFFE_3 } from "./creatis/ClipBrut";
 import { MiniatureSansVisage } from "./creatis/MiniatureSansVisage";
+import { MiniatureSansVisageYT } from "./creatis/MiniatureSansVisageYT";
 import { Carrousel, VIGNETTES } from "./creatis/Carrousel";
 import { VIGNETTES_AUTONOMIE } from "./creatis/CarrouselAutonomie";
 import { DUREE_RETENTION, RetentionLongue } from "./creatis/RetentionLongue";
@@ -369,6 +372,14 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="MiniatureSansVisage"
           component={MiniatureSansVisage}
+          durationInFrames={1}
+          fps={30}
+          width={1280}
+          height={720}
+        />
+        <Composition
+          id="MiniatureSansVisageYT"
+          component={MiniatureSansVisageYT}
           durationInFrames={1}
           fps={30}
           width={1280}
@@ -705,6 +716,33 @@ export const RemotionRoot: React.FC = () => {
           height={1920}
         />
         <Composition
+          id="Kiffe1"
+          component={ClipBrut}
+          defaultProps={{ r: KIFFE_1 }}
+          durationInFrames={DUREE_KIFFE_1}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Kiffe2"
+          component={ClipBrut}
+          defaultProps={{ r: KIFFE_2 }}
+          durationInFrames={DUREE_KIFFE_2}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
+          id="Kiffe3"
+          component={ClipBrut}
+          defaultProps={{ r: KIFFE_3 }}
+          durationInFrames={DUREE_KIFFE_3}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
+        <Composition
           id="FinDePhrase"
           component={ClipNarre}
           defaultProps={{ r: FIN_DE_PHRASE }}
@@ -758,6 +796,14 @@ export const RemotionRoot: React.FC = () => {
           id="PlacerSousTitres"
           component={PlacerSousTitres}
           durationInFrames={DUREE_PLACER}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="SansVisage"
+          component={SansVisage}
+          durationInFrames={DUREE_SANS_VISAGE}
           fps={30}
           width={1920}
           height={1080}
