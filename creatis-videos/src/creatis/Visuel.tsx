@@ -428,3 +428,80 @@ export const Curseur: React.FC<{
     </AbsoluteFill>
   );
 };
+
+/**
+ * LES ZONES D'UN ÉCRAN DE TÉLÉPHONE, en schéma.
+ *
+ * Un plan qu'aucun tournage ne peut donner : il faut montrer CE QUI SERA
+ * DESSINÉ PAR-DESSUS le clip, donc des surfaces, pas une capture.
+ *
+ * Les proportions sont celles relevées le 08/10 sur une capture réelle
+ * d'iPhone en 1179×2556 — haut 0→14 %, colonne de droite 49→89 %, bas
+ * 66→92 % — et la bande libre qui en découle, 14→48 %.
+ *
+ * `zone` allume une bande à la fois, pour que la voix et l'image avancent
+ * ensemble au lieu de tout montrer d'un coup.
+ */
+export const ZonesTelephone: React.FC<{
+  /** Quelle bande est allumée : 0 aucune, 1 haut, 2 droite, 3 bas, 4 la libre. */
+  zone?: number;
+  retard?: number;
+}> = ({ zone = 0, retard = 0 }) => {
+  const frame = useCurrentFrame();
+  const t = Math.max(0, frame - retard * 30);
+  const e = spring({ frame: t, fps: 30, config: { damping: 18, mass: 0.6 } });
+
+  const H = 760;
+  const L = Math.round(H * 0.462);
+  const bande = (haut: number, bas: number, actif: boolean, couleur: string) => ({
+    position: "absolute" as const,
+    left: 0, right: 0,
+    top: `${haut * 100}%`,
+    height: `${(bas - haut) * 100}%`,
+    background: actif ? couleur : "rgba(255,255,255,0.05)",
+    border: actif ? "2px solid rgba(255,255,255,0.5)" : "none",
+    transition: "none",
+  });
+
+  return (
+    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          width: L, height: H, borderRadius: 34, overflow: "hidden",
+          position: "relative", background: "#11161d",
+          border: "4px solid rgba(255,255,255,0.3)",
+          boxShadow: "0 30px 80px rgba(0,0,0,0.85)",
+          transform: `scale(${0.94 + e * 0.06})`, opacity: e,
+        }}
+      >
+        <div style={bande(0, 0.14, zone === 1, "rgba(226,60,60,0.72)")} />
+        <div style={bande(0.14, 0.48, zone === 4, "rgba(25,195,125,0.72)")} />
+        <div style={bande(0.66, 0.92, zone === 3, "rgba(226,60,60,0.72)")} />
+        {/* La colonne de droite : elle chevauche la bande basse, d'où le calque. */}
+        <div
+          style={{
+            position: "absolute", right: 0, top: "49%", height: "40%", width: "22%",
+            background: zone === 2 ? "rgba(226,60,60,0.72)" : "rgba(255,255,255,0.05)",
+            border: zone === 2 ? "2px solid rgba(255,255,255,0.5)" : "none",
+          }}
+        />
+        {/* Le repère de la bande libre, toujours visible. */}
+        <div
+          style={{
+            position: "absolute", left: 10, top: "14%", height: "34%",
+            width: 5, background: "#19c37d", borderRadius: 3,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute", left: 22, top: "27%",
+            color: "#19c37d", fontFamily: POLICE, fontWeight: 900, fontSize: 26,
+            letterSpacing: -0.5,
+          }}
+        >
+          14 → 48 %
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};

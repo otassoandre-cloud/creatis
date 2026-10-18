@@ -1218,3 +1218,45 @@ grep -oE "b: \[[0-9.]+," src/creatis/<Film>.tsx | grep -oE "[0-9.]+" | paste -sd
 - Pour trancher un « ? », retranscrire **cette fenêtre seule**
   (`ffmpeg -ss <t> -t 20`) : sur un extrait court, Whisper segmente bien plus
   fin et rend la vraie borne.
+
+## Le format long : le problème est la DISTRIBUTION, pas la durée (18/10)
+
+Quinze formats longs du 3 au 17 octobre : **175 vues cumulées, médiane 7**.
+Analyse complète dans `social/analyse-formats-longs.md`.
+
+| Date | Durée | Impr. | CTR | Rétention | Vues |
+|---|---|---|---|---|---|
+| 08/10 Les vrais tarifs | 2:07 | 420 | **4,3 %** | **48 %** | 34 |
+| 10/10 Les 5 critères | 1:54 | **1 744** | **0,3 %** | **31 %** | 18 |
+| 12/10 Le guide complet | 1:55 | 66 | **7,6 %** | — | 23 |
+| 15/10 Tes premiers euros | 5:57 | **21** | 0 % | — | 4 |
+| 16/10 De 12 $ à 2 500 $ | 5:14 | **2** | 0 % | — | 0 |
+
+**Le taux de clic n'a jamais été le problème** — 4,3 à 7,6 %, au-dessus de la
+zone saine. J'ai refait des miniatures pendant des jours en croyant que ça
+bloquait là : c'était faux, et la mesure le dit.
+
+**Ce qui bloque, c'est que YouTube ne montre plus les vidéos.** Le 10/10, une
+vidéo a reçu 1 744 impressions — vingt fois la normale. Personne n'a cliqué
+(0,3 %), les rares l'ont quittée au tiers (31 %). Le test a échoué et le
+robinet s'est refermé pour toute la chaîne : 66, 89, 21, 2 impressions
+ensuite.
+
+**Conséquence : les trois films de 5-6 min n'ont pas échoué, ils n'ont pas
+été montrés.** Allonger n'était pas la cause de leur score. On ne saura pas
+s'ils tenaient — Studio n'affiche la rétention qu'au-dessus d'un seuil de
+vues qu'ils n'ont jamais atteint.
+
+### Ce qu'on fait tant que la distribution est fermée
+
+1. **Deux minutes, pas six.** Le seul film qui a tourné fait 2:07 avec 48 %
+   de rétention. Sur une chaîne sans historique, c'est le signal de
+   rétention qui décide du prochain test — une vidéo courte bien tenue vaut
+   mieux qu'une longue abandonnée en route.
+2. **Une ou deux par semaine**, pas une par jour. Quinze films en quinze
+   jours à treize abonnés, c'est ce qui a épuisé les tests.
+3. **La rétention avant la miniature.** Objectif : dépasser 48 %.
+4. **Le trafic vient des Shorts** (941 vues le 15/10), et d'eux seuls. Un
+   commentaire épinglé sur chacun, vers le format long en cours.
+5. **Ne pas publier un nouveau format long tant qu'un Short n'a pas ramené
+   de trafic vers le précédent.** Sinon on empile des vidéos à 1 vue.

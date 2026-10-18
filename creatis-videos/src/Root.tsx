@@ -47,6 +47,7 @@ import { Arnaque, DUREE_ARNAQUE } from "./creatis/Arnaque";
 import { PremiersEuros, DUREE_PREMIERS_EUROS } from "./creatis/PremiersEuros";
 import { Emrah, DUREE_EMRAH } from "./creatis/Emrah";
 import { ParcoursComplet, DUREE_PARCOURS_COMPLET } from "./creatis/ParcoursComplet";
+import { PlacerSousTitres, DUREE_PLACER } from "./creatis/PlacerSousTitres";
 import { DUREE_SHORT_VISUEL, ShortVisuel } from "./creatis/ShortVisuel";
 import { DUREE_SHORT_CLIPPING, ShortClipping } from "./creatis/ShortClipping";
 import {
@@ -749,6 +750,14 @@ export const RemotionRoot: React.FC = () => {
           id="ParcoursComplet"
           component={ParcoursComplet}
           durationInFrames={DUREE_PARCOURS_COMPLET}
+          fps={30}
+          width={1920}
+          height={1080}
+        />
+        <Composition
+          id="PlacerSousTitres"
+          component={PlacerSousTitres}
+          durationInFrames={DUREE_PLACER}
           fps={30}
           width={1920}
           height={1080}
