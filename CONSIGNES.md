@@ -1260,3 +1260,44 @@ vues qu'ils n'ont jamais atteint.
    commentaire épinglé sur chacun, vers le format long en cours.
 5. **Ne pas publier un nouveau format long tant qu'un Short n'a pas ramené
    de trafic vers le précédent.** Sinon on empile des vidéos à 1 vue.
+
+## Trois pièges du clip brut, trouvés le 18/10
+
+Le gabarit `ClipBrut` publie le clip tel quel, avec son son. Il expose donc
+des choses que les gabarits précédents masquaient sous une voix off et des
+légendes. Trois lots générés ce soir, deux jetés.
+
+### 1. Le SPONSOR incrusté dans la vidéo source
+
+Amixem, « expériences TikTok extrêmes » (sortie il y a 2 h) : un des clips
+porte un bandeau jaune « INSCRIS-TOI SUR WHOP » incrusté par le créateur.
+Le republier, c'est diffuser la publicité d'un tiers sur notre compte, avec
+un appel à l'action qui n'est pas le nôtre.
+
+**À vérifier sur chaque clip avant publication** : une incrustation de
+sponsor n'apparaît pas dans la transcription et ne se voit que sur la
+planche contact.
+
+### 2. Le recadrage de NOTRE outil peut rater
+
+Mastu, « interrogatoire sous détecteur de mensonges » (sortie hier) : sur
+cinq clips, le cadrage automatique a suivi le BRASSARD du tensiomètre au
+lieu des visages. Résultat : des torses et des bras, presque aucun visage.
+
+C'est une information produit, pas seulement un problème de montage : le
+suivi de sujet se trompe quand un objet contrasté bouge au premier plan.
+Un lot entier est inutilisable sans qu'aucun script ne le signale — seule
+la planche contact le montre.
+
+### 3. Les extraits d'œuvres tierces dans l'interview
+
+Konbini, Vidéo Club : deux clips sur cinq contenaient un extrait de film
+muet et une séquence d'animation diffusés pendant l'interview. Republier
+l'interview est une chose ; rediffuser un extrait protégé avec sa bande-son
+en est une autre.
+
+### Ce que ça impose
+
+**Générer sur plus de sources que nécessaire.** Sur quinze clips produits ce
+soir à partir de trois vidéos récentes, **trois seulement étaient
+publiables**. Prévoir deux ou trois sources par pièce à publier, pas une.
