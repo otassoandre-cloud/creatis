@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur de revenus en clipping (données réelles) | Créatis</title>
+  <meta name="description" content="Calcule combien de clips par jour il faut publier pour atteindre ton objectif de revenu en clipping. Basé sur les taux réellement versés, pas sur les taux affichés.">
+  <meta name="keywords" content="calculateur revenus clipping, combien gagne un clippeur, taux clipping 1000 vues, revenu clipping calcul, cpm clipping">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://creatis.app/calculateur-revenus-clipping.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Calculateur de revenus clipping — Créatis">
+  <meta property="og:description" content="Combien de clips par jour pour atteindre ton objectif ? Calcul basé sur les taux réellement versés.">
+  <meta property="og:url" content="https://creatis.app/calculateur-revenus-clipping.html">
+  <meta property="og:locale" content="fr_FR">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Calculateur de revenus clipping — Créatis",
+    "description": "Calcule le nombre de clips à publier par jour pour atteindre un objectif de revenu en clipping rémunéré, à partir des taux réellement versés par les plateformes.",
+    "url": "https://creatis.app/calculateur-revenus-clipping.html",
+    "applicationCategory": "BusinessApplication",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "inLanguage": "fr"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Combien paye réellement 1 000 vues en clipping ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Les campagnes affichent couramment 1 à 5 $ pour 1 000 vues, mais le taux réellement versé est très inférieur. Sur le suivi public des paiements Whop Content Rewards, 2,58 millions de dollars ont été versés à 8 466 gagnants pour 6,6 milliards de vues, soit environ 0,39 $ pour 1 000 vues — trois à treize fois moins que l'affiche." }
+      },
+      {
+        "@type": "Question",
+        "name": "Pourquoi l'écart entre le taux affiché et le taux versé ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Le taux annoncé est un plafond conditionnel. Il ne s'applique qu'aux vues validées après filtrage, à l'intérieur d'une fenêtre de comptage limitée, et seulement tant que le budget de la campagne n'est pas épuisé. Chacun de ces trois filtres retire une part du volume." }
+      },
+      {
+        "@type": "Question",
+        "name": "Combien de clips un clippeur peut-il produire par jour ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "À la main, 10 à 15 clips par jour en y consacrant une journée entière : chaque clip demande 15 à 30 minutes une fois le repérage amorti — coupe, recadrage 9:16, sous-titres, export. C'est le plafond contre lequel se cogne la plupart des clippeurs." }
+      },
+      {
+        "@type": "Question",
+        "name": "Combien gagne un clippeur en moyenne ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Sur les données de paiement suivies publiquement pour Whop Content Rewards, les gains cumulés moyens s'élèvent à environ 305 $ par clippeur sur toute la période observée. Sur une distribution aussi inégale, une moyenne est tirée vers le haut par une minorité : la majorité se situe nettement en dessous." }
+      },
+      {
+        "@type": "Question",
+        "name": "Ce calculateur garantit-il un revenu ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Non. Il ne fait que dérouler une multiplication : nombre de clips multiplié par les vues moyennes validées, multiplié par le taux, divisé par mille. Le nombre de vues qu'un clip obtiendra ne se prédit pas, et aucune plateforme ne garantit un volume." }
+      }
+    ]
+  }
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <style>
+    .calc-page { max-width: 880px; margin: 0 auto; padding: 56px 24px 80px; }
+    .calc-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--vert, #10b981); padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+    .calc-page h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 14px; }
+    .calc-page h1 span { color: var(--vert, #10b981); }
+    .calc-sub { color: #9ca3af; font-size: 17px; line-height: 1.7; margin: 0 0 36px; max-width: 640px; }
+    .calc-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px; margin-bottom: 28px; }
+    .calc-champ { margin-bottom: 22px; }
+    .calc-champ label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    .calc-champ .aide { display: block; font-weight: 400; font-size: 12.5px; color: #9ca3af; margin-top: 3px; }
+    .calc-champ input[type=number] { width: 100%; padding: 13px 14px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; color: #fff; font-size: 16px; font-family: inherit; }
+    .calc-champ input[type=number]:focus { outline: none; border-color: var(--vert, #10b981); }
+    .taux-choix { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .taux-choix button { flex: 1 1 160px; padding: 11px 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; color: #d1d5db; font-size: 13.5px; font-weight: 600; font-family: inherit; cursor: pointer; transition: border-color .15s, color .15s; }
+    .taux-choix button:hover { border-color: rgba(16,185,129,0.5); }
+    .taux-choix button[aria-pressed="true"] { border-color: var(--vert, #10b981); color: var(--vert, #10b981); background: rgba(16,185,129,0.08); }
+    .resultat { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 28px; }
+    .resultat .gros { font-size: clamp(34px, 7vw, 52px); font-weight: 800; color: var(--vert, #10b981); line-height: 1.05; margin: 0 0 4px; }
+    .resultat .gros-label { color: #d1d5db; font-size: 15px; margin: 0 0 22px; }
+    .detail-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .detail-item { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 14px; }
+    .detail-item .v { font-size: 21px; font-weight: 700; display: block; }
+    .detail-item .l { font-size: 12.5px; color: #9ca3af; }
+    .verdict { border-left: 3px solid; padding: 14px 16px; border-radius: 0 10px 10px 0; font-size: 14.5px; line-height: 1.65; }
+    .verdict.ok { border-color: #10b981; background: rgba(16,185,129,0.08); }
+    .verdict.limite { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+    .verdict.impossible { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+    .calc-article { margin-top: 56px; line-height: 1.8; }
+    .calc-article h2 { font-size: 24px; margin: 40px 0 14px; }
+    .calc-article h3 { font-size: 18px; margin: 28px 0 10px; color: var(--vert, #10b981); }
+    .calc-article p, .calc-article li { color: #d1d5db; }
+    .calc-article table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14.5px; }
+    .calc-article th, .calc-article td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .calc-article th { color: #fff; font-weight: 700; }
+    .calc-cta { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 28px; text-align: center; margin-top: 44px; }
+    .calc-cta h3 { margin: 0 0 8px; font-size: 21px; color: #fff; }
+    .calc-cta p { color: #9ca3af; margin: 0 0 18px; font-size: 14.5px; }
+    .calc-cta a { display: inline-block; background: var(--vert, #10b981); color: #000; padding: 14px 30px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+    .src { font-size: 12.5px; color: #6b7280; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<nav class="blog-nav" style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08);max-width:1100px;margin:0 auto">
+  <a href="/" style="color:#fff;text-decoration:none;font-weight:800">Créatis</a>
+  <a href="/clips-v2.html" style="background:var(--vert,#10b981);color:#000;padding:9px 18px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px">Essayer gratuitement</a>
+</nav>
+
+<main class="calc-page">
+  <div class="calc-badge">🧮 Gratuit · sans inscription</div>
+  <h1>Combien de clips pour <span>gagner ce que tu vises</span> ?</h1>
+  <p class="calc-sub">Ce calculateur ne part pas des taux que les campagnes affichent, mais de ceux qu'elles <strong>versent réellement</strong>. L'écart est d'un facteur trois à treize, et c'est lui qui explique la plupart des déceptions.</p>
+
+  <div class="calc-box">
+    <div class="calc-champ">
+      <label for="objectif">Ton objectif de revenu mensuel
+        <span class="aide">En euros, net de ce que la plateforme verse.</span>
+      </label>
+      <input type="number" id="objectif" value="500" min="10" max="100000" step="10">
+    </div>
+
+    <div class="calc-champ">
+      <label for="vues">Vues moyennes validées par clip
+        <span class="aide">Pas le compteur TikTok : les vues que la campagne accepte de payer. Elles sont toujours inférieures.</span>
+      </label>
+      <input type="number" id="vues" value="2000" min="50" max="1000000" step="100">
+    </div>
+
+    <div class="calc-champ">
+      <label>Taux pour 1 000 vues</label>
+      <div class="taux-choix" id="taux-choix">
+        <button type="button" data-taux="0.36" aria-pressed="true">Réellement versé · 0,36 €</button>
+        <button type="button" data-taux="0.92" aria-pressed="false">Affiché par les campagnes · 0,92 €</button>
+      </div>
+      <input type="number" id="taux" value="0.36" min="0.01" max="20" step="0.01">
+      <span class="aide">0,36 € correspond au taux effectif constaté (0,39 $ converti). 0,92 € correspond à 1 $, le bas de la fourchette affichée.</span>
+    </div>
+  </div>
+
+  <div class="resultat" id="resultat" aria-live="polite"></div>
+
+  <div class="calc-article">
+    <h2>D'où viennent ces chiffres</h2>
+    <p>La plupart des calculateurs de revenus de clipping prennent le taux affiché par les campagnes et le multiplient. Le résultat est systématiquement trop optimiste, parce que ce taux est un <strong>plafond conditionnel</strong>, pas un prix.</p>
+    <p>Les données de paiement suivies publiquement pour <strong>Whop Content Rewards</strong>, la plus grosse plateforme de clipping rémunéré, donnent une mesure directe :</p>
+    <table>
+      <tr><th>Versé sur le seul mois de février 2026</th><td>887 000 $</td></tr>
+      <tr><th>Total suivi</th><td>2,58 M$ à 8 466 gagnants</td></tr>
+      <tr><th>Vues correspondantes</th><td>6,6 milliards</td></tr>
+      <tr><th>Taux effectif</th><td><strong>≈ 0,39 $ pour 1 000 vues</strong></td></tr>
+      <tr><th>Gains cumulés moyens par clippeur</th><td>≈ 305 $</td></tr>
+    </table>
+    <p>Deux lectures, et il faut tenir les deux. Le marché est <strong>réel et actif</strong> : près de neuf cent mille dollars en un mois ne sont pas une illusion. Et l'écart entre le taux affiché et le taux versé est <strong>d'un facteur trois à treize</strong>.</p>
+    <p class="src">Les gains moyens sont une moyenne sur une distribution très inégale : une minorité capte l'essentiel, la majorité se situe nettement en dessous. Une moyenne n'est pas une prévision.</p>
+
+    <h3>Les trois filtres qui creusent l'écart</h3>
+    <ul>
+      <li><strong>Les vues écartées.</strong> Vues trop courtes, trafic jugé non authentique, publications hors brief. Le compteur public et le compteur de la campagne divergent toujours.</li>
+      <li><strong>La fenêtre de comptage.</strong> Les vues arrivant après la période de vérification sont réelles mais non payées.</li>
+      <li><strong>Le budget fermé.</strong> La campagne s'arrête quand l'enveloppe est vide, quelles que soient les vues encore à venir.</li>
+    </ul>
+
+    <h2>Pourquoi le résultat se lit en clips par jour</h2>
+    <p>Dans une campagne payée à la vue, le revenu est le produit de trois facteurs : le nombre de clips, les vues moyennes validées, et le taux. Le taux est fixé par la campagne. Les vues dépendent en grande partie de l'algorithme. <strong>Le nombre de clips est le seul terme que tu multiplies librement</strong> — et c'est celui que la plupart des clippeurs négligent au profit des deux autres.</p>
+    <p>À la main, un clippeur expérimenté sort <strong>10 à 15 clips par jour</strong> en y consacrant la journée entière : repérage dans la source, coupe, recadrage 9:16, sous-titres, export. C'est le plafond contre lequel tout le monde se cogne, et c'est ce que le calculateur confronte à ton objectif.</p>
+    <p>Pour aller plus loin : <a href="/blog/combien-paye-1000-vues-clipping.html" style="color:var(--vert,#10b981)">combien paye 1 000 vues en clipping</a>, <a href="/blog/combien-de-clips-par-jour.html" style="color:var(--vert,#10b981)">combien de clips par jour</a> et <a href="/blog/campagnes-clipping-remunerees.html" style="color:var(--vert,#10b981)">comment marche une campagne rémunérée</a>.</p>
+
+    <h2>Ce que ce calculateur ne fait pas</h2>
+    <p>Il ne prédit pas tes vues. Personne ne le peut : la variance est énorme sur les formats courts, et un clip sur dix fera dix fois les vues des autres sans qu'on puisse toujours dire pourquoi. Il ne garantit aucun revenu, et il ne remplace pas la lecture du brief d'une campagne, qui reste ce qui détermine si un clip est payé ou non.</p>
+    <p>Ce qu'il fait : dérouler honnêtement une multiplication que la plupart des gens font avec le mauvais taux.</p>
+  </div>
+
+  <div class="calc-cta">
+    <h3>Le seul facteur que tu contrôles, c'est le volume</h3>
+    <p>Analyse gratuite · sans carte bancaire · tu vois tes clips avant de payer</p>
+    <a href="/clips-v2.html">⚡ Essayer Créatis gratuitement</a>
+  </div>
+</main>
+
+<footer style="text-align:center;padding:32px 24px;color:#6b7280;font-size:13px;border-top:1px solid rgba(255,255,255,0.08);margin-top:40px">
+  © 2026 Créatis · <a href="/blog.html" style="color:#9ca3af">Blog</a> · <a href="/outils.html" style="color:#9ca3af">Outils</a> · <a href="/cgu.html" style="color:#9ca3af">CGU</a>
+</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var objectif = $('objectif'), vues = $('vues'), taux = $('taux'), sortie = $('resultat');
+  var choix = $('taux-choix').querySelectorAll('button');
+
+  var nb = function (n, d) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
+  };
+
+  choix.forEach(function (b) {
+    b.addEventListener('click', function () {
+      choix.forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+      b.setAttribute('aria-pressed', 'true');
+      taux.value = b.dataset.taux;
+      calculer();
+    });
+  });
+
+  // Saisir un taux a la main desynchronise les boutons : aucun des deux n'est plus vrai.
+  taux.addEventListener('input', function () {
+    var v = taux.value;
+    choix.forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.taux === v)); });
+    calculer();
+  });
+
+  function calculer() {
+    var obj = Math.max(1, parseFloat(objectif.value) || 0);
+    var vm = Math.max(1, parseFloat(vues.value) || 0);
+    var tx = Math.max(0.01, parseFloat(taux.value) || 0);
+
+    var euroParClip = (vm * tx) / 1000;
+    var clipsMois = Math.ceil(obj / euroParClip);
+    var clipsJour = clipsMois / 30;
+    var vuesMois = clipsMois * vm;
+    var heuresJourMain = (clipsJour * 20) / 60;   // ~20 min par clip monte a la main
+
+    var verdict, classe;
+    if (clipsJour <= 3) {
+      classe = 'ok';
+      verdict = '<strong>Atteignable à la main.</strong> Moins de trois clips par jour, c\'est tenable sans outillage — environ ' +
+        nb(heuresJourMain, 1) + ' h de montage quotidien. Le vrai risque ici n\'est pas le volume, c\'est la régularité.';
+    } else if (clipsJour <= 15) {
+      classe = 'limite';
+      verdict = '<strong>À la limite du faisable manuellement.</strong> Il te faudrait environ <strong>' + nb(heuresJourMain, 1) +
+        ' h de montage par jour</strong>, tous les jours. C\'est le plafond où la plupart des clippeurs s\'arrêtent — et où ils cessent de progresser, faute de temps pour autre chose.';
+    } else {
+      classe = 'impossible';
+      verdict = '<strong>Hors de portée à la main.</strong> ' + nb(heuresJourMain, 1) +
+        ' h de montage par jour, c\'est plus qu\'une journée de travail pour la seule production. À ce niveau, soit tu augmentes tes vues moyennes, soit tu automatises le repérage, le cadrage et les sous-titres — il n\'y a pas de troisième voie.';
+    }
+
+    sortie.innerHTML =
+      '<p class="gros">' + nb(clipsJour, clipsJour < 10 ? 1 : 0) + '</p>' +
+      '<p class="gros-label">clips à publier <strong>par jour</strong> pour viser ' + nb(obj) + ' € par mois</p>' +
+      '<div class="detail-grille">' +
+        '<div class="detail-item"><span class="v">' + nb(clipsMois) + '</span><span class="l">clips par mois</span></div>' +
+        '<div class="detail-item"><span class="v">' + nb(vuesMois) + '</span><span class="l">vues validées nécessaires</span></div>' +
+        '<div class="detail-item"><span class="v">' + nb(euroParClip, 2) + ' €</span><span class="l">rapportés par clip</span></div>' +
+      '</div>' +
+      '<div class="verdict ' + classe + '">' + verdict + '</div>';
+  }
+
+  [objectif, vues].forEach(function (el) { el.addEventListener('input', calculer); });
+  calculer();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+L'outil de la démonstration : https://creatis.app/y/2809b
+
+LE CRITÈRE, AVANT L'OUTIL
+Un clip doit tenir debout sans la vidéo d'où il sort. Pas le passage le plus fort : le plus autonome. Si tu dois expliquer le contexte pour que ça marche, c'est un extrait, pas un clip. Ce critère s'applique que tu montes à la main ou non — c'est exactement ce que cherche l'IA quand elle lit la transcription.
+
+LE PARCOURS, SANS ÉTAPE MASQUÉE
+1. Tu colles le lien de la vidéo YouTube. Rien à télécharger, aucun logiciel.
+2. L'IA transcrit, puis repère les passages qui se comprennent seuls.
+3. Elle rend ses propositions, notées, déjà recadrées en vertical et sous-titrées. Sur cette vidéo : dix clips.
+4. Tu tries. C'est la seule étape qui ne s'automatise pas.
+5. Tu ajustes les sous-titres si tu veux, tu exportes, tu publies.
+
+COMBIEN DE TEMPS, VRAIMENT
+Sept minutes et quart d'analyse sur cette vidéo. Le bandeau à l'écran indique quand l'image est accélérée, et la voix donne le chiffre vrai. Une démonstration qui cacherait ce délai se retournerait contre l'outil au premier essai.
+
+LA SOURCE
+« QUEL INFLUENCEUR POSSÈDE LE MEILLEUR FAST FOOD ? » — une vidéo qui n'est pas la mienne et que je n'ai pas eu à retoucher.
+
+CHAPITRES
+0:00 Coller le lien
+0:09 Ce que l'IA cherche, et le critère
+0:18 Les dix clips, notés
+0:25 Trier

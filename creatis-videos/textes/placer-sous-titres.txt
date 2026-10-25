@@ -1,0 +1,21 @@
+Ce clip a quarante mille vues et personne n'a compris ce qui s'y dit. Pas parce que le montage est raté : parce que les sous-titres sont cachés.
+
+Voilà ce que tu vois sur ton ordinateur quand tu montes. Et voilà ce que voit la personne sur son téléphone.
+
+Trois zones sont occupées par la plateforme, et elles ne t'appartiennent pas. En haut, de zéro à quatorze pour cent de la hauteur : la flèche de retour, la loupe, le menu. À droite, de quarante-neuf à quatre-vingt-neuf pour cent : la colonne des boutons, j'aime, commenter, partager. Et en bas, de soixante-six à quatre-vingt-douze pour cent : le nom du compte, la légende, le nombre de vues, la ligne de musique.
+
+Ces chiffres ne sont pas des estimations. Ils sont relevés sur une capture réelle d'un téléphone, en mille cent soixante-dix-neuf par deux mille cinq cent cinquante-six.
+
+Ce qui reste libre, c'est la bande entre quatorze et quarante-huit pour cent. C'est là que les sous-titres doivent se poser, et nulle part ailleurs.
+
+Le réflexe du débutant, c'est de les laisser en bas, là où les met tout logiciel de montage par défaut. Sur un écran d'ordinateur, c'est parfait. Sur un téléphone, c'est recouvert.
+
+Dans l'outil, tu les attrapes et tu les remontes à la main. Regarde : je les prends, je les monte au tiers de la hauteur, et ce que je vois dans l'aperçu est exactement ce qui sortira du fichier.
+
+Un dernier geste avant de publier, et il prend dix secondes : ouvre ton clip sur ton téléphone, pas sur ton écran. Si tu lis les sous-titres sans que rien ne les masque, il est bon. Sinon, remonte-les encore.
+
+Deux précisions, parce qu'elles reviennent à chaque fois.
+
+La taille d'abord. Trop gros, et deux mots remplissent l'écran : le spectateur lit plus vite que la voix ne parle, et il décroche. Trop petit, et personne ne lit rien sur un téléphone tenu à bout de bras. La bonne mesure, c'est trois à six mots visibles à l'image.
+
+Le fond ensuite. Un texte blanc posé nu sur une image claire disparaît dès que le plan s'éclaircit — et un plan s'éclaircit toujours à un moment. Un panneau sombre derrière le texte règle ça sur n'importe quelle image, sans transformer le clip en diapositive.

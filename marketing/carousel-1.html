@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Carrousel — 5 erreurs qui tuent tes Shorts</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a1a; display:flex; flex-wrap:wrap; gap:16px; padding:20px; font-family:'Hanken Grotesk',sans-serif; }
+.slide {
+  width:1080px;
+  height:1080px;
+  background:#080A0F;
+  display:flex;
+  flex-direction:column;
+  padding:60px;
+  position:relative;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.slide::before {
+  content:'';
+  position:absolute;
+  width:600px; height:600px;
+  background:radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%);
+  top:-200px; right:-200px;
+  pointer-events:none;
+}
+.logo {
+  position:absolute;
+  bottom:40px; right:60px;
+  display:flex; align-items:center; gap:8px;
+  font-size:18px; font-weight:800; color:rgba(255,255,255,0.25);
+}
+.logo-mark {
+  width:30px; height:30px; background:#10b981; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:900; color:#080A0F;
+}
+.dots { position:absolute; bottom:42px; left:60px; display:flex; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.12); }
+.dot.active { background:#10b981; width:24px; border-radius:4px; }
+
+/* ═══ COVER ═══ */
+.s-cover { justify-content:center; align-items:center; text-align:center; }
+.s-cover .pill { display:inline-block; padding:8px 20px; border:1px solid rgba(16,185,129,0.3); border-radius:99px; font-size:16px; font-weight:700; color:#10b981; margin-bottom:28px; letter-spacing:1px; }
+.s-cover .big { font-size:96px; font-weight:900; color:#fff; line-height:1.05; letter-spacing:-3px; }
+.s-cover .green { color:#10b981; }
+.s-cover .tag { font-size:20px; color:rgba(255,255,255,0.3); margin-top:28px; font-weight:600; }
+
+/* ═══ ERREUR ═══ */
+.s-err { justify-content:center; }
+.s-err .err-num { font-size:160px; font-weight:900; color:rgba(16,185,129,0.06); position:absolute; top:20px; right:40px; line-height:1; }
+.s-err .top-bar { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.s-err .err-badge { padding:6px 14px; background:rgba(16,185,129,0.1); border-radius:6px; font-size:14px; font-weight:800; color:#10b981; letter-spacing:1px; }
+.s-err .err-icon { font-size:48px; margin-bottom:16px; }
+.s-err .err-title { font-size:44px; font-weight:900; color:#fff; line-height:1.15; margin-bottom:16px; letter-spacing:-1px; }
+.s-err .err-desc { font-size:24px; color:rgba(255,255,255,0.45); line-height:1.5; font-weight:500; margin-bottom:28px; }
+.s-err .fix-box { padding:20px 28px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.15); border-radius:14px; }
+.s-err .fix-label { font-size:14px; font-weight:800; color:#10b981; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px; }
+.s-err .fix-text { font-size:22px; color:#fff; font-weight:700; line-height:1.4; }
+
+/* ═══ CTA ═══ */
+.s-cta { justify-content:center; align-items:center; text-align:center; }
+.s-cta .cta-text { font-size:52px; font-weight:900; color:#fff; line-height:1.2; letter-spacing:-1px; margin-bottom:36px; }
+.s-cta .cta-green { color:#10b981; }
+.s-cta .cta-btn { background:linear-gradient(180deg,#10b981,#059669); color:#fff; font-size:24px; font-weight:800; padding:20px 50px; border-radius:99px; box-shadow:0 12px 40px rgba(16,185,129,0.35); display:inline-block; }
+.s-cta .cta-url { margin-top:20px; font-size:20px; color:rgba(255,255,255,0.25); font-weight:600; }
+.s-cta .features { display:flex; gap:24px; margin-top:40px; }
+.s-cta .feat { font-size:16px; color:rgba(255,255,255,0.35); font-weight:600; }
+.s-cta .feat span { color:#10b981; }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1 — COVER -->
+<div class="slide s-cover">
+  <div class="pill">CRÉATEURS YOUTUBE</div>
+  <div class="big">5 erreurs<br><span class="green">qui tuent<br>tes Shorts</span></div>
+  <div class="tag">Swipe pour les découvrir →</div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 2 — Erreur 1 -->
+<div class="slide s-err">
+  <div class="err-num">01</div>
+  <div class="top-bar"><div class="err-badge">ERREUR N°1</div></div>
+  <div class="err-icon">🔇</div>
+  <div class="err-title">Pas de sous-titres</div>
+  <div class="err-desc">75% des Shorts sont regardés sans le son.<br>Sans sous-titres = tu perds 3 viewers sur 4.</div>
+  <div class="fix-box">
+    <div class="fix-label">✅ La solution</div>
+    <div class="fix-text">Brûle les sous-titres dans la vidéo.<br>Style karaoke = +40% de rétention.</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 3 — Erreur 2 -->
+<div class="slide s-err">
+  <div class="err-num">02</div>
+  <div class="top-bar"><div class="err-badge">ERREUR N°2</div></div>
+  <div class="err-icon">⏱️</div>
+  <div class="err-title">Pas de hook en<br>2 secondes</div>
+  <div class="err-desc">65% des viewers quittent avant la 3ème seconde. Rien pour les accrocher = scroll immédiat.</div>
+  <div class="fix-box">
+    <div class="fix-label">✅ La solution</div>
+    <div class="fix-text">Texte d'accroche en gros dans les 3 premières secondes. Toujours.</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 4 — Erreur 3 -->
+<div class="slide s-err">
+  <div class="err-num">03</div>
+  <div class="top-bar"><div class="err-badge">ERREUR N°3</div></div>
+  <div class="err-icon">📐</div>
+  <div class="err-title">Mauvais format<br>16:9 → bandes noires</div>
+  <div class="err-desc">Un Short en paysage ne sera jamais poussé par l'algorithme. YouTube le détecte et le pénalise.</div>
+  <div class="fix-box">
+    <div class="fix-label">✅ La solution</div>
+    <div class="fix-text">Recadre en 9:16 avec le visage centré.<br>Toujours vertical, jamais horizontal.</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 5 — Erreur 4 -->
+<div class="slide s-err">
+  <div class="err-num">04</div>
+  <div class="top-bar"><div class="err-badge">ERREUR N°4</div></div>
+  <div class="err-icon">🥱</div>
+  <div class="err-title">Clips trop longs</div>
+  <div class="err-desc">+60 secondes = taux de complétion 2x plus bas. L'algo favorise les vidéos regardées jusqu'au bout.</div>
+  <div class="fix-box">
+    <div class="fix-label">✅ La solution</div>
+    <div class="fix-text">Vise 30-45 secondes maximum.<br>Court + impactant > long + ennuyeux.</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 6 — Erreur 5 -->
+<div class="slide s-err">
+  <div class="err-num">05</div>
+  <div class="top-bar"><div class="err-badge">ERREUR N°5</div></div>
+  <div class="err-icon">🎯</div>
+  <div class="err-title">Choisir les mauvais moments</div>
+  <div class="err-desc">Tu coupes au hasard au lieu de sélectionner les moments à forte émotion. Résultat : 0 viralité.</div>
+  <div class="fix-box">
+    <div class="fix-label">✅ La solution</div>
+    <div class="fix-text">L'IA détecte les pics d'engagement et score chaque moment de 0 à 100.</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div><div class="dot"></div></div>
+</div>
+
+<!-- SLIDE 7 — CTA -->
+<div class="slide s-cta">
+  <div class="cta-text">Créatis corrige<br>ces 5 erreurs<br><span class="cta-green">automatiquement.</span></div>
+  <div class="cta-btn">Essaie gratuitement →</div>
+  <div class="cta-url">creatis.app</div>
+  <div class="features">
+    <div class="feat"><span>⚡</span> Zéro montage</div>
+    <div class="feat"><span>⏱</span> 60 secondes</div>
+    <div class="feat"><span>✓</span> Gratuit</div>
+  </div>
+  <div class="logo"><div class="logo-mark">C</div>Créatis</div>
+  <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot active"></div></div>
+</div>
+
+</body>
+</html>

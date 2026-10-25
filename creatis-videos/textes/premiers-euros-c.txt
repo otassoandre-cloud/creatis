@@ -1,0 +1,13 @@
+Ce qui prend du temps, ce n'est pas le montage. C'est de trouver quel passage mérite d'être clippé. Sur une vidéo d'une heure, il y a peut-être dix moments qui tiennent debout tout seuls, et il faut regarder l'heure entière pour les repérer.
+
+C'est ce travail-là qu'on a automatisé. Regarde l'écran.
+
+On colle le lien d'une vidéo. La plateforme récupère la transcription, elle lit toute la vidéo, et elle rend une grille. Dix passages, et chacun porte une note sur cent. La note n'est pas décorative : elle mesure si le passage se comprend sans le reste de la vidéo, s'il a une accroche dans ses trois premières secondes, et s'il se termine sur quelque chose. Tu ouvres les mieux notés en premier.
+
+On ouvre un clip. À gauche, le clip déjà recadré en neuf seizièmes, centré sur la personne qui parle. En dessous, la transcription, mot par mot : tu vois exactement ce qui est dit et à quelle seconde.
+
+Les sous-titres sont déjà écrits. Tu changes de style d'un clic. Tu règles la taille. Et surtout, tu les attrapes et tu les déplaces où tu veux dans le cadre, à la main. C'est le détail qui compte le plus, parce que selon la plateforme où tu publies, l'interface mange le bas de l'écran, et des sous-titres cachés, c'est un clip perdu.
+
+Au-dessus, tu écris ton bandeau d'accroche. Celui que le spectateur lit avant même d'entendre la première syllabe.
+
+Et tu exportes. Le fichier qui sort est en mille quatre-vingts par mille neuf cent vingt, sous-titres incrustés, prêt à publier. Tu n'ouvres aucun logiciel de montage.

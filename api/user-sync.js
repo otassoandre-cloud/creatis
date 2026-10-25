@@ -8,37 +8,148 @@ const crypto = require('crypto');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
-// TODO: configurer META_PIXEL_ID et META_CAPI_TOKEN dans Vercel → Settings → Environment Variables
-const META_PIXEL_ID = (process.env.META_PIXEL_ID || '').trim();
-const META_CAPI_TOKEN = (process.env.META_CAPI_TOKEN || '').trim();
+const META_PIXEL_ID = (process.env.META_PIXEL_ID || '953153460847578').trim();
+const META_CAPI_TOKEN = (process.env.META_ACCESS_TOKEN || process.env.META_CAPI_TOKEN || '').trim();
+
+/* ── Programme « publie une video, 1 mois offert » ──────────────────────────
+   Fusionne ici plutot que dans un fichier api/ dedie : Vercel Hobby plafonne a 12 Fonctions
+   Serverless (un fichier = une fonction) et le projet en avait deja 12 — un 13e fichier fait
+   echouer le deploiement en silence (le build reussit, seule l'etape "Deploying outputs" tombe
+   en erreur, sans message exploitable). Constate le 21/08/2026 en deployant ugc-croissance.js
+   seul. user-sync.js multiplexe deja des dizaines d'actions par un seul fichier, c'est le patron
+   du projet pour ce cas exact. */
+const UGC_PLATEFORMES_VALIDES = ['tiktok', 'instagram', 'youtube', 'autre'];
+// La duree d'essai et le plan recompense vivent desormais dans api/create-checkout-session.js,
+// seul endroit qui accorde vraiment le mois offert (via un essai Stripe, carte requise).
+
+function ugcDetecterPlateforme(url) {
+  const u = String(url || '').toLowerCase();
+  if (u.includes('tiktok.com')) return 'tiktok';
+  if (u.includes('instagram.com')) return 'instagram';
+  if (u.includes('youtube.com') || u.includes('youtu.be')) return 'youtube';
+  return 'autre';
+}
+
+/* Envoi d'email ATTENDU, mais jamais fatal.
+   Sur Vercel, l'invocation est gelee des que la reponse HTTP part : un `fetch(...)` lance sans
+   `await` est tue en vol et l'email ne part JAMAIS. C'est ce qui rendait la notification de
+   soumission silencieuse alors que la cle Brevo fonctionne (verifie : envoi direct -> HTTP 201).
+   On attend donc l'envoi avant de repondre — quelques centaines de millisecondes — mais on
+   avale toute erreur : l'action metier (soumission enregistree, decision prise) est deja
+   accomplie a ce stade et ne doit pas echouer parce qu'un email n'est pas parti. */
+async function ugcEnvoyerEmail(payload, contexte) {
+  const cle = (process.env.BREVO_API_KEY || '').trim();
+  if (!cle) { console.warn(`[${contexte}] BREVO_API_KEY absente — email non envoyé`); return false; }
+  try {
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': cle },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      console.error(`[${contexte}] Brevo ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+      return false;
+    }
+    console.log(`[${contexte}] email envoyé à ${payload.to?.[0]?.email}`);
+    return true;
+  } catch (e) {
+    console.error(`[${contexte}] envoi échoué: ${e.message}`);
+    return false;
+  }
+}
+
+function ugcVerifierAdmin(req) {
+  const adminToken = (process.env.ADMIN_TOKEN || '').trim();
+  const auth = (req.headers['authorization'] || '').replace('Bearer ', '');
+  return !!adminToken && auth === adminToken;
+}
 
 async function envoyerEmailBienvenue(email) {
-  if (!process.env.BREVO_API_KEY) return;
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('[Email] BREVO_API_KEY manquante — bienvenue non envoyé à', email);
+    return;
+  }
+  // Ajout contact Brevo (non bloquant — échec ignoré)
+  fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': (process.env.BREVO_API_KEY || '').trim() },
+    body: JSON.stringify({ email, attributes: { PLAN: 'gratuit' }, listIds: [3], updateEnabled: true })
+  }).catch(e => console.warn('[Email] Ajout contact Brevo échoué:', e.message));
+
+  // Envoi email de bienvenue
   try {
-    await fetch('https://api.brevo.com/v3/contacts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
-      body: JSON.stringify({ email, attributes: { PLAN: 'gratuit' }, updateEnabled: true })
-    });
     const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'api-key': (process.env.BREVO_API_KEY || '').trim() },
       body: JSON.stringify({
         sender: { email: 'contact@creatis.app', name: 'Créatis' },
         to: [{ email }],
-        subject: '🚀 Bienvenue sur Créatis — ta génération gratuite t\'attend',
-        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;"><div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div><p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Votre assistant YouTube IA</p><h1 style="font-size:22px;font-weight:700;color:#fff;margin:0 0 12px;">Bienvenue ! 👋</h1><p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Ton compte est créé. Tu as <strong style="color:#10b981;">1 génération gratuite</strong> pour découvrir Créatis — aucune carte bancaire requise.</p><div style="background:#111827;border:1px solid #1f2937;border-radius:8px;padding:20px;margin-bottom:28px;"><p style="color:#10b981;font-weight:600;margin:0 0 12px;">Pour commencer :</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">1. Connecte ton @handle YouTube</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">2. Choisis un agent IA (YouTube Complet, Short, Idées…)</p><p style="color:#d1d5db;font-size:14px;margin:4px 0;">3. Génère ton contenu en 30 secondes</p></div><a href="https://creatis.app/app.html" style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Démarrer avec Créatis →</a><p style="color:#4b5563;font-size:12px;margin-top:32px;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a></p></div>`
+        subject: 'Ton 1er clip viral t\'attend (ça prend 30 secondes)',
+        htmlContent: `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
+<div style="font-size:26px;font-weight:900;color:#fff;margin-bottom:32px;">Creatis<span style="color:#10b981;">.</span></div>
+
+<h1 style="font-size:20px;font-weight:800;color:#fff;margin:0 0 16px;line-height:1.3;">Un créateur manga a généré 532€<br>avec un seul clip court.</h1>
+
+<p style="color:#9ca3af;line-height:1.7;margin:0 0 24px;font-size:15px;">Il a uploadé sa vidéo YouTube sur Créatis. L'IA a trouvé le meilleur moment, coupé en 9:16, ajouté les sous-titres. 30 secondes de travail.</p>
+
+<div style="background:#0d1f14;border:1px solid rgba(16,185,129,0.25);border-radius:10px;padding:20px;margin-bottom:28px;">
+  <p style="color:#10b981;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">Ton analyse gratuite — 3 étapes</p>
+  <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;line-height:1.6;">① Va sur <strong style="color:#fff;">creatis.app</strong> → Clips Viraux</p>
+  <p style="color:#d1d5db;font-size:14px;margin:0 0 8px;line-height:1.6;">② Uploade n'importe quelle vidéo YouTube (même une vieille)</p>
+  <p style="color:#d1d5db;font-size:14px;margin:0;line-height:1.6;">③ Reçois tes clips en 30 secondes</p>
+</div>
+
+<a href="https://creatis.app/generateur-clips-viraux.html" style="display:block;background:#10b981;color:#000;font-weight:800;font-size:16px;padding:16px 28px;border-radius:10px;text-decoration:none;text-align:center;margin-bottom:24px;">Générer mes clips maintenant →</a>
+
+<p style="color:#4b5563;font-size:13px;line-height:1.6;margin:0 0 8px;">Gratuit · Sans carte bancaire · Analyse et aperçu offerts</p>
+<p style="color:#374151;font-size:12px;margin:0;">Questions ? <a href="mailto:contact@creatis.app" style="color:#10b981;text-decoration:none;">contact@creatis.app</a></p>
+</div>`
       })
     });
     const emailData = await emailRes.json().catch(() => ({}));
     if (!emailRes.ok) {
-      console.error('[Email] Brevo erreur:', emailRes.status, JSON.stringify(emailData));
-    } else {
-      console.log('[Email] Brevo OK:', emailData.messageId);
-      return emailData.messageId;
+      console.error('[Email] Brevo SMTP erreur', emailRes.status, 'pour', email, ':', JSON.stringify(emailData));
+      return null;
     }
+    console.log('[Email] Bienvenue envoyé à', email, '— messageId:', emailData.messageId);
+    return emailData.messageId;
   } catch (e) {
-    console.warn('[Email] Bienvenue non envoyé:', e.message);
+    console.error('[Email] Bienvenue exception pour', email, ':', e.message);
+    return null;
+  }
+}
+
+/* Compte les événements PostHog d'une journée. Les affichages de paywall et les clics « Passer au
+   Pro » n'existent QUE dans PostHog — Supabase ne les voit pas. Sans clé configurée, on renvoie
+   null et le rapport affiche « — » plutôt que de mentir avec des zéros.
+   Nécessite POSTHOG_API_KEY (clé personnelle, lecture seule suffit) et POSTHOG_PROJECT_ID. */
+async function statsPostHog(debutISO, finISO) {
+  const cle = (process.env.POSTHOG_API_KEY || '').trim();
+  const projet = (process.env.POSTHOG_PROJECT_ID || '').trim();
+  const hote = (process.env.POSTHOG_HOST || 'https://eu.posthog.com').trim();
+  if (!cle || !projet) return null;
+  try {
+    const sql = `
+      SELECT event, count() AS n, count(DISTINCT person_id) AS pers
+      FROM events
+      WHERE timestamp >= '${debutISO}' AND timestamp <= '${finISO}'
+        AND event IN ('paywall_shown','upgrade_clicked','clips_generated','generation_failed',
+                      'export_clicked','download_completed','free_credit_refunded','paiement_erreur')
+      GROUP BY event`;
+    const r = await fetch(`${hote}/api/projects/${projet}/query/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: { kind: 'HogQLQuery', query: sql } }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!r.ok) { console.warn('[DailyReport] PostHog', r.status); return null; }
+    const d = await r.json();
+    const out = {};
+    for (const [event, n, pers] of (d.results || [])) out[event] = { n, pers };
+    return out;
+  } catch (e) {
+    console.warn('[DailyReport] PostHog indisponible:', e.message);
+    return null;
   }
 }
 
@@ -62,25 +173,224 @@ async function supabase(path, method, body) {
 }
 
 module.exports = async (req, res) => {
-  const appUrl = process.env.APP_URL || 'https://creatis.app';
+  /* Stripe refuse un return_url sans schéma et répond « Not a valid URL ». Une APP_URL
+     renseignée « creatis.app » au lieu de « https://creatis.app » suffisait donc à bloquer la
+     RÉSILIATION : le client voyait une erreur rouge et ne pouvait pas partir — c'est
+     exactement ce qui finit en opposition bancaire, et c'est interdit par la loi française.
+     On normalise plutôt que de faire confiance à une variable d'environnement. */
+  const appUrl = (() => {
+    const brut = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
+    if (!brut) return 'https://creatis.app';
+    const avecSchema = /^https?:\/\//i.test(brut) ? brut : `https://${brut}`;
+    try { new URL(avecSchema); return avecSchema; } catch { return 'https://creatis.app'; }
+  })();
   res.setHeader('Access-Control-Allow-Origin', appUrl);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
 
-  const { userId, email, plan, chaine, action, metadata } = req.body || {};
+  // Crons Vercel envoient GET — autoriser GET pour les actions cron
+  const actionFromQuery = req.query?.action || req.url?.split('action=')[1]?.split('&')[0];
+  if (req.method === 'GET' && ['email_cron', 'daily_report', 'expirer_plans_temporaires', 'relance_essai_annuel_j5', 'rattrapage_impayes'].includes(actionFromQuery)) {
+    req.body = { action: actionFromQuery };
+  } else if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Méthode non autorisée' });
+  }
 
-  if (!userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
+  const { userId, email, plan, chaine, action, metadata, source } = req.body || {};
+
+  const isCronAction = action === 'email_cron' || action === 'daily_report' || action === 'expirer_plans_temporaires' || action === 'relance_essai_annuel_j5';
+  // `portail_abonnement` s'identifie par le JWT Supabase, pas par un userId de corps de requête —
+  // il ne doit donc pas être recalé par ce contrôle.
+  // `rattrapage_impayes` s'authentifie par CRON_SECRET et travaille sur une liste qu'il
+  // construit lui-meme : il n'a aucun identifiant a recevoir dans le corps de la requete.
+  const sansIdentifiantCorps = isCronAction || action === 'portail_abonnement' || action === 'retention_appliquer'
+    || action === 'ugc_soumettre' || action === 'ugc_lister' || action === 'ugc_decider'
+    || action === 'rattrapage_impayes'
+    || action === 'annuler_abonnements_doubles';
+  if (!sansIdentifiantCorps && !userId && !email) return res.status(400).json({ error: 'userId ou email requis' });
 
   try {
     switch (action) {
 
+      // ── Soumission publique : lien de la video ──────────────────────────────
+      case 'ugc_soumettre': {
+        const url = String(req.body?.videoUrl || '').trim();
+        const mail = String(req.body?.email || '').trim();
+        if (!mail || !url) return res.status(400).json({ error: 'email et videoUrl requis' });
+        if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "Lien invalide — colle l'URL complète (https://...)" });
+        const plateforme = ugcDetecterPlateforme(url);
+        if (!UGC_PLATEFORMES_VALIDES.includes(plateforme)) return res.status(400).json({ error: 'Plateforme non reconnue' });
+        try {
+          const [ligne] = await supabase('/ugc_soumissions', 'POST', {
+            user_id: req.body?.userId || null,
+            email: mail.toLowerCase(),
+            video_url: url,
+            plateforme,
+          }) || [];
+          /* Notification a l'equipe. Le panneau admin oblige a PENSER a aller voir ; un mail
+             arrive tout seul et porte le lien cliquable, donc la video se regarde tout de
+             suite. Non bloquant : la soumission est deja enregistree a ce stade, un echec
+             d'envoi ne doit surtout pas la faire echouer cote utilisateur. */
+          {
+            const _labels = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', autre: 'Autre' };
+            await ugcEnvoyerEmail({
+                sender: { email: 'contact@creatis.app', name: 'Créatis' },
+                // `replyTo` sur l'auteur : repondre au mail lui ecrit directement, sans copier
+                // son adresse a la main (pour demander une precision, un autre lien, etc.).
+                replyTo: { email: mail.toLowerCase() },
+                to: [{ email: 'contact@creatis.app' }],
+                subject: `🎬 Vidéo à vérifier (${_labels[plateforme] || plateforme}) — ${mail.toLowerCase()}`,
+                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">`
+                  + `<h2 style="font-size:19px;margin:0 0 6px">Nouvelle vidéo soumise</h2>`
+                  + `<p style="color:#666;font-size:14px;margin:0 0 20px">Programme « publie une vidéo, 1 mois offert »</p>`
+                  + `<div style="background:#f6f6f6;border-radius:10px;padding:16px 18px;margin:0 0 20px;line-height:1.8;font-size:14px">`
+                  + `<strong>Créateur :</strong> ${mail.toLowerCase()}<br>`
+                  + `<strong>Plateforme :</strong> ${_labels[plateforme] || plateforme}<br>`
+                  + `<strong>Compte lié :</strong> ${req.body?.userId ? 'oui' : '— aucun (à vérifier)'}`
+                  + `</div>`
+                  + `<a href="${url}" style="display:inline-block;background:#111;color:#fff;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 12px">▶ Regarder la vidéo</a><br>`
+                  + `<a href="https://creatis.app/admin-ugc-croissance.html" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">✅ Approuver ou rejeter</a>`
+                  + `<p style="color:#999;font-size:12px;margin:0;word-break:break-all">Lien brut : ${url}</p>`
+                  + `</div>`,
+            }, 'ugc_soumettre');
+          }
+          return res.status(200).json({ ok: true, soumission: ligne });
+        } catch (e) {
+          if (/duplicate key|unique constraint/i.test(e.message)) {
+            return res.status(409).json({ error: 'Ce lien a déjà été soumis.' });
+          }
+          throw e;
+        }
+      }
+
+      /* Historique personnel. Distinct de `ugc_lister` (admin) : filtre sur le userId du corps
+         et ne renvoie que les colonnes utiles a l'interesse — jamais essai_token, qui vaut un
+         mois gratuit et n'a rien a faire dans une reponse lisible depuis le navigateur. */
+      case 'ugc_mes_soumissions': {
+        if (!userId) return res.status(400).json({ error: 'userId requis' });
+        const lignes = await supabase(
+          `/ugc_soumissions?user_id=eq.${encodeURIComponent(userId)}&select=id,video_url,plateforme,statut,note_admin,cree_le,traite_le&order=cree_le.desc`,
+          'GET'
+        );
+        return res.status(200).json({ soumissions: lignes || [] });
+      }
+
+      // ── Liste admin (revue manuelle) ─────────────────────────────────────────
+      case 'ugc_lister': {
+        if (!ugcVerifierAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+        const statutFiltre = req.body?.statut;
+        const filtre = statutFiltre ? `&statut=eq.${encodeURIComponent(statutFiltre)}` : '';
+        const lignes = await supabase(`/ugc_soumissions?select=*&order=cree_le.desc&limit=500${filtre}`, 'GET');
+        return res.status(200).json({ soumissions: lignes || [] });
+      }
+
+      // ── Décision admin (approuver/rejeter) ───────────────────────────────────
+      case 'ugc_decider': {
+        if (!ugcVerifierAdmin(req)) return res.status(401).json({ error: 'unauthorized' });
+        const { id, decision, vues_constatees, note } = req.body || {};
+        if (!id || !['approuve', 'rejete'].includes(decision)) {
+          return res.status(400).json({ error: 'id et decision (approuve|rejete) requis' });
+        }
+        const [soumission] = await supabase(`/ugc_soumissions?id=eq.${encodeURIComponent(id)}&select=*`, 'GET') || [];
+        if (!soumission) return res.status(404).json({ error: 'Soumission introuvable' });
+        if (soumission.statut !== 'en_attente') return res.status(409).json({ error: `Déjà traitée (${soumission.statut})` });
+
+        await supabase(`/ugc_soumissions?id=eq.${encodeURIComponent(id)}`, 'PATCH', {
+          statut: decision,
+          vues_constatees: vues_constatees != null ? Number(vues_constatees) : null,
+          note_admin: note || null,
+          traite_le: new Date().toISOString(),
+        });
+
+        if (decision === 'approuve') {
+          /* Le mois offert n'est PAS accordé ici en direct : la carte est requise pour que le
+             2e mois se prélève tout seul, donc l'approbation ne fait qu'envoyer un lien de
+             paiement en mode essai (voir api/create-checkout-session.js, paramètre essaiToken).
+             `essai_token` existe déjà sur la ligne depuis la soumission — un jeton à part de
+             `id`, pour qu'il ne soit pas devinable ni exposé ailleurs dans l'admin. */
+          {
+            const lienEssai = `https://creatis.app/paiement.html?plan=pro&essai=${soumission.essai_token}`;
+            await ugcEnvoyerEmail({
+                sender: { name: 'Créatis', email: 'contact@creatis.app' },
+                to: [{ email: soumission.email }],
+                subject: 'Ta vidéo est validée — active ton mois Pro offert 🎬',
+                htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px"><h2 style="font-size:20px;margin:0 0 16px">Bien joué !</h2><p style="line-height:1.7;margin:0 0 16px">Ta vidéo a été validée. Il reste une étape pour activer ton <strong>mois Pro offert</strong> : renseigne une carte (aucun prélèvement maintenant).</p><a href="${lienEssai}" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px;margin:0 0 20px">Activer mon mois offert →</a><p style="line-height:1.7;margin:0 0 8px;color:#444;font-size:14px">Le mois est à 0€. Passé ce délai, l'abonnement Pro continue automatiquement à 14€/mois — résiliable à tout moment avant, sans rien devoir.</p><p style="color:#999;font-size:12px;margin:16px 0 0">Ce lien est personnel, ne le partage pas. Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`,
+            }, 'ugc_decider/approbation');
+          }
+        }
+
+        /* Un rejet ne prevenait PERSONNE : la personne restait en attente indefiniment, sans
+           savoir si sa demande avait ete vue, et renvoyait le meme lien. Dire non clairement,
+           avec le motif, vaut mieux qu'un silence — et lui laisse une chance de refaire une
+           video conforme plutot que d'abandonner. */
+        if (decision === 'rejete') {
+          const motif = (note || '').trim();
+          await ugcEnvoyerEmail({
+              sender: { name: 'Créatis', email: 'contact@creatis.app' },
+              replyTo: { email: 'contact@creatis.app' },
+              to: [{ email: soumission.email }],
+              subject: "Ta vidéo n'a pas été retenue",
+              htmlContent: `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">`
+                + `<h2 style="font-size:19px;margin:0 0 14px">Ta vidéo n'a pas été retenue</h2>`
+                + (motif
+                    ? `<div style="background:#f6f6f6;border-left:3px solid #999;border-radius:6px;padding:14px 16px;margin:0 0 18px;font-size:14px;line-height:1.6"><strong>Motif :</strong> ${motif}</div>`
+                    : '')
+                + `<p style="line-height:1.7;margin:0 0 16px;font-size:14px">Pour rappel, pour obtenir le mois offert la vidéo doit être <strong>la tienne</strong>, <strong>présenter Créatis</strong> (démo, avis, avant/après) et dépasser <strong>300 vues</strong>. Une vidéo qui ne parle pas de l'outil, ou qui appartient à quelqu'un d'autre, ne peut pas être acceptée.</p>`
+                + `<p style="line-height:1.7;margin:0 0 20px;font-size:14px">Tu peux retenter autant de fois que tu veux avec une nouvelle vidéo.</p>`
+                + `<a href="https://creatis.app/offre-createur" style="display:inline-block;background:#10b981;color:#04120b;padding:13px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 20px">Revoir les conditions →</a>`
+                + `<p style="color:#999;font-size:12px;margin:0">Une question ? Réponds à cet email. Créatis · creatis.app</p>`
+                + `</div>`,
+          }, 'ugc_decider/rejet');
+        }
+
+        return res.status(200).json({ ok: true });
+      }
+
       case 'get': {
         const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
         const users = await supabase(`/users?${identifier}&select=*`, 'GET');
-        return res.status(200).json({ user: users?.[0] || null });
+        const u = users?.[0] || null;
+
+        /* L'ABONNEMENT FAIT FOI, PAS LA COLONNE `plan`.
+         *
+         * `users.plan` est une copie, ecrite par le webhook Stripe. Entre le
+         * paiement et cette ecriture il s'ecoule un delai — et pendant ce
+         * delai, le client lit « gratuit » et montre le paywall a quelqu'un qui
+         * vient de payer. Mesure du 23/09/2026 : `auzannet0374` paie a 11:48:57,
+         * le paywall lui revient a 11:50:14 — soit 77 secondes apres. Elle
+         * reclique trois fois sur « passer au Pro », le serveur lui repond
+         * qu'elle est deja abonnee, et elle ouvre le formulaire de resiliation
+         * le lendemain matin. Deux autres comptes ont vecu la meme chose en
+         * quinze jours ; l'un d'eux a resilie.
+         *
+         * On ne fait donc plus confiance a la copie : des qu'un abonnement
+         * `active` ou `trialing` existe, c'est lui qui donne le plan. Et on
+         * repare la colonne au passage, pour que tout le reste du systeme —
+         * quotas, bandeaux, verrous — reparte sur la bonne valeur.
+         *
+         * Le cout est d'une requete supplementaire sur une route deja rapide.
+         * Le cout de l'erreur inverse est un client qui paie et ne peut pas
+         * s'en servir. */
+        if (u?.id && (!u.plan || u.plan === 'gratuit')) {
+          const abos = await supabase(
+            `/abonnements?user_id=eq.${u.id}&status=in.(active,trialing)&select=plan,status&order=created_at.desc&limit=1`,
+            'GET',
+          ).catch(() => null);
+          const vrai = abos?.[0]?.plan;
+          if (vrai && vrai !== 'gratuit') {
+            console.warn(`[get] ${u.email || u.id} : plan "${u.plan}" corrige en "${vrai}" — abonnement ${abos[0].status}`);
+            u.plan = vrai;
+            /* Reparation silencieuse : si elle echoue, la reponse reste juste,
+               et le prochain appel retentera. On ne bloque pas la lecture. */
+            supabase(`/users?id=eq.${u.id}`, 'PATCH', {
+              plan: vrai, updated_at: new Date().toISOString(),
+            }).catch((e) => console.warn('[get] reparation du plan echouee:', e.message));
+          }
+        }
+
+        return res.status(200).json({ user: u });
       }
 
       case 'upsert': {
@@ -99,22 +409,16 @@ module.exports = async (req, res) => {
           chaine_nom: chaine?.nom || null,
           chaine_abonnes: chaine?.abonnes || 0,
           chaine_id: chaine?.id || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Uniquement à la création : ne jamais écraser la vraie source d'un compte existant
+          // (upsert est aussi appelé à chaque connexion, pas seulement au signup)
+          ...(isNewUser && source && { source })
         };
         const result = await supabase('/users?on_conflict=email', 'POST', userData);
 
         // Email de bienvenue uniquement pour les nouveaux inscrits
-        let emailStatus = 'skipped';
-        let emailMessageId = null;
-        if (email && process.env.BREVO_API_KEY) {
-          if (isNewUser) {
-            emailMessageId = await envoyerEmailBienvenue(email);
-            emailStatus = emailMessageId ? 'delivered' : 'error';
-          } else {
-            emailStatus = 'existing_user';
-          }
-        } else if (!process.env.BREVO_API_KEY) {
-          emailStatus = 'no_api_key';
+        if (isNewUser && email) {
+          await envoyerEmailBienvenue(email);
         }
 
         return res.status(200).json({ user: Array.isArray(result) ? result[0] : result });
@@ -231,7 +535,6 @@ module.exports = async (req, res) => {
             action_source: 'website',
             user_data: { em: [emailHash] }
           }]
-          // test_event_code: 'TEST_XXXXX' // décommenter pour tester dans Events Manager Meta
         };
         const capiRes = await fetch(
           `https://graph.facebook.com/v18.0/${META_PIXEL_ID}/events?access_token=${META_CAPI_TOKEN}`,
@@ -261,6 +564,892 @@ module.exports = async (req, res) => {
           console.warn('[update_profile] PATCH échoué (colonnes manquantes ?):', e.message);
         }
         return res.status(200).json({ success: true });
+      }
+
+      case 'email_cron': {
+        /* Deux pistes distinctes, et c'est tout l'objet de la refonte du 25/09/2026.
+
+           Avant : une seule séquence, ciblée sur `repurpose_count = 0`. Or ce champ est
+           mort — 830 comptes à 0 alors que 409 ont réellement généré (table
+           clip_generations, seule source de vérité). Conséquence : on envoyait « tu n'as
+           pas encore créé ton premier clip » à des gens qui en avaient déjà fait.
+
+           Après :
+             Piste A « jamais généré »  — la séquence d'origine, sur le bon signal.
+             Piste B « généré une fois » — nouvelle, et c'est là qu'est l'argent : sur
+               30 jours, 132 comptes font UNE génération puis disparaissent et convertissent
+               à 3 %, contre 10,5 % dès la deuxième. Il leur reste une analyse gratuite. */
+        const authHeader = req.headers['authorization'] || '';
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || authHeader.replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: true, sent: 0, note: 'BREVO_API_KEY manquante' });
+
+        const origin = 'https://creatis.app';
+        const now = new Date();
+        const dry = req.query?.dry === '1';
+        /* `?rattrapage=1` traite l'arriere et RIEN D'AUTRE. Sans ce drapeau, les deux
+           sequences quotidiennes ci-dessous s'executaient aussi — et comme le cron de 9h
+           les a deja envoyees, l'appel manuel produisait un doublon chez le destinataire.
+           Erreur commise le 25/09/2026 : ~20 personnes ont recu deux messages le meme jour. */
+        const modeRattrapage = req.query?.rattrapage === '1';
+        let totalSent = 0;
+        const cronLog = [];
+
+        /* Vérité d'usage : la table des générations, pas un compteur sur users.
+           677 lignes aujourd'hui — on charge tout et on compte en mémoire, c'est
+           largement moins coûteux qu'une requête par utilisateur. */
+        const toutesGen = await supabase('/clip_generations?select=user_id,created_at&limit=20000');
+        const nbParUser = new Map();
+        const premiereParUser = new Map();
+        for (const g of (Array.isArray(toutesGen) ? toutesGen : [])) {
+          nbParUser.set(g.user_id, (nbParUser.get(g.user_id) || 0) + 1);
+          const t = new Date(g.created_at).getTime();
+          if (!premiereParUser.has(g.user_id) || t < premiereParUser.get(g.user_id)) premiereParUser.set(g.user_id, t);
+        }
+
+        const bornesJour = (joursAvant) => {
+          const d = new Date(now); d.setDate(d.getDate() - joursAvant);
+          const from = new Date(d); from.setHours(0, 0, 0, 0);
+          const to = new Date(d); to.setHours(23, 59, 59, 999);
+          return [from, to];
+        };
+
+        const enveloppe = (corps) =>
+          `<div style="font-family:sans-serif;max-width:600px;margin:auto;color:#111;padding:24px">${corps}` +
+          `<p style="color:#999;font-size:12px;margin:24px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p></div>`;
+        const bouton = (txt, href) =>
+          `<a href="${href}" style="display:inline-block;background:#000;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;margin:0 0 8px">${txt}</a>`;
+
+        /* ---------- Piste A : inscrits qui n'ont JAMAIS généré ---------- */
+        const SEQ_JAMAIS = [
+          { key: 'a-j1', days: 1, subject: 'Ton premier clip prend 2 minutes',
+            body: n => enveloppe(`<h2 style="font-size:22px;margin:0 0 16px">Salut ${n} 👋</h2><p style="line-height:1.7;margin:0 0 16px">Tu t'es inscrit hier sur Créatis mais tu n'as pas encore lancé d'analyse.</p><p style="line-height:1.7;margin:0 0 20px">Le principe : tu donnes une vidéo longue, l'IA repère les meilleurs moments, les découpe en 9:16 et brûle les sous-titres. Tu vois les clips avant de payer quoi que ce soit.</p><div style="background:#f9f9f9;border-radius:10px;padding:20px;margin:0 0 24px"><p style="margin:0;line-height:2;color:#333">✂️ Découpage automatique<br>📝 Sous-titres incrustés<br>📐 Format 9:16 prêt à publier</p></div>${bouton('Lancer ma première analyse →', origin + '/app')}`) },
+          { key: 'a-j3', days: 3, subject: 'Une vidéo d\'une heure = une série de clips',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une vidéo longue contient presque toujours de quoi faire une dizaine de formats courts. La plupart des créateurs ne le font pas — à la main, repérer les passages prend plus de temps que le montage.</p><p style="line-height:1.7;margin:0 0 20px">C'est exactement cette étape que Créatis automatise : l'IA lit ce qui est dit, repère les moments forts et découpe autour.</p>${bouton('Essayer sur une de tes vidéos →', origin + '/app')}`) },
+          { key: 'a-j7', days: 7, subject: 'Quelque chose bloque ?',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Une semaine sans lancer d'analyse, c'est souvent qu'un détail coince. Réponds directement à cet email, je lis tout.</p><p style="line-height:1.7;margin:0 0 20px">En attendant, les trois étapes :</p><p style="line-height:2;margin:0 0 24px;color:#333"><strong>1.</strong> Upload une vidéo, ou colle une URL YouTube<br><strong>2.</strong> L'IA analyse et propose les meilleurs moments<br><strong>3.</strong> Tu regardes les clips avant de décider</p>${bouton('Reprendre où j\'en étais →', origin + '/app')}`) },
+          { key: 'a-j14', days: 14, subject: 'Pro pendant 7 jours, sans prélèvement',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Si tu n'as pas encore testé, l'offre Pro s'essaie <strong>7 jours sans prélèvement</strong> — tu peux arrêter avant la fin de l'essai sans rien payer.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0 0 12px;font-weight:700;font-size:16px">Les formules</p><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, tous les outils<br><strong>Pro annuel — 139 €/an</strong> · deux mois offerts</p></div>${bouton('Démarrer l\'essai Pro →', origin + '/#tarifs')}`) },
+        ];
+
+        for (const seq of (modeRattrapage ? [] : SEQ_JAMAIS)) {
+          try {
+            const [from, to] = bornesJour(seq.days);
+            const users = await supabase(`/users?select=id,email,nom&created_at=gte.${from.toISOString()}&created_at=lte.${to.toISOString()}&plan=eq.gratuit`);
+            if (!Array.isArray(users)) continue;
+            for (const u of users) {
+              if (nbParUser.has(u.id)) continue;           // il a généré → piste B, pas celle-ci
+              const nom = u.nom || u.email?.split('@')[0] || 'Créateur';
+              if (dry) { cronLog.push(`[dry] ${seq.key} → ${u.email}`); continue; }
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Créatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: seq.subject, htmlContent: seq.body(nom) })
+              });
+              if (r.ok) { totalSent++; cronLog.push(`${seq.key} → ${u.email}`); }
+            }
+          } catch (e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
+        }
+
+        /* ---------- Piste B : UNE génération, jamais revenu ---------- */
+        /* Le déclencheur est la date de la PREMIÈRE génération, pas celle de l'inscription :
+           quelqu'un peut s'inscrire en juin et générer en septembre. */
+        const SEQ_UNE_FOIS = [
+          { key: 'b-j2', days: 2, subject: 'Il te reste une analyse gratuite ce mois-ci',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Tu as lancé une analyse il y a deux jours. <strong>Il t'en reste une, gratuite, ce mois-ci</strong> — elle expire à la fin du mois si tu ne t'en sers pas.</p><p style="line-height:1.7;margin:0 0 20px">Un conseil qui vient de nos chiffres : les clips d'une même vidéo se ressemblent forcément. C'est en passant une <em>deuxième</em> source — un autre épisode, un autre live — qu'on voit ce que l'outil sait vraiment faire.</p>${bouton('Utiliser ma seconde analyse →', origin + '/app')}`) },
+          { key: 'b-j6', days: 6, subject: 'Le clip que tu n\'as pas encore choisi',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Sur une vidéo longue, l'IA propose une dizaine d'extraits. Le premier n'est presque jamais le meilleur — c'est souvent le troisième ou le septième qui tourne.</p><p style="line-height:1.7;margin:0 0 20px">Si tu n'as regardé que les premiers, il reste probablement quelque chose dans ta liste. Et ton analyse gratuite du mois est toujours disponible.</p>${bouton('Revoir mes clips →', origin + '/app')}`) },
+          { key: 'b-j12', days: 12, subject: 'Ce qui change quand on publie en série',
+            body: n => enveloppe(`<h2 style="font-size:20px;margin:0 0 16px">Salut ${n},</h2><p style="line-height:1.7;margin:0 0 16px">Un clip isolé ne dit rien. Les plateformes distribuent prudemment pendant les deux premières semaines, le temps d'évaluer à qui te montrer — il faut une trentaine de clips avant que les chiffres veuillent dire quelque chose.</p><p style="line-height:1.7;margin:0 0 20px">C'est le vrai intérêt d'une formule : produire assez pour que la régularité joue. Le détail est ici : <a href="${origin}/blog/combien-de-temps-avant-resultats-clips.html" style="color:#111">combien de temps avant d'avoir des résultats</a>.</p><div style="background:#f9f9f9;border-radius:10px;padding:24px;margin:0 0 24px"><p style="margin:0;line-height:2;color:#333;font-size:14px"><strong>Starter — 9,95 €/mois</strong> · 5 vidéos, 20 clips téléchargeables<br><strong>Pro — 14 €/mois</strong> · 30 vidéos, 150 clips, essai 7 jours sans prélèvement</p></div>${bouton('Voir les formules →', origin + '/#tarifs')}`) },
+        ];
+
+        for (const seq of (modeRattrapage ? [] : SEQ_UNE_FOIS)) {
+          try {
+            const [from, to] = bornesJour(seq.days);
+            const candidats = [];
+            for (const [uid, nb] of nbParUser) {
+              if (nb !== 1) continue;                       // exactement une génération
+              const t = premiereParUser.get(uid);
+              if (t < from.getTime() || t > to.getTime()) continue;
+              candidats.push(uid);
+            }
+            if (!candidats.length) continue;
+            const liste = candidats.map(encodeURIComponent).join(',');
+            const users = await supabase(`/users?select=id,email,nom&plan=eq.gratuit&id=in.(${liste})`);
+            if (!Array.isArray(users)) continue;
+            for (const u of users) {
+              const nom = u.nom || u.email?.split('@')[0] || 'Créateur';
+              if (dry) { cronLog.push(`[dry] ${seq.key} → ${u.email}`); continue; }
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Créatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: seq.subject, htmlContent: seq.body(nom) })
+              });
+              if (r.ok) { totalSent++; cronLog.push(`${seq.key} → ${u.email}`); }
+            }
+          } catch (e) { cronLog.push(`ERR ${seq.key}: ${e.message}`); }
+        }
+
+        /* ---------- Rattrapage du stock ----------
+           Les pistes ci-dessus ne regardent qu'un jour precis. Or il existe un arriere
+           de comptes qui ont genere une seule fois il y a des semaines et n'ont jamais
+           recu le bon message, puisque le ciblage etait casse. `?rattrapage=1` les traite
+           en une passe.
+
+           Garde-fous volontaires : simulation par defaut (il faut `&go=1` pour envoyer),
+           plafond de 60 destinataires par appel, fenetre bornee a 45 jours pour ne pas
+           reveiller des comptes froids depuis des mois. */
+        if (modeRattrapage) {
+          const envoiReel = req.query?.go === '1';
+          const plafond = Math.min(parseInt(req.query?.max || '60', 10) || 60, 200);
+          const borneMin = now.getTime() - 45 * 864e5;
+          const borneMax = now.getTime() - 13 * 864e5;   // au-dela de b-j12, donc jamais couvert
+
+          const candidats = [];
+          for (const [uid, nb] of nbParUser) {
+            if (nb !== 1) continue;
+            const t = premiereParUser.get(uid);
+            if (t < borneMin || t > borneMax) continue;
+            candidats.push(uid);
+          }
+          const retenus = candidats.slice(0, plafond);
+          let rattrapes = 0;
+          if (retenus.length) {
+            const liste = retenus.map(encodeURIComponent).join(',');
+            const users = await supabase(`/users?select=id,email,nom&plan=eq.gratuit&id=in.(${liste})`);
+            for (const u of (Array.isArray(users) ? users : [])) {
+              const nom = u.nom || u.email?.split('@')[0] || 'Createur';
+              if (!envoiReel) { cronLog.push(`[simulation] rattrapage -> ${u.email}`); continue; }
+              const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+                body: JSON.stringify({ sender: { name: 'Creatis', email: 'contact@creatis.app' }, to: [{ email: u.email, name: nom }], subject: SEQ_UNE_FOIS[0].subject, htmlContent: SEQ_UNE_FOIS[0].body(nom) })
+              });
+              if (r.ok) { rattrapes++; totalSent++; cronLog.push(`rattrapage -> ${u.email}`); }
+            }
+          }
+          console.log('[EmailCron/rattrapage]', cronLog);
+          return res.status(200).json({ ok: true, rattrapage: true, simulation: !envoiReel, candidats: candidats.length, traites: retenus.length, envoyes: rattrapes, log: cronLog });
+        }
+
+        console.log('[EmailCron]', cronLog);
+        return res.status(200).json({ ok: true, sent: totalSent, dry, log: cronLog });
+      }
+
+      /* Redescend en 'gratuit' tout compte dont `plan_expires_at` est dépassé. Ce champ n'a
+         jamais été écrit par un chemin actif : un abonnement Stripe réel pose toujours
+         plan_expires_at à null (« toujours actif », voir api/stripe-webhook.js) et se désactive
+         par l'événement customer.subscription.deleted, pas par une date. Le programme UGC
+         (case 'ugc_decider' ci-dessus) n'en écrit pas non plus — le mois offert y passe
+         désormais par un vrai essai Stripe (carte requise, voir api/create-checkout-session.js),
+         donc par le webhook, pas par ce champ. Cette action reste posée en filet générique : si
+         un futur mécanisme pose un jour plan_expires_at pour un octroi temporaire, il sera
+         expiré par ce même cron sans code supplémentaire — et elle ne peut structurellement
+         jamais toucher un abonnement payant réel, qui ne pose jamais cette date. */
+      case 'expirer_plans_temporaires': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const maintenant = new Date().toISOString();
+        const expires = await supabase(
+          `/users?plan_expires_at=lt.${maintenant}&plan=neq.gratuit&select=id,email,plan,plan_expires_at`
+        ).catch(() => []);
+        let downgrades = 0;
+        for (const u of (expires || [])) {
+          try {
+            await supabase(`/users?id=eq.${u.id}`, 'PATCH', {
+              plan: 'gratuit', plan_expires_at: null, updated_at: maintenant,
+            });
+            downgrades++;
+          } catch (e) { console.error('[expirer_plans_temporaires]', u.email, e.message); }
+        }
+        console.log(`[expirer_plans_temporaires] ${downgrades} compte(s) redescendu(s) en gratuit`);
+        return res.status(200).json({ ok: true, downgrades });
+      }
+
+      /* ═══ Relance J-2 de l'essai (Pro MENSUEL depuis le 08/09, 7 jours, carte requise) ═══
+         Demande explicite du 26/08/2026 : prévenir avant le premier prélèvement, pas après.
+         Le nom du cron dit "J5" (jour 5 sur 7) parce que c'est ainsi qu'on en a parlé, mais la
+         condition qui compte est "il reste entre 1 et 2 jours avant trial_ends_at" — équivalent
+         pour un essai de 7 jours, et robuste à un cron qui tourne en retard d'une heure ou deux,
+         contrairement à une comparaison de date exacte.
+         Un lien de portail Stripe FRAIS est généré pour chaque destinataire, pas un lien générique
+         renvoyant vers /app : quelqu'un qui ouvre cet email n'est pas forcément connecté, et le
+         forcer à se reconnecter avant de pouvoir résilier est exactement le genre de friction qui
+         finit en opposition bancaire plutôt qu'en résiliation propre. */
+      /* ═══ Rattrapage des impayés — annule l'annuel intenable, propose le mensuel ═══
+         Ajouté le 11/09/2026 après un constat sans appel : sur les 5 personnes dont l'essai de
+         7 jours est arrivé à terme, les 5 ont échoué au prélèvement de 139 € — quatre pour fonds
+         insuffisants. Et `relance_envoyee` était à false sur la TOTALITÉ de la table
+         `paiements_echoues` : aucune relance n'était jamais partie, donc personne n'a jamais eu
+         l'occasion de réagir.
+
+         Trois segments, trois messages, parce que leur situation n'a rien à voir :
+
+           annuel_impaye  — essai terminé, 139 € refusés. On ANNULE l'abonnement dans Stripe
+                            (ils n'ont jamais rien payé, ils ne doivent rien) puis on propose le
+                            Pro mensuel à 14 €. L'annulation n'est pas une politesse : sans elle
+                            Stripe continue de retenter, et quelqu'un qui reprend le mensuel se
+                            retrouverait avec deux abonnements.
+           mensuel_impaye — renouvellement raté sur un plan déjà mensuel. Leur proposer « moins
+                            cher » n'a pas de sens, ils sont déjà au tarif le plus bas : on
+                            envoie un lien de portail Stripe pour corriger la carte.
+           jamais_abouti  — paiement bloqué à la souscription (3D Secure le plus souvent), donc
+                            jamais client. On les reinvite sur les deux analyses offertes :
+                            depuis le 05/10/2026 il n'y a plus d'essai a leur proposer.
+
+         `dry_run=1` renvoie exactement ce qui serait fait, sans rien annuler ni envoyer. */
+      /* ═══ Abonnements en double — on n'en garde qu'un, et on le dit ═══
+         Le 15/09, un client a paye, l'interface a continue de le traiter comme gratuit et lui a
+         represente le paywall : il a repaye deux minutes plus tard. Deux abonnements Stripe,
+         deux customers distincts pour un seul email, 28 EUR au lieu de 14 au premier
+         prelevement. La cause est corrigee (voir create-checkout-session.js et le temoin
+         `_planConnu` dans clips-v2.html) ; cette action repare les cas deja crees.
+
+         On garde le PLUS ANCIEN : c'est celui que la personne a choisi en connaissance de
+         cause, et son essai se termine en premier — garder le second rallongerait l'essai, donc
+         decalerait la facturation, ce que personne n'a demande.
+
+         `dry_run=1` renvoie ce qui serait fait sans rien annuler ni envoyer. */
+      case 'annuler_abonnements_doubles': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const simulation = String(req.query?.dry_run || req.body?.dry_run || '') === '1';
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const appUrl = (process.env.APP_URL || 'https://creatis.app').trim();
+
+        const actifs = await supabase(
+          `/abonnements?status=in.(active,trialing)&select=id,user_id,stripe_subscription_id,status,created_at,trial_ends_at&order=created_at.asc`
+        ).catch(() => []);
+
+        const parUser = new Map();
+        for (const a of (actifs || [])) {
+          if (!a.user_id) continue;
+          if (!parUser.has(a.user_id)) parUser.set(a.user_id, []);
+          parUser.get(a.user_id).push(a);
+        }
+
+        const rapport = [];
+        for (const [uid, liste] of parUser) {
+          if (liste.length < 2) continue;
+          const users = await supabase(`/users?id=eq.${uid}&select=email,nom`).catch(() => []);
+          const email = users?.[0]?.email;
+          const nom = users?.[0]?.nom || (email ? email.split('@')[0] : 'toi');
+          // `order=created_at.asc` plus haut : le premier de la liste est le plus ancien.
+          const garde = liste[0];
+          const aAnnuler = liste.slice(1);
+
+          const annules = [];
+          for (const dup of aAnnuler) {
+            if (!dup.stripe_subscription_id) continue;
+            if (!simulation) {
+              try {
+                await stripeLib.subscriptions.cancel(dup.stripe_subscription_id);
+                await supabase(`/abonnements?id=eq.${dup.id}`, 'PATCH', {
+                  status: 'canceled', canceled_at: new Date().toISOString(),
+                });
+              } catch (e) {
+                rapport.push({ email, erreur: `annulation ${dup.stripe_subscription_id}: ${e.message}` });
+                continue;
+              }
+            }
+            annules.push(dup.stripe_subscription_id);
+          }
+
+          let envoye = false;
+          if (annules.length && email && !simulation) {
+            const fin = garde.trial_ends_at
+              ? new Date(garde.trial_ends_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+              : null;
+            envoye = await ugcEnvoyerEmail({
+              sender: { name: 'André — Créatis', email: 'contact@creatis.app' },
+              to: [{ email, name: nom }],
+              subject: 'On a annulé ton abonnement en double',
+              htmlContent:
+                `<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:auto;color:#111;padding:26px">
+                   <p style="font-size:17px;margin:0 0 18px">Salut ${nom},</p>
+                   <p style="line-height:1.7;margin:0 0 16px">Tu as souscrit deux fois à Créatis en quelques minutes. Ce n'est pas de ta faute : après ton premier paiement, l'application a continué de t'afficher le paywall comme si tu n'avais rien payé. C'était un bug de notre côté, il est corrigé.</p>
+                   <p style="line-height:1.7;margin:0 0 16px"><strong>On a annulé l'abonnement en trop.</strong> Il ne t'en reste qu'un seul${fin ? `, avec ton essai gratuit jusqu'au ${fin}` : ''}. Tu ne seras prélevé qu'une fois, au tarif normal de 14 €/mois.</p>
+                   <p style="margin:0 0 20px"><a href="${appUrl}/studio" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px">Retrouver mes clips</a></p>
+                   <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Désolé pour le passage compliqué. Si quelque chose ne va toujours pas, réponds à ce mail — je lis tout.</p>
+                   <p style="color:#999;font-size:12px;margin:26px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p>
+                 </div>`,
+            }, 'annuler_abonnements_doubles');
+          }
+
+          rapport.push({
+            email,
+            total: liste.length,
+            garde: garde.stripe_subscription_id,
+            annules,
+            envoye,
+            simulation,
+          });
+        }
+
+        return res.status(200).json({ ok: true, simulation, comptes: rapport.length, rapport });
+      }
+
+      case 'rattrapage_impayes': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const simulation = String(req.query?.dry_run || req.body?.dry_run || '') === '1';
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY && !simulation) return res.status(200).json({ ok: true, note: 'BREVO_API_KEY manquante' });
+
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const appUrl = (process.env.APP_URL || 'https://creatis.app').trim();
+
+        // Une seule relance par personne, jamais deux : on repart des lignes non relancées.
+        const echecs = await supabase(
+          `/paiements_echoues?relance_envoyee=eq.false&select=id,email,montant,statut,plan,created_at&order=created_at.desc`
+        ).catch(() => []);
+
+        const bl = await supabase(`/email_blacklist?select=email`).catch(() => []);
+        const blacklist = new Set((bl || []).map(b => String(b.email || '').toLowerCase()));
+
+        // Stripe retente plusieurs fois : la même personne apparaît jusqu'à 4 fois. On garde la
+        // ligne la plus récente et on collecte les id pour toutes les marquer d'un coup.
+        const parPersonne = new Map();
+        for (const e of (echecs || [])) {
+          const mail = String(e.email || '').toLowerCase().trim();
+          if (!mail || blacklist.has(mail)) continue;
+          if (!parPersonne.has(mail)) parPersonne.set(mail, { ...e, email: mail, ids: [] });
+          parPersonne.get(mail).ids.push(e.id);
+        }
+
+        const rapport = [];
+        for (const [mail, ligne] of parPersonne) {
+          try {
+            const users = await supabase(`/users?email=eq.${encodeURIComponent(mail)}&select=id,nom`).catch(() => []);
+            const uid = users?.[0]?.id;
+            const nom = users?.[0]?.nom || mail.split('@')[0];
+            const abos = uid
+              ? await supabase(`/abonnements?user_id=eq.${uid}&select=id,stripe_subscription_id,stripe_customer_id,status,annuel&order=created_at.desc`).catch(() => [])
+              : [];
+            const abo = (abos || [])[0];
+
+            let segment;
+            if (abo?.status === 'past_due' && abo?.annuel) segment = 'annuel_impaye';
+            else if (abo?.status === 'past_due') segment = 'mensuel_impaye';
+            else if (!abo || ['canceled', 'incomplete_expired'].includes(abo?.status)) segment = 'jamais_abouti';
+            else { rapport.push({ mail, segment: 'ignore', raison: `abonnement ${abo?.status} — rien à rattraper` }); continue; }
+
+            let annule = false, portail = `${appUrl}/app`;
+
+            if (segment === 'annuel_impaye' && abo?.stripe_subscription_id) {
+              if (!simulation) {
+                await stripeLib.subscriptions.cancel(abo.stripe_subscription_id);
+                await supabase(`/abonnements?id=eq.${abo.id}`, 'PATCH', {
+                  status: 'canceled', canceled_at: new Date().toISOString(),
+                });
+                if (uid) await supabase(`/users?id=eq.${uid}`, 'PATCH', { plan: 'gratuit' });
+              }
+              annule = true;
+            }
+
+            if (segment === 'mensuel_impaye' && abo?.stripe_customer_id && !simulation) {
+              try {
+                const sess = await stripeLib.billingPortal.sessions.create({
+                  customer: abo.stripe_customer_id, return_url: `${appUrl}/app`,
+                });
+                portail = sess.url;
+              } catch (e) { console.warn('[rattrapage] portail indisponible:', e.message); }
+            }
+
+            const CTA = (href, txt) =>
+              `<a href="${href}" style="display:inline-block;background:#10b981;color:#04120b;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:15px">${txt}</a>`;
+            const coque = (corps) =>
+              `<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:auto;color:#111;padding:26px">
+                 <p style="font-size:17px;margin:0 0 18px">Salut ${nom},</p>${corps}
+                 <p style="color:#999;font-size:12px;margin:26px 0 0">Créatis · <a href="https://creatis.app" style="color:#999">creatis.app</a></p>
+               </div>`;
+
+            let sujet, corps;
+            if (segment === 'annuel_impaye') {
+              sujet = 'Ton abonnement annuel est annulé — tu ne dois rien';
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Ton essai de 7 jours s'est terminé et le prélèvement annuel de 139 € n'est pas passé.</p>
+                <p style="line-height:1.7;margin:0 0 16px"><strong>On a annulé cet abonnement. Tu ne dois rien</strong>, et plus rien ne sera tenté sur ta carte.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Honnêtement, demander 139 € d'un coup était une mauvaise idée de notre part. On a changé : le <strong>Pro est à 14 €/mois</strong>, sans engagement.</p>
+                <p style="margin:0 0 20px">${CTA(`${appUrl}/paiement.html?plan=pro`, 'Reprendre le Pro — 14 €/mois')}</p>
+                <p style="line-height:1.7;margin:0 0 8px;color:#555;font-size:14px">14 €/mois, prélevés le jour de la souscription. Résiliable à tout moment.</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Si quelque chose n'allait pas dans le produit, réponds à ce mail — je lis tout.</p>`;
+            } else if (segment === 'mensuel_impaye') {
+              sujet = "Ton renouvellement Créatis n'est pas passé";
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Le renouvellement de ton abonnement n'a pas pu être prélevé. Ton accès est encore actif, mais il va s'arrêter si ça ne se règle pas.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Le plus souvent c'est une carte expirée ou un plafond. Ça se corrige en trente secondes :</p>
+                <p style="margin:0 0 20px">${CTA(portail, 'Mettre à jour ma carte')}</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Si tu préfères arrêter, tu peux résilier depuis ce même lien — sans justification.</p>`;
+            } else {
+              sujet = "Ton paiement Créatis n'avait pas abouti";
+              corps = `<p style="line-height:1.7;margin:0 0 16px">Tu as essayé de t'abonner à Créatis mais le paiement n'est jamais allé au bout — le plus souvent c'est la validation bancaire (3D Secure) qui bloque.</p>
+                <p style="line-height:1.7;margin:0 0 16px">Tu peux juger sur pièce avant de payer : <strong>deux analyses sont offertes</strong>, sans carte bancaire. Tu colles un lien, tu vois tes clips, et tu décides après.</p>
+                <p style="margin:0 0 20px">${CTA(`${appUrl}/clips-v2.html`, 'Voir mes clips gratuitement')}</p>
+                <p style="line-height:1.7;margin:0;color:#555;font-size:14px">Le Pro est à 14 €/mois, sans engagement, résiliable à tout moment.</p>`;
+            }
+
+            if (!simulation) {
+              const envoye = await ugcEnvoyerEmail({
+                sender: { name: 'André — Créatis', email: 'contact@creatis.app' },
+                to: [{ email: mail, name: nom }],
+                subject: sujet,
+                htmlContent: coque(corps),
+              }, 'rattrapage_impayes');
+              if (envoye) {
+                for (const id of ligne.ids) {
+                  await supabase(`/paiements_echoues?id=eq.${id}`, 'PATCH', { relance_envoyee: true }).catch(() => {});
+                }
+              }
+              rapport.push({ mail, segment, annule, envoye, lignes: ligne.ids.length });
+            } else {
+              rapport.push({ mail, segment, annulerait: annule, sujet, lignes: ligne.ids.length });
+            }
+          } catch (e) {
+            rapport.push({ mail, erreur: e.message });
+          }
+        }
+
+        return res.status(200).json({ ok: true, simulation, total: rapport.length, rapport });
+      }
+
+      case 'relance_essai_annuel_j5': {
+        const cronSecret = req.headers['x-cron-secret'] || req.query?.secret || (req.headers['authorization'] || '').replace('Bearer ', '');
+        if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+          return res.status(401).json({ error: 'Non autorisé' });
+        }
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: true, sent: 0, note: 'BREVO_API_KEY manquante' });
+
+        const maintenant = Date.now();
+        const dans1Jour = new Date(maintenant + 1 * 86400000).toISOString();
+        const dans2Jours = new Date(maintenant + 2 * 86400000).toISOString();
+
+        const candidats = await supabase(
+          `/abonnements?annuel=eq.true&status=eq.active&relance_essai_envoyee=eq.false`
+          + `&trial_ends_at=gt.${dans1Jour}&trial_ends_at=lte.${dans2Jours}`
+          + `&select=id,user_id,stripe_customer_id,trial_ends_at,montant_centimes`
+        ).catch(() => []);
+
+        let envoyes = 0;
+        const cronLog = [];
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+
+        for (const abo of (candidats || [])) {
+          try {
+            if (!abo.stripe_customer_id) { cronLog.push(`SKIP ${abo.id}: pas de stripe_customer_id`); continue; }
+
+            const utilisateur = abo.user_id
+              ? await supabase(`/users?id=eq.${abo.user_id}&select=email,nom`).catch(() => [])
+              : [];
+            const email = utilisateur?.[0]?.email;
+            if (!email) { cronLog.push(`SKIP ${abo.id}: email introuvable`); continue; }
+            const nom = utilisateur[0].nom || email.split('@')[0];
+
+            const dateFin = new Date(abo.trial_ends_at);
+            const dateFinTexte = dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+            /* Repli a 1400 et non 13900 depuis le 08/09/2026 : l'essai de 7 jours porte
+               desormais sur le Pro MENSUEL, plus sur l'annuel. Pendant un essai la ligne
+               `abonnements` est ecrite avec montant_centimes = 0 — donc le repli est le cas
+               NORMAL, pas un cas limite, et un repli a 139€ annoncerait un prelevement de
+               139€ a quelqu'un qui va etre debite de 14€. */
+            const montant = ((abo.montant_centimes || 1400) / 100).toFixed(2).replace('.', ',');
+
+            // Lien direct vers le portail Stripe, prêt à l'emploi dès l'ouverture du mail —
+            // aucune reconnexion requise pour résilier.
+            let lienPortail = `${appUrl}/app`;
+            try {
+              const sess = await stripeLib.billingPortal.sessions.create({
+                customer: abo.stripe_customer_id,
+                return_url: `${appUrl}/app`
+              });
+              if (sess?.url) lienPortail = sess.url;
+            } catch (e) { console.warn('[relance_essai_annuel_j5] portail non généré, repli /app:', e.message); }
+
+            const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+              body: JSON.stringify({
+                sender: { email: 'contact@creatis.app', name: 'Créatis' },
+                to: [{ email, name: nom }],
+                subject: `Il te reste 2 jours d'essai — Créatis Pro`,
+                /* REECRIT LE 02/09/2026. L'ancienne version poussait a partir :
+                   elle ouvrait sur « ta carte sera débitée de 139€ », et son SEUL
+                   bouton — gros, vert — menait au portail de résiliation, avec la
+                   mention « résiliable en un clic ». Aucune raison de rester
+                   n'était donnée. On offrait une seule action : partir.
+
+                   Ce qui change : le bouton principal ramène DANS le produit,
+                   parce que la vraie cause d'annulation n'est pas le prix, c'est
+                   la non-utilisation (vérifié : l'abonné annulé le 02/09 n'avait
+                   rien généré en 7 jours). Le montant et la date restent écrits
+                   noir sur blanc, et le lien de résiliation reste présent et
+                   explicite — on dé-hiérarchise, on ne cache pas. */
+                htmlContent: `
+                  <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0a0f0a;color:#e5e7eb;padding:40px 32px;border-radius:12px;">
+                    <div style="font-size:28px;font-weight:800;color:#ffffff;margin-bottom:4px;">Créatis<span style="color:#10b981;">.</span></div>
+                    <p style="color:#6b7280;font-size:14px;margin:0 0 32px;">Ton essai Pro</p>
+
+                    <h1 style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px;">Salut ${nom},</h1>
+                    <p style="color:#9ca3af;line-height:1.6;margin:0 0 24px;">Il te reste <strong style="color:#ffffff;">2 jours</strong> d'essai sur Créatis Pro. Autant en profiter : une vidéo collée maintenant, c'est dix clips prêts à publier dans une minute.</p>
+
+                    <div style="background:#0f1a12;border:1px solid #10b98133;border-radius:8px;padding:20px;margin-bottom:24px;">
+                      <p style="color:#10b981;font-size:13px;font-weight:700;letter-spacing:0.04em;margin:0 0 10px;">CE QUE TU AS AVEC PRO</p>
+                      <p style="color:#d1d5db;font-size:14px;line-height:1.7;margin:0;">30 vidéos par mois · 150 clips téléchargeables<br>Recadrage, sous-titres et export automatiques</p>
+                    </div>
+
+                    <a href="${appUrl}/studio" style="display:inline-block;background:#10b981;color:#04120b;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;text-decoration:none;">Créer mes clips →</a>
+
+                    <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:28px 0 0;">Le <strong style="color:#ffffff;">${dateFinTexte}</strong>, ton essai devient un abonnement d'un an à <strong style="color:#ffffff;">${montant}€</strong>. Rien n'a encore été prélevé, et tu n'as rien à faire pour continuer.</p>
+
+                    <p style="color:#6b7280;font-size:13px;margin:14px 0 0;">Tu préfères ne pas continuer ? <a href="${lienPortail}" style="color:#9ca3af;text-decoration:underline;">Gérer ou résilier mon abonnement</a> — un clic, sans justification à donner.</p>
+
+                    <p style="color:#4b5563;font-size:12px;margin-top:32px;">Une question, un blocage ? Réponds à ce mail ou écris à <a href="mailto:contact@creatis.app" style="color:#10b981;">contact@creatis.app</a> — on répond vite.</p>
+                  </div>
+                `
+              })
+            });
+
+            if (r.ok) {
+              await supabase(`/abonnements?id=eq.${abo.id}`, 'PATCH', { relance_essai_envoyee: true, updated_at: new Date().toISOString() });
+              envoyes++;
+              cronLog.push(`OK ${email}`);
+            } else {
+              cronLog.push(`ERR_BREVO ${email}: ${r.status}`);
+            }
+          } catch (e) {
+            cronLog.push(`ERR ${abo.id}: ${e.message}`);
+          }
+        }
+        console.log('[relance_essai_annuel_j5]', cronLog);
+        return res.status(200).json({ ok: true, sent: envoyes, candidats: (candidats || []).length, log: cronLog });
+      }
+
+      case 'daily_report': {
+        const BREVO_KEY = (process.env.BREVO_API_KEY || '').trim();
+        if (!BREVO_KEY) return res.status(200).json({ ok: false, note: 'BREVO_API_KEY manquante' });
+
+        const TEST_EMAILS = ['otasso.andre@gmail.com', 'flemonosekai@gmail.com', 'flemonosekai2@gmail.com', 'flemonosekai+test1@gmail.com', 'flemonosekai+stripe@gmail.com'];
+
+        const now = new Date();
+        const yd = new Date(now); yd.setDate(yd.getDate() - 1);
+        const hier      = yd.toISOString().slice(0, 10);
+        const hierStart = hier + 'T00:00:00.000Z';
+        const hierEnd   = hier + 'T23:59:59.999Z';
+
+        const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier, tousPlans, echecsPaiement, ph] = await Promise.all([
+          supabase(`/users?select=id,email,plan&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/users?select=id,email`, 'GET').catch(() => []),
+          supabase(`/users?select=id,email&plan=neq.gratuit`, 'GET').catch(() => []),
+          supabase(`/generations?select=agent_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/generations?select=id&agent_id=eq.clips-viraux&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          // Répartition par plan — « Abonnés Pro/Studio » masquait qui est sur quoi
+          supabase(`/users?select=plan,email`, 'GET').catch(() => []),
+          // Paiements échoués de la veille (table créée le 25/07) — pour ne plus les découvrir dans Stripe
+          supabase(`/paiements_echoues?select=email,montant,devise,statut,raison&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          statsPostHog(hierStart, hierEnd)
+        ]);
+
+        const usersHierReels = (usersHier || []).filter(u => !TEST_EMAILS.includes(u.email));
+        const nbInscrits = usersHierReels.length;
+        const nbTotal    = (usersTotal || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
+        const nbPro      = (usersPro || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
+        const nbGens     = gensHier?.length || 0;
+        const nbClips    = clipsHier?.length || 0;
+        const nbActifs   = new Set((actifsHier || []).map(g => g.user_id)).size;
+
+        // ── Répartition par plan (hors comptes de test) ──
+        const plans = { gratuit: 0, starter: 0, pro: 0, studio: 0 };
+        (tousPlans || []).filter(u => !TEST_EMAILS.includes(u.email))
+          .forEach(u => { const p = u.plan || 'gratuit'; plans[p] = (plans[p] || 0) + 1; });
+
+        // ── Tunnel PostHog (null si la clé n'est pas configurée) ──
+        const val = (e, champ = 'n') => ph && ph[e] ? ph[e][champ] : null;
+        const aff = (v) => (v === null || v === undefined) ? '—' : String(v);
+        const pwVus   = val('paywall_shown');
+        const pwPers  = val('paywall_shown', 'pers');
+        const upClics = val('upgrade_clicked');
+        const upPers  = val('upgrade_clicked', 'pers');
+        const genOk   = val('clips_generated');
+        const genKo   = val('generation_failed');
+        const dlFini  = val('download_completed');
+        const remb    = val('free_credit_refunded');
+        // Combien de ceux qui voient le paywall cliquent réellement — la métrique qui compte
+        const tauxClic = (pwPers && upPers !== null) ? Math.round(upPers / pwPers * 100) + ' %' : '—';
+        const tauxEchec = (genOk !== null && genKo !== null && (genOk + genKo) > 0)
+          ? Math.round(genKo / (genOk + genKo) * 100) + ' %' : '—';
+
+        // ── Paiements échoués ──
+        const echecs = echecsPaiement || [];
+        const echecsHtml = echecs.length
+          ? echecs.slice(0, 8).map(e => `• ${e.email || '?'} — ${e.montant || '?'} ${e.devise || ''} <span style="color:#f87171">${(e.raison || e.statut || '').slice(0, 60)}</span>`).join('<br>')
+          : '';
+
+        const agentCount = {};
+        (gensHier || []).forEach(g => { agentCount[g.agent_id] = (agentCount[g.agent_id] || 0) + 1; });
+        const topAgents = Object.entries(agentCount).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id,n]) => `${n}× ${id}`).join('<br>') || '—';
+        const inscritsList = usersHierReels.slice(0,10).map(u => `• ${u.email} (${u.plan})`).join('<br>') || '— aucun';
+
+        const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#e5e7eb;padding:32px;border-radius:12px">
+  <div style="margin-bottom:4px"><span style="font-size:22px;font-weight:800;color:#fff">Créatis<span style="color:#10b981">.</span></span>&nbsp;<span style="font-size:11px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);padding:2px 8px;border-radius:20px">RAPPORT ${hier}</span></div>
+  <p style="font-size:13px;color:#555;margin:0 0 24px">Résumé de la journée d'hier</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#10b981">${nbInscrits}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Nouveaux inscrits</div></div>
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#fff">${nbClips}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Clips exportés</div></div>
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#f0a500">${nbActifs}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Users actifs</div></div>
+  </div>
+  <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">STATS GLOBALES</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tr><td style="color:#9ca3af;padding:3px 0">Total inscrits</td><td style="text-align:right;font-weight:700;color:#fff">${nbTotal}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Abonnés payants</td><td style="text-align:right;font-weight:700;color:#10b981">${nbPro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Starter 9,95€</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.starter}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Pro 14€ / annuel</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.pro}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Gratuit</td><td style="text-align:right;font-weight:700;color:#6b7280">${plans.gratuit}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Générations IA hier</td><td style="text-align:right;font-weight:700;color:#fff">${nbGens}</td></tr>
+    </table>
+  </div>
+
+  <div style="background:#111;border:1px solid ${upClics ? '#10b981' : '#1f2937'};border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">TUNNEL DE CONVERSION (hier)</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <tr><td style="color:#9ca3af;padding:3px 0">Analyses réussies</td><td style="text-align:right;font-weight:700;color:#fff">${aff(genOk)}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Analyses échouées</td><td style="text-align:right;font-weight:700;color:${genKo ? '#f87171' : '#6b7280'}">${aff(genKo)}${tauxEchec !== '—' ? `  <span style="color:#6b7280;font-weight:400">(${tauxEchec})</span>` : ''}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Téléchargements terminés</td><td style="text-align:right;font-weight:700;color:#fff">${aff(dlFini)}</td></tr>
+      <tr><td colspan="2" style="border-top:1px solid #1f2937;padding-top:6px"></td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Paywalls affichés</td><td style="text-align:right;font-weight:700;color:#fff">${aff(pwVus)}${pwPers !== null ? `  <span style="color:#6b7280;font-weight:400">(${pwPers} pers.)</span>` : ''}</td></tr>
+      <tr><td style="color:#fff;padding:3px 0;font-weight:700">Clics « Passer au Pro »</td><td style="text-align:right;font-weight:900;font-size:15px;color:${upClics ? '#10b981' : '#6b7280'}">${aff(upClics)}${upPers !== null ? `  <span style="color:#6b7280;font-weight:400;font-size:12px">(${upPers} pers.)</span>` : ''}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Taux paywall → clic</td><td style="text-align:right;font-weight:700;color:#f0a500">${tauxClic}</td></tr>
+      ${remb ? `<tr><td style="color:#9ca3af;padding:3px 0">Crédits d'essai remboursés</td><td style="text-align:right;font-weight:700;color:#f0a500">${remb}</td></tr>` : ''}
+    </table>
+    ${ph === null ? '<div style="font-size:11px;color:#6b7280;margin-top:10px">⚠️ PostHog non configuré — ajoute POSTHOG_API_KEY et POSTHOG_PROJECT_ID dans Vercel pour ces chiffres.</div>' : ''}
+  </div>
+
+  ${echecs.length ? `<div style="background:#1a0f0f;border:1px solid #7f1d1d;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">💳 PAIEMENTS ÉCHOUÉS (${echecs.length})</div>
+    <div style="font-size:12px;color:#d1d5db;line-height:1.9">${echecsHtml}</div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:10px">Ces personnes ont sorti leur carte — à relancer dans la journée.</div>
+  </div>` : ''}
+  <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">TOP AGENTS (hier)</div>
+    <div style="font-size:13px;color:#d1d5db;line-height:2">${topAgents}</div>
+  </div>
+  ${nbInscrits > 0 ? `<div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">NOUVEAUX INSCRITS</div><div style="font-size:13px;color:#d1d5db;line-height:2">${inscritsList}</div></div>` : ''}
+  <p style="color:#374151;font-size:12px;text-align:center;margin-top:20px">Créatis · <a href="https://creatis.app" style="color:#10b981">creatis.app</a></p>
+</div>`;
+
+        const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'api-key': BREVO_KEY },
+          body: JSON.stringify({
+            sender: { name: 'Créatis Analytics', email: 'contact@creatis.app' },
+            to: [{ email: 'creatis.app.contact@gmail.com', name: 'Créatis' }],
+            subject: `📊 Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${aff(upClics)} clic(s) paywall${echecs.length ? ` · ⚠️ ${echecs.length} paiement(s) échoué(s)` : ''}`,
+            htmlContent: html
+          })
+        });
+        const emailData = await emailRes.json().catch(() => ({}));
+        if (!emailRes.ok) console.error('[DailyReport] Brevo erreur:', JSON.stringify(emailData));
+        console.log(`[DailyReport] ${hier} — ${nbInscrits} inscrits, ${nbClips} clips, ${nbActifs} actifs`);
+        /* `posthog` dans la réponse sert au diagnostic : sans lui, une clé invalide ou un mauvais
+           projet ne se voit qu'en ouvrant l'email le lendemain et en le trouvant vide. */
+        return res.status(200).json({
+          ok: emailRes.ok, date: hier, inscrits: nbInscrits, clips: nbClips, actifs: nbActifs,
+          posthog: ph === null ? 'NON CONFIGURÉ ou requête refusée' : ph
+        });
+      }
+
+      case 'log_clip_export': {
+        const identifier = userId ? `id=eq.${userId}` : `email=eq.${encodeURIComponent(email)}`;
+        const users = await supabase(`/users?${identifier}&select=id,plan,repurpose_count,repurpose_reset`, 'GET');
+        const user = users?.[0];
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        /* nb négatif = REMBOURSEMENT d'un crédit après un export échoué ou abandonné.
+           Le compteur est incrémenté avant l'export (pour empêcher de contourner le paywall en
+           lançant plusieurs exports en parallèle), donc sans ce remboursement un échec consommait
+           quand même le clip et murait l'utilisateur derrière le paywall sans rien lui livrer. */
+        const brut = parseInt(metadata?.nb);
+        const nb = Number.isFinite(brut) && brut !== 0 ? Math.max(-10, Math.min(10, brut)) : 1;
+        const estRemboursement = nb < 0;
+
+        /* Quota mensuel de clips exportés. Le compteur se périme tout seul : si `repurpose_reset`
+           n'est pas le mois courant, on repart de 0 — pas besoin de cron de remise à zéro.
+           DOIT rester aligné avec QUOTAS dans api/repurpose.js et CONFIG.PLANS dans js/config.js. */
+        const QUOTA_CLIPS = { gratuit: 0, starter: 20, pro: 150, studio: 150 };
+        const d = new Date();
+        const moisCourant = `${d.getFullYear()}-${d.getMonth()}`;
+        const dejaExportes = user.repurpose_reset === moisCourant ? (user.repurpose_count || 0) : 0;
+        const maxClips = QUOTA_CLIPS[user.plan || 'gratuit'] ?? QUOTA_CLIPS.gratuit;
+        // Un remboursement doit passer MÊME au quota plein — c'est justement là qu'il est utile.
+        if (!estRemboursement && dejaExportes >= maxClips) {
+          return res.status(429).json({
+            error: 'quota_atteint',
+            message: `Limite atteinte : ${maxClips} clips ce mois-ci. Le compteur repart le 1er du mois.`,
+            clips_used: dejaExportes, clips_max: maxClips, plan: user.plan
+          });
+        }
+
+        const nouveauCompteur = Math.max(0, dejaExportes + nb);
+        await supabase(`/users?${identifier}`, 'PATCH', {
+          repurpose_count: nouveauCompteur,
+          repurpose_reset: moisCourant,
+          ...(estRemboursement ? {} : { last_generation_at: new Date().toISOString() })
+        });
+        if (estRemboursement) {
+          console.log(`[user-sync] ↩️ Crédit remboursé — ${user.email || userId} : ${dejaExportes} → ${nouveauCompteur}`);
+          return res.status(200).json({ success: true, refunded: -nb, clips_used: nouveauCompteur });
+        }
+        for (let i = 0; i < nb; i++) {
+          await supabase('/generations', 'POST', {
+            user_id: user.id,
+            agent_id: 'clips-viraux',
+            plan: user.plan,
+            created_at: new Date().toISOString()
+          }).catch(() => {});
+        }
+        return res.status(200).json({ success: true, logged: nb });
+      }
+
+      /* ═══ Portail client Stripe — gestion et résiliation d'abonnement ═══
+         Logé ici et non dans son propre fichier : le plan Vercel Hobby plafonne à 12 fonctions
+         serverless et `api/` en comptait déjà 12. Une 13ᵉ fait échouer TOUT le déploiement.
+
+         CADRE LÉGAL — article L215-1-1 du Code de la consommation (1er juin 2023) : pour un
+         contrat souscrit en ligne, la résiliation doit être accessible « facilement, directement
+         et en permanence ». Un écran de rétention avant confirmation est licite ; rendre ce
+         chemin introuvable ne l'est pas. Le motif collecté est facultatif et ne conditionne
+         jamais l'accès au portail.
+
+         SÉCURITÉ — l'identité vient du JWT Supabase, JAMAIS d'un userId passé dans le corps :
+         sinon n'importe qui ouvrirait le portail de facturation d'autrui en devinant un id. */
+      case 'portail_abonnement': {
+        const jeton = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        const anon = (process.env.SUPABASE_ANON_KEY || '').trim();
+        if (!jeton || !anon) return res.status(401).json({ error: 'Connexion requise' });
+
+        let auth = null;
+        try {
+          const ra = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${jeton}`, apikey: anon }
+          });
+          if (ra.ok) { const u = await ra.json(); if (u?.id) auth = { id: u.id, email: u.email }; }
+        } catch {}
+        if (!auth) return res.status(401).json({ error: 'Session expirée — reconnecte-toi.' });
+
+        const stripeLib = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const lignes = await supabase(`/users?id=eq.${auth.id}&select=email,plan,stripe_customer_id`, 'GET');
+        const ligne = lignes?.[0] || null;
+        let customerId = ligne?.stripe_customer_id || null;
+
+        /* Repli par email : un compte payé avant que le webhook n'ait enregistré le customer id
+           n'aurait aucun moyen de résilier — c'est exactement le cas qui finit en opposition
+           bancaire. On ne laisse pas ce trou. */
+        if (!customerId) {
+          const mail = ligne?.email || auth.email;
+          if (mail) {
+            const trouve = await stripeLib.customers.list({ email: mail, limit: 1 });
+            customerId = trouve?.data?.[0]?.id || null;
+          }
+        }
+        if (!customerId) {
+          return res.status(404).json({
+            error: "Aucun abonnement Stripe trouvé pour ce compte.",
+            aide: "Si c'est une erreur, écris à contact@creatis.app avec l'email utilisé au paiement."
+          });
+        }
+
+        if (metadata?.motif) {
+          try {
+            await stripeLib.customers.update(customerId, {
+              metadata: {
+                motif_resiliation: String(metadata.motif).slice(0, 200),
+                commentaire_resiliation: String(metadata.commentaire || '').slice(0, 500),
+                date_demande_resiliation: new Date().toISOString()
+              }
+            });
+          } catch (e) { console.warn('[Portail] motif non enregistré:', e.message); }
+        }
+
+        const sess = await stripeLib.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${appUrl}/app`
+        });
+        return res.status(200).json({ url: sess.url });
+      }
+
+      /* ═══ Offre de rétention — alternative à la résiliation ═══
+         Deux gestes seulement, choisis parce qu'ils répondent aux deux vrais motifs de départ :
+         le prix et le manque de temps. Une remise uniforme serait plus simple mais offrirait de
+         l'argent à des gens qui seraient restés de toute façon.
+
+         Ne remplace JAMAIS l'accès au portail : l'utilisateur peut refuser et continuer. */
+      case 'retention_appliquer': {
+        const jetonR = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+        const anonR = (process.env.SUPABASE_ANON_KEY || '').trim();
+        if (!jetonR || !anonR) return res.status(401).json({ error: 'Connexion requise' });
+
+        let authR = null;
+        try {
+          const rr = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${jetonR}`, apikey: anonR }
+          });
+          if (rr.ok) { const u = await rr.json(); if (u?.id) authR = { id: u.id, email: u.email }; }
+        } catch {}
+        if (!authR) return res.status(401).json({ error: 'Session expirée — reconnecte-toi.' });
+
+        const st = require('stripe')((process.env.STRIPE_SECRET_KEY || '').trim());
+        const ligneR = (await supabase(`/users?id=eq.${authR.id}&select=email,plan,stripe_customer_id,stripe_subscription_id`, 'GET'))?.[0];
+        const subId = ligneR?.stripe_subscription_id;
+        if (!subId) return res.status(404).json({ error: "Aucun abonnement actif trouvé." });
+
+        const geste = metadata?.geste;
+        const PRIX_STARTER = 'price_1Tx8TXAptK6HZtp5vB5clklV';   // 9,95 €/mois
+
+        try {
+          if (geste === 'pause') {
+            /* Pause d'un mois : `void` n'émet aucune facture pendant la pause, et Stripe reprend
+               tout seul à la date indiquée — rien à réactiver à la main de notre côté. */
+            const reprise = Math.floor(Date.now() / 1000) + 30 * 24 * 3600;
+            await st.subscriptions.update(subId, {
+              pause_collection: { behavior: 'void', resumes_at: reprise }
+            });
+            return res.status(200).json({
+              ok: true,
+              message: "Abonnement mis en pause 1 mois. Rien ne te sera facturé d'ici là, et tout redémarre automatiquement."
+            });
+          }
+
+          if (geste === 'starter') {
+            const sub = await st.subscriptions.retrieve(subId);
+            const itemId = sub?.items?.data?.[0]?.id;
+            if (!itemId) return res.status(500).json({ error: "Abonnement illisible — écris à contact@creatis.app." });
+            /* `proration_behavior: 'none'` : pas de facture immédiate ni d'avoir. Le client garde
+               ce qu'il a déjà payé et la prochaine échéance passe simplement à 9,95 €. C'est le
+               comportement le moins surprenant pour lui, donc le moins générateur de litige. */
+            await st.subscriptions.update(subId, {
+              items: [{ id: itemId, price: PRIX_STARTER }],
+              proration_behavior: 'none'
+            });
+            await supabase(`/users?id=eq.${authR.id}`, 'PATCH', { plan: 'starter', updated_at: new Date().toISOString() });
+            return res.status(200).json({
+              ok: true,
+              message: "Tu es passé au Starter à 9,95 €/mois. Ta période déjà payée reste acquise."
+            });
+          }
+
+          return res.status(400).json({ error: 'Geste de rétention inconnu.' });
+        } catch (e) {
+          console.error('[Rétention]', geste, e.message);
+          return res.status(500).json({ error: `Impossible d'appliquer : ${e.message}` });
+        }
       }
 
       default:
