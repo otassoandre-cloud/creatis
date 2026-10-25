@@ -412,8 +412,28 @@ class ClipExportRequest(BaseModel):
     start: float
     end: float
 
+def _resoudre_langue(lang: Optional[str]) -> Optional[str]:
+    """Langue a imposer a Whisper, ou None pour le laisser detecter.
+
+    Le defaut du service est « fr », pose volontairement : un jingle ou un mot
+    d'anglais en intro faisait detecter « en » sur une video francaise et partir
+    les sous-titres en vrac. Mais ce defaut s'applique AUSSI aux videos qui ne
+    sont pas francaises, et la il produit du charabia — mesure le 25/10/2026 sur
+    une video anglaise : Whisper a rendu du faux francais des la trentieme
+    seconde, sans remonter la moindre erreur. Un client qui envoie une video
+    anglaise recoit donc des sous-titres inventes, incrustes dans l'image.
+
+    « auto » rend la main a la detection. Absent, rien ne change pour personne.
+    """
+    if lang and lang.strip().lower() in ("auto", "detect"):
+        return None
+    return (lang or TRANSCRIBE_LANG or "").strip() or None
+
+
 class TranscribeRequest(BaseModel):
     youtube_url: str
+    # Absent = comportement actuel (« fr »). « auto » = detection par Whisper.
+    lang: Optional[str] = None
 
 
 # ── 1. DOWNLOAD ───────────────────────────────────────────────────────────────
@@ -1522,7 +1542,7 @@ def _extract_audio(media_path: str, out_path: str) -> float:
     return Path(out_path).stat().st_size / 1_048_576
 
 
-async def _transcribe_groq(media_path: str) -> Dict:
+async def _transcribe_groq(media_path: str, lang: Optional[str] = None) -> Dict:
     """Transcription via Groq Whisper API — beaucoup plus rapide que local."""
     audio_path = media_path + ".audio.mp3"
     try:
@@ -1537,7 +1557,7 @@ async def _transcribe_groq(media_path: str) -> Dict:
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                     data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
                           "timestamp_granularities[]": "word",
-                          **({"language": TRANSCRIBE_LANG} if TRANSCRIBE_LANG else {})},
+                          **({"language": _resoudre_langue(lang)} if _resoudre_langue(lang) else {})},
                     files={"file": ("audio.mp3", f, "audio/mpeg")},
                 )
         r.raise_for_status()
@@ -1647,7 +1667,7 @@ def _duree_media(media_path: str) -> float:
         return 0.0
 
 
-def _transcribe_local(media_path: str) -> Dict:
+def _transcribe_local(media_path: str, lang: Optional[str] = None) -> Dict:
     duree = _duree_media(media_path)
     if duree > DUREE_MAX_WHISPER_LOCAL_S:
         logger.error(f"[whisper-local] REFUS — {duree / 60:.0f} min > "
@@ -1664,7 +1684,7 @@ def _transcribe_local(media_path: str) -> Dict:
     # seulement, pas le chemin principal).
     segs_iter, info = model.transcribe(
         media_path, beam_size=1, vad_filter=True, condition_on_previous_text=False,
-        language=(TRANSCRIBE_LANG or None)
+        language=_resoudre_langue(lang)
     )
     segments = [
         {"start": float(s.start), "end": float(s.end), "text": (s.text or "").strip()}
@@ -1678,7 +1698,7 @@ def _transcribe_local(media_path: str) -> Dict:
     return {"duration": duration, "segments": segments}
 
 
-async def transcribe(media_path: str) -> Dict:
+async def transcribe(media_path: str, lang: Optional[str] = None) -> Dict:
     """Groq Whisper en priorité (rapide), local en fallback.
     Un 429 (rate limit, cf. quota Groq free 30 RPM) tombait direct sur le fallback local
     lent — un seul retry après un court backoff évite ce fallback pour ce qui n'est qu'un
@@ -1686,7 +1706,7 @@ async def transcribe(media_path: str) -> Dict:
     if GROQ_API_KEY:
         for attempt in range(2):
             try:
-                return await _transcribe_groq(media_path)
+                return await _transcribe_groq(media_path, lang)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429 and attempt == 0:
                     logger.warning("Groq Whisper rate-limited (429) — retry dans 3s avant fallback local")
@@ -1698,7 +1718,7 @@ async def transcribe(media_path: str) -> Dict:
                 logger.warning(f"Groq Whisper failed ({e}) — fallback local")
                 break
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, lambda: _transcribe_local(media_path))
+    return await loop.run_in_executor(None, lambda: _transcribe_local(media_path, lang))
 
 
 # ── 3. HIGHLIGHT DETECTION — SamurAI prompts + Gemini ────────────────────────
@@ -3738,7 +3758,7 @@ def _compute_audio_energy_peaks(audio_path: str, top_fraction: float = 0.15) -> 
         return []
 
 
-async def _transcribe_audio_core(audio_path: Path) -> Dict:
+async def _transcribe_audio_core(audio_path: Path, lang: Optional[str] = None) -> Dict:
     """Logique de transcription pure (Groq Whisper ou fallback local) + pics d'énergie audio.
     Extraite de l'ancien endpoint /transcribe-audio pour être réutilisée par la version job async
     (upload-token + poll) qui résiste aux coupures réseau/mise en veille mobile — contrairement à
@@ -3754,7 +3774,7 @@ async def _transcribe_audio_core(audio_path: Path) -> Dict:
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                     data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json",
                           "timestamp_granularities[]": "word",
-                          **({"language": TRANSCRIBE_LANG} if TRANSCRIBE_LANG else {})},
+                          **({"language": _resoudre_langue(lang)} if _resoudre_langue(lang) else {})},
                     files={"file": ("audio.mp3", af, "audio/mpeg")},
                 )
         r.raise_for_status()
@@ -5021,7 +5041,7 @@ async def transcribe_segments_endpoint(req: TranscribeRequest, _=Depends(auth)):
             )
 
         logger.info(f"[transcribe-segments] transcription '{title}'")
-        transcript = await transcribe(source)
+        transcript = await transcribe(source, req.lang)
         if not transcript["segments"]:
             raise HTTPException(502, "Aucun segment — vidéo sans paroles")
         logger.info(f"[transcribe-segments] {len(transcript['segments'])} segments, {transcript['duration']:.0f}s")
