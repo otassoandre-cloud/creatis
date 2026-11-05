@@ -1144,27 +1144,46 @@ module.exports = async (req, res) => {
         const hierStart = hier + 'T00:00:00.000Z';
         const hierEnd   = hier + 'T23:59:59.999Z';
 
-        const [usersHier, usersTotal, usersPro, gensHier, clipsHier, actifsHier, tousPlans, echecsPaiement, ph] = await Promise.all([
+        /* Sante du backend Railway. Le 4 novembre 2026 il est tombe (facture impayee) et la
+           panne a dure deux jours sans que personne la voie : le rapport annoncait « 0 clip »
+           tous les matins depuis le 16 octobre — il lisait la table `generations`, qui n'est
+           plus alimentee — donc un zero ne voulait plus rien dire. D'ou les deux corrections
+           ici : lire clip_generations (la vraie source), et tester le backend lui-meme.
+           `fetch` ne rejette pas sur un 4xx : il faut lire le statut, et surtout l'en-tete
+           `x-railway-fallback`, signature d'un service que Railway ne route plus. */
+        const santeBackend = async () => {
+          const base = (process.env.REPURPOSE_SERVICE_URL || '').trim().replace(/\/$/, '');
+          if (!base) return { ok: false, detail: 'REPURPOSE_SERVICE_URL absente dans Vercel' };
+          try {
+            const r = await fetch(`${base}/health`, { signal: AbortSignal.timeout(10000) });
+            if (r.headers.get('x-railway-fallback')) return { ok: false, detail: 'service non route — Railway renvoie sa page de repli, il faut le redeployer' };
+            if (!r.ok) return { ok: false, detail: `le backend repond ${r.status}` };
+            return { ok: true, detail: 'operationnel' };
+          } catch (e) {
+            return { ok: false, detail: `injoignable : ${e.message}` };
+          }
+        };
+
+        const [usersHier, usersTotal, usersPro, analysesHier, tousPlans, echecsPaiement, ph, sante] = await Promise.all([
           supabase(`/users?select=id,email,plan&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           supabase(`/users?select=id,email`, 'GET').catch(() => []),
           supabase(`/users?select=id,email&plan=neq.gratuit`, 'GET').catch(() => []),
-          supabase(`/generations?select=agent_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
-          supabase(`/generations?select=id&agent_id=eq.clips-viraux&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
-          supabase(`/generations?select=user_id&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
+          supabase(`/clip_generations?select=user_id,source_type,nb_clips&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
           // Répartition par plan — « Abonnés Pro/Studio » masquait qui est sur quoi
           supabase(`/users?select=plan,email`, 'GET').catch(() => []),
           // Paiements échoués de la veille (table créée le 25/07) — pour ne plus les découvrir dans Stripe
           supabase(`/paiements_echoues?select=email,montant,devise,statut,raison&created_at=gte.${hierStart}&created_at=lte.${hierEnd}`, 'GET').catch(() => []),
-          statsPostHog(hierStart, hierEnd)
+          statsPostHog(hierStart, hierEnd),
+          santeBackend()
         ]);
 
         const usersHierReels = (usersHier || []).filter(u => !TEST_EMAILS.includes(u.email));
         const nbInscrits = usersHierReels.length;
         const nbTotal    = (usersTotal || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
         const nbPro      = (usersPro || []).filter(u => !TEST_EMAILS.includes(u.email)).length;
-        const nbGens     = gensHier?.length || 0;
-        const nbClips    = clipsHier?.length || 0;
-        const nbActifs   = new Set((actifsHier || []).map(g => g.user_id)).size;
+        const nbAnalyses = (analysesHier || []).length;
+        const nbClips    = (analysesHier || []).reduce((t, g) => t + (g.nb_clips || 0), 0);
+        const nbActifs   = new Set((analysesHier || []).map(g => g.user_id)).size;
 
         // ── Répartition par plan (hors comptes de test) ──
         const plans = { gratuit: 0, starter: 0, pro: 0, studio: 0 };
@@ -1193,17 +1212,22 @@ module.exports = async (req, res) => {
           ? echecs.slice(0, 8).map(e => `• ${e.email || '?'} — ${e.montant || '?'} ${e.devise || ''} <span style="color:#f87171">${(e.raison || e.statut || '').slice(0, 60)}</span>`).join('<br>')
           : '';
 
-        const agentCount = {};
-        (gensHier || []).forEach(g => { agentCount[g.agent_id] = (agentCount[g.agent_id] || 0) + 1; });
-        const topAgents = Object.entries(agentCount).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id,n]) => `${n}× ${id}`).join('<br>') || '—';
+        const sourceCount = {};
+        (analysesHier || []).forEach(g => { const src = g.source_type || 'inconnu'; sourceCount[src] = (sourceCount[src] || 0) + 1; });
+        const topSources = Object.entries(sourceCount).sort((a,b) => b[1]-a[1]).map(([id,n]) => `${n}× ${id}`).join('<br>') || '—';
         const inscritsList = usersHierReels.slice(0,10).map(u => `• ${u.email} (${u.plan})`).join('<br>') || '— aucun';
 
         const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#e5e7eb;padding:32px;border-radius:12px">
   <div style="margin-bottom:4px"><span style="font-size:22px;font-weight:800;color:#fff">Créatis<span style="color:#10b981">.</span></span>&nbsp;<span style="font-size:11px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);padding:2px 8px;border-radius:20px">RAPPORT ${hier}</span></div>
   <p style="font-size:13px;color:#555;margin:0 0 24px">Résumé de la journée d'hier</p>
+  ${sante.ok ? '' : `<div style="background:#1a0f0f;border:1px solid #7f1d1d;border-radius:10px;padding:18px;margin-bottom:20px">
+    <div style="font-size:13px;font-weight:800;color:#f87171;margin-bottom:6px">⛔ LE BACKEND NE RÉPOND PAS</div>
+    <div style="font-size:13px;color:#fecaca;line-height:1.6">${sante.detail}</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:10px">Tant que c'est le cas, <b>plus aucune analyse n'est possible</b> — ni par URL YouTube, ni par fichier. Les chiffres ci-dessous sont donc des zéros d'arrêt, pas des zéros d'activité.</div>
+  </div>`}
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
     <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#10b981">${nbInscrits}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Nouveaux inscrits</div></div>
-    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#fff">${nbClips}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Clips exportés</div></div>
+    <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#fff">${nbClips}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Clips produits</div></div>
     <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:900;color:#f0a500">${nbActifs}</div><div style="font-size:11px;color:#6b7280;margin-top:4px">Users actifs</div></div>
   </div>
   <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
@@ -1214,7 +1238,7 @@ module.exports = async (req, res) => {
       <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Starter 9,95€</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.starter}</td></tr>
       <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Pro 14€ / annuel</td><td style="text-align:right;font-weight:700;color:#d1d5db">${plans.pro}</td></tr>
       <tr><td style="color:#9ca3af;padding:3px 0">&nbsp;&nbsp;↳ Gratuit</td><td style="text-align:right;font-weight:700;color:#6b7280">${plans.gratuit}</td></tr>
-      <tr><td style="color:#9ca3af;padding:3px 0">Générations IA hier</td><td style="text-align:right;font-weight:700;color:#fff">${nbGens}</td></tr>
+      <tr><td style="color:#9ca3af;padding:3px 0">Analyses lancées hier</td><td style="text-align:right;font-weight:700;color:#fff">${nbAnalyses}</td></tr>
     </table>
   </div>
 
@@ -1239,8 +1263,8 @@ module.exports = async (req, res) => {
     <div style="font-size:11px;color:#9ca3af;margin-top:10px">Ces personnes ont sorti leur carte — à relancer dans la journée.</div>
   </div>` : ''}
   <div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px">
-    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">TOP AGENTS (hier)</div>
-    <div style="font-size:13px;color:#d1d5db;line-height:2">${topAgents}</div>
+    <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">SOURCES ANALYSÉES (hier)</div>
+    <div style="font-size:13px;color:#d1d5db;line-height:2">${topSources}</div>
   </div>
   ${nbInscrits > 0 ? `<div style="background:#111;border:1px solid #1f2937;border-radius:10px;padding:18px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">NOUVEAUX INSCRITS</div><div style="font-size:13px;color:#d1d5db;line-height:2">${inscritsList}</div></div>` : ''}
   <p style="color:#374151;font-size:12px;text-align:center;margin-top:20px">Créatis · <a href="https://creatis.app" style="color:#10b981">creatis.app</a></p>
@@ -1252,17 +1276,18 @@ module.exports = async (req, res) => {
           body: JSON.stringify({
             sender: { name: 'Créatis Analytics', email: 'contact@creatis.app' },
             to: [{ email: 'creatis.app.contact@gmail.com', name: 'Créatis' }],
-            subject: `📊 Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${aff(upClics)} clic(s) paywall${echecs.length ? ` · ⚠️ ${echecs.length} paiement(s) échoué(s)` : ''}`,
+            subject: `${sante.ok ? '📊' : '⛔ BACKEND HS ·'} Créatis ${hier} — ${nbInscrits} inscrits · ${nbClips} clips · ${aff(upClics)} clic(s) paywall${echecs.length ? ` · ⚠️ ${echecs.length} paiement(s) échoué(s)` : ''}`,
             htmlContent: html
           })
         });
         const emailData = await emailRes.json().catch(() => ({}));
         if (!emailRes.ok) console.error('[DailyReport] Brevo erreur:', JSON.stringify(emailData));
-        console.log(`[DailyReport] ${hier} — ${nbInscrits} inscrits, ${nbClips} clips, ${nbActifs} actifs`);
+        console.log(`[DailyReport] ${hier} — ${nbInscrits} inscrits, ${nbClips} clips, ${nbActifs} actifs, backend ${sante.ok ? 'OK' : 'HS (' + sante.detail + ')'}`);
         /* `posthog` dans la réponse sert au diagnostic : sans lui, une clé invalide ou un mauvais
            projet ne se voit qu'en ouvrant l'email le lendemain et en le trouvant vide. */
         return res.status(200).json({
           ok: emailRes.ok, date: hier, inscrits: nbInscrits, clips: nbClips, actifs: nbActifs,
+          analyses: nbAnalyses, backend: sante,
           posthog: ph === null ? 'NON CONFIGURÉ ou requête refusée' : ph
         });
       }
