@@ -2925,7 +2925,26 @@ def _chunk_segments(segments: List[Dict], chunk_chars: int = 7000, overlap: int 
             cur, cur_len = [], 0
         else:
             i += 1
-    return chunks[:max_chunks]
+    if max_chunks <= 1 or len(chunks) <= max_chunks:
+        return chunks[:max_chunks]
+
+    # ECHANTILLONNER TOUTE LA VIDEO, au lieu de garder le debut (06/11/2026).
+    #
+    # `chunks[:max_chunks]` jetait en silence tout ce qui depassait ~56 000
+    # caracteres de transcription (8 morceaux de 7 000), soit une dizaine de
+    # minutes de parole. Mesure le 06/11 sur un podcast de 66 min : les dix
+    # clips rendus tenaient tous dans la plage 66-466 s d'une source de 3 970 s,
+    # soit 12 % de la source. Les analyses clientes de 22-27 min s'etalaient,
+    # elles, sur toute leur duree — le defaut ne se voit QUE sur du contenu long,
+    # qui est precisement la cible du produit (podcasts, streams, coachs).
+    #
+    # Prendre `max_chunks` morceaux REPARTIS coute exactement le meme nombre de
+    # jetons Groq que prendre les `max_chunks` premiers : le plafond quotidien de
+    # l'organisation n'est pas touche. On ne monte donc PAS `max_chunks`, on
+    # repartit — un plafond plus haut, lui, multiplierait le cout par video.
+    pas = (len(chunks) - 1) / (max_chunks - 1)
+    idx = sorted({int(round(i * pas)) for i in range(max_chunks)})
+    return [chunks[j] for j in idx]
 
 
 async def _analyser_avec_together(prompt: str) -> list:
