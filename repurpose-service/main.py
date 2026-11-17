@@ -24,6 +24,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
+
+async def _communiquer_ou_tuer(proc, timeout):
+    """Attend la fin d'un sous-processus ; passe le delai, le TUE avant de lever.
+
+    `asyncio.wait_for(proc.communicate(), timeout)` abandonne l'attente mais laisse
+    tourner ffmpeg. Un flux YouTube qui ne repond plus garde alors un ffmpeg vivant
+    pour toujours, et ils s'accumulent jusqu'au plafond de processus du conteneur.
+    Avec, a la fin, des exports qui echouent sur « Resource temporarily unavailable »
+    (-11). Corrige le 17/11/2026 en cherchant la panne du 16-17/11, qui venait en fait
+    du nombre de fils de ffmpeg (voir ffmpeg-plafonne)."""
+    try:
+        return await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except Exception:
+            pass
+        raise
+
 # Style de sous-titres « highlight » (mot actif bleu + bandeau). Isolé dans son module :
 # sa géométrie vient de mesures au pixel qu'on ne veut pas voir se diluer ici.
 # Import tolérant AU DÉMARRAGE seulement : un module absent ne doit pas empêcher le service
@@ -244,17 +267,19 @@ async def _get_yt_cookies_playwright(video_id: str, out_dir: Path) -> Optional[s
                 args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
                       "--disable-gpu", "--no-first-run", "--no-zygote"],
             )
-            ctx = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-                viewport={"width": 1280, "height": 720},
-                locale="fr-FR",
-            )
-            page = await ctx.new_page()
-            await page.goto(f"https://www.youtube.com/watch?v={video_id}",
-                            wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(3000)  # JS YouTube s'exécute
-            cookies = await ctx.cookies(["https://www.youtube.com", "https://youtube.com"])
-            await browser.close()
+            try:
+                ctx = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+                    viewport={"width": 1280, "height": 720},
+                    locale="fr-FR",
+                )
+                page = await ctx.new_page()
+                await page.goto(f"https://www.youtube.com/watch?v={video_id}",
+                                wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(3000)  # JS YouTube s'exécute
+                cookies = await ctx.cookies(["https://www.youtube.com", "https://youtube.com"])
+            finally:
+                await browser.close()
 
         if not cookies:
             logger.warning("[playwright] aucun cookie récupéré")
@@ -4529,7 +4554,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                 *_args,
                 stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
             )
-            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+            _, stderr = await _communiquer_ou_tuer(proc, 120)
 
             if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
                 logger.warning(f"[raw-segment] copy rc={proc.returncode}, re-encode fallback")
@@ -4543,7 +4568,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                     *_args2,
                     stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                 )
-                _, stderr2 = await asyncio.wait_for(proc2.communicate(), timeout=180)
+                _, stderr2 = await _communiquer_ou_tuer(proc2, 180)
                 if proc2.returncode != 0:
                     raise RuntimeError(f"ffmpeg: {stderr2.decode()[-200:]}")
         elif not _r2_hit:
@@ -4655,7 +4680,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                                 "-show_entries", "stream=width,height", "-of", "csv=p=0",
                                 str(downloaded),
                                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-                            _po, _ = await asyncio.wait_for(_pr.communicate(), timeout=15)
+                            _po, _ = await _communiquer_ou_tuer(_pr, 15)
                             _dims = _po.decode().strip()
                             _voie = "PROXY" if _proxy else "gratuit"
                             logger.info(f"[raw-segment] {job_id} source {_dims} via {_voie}")
@@ -4688,7 +4713,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                             "-c:a", "aac", "-movflags", "faststart", str(out_path),
                             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                         )
-                        await asyncio.wait_for(proc.communicate(), timeout=180)
+                        await _communiquer_ou_tuer(proc, 180)
                         downloaded.unlink(missing_ok=True)
                         if proc.returncode == 0 and out_path.exists() and out_path.stat().st_size > 1000:
                             # Une source sous 720p n'est PAS un succes : apres le crop 9:16 il ne
@@ -4761,7 +4786,7 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                         "-c:a", "aac", "-movflags", "faststart", str(out_path),
                         stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
                     )
-                    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=180)
+                    _, stderr = await _communiquer_ou_tuer(proc, 180)
                     if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
                         raise RuntimeError(f"ffmpeg cut (API): {stderr.decode()[-200:]}")
 
@@ -4854,7 +4879,7 @@ async def _run_preview_clip(video_id: str, start: float, end: float, job_id: str
             "-c:a", "aac", "-movflags", "+faststart", str(out_path),
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+        _, stderr = await _communiquer_ou_tuer(proc, 90)
         if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1000:
             raise RuntimeError(f"ffmpeg: {stderr.decode()[-200:]}")
         size_kb = out_path.stat().st_size // 1024
@@ -4913,7 +4938,7 @@ async def reencode_preview_endpoint(file: UploadFile = File(...), _=Depends(auth
             "-c:a", "aac", "-movflags", "+faststart", str(out_path),
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+        _, stderr = await _communiquer_ou_tuer(proc, 60)
         if proc.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 500:
             raise HTTPException(502, f"ffmpeg: {stderr.decode()[-200:]}")
         return FileResponse(str(out_path), media_type="video/mp4", filename="clip.mp4",

@@ -5,6 +5,7 @@ FROM python:3.11-slim
 # correctement — cv2.CascadeClassifier absent, le face tracking retombe silencieusement en crop centré)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    tini \
     fonts-dejavu-core \
     fontconfig \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
@@ -91,6 +92,15 @@ COPY mcp_connecteur.py .
 COPY verifier_geometrie.py .
 COPY watermark_base.png .
 
+# 17/11/2026 - plafond de fils pour ffmpeg (voir l'en-tete de ffmpeg-plafonne).
+# Pose en /usr/local/bin, devant /usr/bin dans le PATH : main.py et yt-dlp passent
+# par lui sans changer une ligne. Le sed retire d'eventuels CR (fichier edite sous
+# Windows) qui casseraient le #!/bin/bash ; le -version fait echouer le BUILD si le
+# relais ne trouve pas le vrai ffmpeg, plutot que chaque export en production.
+COPY ffmpeg-plafonne /usr/local/bin/ffmpeg
+RUN sed -i 's/\r$//' /usr/local/bin/ffmpeg && chmod +x /usr/local/bin/ffmpeg \
+    && ffmpeg -hide_banner -version > /dev/null
+
 # yt-dlp est le seul composant qui doit suivre YouTube au jour le jour. Placé APRÈS les COPY,
 # donc reconstruit à chaque déploiement : on repart toujours sur la dernière version publiée.
 # Sans ça la couche `pip install -r requirements.txt` reste en cache indéfiniment et la version
@@ -113,4 +123,12 @@ RUN pip install --no-cache-dir --upgrade yt-dlp-ejs && pip install --no-cache-di
 ENV PORT=8080
 EXPOSE 8080
 
+# 17/11/2026 - `python main.py` tournait en PID 1, sans init. Un PID 1 doit reaper
+# les orphelins (processus de Chromium lances avec --no-zygote, ffmpeg dont le parent
+# a abandonne l'attente) ; Python ne le fait pas, ils restent en zombies et occupent
+# le plafond de processus du conteneur. tini reape, et transmet les signaux a Python.
+# Ce n'etait PAS la cause de la panne du 16-17/11 (un redemarrage ne la reparait pas,
+# c'est le nombre de fils de ffmpeg : voir ffmpeg-plafonne) ; c'est une fuite qui
+# aurait fini par produire le meme symptome.
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["python", "main.py"]
