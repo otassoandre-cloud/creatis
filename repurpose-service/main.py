@@ -4435,6 +4435,11 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
         # CACHE R2 : si ce segment a déjà été téléchargé (n'importe quel user/session), on le
         # récupère depuis R2 (egress gratuit) → 0 téléchargement YouTube, 0 proxy. Fail-open.
         _r2_hit = False
+        # Pose ICI et pas seulement dans la branche yt-dlp : la branche InnerTube (stream_url)
+        # ne la definit pas, et le test R2 plus bas la lit quand meme. Resultat jusqu'au
+        # 17/11/2026 : un segment telecharge GRATUITEMENT echouait juste apres, sur
+        # « cannot access local variable '_degrade_livre' » — export refuse au client.
+        _degrade_livre = False
         _r2key = _seg_r2_key(video_id, start, end)
         if _r2_enabled():
             RAW_SEGMENTS[job_id]["progress"] = "Chargement (cache)…"
