@@ -1115,6 +1115,63 @@ def _ytapi_cached_video(video_id: str, fmt: str = "1080") -> Optional[Path]:
         return cache
 
 
+def _gratuit_cached_video(video_id: str) -> Optional[Path]:
+    """Repli GRATUIT avant l'API payante : la video COMPLETE par le telechargeur natif de
+    yt-dlp, mise en cache par video_id comme `_ytapi_cached_video`, puis decoupee sur place.
+
+    18/11/2026 : avec des cookies valides, YouTube laissait de nouveau passer le serveur
+    (video complete telechargee en natif : 7,3 Mo, formats jusqu'a la 2160p), mais la
+    decoupe directe (`download_ranges`, que yt-dlp confie a ffmpeg en HTTP) sortait toujours
+    en « ffmpeg exited with code 8 ». vidkraken etant a sec jusqu'au 8/12, plus AUCUN export
+    par lien YouTube n'aboutissait — deux clients Pro bloques le meme soir. Le natif, lui,
+    marchait : on telecharge donc tout, et c'est notre ffmpeg, en local, qui decoupe.
+    Plus lourd en bande passante qu'un extrait, mais gratuit et une seule fois par video.
+    None si YouTube refuse aussi ce chemin."""
+    import yt_dlp
+    cle   = f"{video_id}_natif1080"
+    cache = WORK_DIR / f"gratuit_{cle}.mp4"
+    if cache.exists() and cache.stat().st_size > 10_000:
+        return cache
+    with _ytapi_verrou(cle):
+        if cache.exists() and cache.stat().st_size > 10_000:
+            return cache
+        dossier = WORK_DIR / f"gratuit_{cle}_tmp"
+        shutil.rmtree(dossier, ignore_errors=True)
+        dossier.mkdir(parents=True, exist_ok=True)
+        opts = {
+            # Pas d'AV1 : plus lent a decoder pour la decoupe, sans gain visible apres le crop.
+            "format": ("bestvideo[height<=1080][vcodec!^=av01]+bestaudio"
+                       "/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best"),
+            "merge_output_format": "mp4",
+            "outtmpl": str(dossier / "full.%(ext)s"),
+            "extractor_args": _yt_extractor_args(),
+            "no_playlist": True,
+            "socket_timeout": 120,
+            "retries": 3,
+            "quiet": True,
+        }
+        cookies_file = _get_cookies_file()
+        if cookies_file:
+            opts["cookiefile"] = cookies_file
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+        except Exception as e:
+            _detecter_cookies_morts(str(e))
+            logger.warning(f"[gratuit-complet] {video_id} echec : {str(e)[:200]}")
+            shutil.rmtree(dossier, ignore_errors=True)
+            return None
+        fichier = next((p for p in dossier.glob("full.*") if p.suffix != ".part"), None)
+        if not fichier or fichier.stat().st_size < 10_000:
+            logger.warning(f"[gratuit-complet] {video_id} : aucun fichier exploitable")
+            shutil.rmtree(dossier, ignore_errors=True)
+            return None
+        fichier.replace(cache)
+        shutil.rmtree(dossier, ignore_errors=True)
+        logger.info(f"[gratuit-complet] {video_id} en cache ({cache.stat().st_size // 1_048_576} Mo)")
+        return cache
+
+
 def _ytapi_titre_cache(video_id: str, fmt: str = "1080") -> str:
     """Titre memorise a cote de la video mise en cache (survit a un cache hit)."""
     try:
@@ -4766,11 +4823,18 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
             if not segment_ready:
                 if not allow_api_fallback:
                     raise RuntimeError("yt-dlp échoué (secours API désactivé pour le préchargement)")
-                if not YT_DOWNLOAD_API_KEY:
-                    raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
-                RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
+                # Repli GRATUIT d'abord (video complete en natif, voir _gratuit_cached_video),
+                # l'API payante seulement s'il echoue. Reserve aux actions de l'utilisateur
+                # (allow_api_fallback), comme l'API : le prechargement n'y touche pas.
+                RAW_SEGMENTS[job_id]["progress"] = "Téléchargement de la vidéo…"
                 cached = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _ytapi_cached_video(video_id, "1080"))
+                    None, lambda: _gratuit_cached_video(video_id))
+                if not cached and not YT_DOWNLOAD_API_KEY:
+                    raise RuntimeError("yt-dlp segment échoué et pas de clé API de secours")
+                if not cached:
+                    RAW_SEGMENTS[job_id]["progress"] = "Téléchargement (secours API)…"
+                    cached = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _ytapi_cached_video(video_id, "1080"))
                 if not cached or not cached.exists():
                     # L'API a echoue elle aussi. Si on a mis un fichier flou de cote, mieux vaut
                     # le livrer que de renvoyer une erreur : l'utilisateur prefere un clip
