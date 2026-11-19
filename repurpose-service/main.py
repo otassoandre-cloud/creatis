@@ -4164,7 +4164,7 @@ async def test_innertube(video_id: str = "WVcfOsVewPk"):
 
 @app.get("/test-formats")
 def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, download: bool = False,
-                 plage: bool = True):
+                 plage: bool = True, sans_cookies: bool = False):
     """Debug: teste l'extraction yt-dlp. use_proxy=false = chemin gratuit réel (cookies+bgutil, IP Railway).
 
     download=true télécharge RÉELLEMENT 5 secondes de média. Sans ça le test s'arrête aux
@@ -4205,7 +4205,9 @@ def test_formats(video_id: str = "NwlPz4RaZ8s", use_proxy: bool = False, downloa
             # Un format unique, déjà muxé : le téléchargeur natif de yt-dlp suffit, il utilise
             # le proxy, et aucun ffmpeg n'intervient.
             opts["format"] = "worst[ext=mp4]/worst"
-    cookies_file = _get_cookies_file()
+    # sans_cookies=true : mesure ce que fait le chemin SANS le compte — c'est ainsi que
+    # partent desormais les tentatives par proxy (voir _run_raw_segment).
+    cookies_file = None if sans_cookies else _get_cookies_file()
     if cookies_file:
         opts["cookiefile"] = cookies_file
     if use_proxy and RESIDENTIAL_PROXY_URL:
@@ -4723,6 +4725,14 @@ async def _run_raw_segment(video_id: str, start: float, end: float, job_id: str,
                         # sur une IP résidentielle elle ne sert plus à rien et coûte la qualité.
                         # La liste par défaut finit de toute façon par android/ios en secours.
                         _opts["proxy"] = _proxy
+                        # SANS les cookies du compte (19/11/2026). Une IP résidentielle passe
+                        # le contrôle anti-robot sans compte ; envoyer la session d'UN compte
+                        # depuis des IP qui changent à chaque connexion est précisément ce qui
+                        # le fait signaler comme robot. Et des cookies périmés font échouer
+                        # toute la requête (constaté le 20/08 puis le 19/11 : « not a bot »
+                        # avec cookies ET proxy, sans le message « no longer valid » qui les
+                        # aurait fait retirer) : le proxy doit rester un chemin indépendant.
+                        _opts.pop("cookiefile", None)
                     loop = asyncio.get_event_loop()
                     def _dl(_o=_opts):
                         import yt_dlp
