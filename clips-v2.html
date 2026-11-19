@@ -3472,6 +3472,14 @@ const V2 = (() => {
       } catch {}
       // Pas de token → rediriger vers auth
       if (!token) {
+        /* 19/11 : les liens de bio mènent DIRECTEMENT ici, sans passer par la landing page.
+           Le lien collé doit donc survivre à l'inscription, comme depuis la landing : même clé,
+           relue au retour (auto-lancement). Et pas de marqueur « analyse en cours » orphelin,
+           sinon le retour afficherait « ton analyse a été interrompue ». */
+        try {
+          if (_ytUrl) localStorage.setItem('creatis_pending_yt', JSON.stringify({ url: _ytUrl, ts: Date.now() }));
+          localStorage.removeItem('creatis_analysis_marker');
+        } catch {}
         allerConnexion('/clips-v2.html');
         return;
       }

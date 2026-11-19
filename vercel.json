@@ -252,7 +252,7 @@
       "src": "/yt",
       "status": 308,
       "headers": {
-        "Location": "/?utm_source=youtube&utm_medium=bio&utm_campaign=bio"
+        "Location": "/clips-v2.html?utm_source=youtube&utm_medium=bio&utm_campaign=bio"
       }
     },
     {
@@ -287,7 +287,7 @@
       "src": "/ig",
       "status": 308,
       "headers": {
-        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
+        "Location": "/clips-v2.html?utm_source=instagram&utm_medium=bio&utm_campaign=bio"
       }
     },
     {
@@ -322,7 +322,7 @@
       "src": "/g1",
       "status": 308,
       "headers": {
-        "Location": "/?utm_source=instagram&utm_medium=bio&utm_campaign=compte1"
+        "Location": "/clips-v2.html?utm_source=instagram&utm_medium=bio&utm_campaign=compte1"
       }
     },
     {
@@ -350,7 +350,7 @@
       "src": "/y1",
       "status": 308,
       "headers": {
-        "Location": "/?utm_source=youtube&utm_medium=bio&utm_campaign=compte1"
+        "Location": "/clips-v2.html?utm_source=youtube&utm_medium=bio&utm_campaign=compte1"
       }
     },
     {
