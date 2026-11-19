@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-28",
+  "fuseau": "Europe/Paris",
+  "ecrit_le": "2026-09-28T08:19:03.375Z",
+  "creneaux": [
+    {
+      "heure": "11",
+      "cible": "y1",
+      "statut": "publié",
+      "piece": "2026-09-28-tuto-fastfood",
+      "titre": "Découper une vidéo longue en Shorts avec l IA — 10 clips notés",
+      "url": "https://youtu.be/93FaFgFWVvE",
+      "fini_le": "2026-09-28T09:01:54.551Z"
+    },
+    {
+      "heure": "12",
+      "cible": "g1",
+      "piece": "2026-09-28-plein-cadre",
+      "video": "creatis-videos/out/short-yt-2809.mp4",
+      "legende": "social/ig-legende-short-yt.txt",
+      "titre": "Ce clip, je ne l ai pas monté (plein cadre)",
+      "statut": "publié",
+      "fini_le": "2026-09-28T11:03:47.723Z"
+    },
+    {
+      "heure": "13",
+      "cible": "y1",
+      "piece": "2026-09-28-short-critere",
+      "video": "creatis-videos/out/short-yt-2809.mp4",
+      "legende": "social/ig-legende-short-yt.txt",
+      "titre": "Un bon clip se comprend sans la vidéo d où il sort",
+      "statut": "en attente"
+    },
+    {
+      "heure": "14",
+      "cible": "y1",
+      "piece": "2026-09-28-letri",
+      "video": "creatis-videos/out/letri-2809.mp4",
+      "legende": "Le tri, c est toi",
+      "titre": "Le tri, c est toi",
+      "statut": "en attente"
+    },
+    {
+      "heure": "15",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "16",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "17",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "18",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "19",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "20",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    },
+    {
+      "heure": "21",
+      "cible": null,
+      "statut": "vide",
+      "detail": "aucune pièce prête"
+    }
+  ]
+}

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Watermark Previews — Créatis</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; color: #fff; font-family: 'Inter', system-ui, sans-serif; padding: 32px; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #10b981; }
+  p  { font-size: 13px; color: #666; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; }
+
+  .card { border: 1px solid #222; border-radius: 12px; overflow: hidden; background: #0a0a0a; }
+  .card-label { padding: 10px 12px; font-size: 12px; font-weight: 600; color: #aaa; border-top: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+  .card-label span { background: #1a1a1a; border-radius: 4px; padding: 2px 7px; font-size: 10px; color: #555; }
+
+  /* Video mock — vertical 9:16 */
+  .video {
+    width: 100%;
+    aspect-ratio: 9/16;
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .video-content {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .video-content svg { opacity: .07; }
+
+  /* ── WM 1 : Actuel (C vert + Créatis blanc, sans fond) ── */
+  .wm1 { position: absolute; top: 20px; left: 14px; display: flex; align-items: center; gap: 6px; }
+  .wm1-c { font-size: 22px; font-weight: 900; color: #10b981; font-style: italic; line-height: 1; }
+  .wm1-t { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: .02em; }
+
+  /* ── WM 2 : Style OpusClip (pill sombre + icône ronde blanche) ── */
+  .wm2 { position: absolute; top: 16px; left: 12px; display: flex; align-items: center; gap: 7px;
+    background: rgba(10,15,10,0.72); border-radius: 999px; padding: 6px 14px 6px 7px; }
+  .wm2-c { width: 26px; height: 26px; border-radius: 50%; background: #10b981;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: #fff; flex-shrink: 0; }
+  .wm2-t { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .01em; }
+
+  /* ── WM 3 : Texte seul, ombre portée ── */
+  .wm3 { position: absolute; top: 20px; left: 14px; display: flex; align-items: center; gap: 5px;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7); }
+  .wm3-c { font-size: 20px; font-weight: 900; color: #10b981; }
+  .wm3-t { font-size: 13px; font-weight: 700; color: #fff; }
+
+  /* ── WM 4 : Badge coin arrondi, fond vert ── */
+  .wm4 { position: absolute; top: 14px; left: 12px;
+    background: #10b981; border-radius: 8px; padding: 4px 10px;
+    display: flex; align-items: center; gap: 5px; }
+  .wm4-c { font-size: 14px; font-weight: 900; color: #000; }
+  .wm4-t { font-size: 12px; font-weight: 700; color: #000; }
+
+  /* ── WM 5 : Vertical stacked (C grand / Créatis petit) ── */
+  .wm5 { position: absolute; top: 16px; left: 14px; display: flex; flex-direction: column; align-items: flex-start; line-height: 1; gap: 1px; }
+  .wm5-c { font-size: 28px; font-weight: 900; color: #10b981; line-height: 1; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  .wm5-t { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); letter-spacing: .12em; text-transform: uppercase; }
+
+  /* ── WM 6 : Ligne verte à gauche (style broadcast) ── */
+  .wm6 { position: absolute; top: 16px; left: 12px; display: flex; align-items: center; gap: 8px; }
+  .wm6-bar { width: 3px; height: 32px; background: #10b981; border-radius: 2px; }
+  .wm6-inner { display: flex; flex-direction: column; gap: 1px; }
+  .wm6-c { font-size: 13px; font-weight: 900; color: #10b981; line-height: 1; }
+  .wm6-t { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.75); letter-spacing: .05em; }
+
+  /* ── WM 7 : Néon glow ── */
+  .wm7 { position: absolute; top: 18px; left: 14px; display: flex; align-items: center; gap: 5px; }
+  .wm7-c { font-size: 20px; font-weight: 900; color: #10b981;
+    text-shadow: 0 0 8px #10b981, 0 0 20px rgba(16,185,129,.5); }
+  .wm7-t { font-size: 13px; font-weight: 700; color: #fff;
+    text-shadow: 0 0 8px rgba(255,255,255,0.3); }
+
+  /* ── WM 8 : Rond seul (icône compacte) ── */
+  .wm8 { position: absolute; top: 14px; left: 14px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(0,0,0,0.55); border: 2px solid #10b981;
+    display: flex; align-items: center; justify-content: center; }
+  .wm8-c { font-size: 16px; font-weight: 900; color: #10b981; line-height: 1; }
+
+  /* ── WM 9 : Bande basse (style sous-titre) ── */
+  .wm9 { position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.5); padding: 6px 14px;
+    display: flex; align-items: center; gap: 6px; }
+  .wm9-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0; }
+  .wm9-t { font-size: 11px; font-weight: 600; color: rgba(255,255,255,.8); }
+
+  /* ── WM 10 : Minimaliste blanc pur, micro ── */
+  .wm10 { position: absolute; top: 18px; left: 14px; display: flex; align-items: center; gap: 4px;
+    opacity: 0.55; }
+  .wm10-c { font-size: 13px; font-weight: 900; color: #fff; }
+  .wm10-sep { width: 1px; height: 10px; background: rgba(255,255,255,.4); }
+  .wm10-t { font-size: 11px; font-weight: 500; color: #fff; letter-spacing: .04em; }
+
+  /* ── WM FINAL : icône ronde (style 8) + pill + Créatis (style 11) ── */
+  .wm-final { position: absolute; top: 16px; left: 12px; display: flex; align-items: center; gap: 9px;
+    background: rgba(8,12,20,0.75); border-radius: 999px; padding: 5px 16px 5px 6px; }
+  .wm-final-circle { width: 30px; height: 30px; border-radius: 50%; background: #10b981;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 900; color: #fff; flex-shrink: 0; }
+  .wm-final-t { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: .01em; }
+
+  /* ── WM 11 : OpusClip exact — icône carrée arrondie + pill sombre ── */
+  .wm11 { position: absolute; top: 16px; left: 12px; display: flex; align-items: center; gap: 8px;
+    background: rgba(8,12,20,0.78); border-radius: 10px; padding: 6px 14px 6px 7px; }
+  .wm11-icon { width: 28px; height: 28px; border-radius: 7px; background: #10b981;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 900; color: #fff; flex-shrink: 0; font-style: italic; }
+  .wm11-t { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: .01em; }
+
+  /* ── WM 12 : OpusClip mais icône blanc sur vert, rectangle arrondi horizontal ── */
+  .wm12 { position: absolute; top: 16px; left: 12px; display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 5px 12px 5px 6px; }
+  .wm12-icon { width: 26px; height: 26px; border-radius: 6px; background: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .wm12-icon-c { font-size: 14px; font-weight: 900; color: #10b981; font-style: italic; }
+  .wm12-t { font-size: 13px; font-weight: 700; color: #fff; }
+</style>
+</head>
+<body>
+<h1>Watermark Créatis — 10 styles</h1>
+<p>Prévisualisation sur fond de clip 9:16 · Clique sur "Choisir" pour noter ton préféré</p>
+
+<div class="grid">
+
+  <!-- FINAL -->
+  <div class="card" style="border-color:#10b981;grid-column:span 2;">
+    <div style="position:absolute;top:8px;right:8px;background:#10b981;color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;z-index:10;">✓ CHOIX FINAL</div>
+    <div class="video" style="aspect-ratio:9/8;">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm-final">
+        <div class="wm-final-circle">C</div>
+        <span class="wm-final-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label" style="font-size:13px;">Icône ronde (8) + Pill Créatis (11) <span>SÉLECTIONNÉ</span></div>
+  </div>
+
+  <!-- 1 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm1">
+        <span class="wm1-c">C</span>
+        <span class="wm1-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">1 — Actuel simple <span>sans fond</span></div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm2">
+        <div class="wm2-c">C</div>
+        <span class="wm2-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">2 — Pill glassmorphism <span>fond flou</span></div>
+  </div>
+
+  <!-- 3 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm3">
+        <span class="wm3-c">C</span>
+        <span class="wm3-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">3 — Ombre portée <span>sans fond</span></div>
+  </div>
+
+  <!-- 4 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm4">
+        <span class="wm4-c">C</span>
+        <span class="wm4-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">4 — Badge vert plein <span>fond vert</span></div>
+  </div>
+
+  <!-- 5 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm5">
+        <span class="wm5-c">C</span>
+        <span class="wm5-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">5 — Empilé vertical <span>sans fond</span></div>
+  </div>
+
+  <!-- 6 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm6">
+        <div class="wm6-bar"></div>
+        <div class="wm6-inner">
+          <span class="wm6-c">C Créatis</span>
+          <span class="wm6-t">créateur de contenu</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-label">6 — Barre verte broadcast <span>sans fond</span></div>
+  </div>
+
+  <!-- 7 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm7">
+        <span class="wm7-c">C</span>
+        <span class="wm7-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">7 — Néon glow <span>sans fond</span></div>
+  </div>
+
+  <!-- 8 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm8">
+        <span class="wm8-c">C</span>
+      </div>
+    </div>
+    <div class="card-label">8 — Icône ronde compacte <span>cercle</span></div>
+  </div>
+
+  <!-- 9 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm9">
+        <div class="wm9-dot"></div>
+        <span class="wm9-t">Généré avec Créatis · creatis.app</span>
+      </div>
+    </div>
+    <div class="card-label">9 — Bande basse discrète <span>bas de vidéo</span></div>
+  </div>
+
+  <!-- 10 -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm10">
+        <span class="wm10-c">C</span>
+        <div class="wm10-sep"></div>
+        <span class="wm10-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">10 — Fantôme ultra-discret <span>50% opacité</span></div>
+  </div>
+
+  <!-- 11 : OpusClip — icône carrée arrondie -->
+  <div class="card" style="border-color:#10b981;position:relative;">
+    <div style="position:absolute;top:8px;right:8px;background:#10b981;color:#000;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;z-index:10;">⭐ RECOMMANDÉ</div>
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm11">
+        <div class="wm11-icon">C</div>
+        <span class="wm11-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">11 — Style OpusClip exact <span>carré arrondi</span></div>
+  </div>
+
+  <!-- 12 : OpusClip — icône blanc sur fond blanc, C vert -->
+  <div class="card">
+    <div class="video">
+      <div class="video-content"><svg width="80" height="80" viewBox="0 0 24 24" fill="white"><path d="M15 10l4.553-2.031A1 1 0 0121 8.8V15.2a1 1 0 01-1.447.931L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg></div>
+      <div class="wm12">
+        <div class="wm12-icon"><span class="wm12-icon-c">C</span></div>
+        <span class="wm12-t">Créatis</span>
+      </div>
+    </div>
+    <div class="card-label">12 — Icône blanche + C vert <span>fond noir</span></div>
+  </div>
+
+</div>
+
+<p style="margin-top:24px;font-size:12px;color:#444;">→ Dis le numéro du style que tu veux — il sera reproduit exactement en FFmpeg drawtext sur Railway.</p>
+</body>
+</html>

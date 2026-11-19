@@ -4,6 +4,8 @@
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 .vercel
 
 # Clés API et secrets — NE JAMAIS COMMITER
@@ -11,8 +13,14 @@
 
 # Dépendances
 node_modules/
+__pycache__/
+*.pyc
 npm-debug.log*
 yarn-debug.log*
+
+# Bibliothèque de skills tierce (installée via marketplace, pas du code Créatis)
+.agents/
+skills-lock.json
 
 # Build et cache
 .cache/
@@ -59,6 +67,9 @@ logs/
 # Backups locaux
 _backup/
 
+# Scratch local pour la génération de vidéos de démo (frames, brut, events.json)
+.scratch-demo/
+
 # Env Vercel (contient des vraies clés API — NE JAMAIS COMMITER)
 .env.production
 .env.development
@@ -92,6 +103,18 @@ drawing/
 *.mov
 *.avi
 
+# EXCEPTION — les vidéos de démonstration du SITE doivent être déployées.
+# La règle `*.mp4` ci-dessus les excluait sans distinction : elles n'ont donc jamais été
+# commitées, jamais poussées, jamais servies par Vercel. Symptôme mesuré le 13/08/2026 :
+# 8 showcase sur 8 en 404 sur la page d'accueil, 5 sur 5 dans le studio. Toutes les vignettes
+# du site restaient figées sur leur poster, et sur iOS elles viraient au noir.
+# Le `play()` de ces vidéos est enveloppé dans un `.catch(() => {})` : l'échec ne laissait
+# aucune trace, ni dans la console, ni dans les logs.
+# Poids réel de l'exception : ~5 Mo. Les 396 Mo de rushes (.scratch-*, drawing/, video/)
+# restent exclus — c'est bien eux que cette règle devait viser.
+!images/exemples/*.mp4
+!images/loop/*.mp4
+
 # Scripts de test locaux (contiennent des clés API)
 tests/
 
@@ -109,3 +132,18 @@ preview-short-*.png
 supabase-prospects-table.sql
 
 .env*.local
+
+# Profil navigateur (session Instagram/TikTok connectée -- jamais commiter)
+.playwright-profile-social/
+
+.playwright-profile-submagic/
+.scratch-submagic/
+
+# Clé du compte de service Google Search Console — ne jamais committer
+gsc-service-account.json
+social/
+!social/registre.json
+!social/briefs/
+
+# Profil Chrome dedie aux sessions sociales — jamais versionne
+.chrome-social/

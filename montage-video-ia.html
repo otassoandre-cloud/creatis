@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Montage vidéo IA — découpe et sous-titres automatiques | Créatis</title>
+  <meta name="description" content="Donne une vidéo longue : l'IA repère les meilleurs passages, les découpe, recadre en 9:16 et incruste les sous-titres. Sans logiciel de montage.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://creatis.app/montage-video-ia.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Montage vidéo par IA">
+  <meta property="og:description" content="Donne une vidéo longue : l'IA repère les meilleurs passages, les découpe, recadre en 9:16 et incruste les sous-titres. Sans logiciel de montage.">
+  <meta property="og:url" content="https://creatis.app/montage-video-ia.html">
+  <meta property="og:locale" content="fr_FR">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Montage vidéo par IA",
+  "description": "Donne une vidéo longue : l'IA repère les meilleurs passages, les découpe, recadre en 9:16 et incruste les sous-titres. Sans logiciel de montage.",
+  "url": "https://creatis.app/montage-video-ia.html",
+  "applicationCategory": "MultimediaApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "inLanguage": "fr"
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Le montage vidéo par IA est-il vraiment automatique ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Le repérage, le découpage, le recadrage vertical et les sous-titres le sont. Le choix final ne l'est pas : l'outil propose une série d'extraits, c'est toi qui décides lesquels méritent d'être publiés. C'est la partie du travail qui a le plus de valeur et la seule qui ne s'automatise pas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Faut-il installer un logiciel ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Non. Tout se passe dans le navigateur : tu donnes un lien YouTube ou un fichier, l'analyse tourne côté serveur et tu récupères les clips au format vertical, sous-titres incrustés."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Sur quel type de vidéo ça marche le mieux ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sur le contenu parlé — podcast, interview, conférence, webinaire, stream commenté — parce que le découpage part de ce qui est dit. Sur du gameplay muet, où l'information est dans les pixels, des outils gaming spécialisés sont plus adaptés."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "L'IA comprend-elle bien le français ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "C'est le point décisif, puisque tout le découpage repose sur la transcription. Les liaisons, les noms propres français et l'oral relâché mettent en difficulté les modèles entraînés surtout sur de l'anglais — et une transcription approximative fausse silencieusement les bornes de découpage."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Est-ce gratuit ?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "L'analyse et l'aperçu des clips sont gratuits, sans carte bancaire : tu vois le résultat complet avant de décider. Le téléchargement des clips nécessite une formule payante, à partir de 9,95 €/mois."
+      }
+    }
+  ]
+}
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <style>
+    .outil-page { max-width: 880px; margin: 0 auto; padding: 52px 24px 80px; }
+    .outil-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--vert, #10b981); padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-bottom: 18px; }
+    .outil-page h1 { font-size: clamp(27px, 5vw, 40px); line-height: 1.15; margin: 0 0 14px; }
+    .outil-page h1 span { color: var(--vert, #10b981); }
+    .outil-sub { color: #9ca3af; font-size: 17px; line-height: 1.7; margin: 0 0 30px; max-width: 640px; }
+    .outil-form { display: flex; gap: 8px; flex-wrap: wrap; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 8px; margin-bottom: 10px; }
+    .outil-form input { flex: 1 1 260px; background: none; border: none; outline: none; color: #fff; font-size: 15px; font-family: inherit; padding: 12px 14px; }
+    .outil-form button { background: var(--vert, #10b981); color: #000; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 700; font-size: 15px; font-family: inherit; cursor: pointer; }
+    .outil-hint { font-size: 13px; color: #f97316; margin: 0 0 18px; display: none; }
+    .outil-rassure { font-size: 13px; color: #6b7280; margin: 0 0 44px; }
+    .outil-page h2 { font-size: 23px; margin: 40px 0 14px; }
+    .outil-page h3 { font-size: 17px; margin: 26px 0 8px; color: var(--vert, #10b981); }
+    .outil-page p, .outil-page li { color: #d1d5db; line-height: 1.8; }
+    .etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 22px 0; }
+    .etape { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; padding: 18px; }
+    .etape b { display: block; color: #fff; margin-bottom: 6px; }
+    .etape span { font-size: 14px; color: #9ca3af; line-height: 1.6; }
+    .outil-faq details { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 14px 0; }
+    .outil-faq summary { cursor: pointer; font-weight: 600; color: #fff; }
+    .outil-faq p { margin: 10px 0 0; font-size: 14.5px; }
+    .outil-cta { background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); border-radius: 16px; padding: 28px; text-align: center; margin-top: 44px; }
+    .outil-cta h3 { margin: 0 0 8px; font-size: 20px; color: #fff; }
+    .outil-cta p { color: #9ca3af; margin: 0 0 18px; font-size: 14.5px; }
+    .outil-cta a { display: inline-block; background: var(--vert, #10b981); color: #000; padding: 14px 30px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08);max-width:1100px;margin:0 auto">
+  <a href="/" style="color:#fff;text-decoration:none;font-weight:800">Créatis</a>
+  <a href="/outils.html" style="color:#9ca3af;text-decoration:none;font-size:14px">Tous les outils</a>
+</nav>
+
+<main class="outil-page">
+  <div class="outil-badge">🤖 Gratuit · sans inscription pour tester</div>
+  <h1>Montage vidéo par <span>IA</span></h1>
+  <p class="outil-sub">Tu donnes une vidéo longue, l'IA lit ce qui est dit, repère les passages qui tiennent, les découpe et les met au format vertical avec les sous-titres incrustés. Aucun logiciel à installer, aucune compétence de montage.</p>
+
+  <form class="outil-form" onsubmit="return demarrer(event)">
+    <input type="text" id="lien" placeholder="Colle un lien YouTube" inputmode="url"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button type="submit">Monter ⚡</button>
+  </form>
+  <p class="outil-hint" id="hint"></p>
+  <p class="outil-rassure">Analyse gratuite · sans carte bancaire · tu vois les clips avant de payer</p>
+
+<h2>Ce que l'IA fait, et ce qu'elle ne fait pas</h2>
+  <p>Le terme « montage vidéo IA » recouvre des choses très différentes selon les outils. Ici, l'IA fait exactement trois choses, et il vaut mieux savoir lesquelles avant de tester.</p>
+  <div class="etapes">
+    <div class="etape"><b>1. Elle lit</b><span>La transcription de ta vidéo, pas les images. Elle repère les pics de tension dans ce qui est <em>dit</em>.</span></div>
+    <div class="etape"><b>2. Elle découpe</b><span>Elle pose les bornes autour de ces passages, en cherchant un début et une fin qui se tiennent seuls.</span></div>
+    <div class="etape"><b>3. Elle met en forme</b><span>Recadrage 9:16 avec suivi du visage, sous-titres calés mot par mot et incrustés dans l'image.</span></div>
+  </div>
+  <p>Ce qu'elle <strong>ne fait pas</strong> : elle n'invente rien, n'ajoute ni musique ni effets, et ne remplace pas ton jugement sur ce qui mérite d'être publié. Elle propose, tu tries. C'est d'ailleurs la partie du travail qui a le plus de valeur, et la seule qui ne s'automatise pas.</p>
+
+  <h2>Pourquoi partir de la parole plutôt que de l'image</h2>
+  <p>Beaucoup d'outils analysent l'image : changements de plan, mouvement, visages. Ça marche sur du contenu visuel — du gameplay, du sport, du voyage.</p>
+  <p>Sur du contenu <strong>parlé</strong> — podcast, interview, conférence, stream commenté — l'image ne dit presque rien : quelqu'un parle, le plan ne bouge pas. Tout est dans ce qui est dit. C'est pour ça que le découpage part ici de la transcription.</p>
+  <p>Conséquence honnête : si ta source est du gameplay muet, où il faut repérer un kill ou une victoire dans les pixels, des outils gaming spécialisés feront mieux. Voir <a href="/blog/clips-stream-gaming.html">faire des clips depuis un stream gaming</a>.</p>
+
+  <h2>Le français change le résultat</h2>
+  <p>Puisque tout part de la transcription, sa qualité décide du découpage. Un modèle qui entend mal une liaison, un nom propre ou de l'oral relâché posera ses bornes au milieu d'une phrase — et tu verras des clips médiocres sans comprendre pourquoi.</p>
+  <p>Le détail de ce que ça change est dans <a href="/blog/outil-clips-ia-francais.html">outil de clips IA français</a>.</p>
+
+  <h2>Combien de temps ça prend</h2>
+  <p>À la main, un clip vertical sous-titré demande quinze à trente minutes : repérer, couper, recadrer, écrire et caler les sous-titres, exporter. Une vidéo d'une heure occupe donc une journée.</p>
+  <p>Ici, l'analyse tourne en quelques minutes et rend une série de propositions. Le temps qui reste est celui du tri — regarder, écarter, valider. Le calcul complet est dans <a href="/blog/combien-de-clips-par-jour.html">combien de clips par jour</a>.</p>
+
+  <h2>Questions fréquentes</h2>
+  <div class="outil-faq">
+    <details>
+      <summary>Le montage vidéo par IA est-il vraiment automatique ?</summary>
+      <p>Le repérage, le découpage, le recadrage vertical et les sous-titres le sont. Le choix final ne l'est pas : l'outil propose une série d'extraits, c'est toi qui décides lesquels méritent d'être publiés. C'est la partie du travail qui a le plus de valeur et la seule qui ne s'automatise pas.</p>
+    </details>
+    <details>
+      <summary>Faut-il installer un logiciel ?</summary>
+      <p>Non. Tout se passe dans le navigateur : tu donnes un lien YouTube ou un fichier, l'analyse tourne côté serveur et tu récupères les clips au format vertical, sous-titres incrustés.</p>
+    </details>
+    <details>
+      <summary>Sur quel type de vidéo ça marche le mieux ?</summary>
+      <p>Sur le contenu parlé — podcast, interview, conférence, webinaire, stream commenté — parce que le découpage part de ce qui est dit. Sur du gameplay muet, où l'information est dans les pixels, des outils gaming spécialisés sont plus adaptés.</p>
+    </details>
+    <details>
+      <summary>L'IA comprend-elle bien le français ?</summary>
+      <p>C'est le point décisif, puisque tout le découpage repose sur la transcription. Les liaisons, les noms propres français et l'oral relâché mettent en difficulté les modèles entraînés surtout sur de l'anglais — et une transcription approximative fausse silencieusement les bornes de découpage.</p>
+    </details>
+    <details>
+      <summary>Est-ce gratuit ?</summary>
+      <p>L'analyse et l'aperçu des clips sont gratuits, sans carte bancaire : tu vois le résultat complet avant de décider. Le téléchargement des clips nécessite une formule payante, à partir de 9,95 €/mois.</p>
+    </details>
+  </div>
+
+  <div class="outil-cta">
+    <h3>Laisse l’IA faire le repérage, garde le jugement</h3>
+    <p>Analyse gratuite · sans carte bancaire</p>
+    <a href="/clips-v2.html">⚡ Essayer maintenant</a>
+  </div>
+</main>
+
+<footer style="text-align:center;padding:32px 24px;color:#6b7280;font-size:13px;border-top:1px solid rgba(255,255,255,0.08);margin-top:40px">
+  © 2026 Créatis · <a href="/outils.html" style="color:#9ca3af">Outils</a> · <a href="/blog.html" style="color:#9ca3af">Blog</a> · <a href="/cgu.html" style="color:#9ca3af">CGU</a>
+</footer>
+
+<script>
+/* Meme comportement que le hero de l'accueil : on memorise le lien puis on passe par
+   l'inscription. Le lien n'est pas perdu en route, c'est tout l'interet. */
+function demarrer(e) {
+  e.preventDefault();
+  var champ = document.getElementById('lien');
+  var hint = document.getElementById('hint');
+  var v = (champ && champ.value || '').trim();
+  var estYT = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\//i.test(v);
+  if (v && !estYT) {
+    hint.textContent = "Ce lien n'est pas une URL YouTube — exemple : https://youtu.be/xxxxxxxxxxx";
+    hint.style.display = 'block';
+    champ.focus();
+    return false;
+  }
+  hint.style.display = 'none';
+  if (v) { try { localStorage.setItem('creatis_pending_yt', JSON.stringify({ url: v, ts: Date.now() })); } catch (_) {} }
+  window.location.href = '/auth.html?returnUrl=/clips-v2.html';
+  return false;
+}
+</script>
+</body>
+</html>

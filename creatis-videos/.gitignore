@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Assets regenerables par preparer-assets.mjs (copies ou derives du depot)
+public/*.mp4
+
+# En revanche la voix off EST versionnee : la TTS n'est pas deterministe,
+# une regeneration ne redonnerait pas les memes durees (donc plus le meme montage).
+!public/voix/*.mp3

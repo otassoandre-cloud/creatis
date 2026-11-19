@@ -1,0 +1,32 @@
+#!/bin/bash
+# ffmpeg avec un nombre de fils de calcul PLAFONNE. Installe en /usr/local/bin/ffmpeg,
+# donc devant /usr/bin/ffmpeg dans le PATH : tout appel a « ffmpeg » passe par ici,
+# ceux de main.py comme ceux de yt-dlp.
+#
+# 17/11/2026 — depuis le 16/11 a 14 h 47, AUCUNE video ne s'encodait plus sur Railway :
+#   [Parsed_scale_1] Failed to configure output pad
+#   Task finished with error code: -11 (Resource temporarily unavailable)
+# sur /process-clip comme sur /reencode-preview, alors que l'audio passait et que
+# /health repondait 200. Un redemarrage n'y changeait rien. -11 = EAGAIN a la creation
+# d'un fil : ffmpeg dimensionne ses fils sur le nombre de processeurs QU'IL VOIT, c'est-a-dire
+# ceux de la machine hote, pas ceux alloues au conteneur — le filtre scale en ouvre un par
+# processeur, x264 environ 1,5 par processeur. Sur un hote a beaucoup de coeurs, le
+# conteneur depasse son plafond de processus avant la premiere image.
+#
+# Le plafond est mis ici et pas dans chaque commande : main.py lance ffmpeg a plus de
+# vingt endroits, et un seul oubli suffit a tout bloquer de nouveau.
+
+args=("$@")
+n=${#args[@]}
+
+# -threads s'applique a la sortie qu'il precede : on le place juste avant le dernier
+# argument (le fichier de sortie, ou « - »), sauf si la commande fixe deja ses fils
+# ou si le dernier argument est en fait une entree (« ... -i fichier », sondage).
+if (( n >= 2 )) \
+   && [[ "${args[n-2]}" != "-i" ]] \
+   && [[ "${args[n-1]}" != -* || "${args[n-1]}" == "-" ]] \
+   && [[ " ${args[*]} " != *" -threads "* ]]; then
+  args=("${args[@]:0:n-1}" -threads 2 "${args[n-1]}")
+fi
+
+exec "${FFMPEG_REEL:-/usr/bin/ffmpeg}" -filter_threads 2 -filter_complex_threads 2 "${args[@]}"

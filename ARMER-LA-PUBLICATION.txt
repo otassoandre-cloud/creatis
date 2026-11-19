@@ -1,0 +1,73 @@
+ARMER LA PUBLICATION AUTOMATIQUE — 2 minutes, une seule fois
+=============================================================
+
+Je ne peux pas armer ça moi-même : créer une tâche planifiée et lancer une
+boucle qui publie seule sur des comptes réels demandent ton accord explicite,
+et le système de permissions me les refuse. C'est normal — c'est exactement le
+genre d'action qui ne doit pas s'auto-autoriser.
+
+Deux commandes à coller. Clic droit sur le menu Démarrer -> « Terminal
+(administrateur) », puis :
+
+
+1) LE PLAN DU JOUR — tous les matins à 7 h 30
+------------------------------------------------------------------
+schtasks /Create /TN "Creatis-Plan-Du-Jour" /SC DAILY /ST 07:30 /F ^
+  /TR "C:\Users\Utilisateur\Desktop\creatis\scripts\taches\plan-du-jour.cmd"
+
+
+2) LA PUBLICATION — toutes les heures, de 8 h à 21 h
+------------------------------------------------------------------
+schtasks /Create /TN "Creatis-Publication-Horaire" /SC DAILY /ST 08:00 ^
+  /RI 60 /DU 13:00 /F ^
+  /TR "C:\Users\Utilisateur\Desktop\creatis\scripts\taches\publication-horaire.cmd"
+
+
+VÉRIFIER
+------------------------------------------------------------------
+schtasks /Query /TN "Creatis-Publication-Horaire"
+
+La machine est déjà sur le fuseau de Paris : 8 h Windows = 8 h Paris.
+
+
+CE QUE ÇA FAIT, ET CE QUE ÇA NE FAIT PAS
+=============================================================
+
+À chaque heure, le planificateur regarde s'il existe un créneau dû dans
+social/plan-jour.json. S'il y en a un ET que la pièce est prête, il publie.
+Sinon il ne fait rien et l'écrit au journal.
+
+Il REFUSE de :
+  · publier deux fois le même créneau, même relancé dans l'heure
+  · rattraper un créneau dépassé (un créneau de 9 h vu à 14 h est périmé,
+    pas en retard — le publier à contretemps casse l'étalement)
+  · publier une vidéo absente ou vide
+  · recycler une pièce déjà publiée pour combler un trou
+
+COUPE-CIRCUIT
+------------------------------------------------------------------
+Créer un fichier vide nommé  social\STOP
+Tant qu'il existe, plus rien n'est publié. Le supprimer pour reprendre.
+
+SUIVRE
+------------------------------------------------------------------
+  node scripts/planificateur.js --etat     l'état du plan du jour
+  social\journal\<date>.log                ce qui a été fait, heure par heure
+
+
+CE QUI MANQUE ENCORE
+=============================================================
+
+LES STORIES. Instagram web n'a pas de création de story — le menu « Créer » ne
+propose que « Publication », et les deux URL connues (/create/story/ et
+/stories/create/) ne mènent nulle part. Le seul chemin est l'API Graph, et le
+jeton META_ACCESS_TOKEN du projet est EXPIRÉ (« session invalide, l'utilisateur
+s'est déconnecté »). Il faut en régénérer un sur developers.facebook.com avec
+les droits instagram_basic + instagram_content_publish + pages_show_list, et le
+remettre dans .env. Avec ça je publie stories ET reels sans navigateur, ce qui
+règle aussi la fiabilité de toute la chaîne.
+
+LE VOLUME. 14 créneaux par jour = 14 pièces neuves, et la règle « jamais le
+même contenu » l'exige. Ce qui tient réellement avec le pipeline actuel : une
+vidéo longue + 3 ou 4 courts par jour, chacun envoyé sur 3-4 comptes
+différents. Un créneau sans pièce reste vide — il ne recycle pas.

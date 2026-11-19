@@ -1,0 +1,21 @@
+L'outil de la démonstration : https://creatis.app/y/2809tuto
+
+Tu as une vidéo longue — un podcast, un live, une interview — et tu veux en tirer des formats courts pour TikTok, Instagram Reels et YouTube Shorts. Voici le parcours entier, sans coupure et sans étape masquée.
+
+1. Tu colles le lien de la vidéo YouTube. Rien à télécharger, aucun logiciel.
+2. L'IA transcrit, puis cherche les passages qui se comprennent seuls — pas les plus bruyants, les plus autonomes.
+3. Elle rend ses meilleures propositions, notées, déjà recadrées en vertical et sous-titrées. Sur cette vidéo : cinq clips, notés 92, 90, 88, 86 et 85.
+4. Tu tries. C'est la seule étape qui ne s'automatise pas, et c'est celle qui fait la différence entre un clip qui tourne et un clip qui passe inaperçu.
+5. Tu ajustes les sous-titres si tu veux, tu exportes, tu publies.
+
+COMBIEN DE TEMPS, VRAIMENT
+Les phases d'analyse et d'export sont accélérées à l'écran, et un bandeau le dit au moment où ça se produit. En temps réel, sur cette vidéo : environ 70 secondes d'analyse, puis 40 secondes de rendu à l'export.
+
+CHAPITRES
+0:00 Coller le lien
+0:08 Ce que l'IA cherche
+0:15 Les cinq clips, notés
+0:21 Trier
+0:25 Ajuster et exporter
+
+La source utilisée : « 24H sur le train le plus dangereux du monde — Dakar-Paris ». Une vidéo qui n'est pas la mienne et que je n'ai pas eu à retoucher : c'est le principe.

@@ -1,9 +1,18 @@
-﻿User-agent: *
+User-agent: *
 Allow: /
+
+# Pages privées — ne pas indexer
 Disallow: /api/
 Disallow: /app.html
+Disallow: /app
 Disallow: /auth.html
+Disallow: /auth/
 Disallow: /success.html
 Disallow: /cancel.html
+Disallow: /paiement.html
+Disallow: /admin-prospection.html
+Disallow: /checklist-lancement.html
+Disallow: /test-chat.html
+Disallow: /parrainage.html
 
 Sitemap: https://creatis.app/sitemap.xml

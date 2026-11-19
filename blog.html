@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guides clips viraux, Shorts et sous-titres IA — Blog Créatis</title>
+<meta name="description" content="39 guides pratiques pour transformer tes vidéos longues en clips verticaux : découpage automatique par IA, sous-titres karaoké, recadrage 9:16, formats TikTok, Reels et Shorts.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://creatis.app/blog.html">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"></noscript>
+<style>
+:root { --bg: #080A0F; --card: #10141C; --paper: #F2F4F7; --muted: #8A93A3; --green: #10b981; --line: rgba(255,255,255,0.08); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--paper); font-family: 'Hanken Grotesk', sans-serif; line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+.blog-nav { position: sticky; top: 0; z-index: 50; background: rgba(8,10,15,0.9); backdrop-filter: blur(12px); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+.blog-nav .logo { font-weight: 800; font-size: 1.2rem; color: var(--paper); display: flex; align-items: center; gap: 8px; }
+.blog-nav .logo span { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(180deg, var(--green), #059669); display: flex; align-items: center; justify-content: center; color: #05140B; font-weight: 800; font-size: 0.9rem; }
+.blog-cta { background: var(--green); color: #05140B; font-weight: 700; padding: 8px 18px; border-radius: 99px; font-size: 0.85rem; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 60px 24px 80px; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 8px; letter-spacing: -0.02em; }
+.blog-sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 48px; }
+.articles { display: flex; flex-direction: column; gap: 20px; }
+
+/* Bloc « Commence par ici » — remonte les pages à intention d'achat */
+.themes { margin-bottom: 56px; }
+.themes > h2 { font-size: 1.15rem; font-weight: 700; color: var(--paper); margin-bottom: 20px; }
+.themes h3 { font-size: 1rem; font-weight: 700; color: var(--paper); margin: 28px 0 4px; }
+.theme-intro { color: var(--muted); font-size: 0.88rem; margin-bottom: 12px; }
+.pinned { margin-bottom: 48px; }
+.pinned h2 { font-size: 1.15rem; font-weight: 700; color: var(--paper); margin-bottom: 6px; }
+.pinned > p { color: var(--muted); font-size: 0.92rem; margin-bottom: 16px; }
+.pinned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+.pinned-grid li { margin: 0; }
+.pinned-grid a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; font-weight: 600; color: var(--paper); text-decoration: none; transition: border-color .2s, transform .2s; }
+.pinned-grid a:hover { border-color: var(--green); transform: translateY(-1px); }
+.pinned-grid a span { display: block; font-weight: 400; font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
+.article-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; transition: border-color .2s, transform .2s; display: block; }
+.article-card:hover { border-color: rgba(16,185,129,0.3); transform: translateY(-2px); }
+.article-card h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: var(--paper); }
+.article-card p { color: var(--muted); font-size: 0.92rem; margin-bottom: 12px; line-height: 1.55; }
+.article-meta { display: flex; align-items: center; gap: 16px; font-size: 0.78rem; color: var(--muted); }
+.article-tag { background: rgba(16,185,129,0.1); color: var(--green); padding: 3px 10px; border-radius: 99px; font-weight: 600; font-size: 0.72rem; }
+.blog-footer { border-top: 1px solid var(--line); padding: 30px 24px; text-align: center; font-size: 0.8rem; color: var(--muted); }
+.blog-footer a { color: var(--green); }
+</style>
+  <script src="/js/ref-capture.js"></script>
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
+  </script>
+</head>
+<body>
+<nav class="blog-nav">
+  <a href="/" class="logo"><span>C</span> Créatis</a>
+  <a href="/clips-v2.html" class="blog-cta">Essayer gratuitement</a>
+</nav>
+
+<div class="wrap">
+  <h1>Blog Créatis</h1>
+  <p class="blog-sub">Guides et astuces pour créateurs de contenu qui veulent scaler avec l'IA.</p>
+
+  <!-- Pages à intention d'achat remontées en tête de hub -->
+  <section class="pinned" aria-label="Commence par ici">
+    <h2>Commence par ici</h2>
+    <p>Les guides les plus utiles si tu veux transformer tes vidéos longues en clips dès aujourd'hui.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/decouper-video-shorts-automatiquement.html">Découper une vidéo en Shorts automatiquement<span>La méthode IA, pas à pas</span></a></li>
+      <li><a href="/clips-podcast.html">Transformer un podcast en clips<span>10 shorts depuis un épisode</span></a></li>
+      <li><a href="/blog/transformer-video-youtube-tiktok.html">Passer d'une vidéo YouTube à TikTok<span>Format, hooks et recadrage</span></a></li>
+      <li><a href="/blog/sous-titres-automatiques-shorts.html">Sous-titres automatiques pour Shorts<span>Style karaoké mot par mot</span></a></li>
+      <li><a href="/blog/recadrer-video-9-16-outil.html">Recadrer une vidéo en 9:16<span>Suivi du visage, sans montage</span></a></li>
+      <li><a href="/blog/creer-reels-video-longue.html">Créer des Reels depuis une vidéo longue<span>Workflow Instagram complet</span></a></li>
+      <li><a href="/blog/clipper-gta-6.html">Clipper GTA 6 (19 novembre)<span>Se préparer à la vague de contenu</span></a></li>
+      <li><a href="/blog/meilleur-logiciel-clippeur.html">Meilleur logiciel pour clippeur<span>Les critères en usage pro</span></a></li>
+      <li><a href="/alternatives/submagic.html">Créatis vs Submagic<span>Comparatif honnête 2026</span></a></li>
+    </ul>
+  </section>
+
+  <!-- SOMMAIRE-THEMES:debut -->
+  <section class="themes" aria-label="Parcourir par thème">
+    <h2>Parcourir par thème</h2>
+    <h3>Le métier de clippeur</h3>
+    <p class="theme-intro">Se faire payer pour cliper : comment ça marche, combien, et par où commencer.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/devenir-clippeur-tiktok.html">Devenir clippeur<span>Le guide complet du métier</span></a></li>
+      <li><a href="/blog/campagnes-clipping-remunerees.html">Les campagnes rémunérées<span>Budget fermé, vue vérifiée, CPM</span></a></li>
+      <li><a href="/blog/plateformes-clipping-france.html">Les plateformes en France<span>Whop, PostRoyalty, Clip.farm…</span></a></li>
+      <li><a href="/blog/whop-clipping-guide.html">Whop Content Rewards<span>Le guide du clippeur francophone</span></a></li>
+      <li><a href="/blog/combien-paye-1000-vues-clipping.html">Combien paye 1 000 vues<span>Les taux réels, sans promesse</span></a></li>
+      <li><a href="/blog/combien-gagne-clippeur.html">Combien gagne un clippeur<span>Les modèles de rémunération</span></a></li>
+      <li><a href="/blog/clipper-sans-audience.html">Clipper sans audience<span>Le plan des 4 premières semaines</span></a></li>
+      <li><a href="/blog/clipper-pour-un-streamer.html">Décrocher un streamer<span>Aborder, facturer, fidéliser</span></a></li>
+      <li><a href="/blog/clips-sans-montrer-son-visage.html">Sans montrer son visage<span>Pourquoi le clipping y répond</span></a></li>
+      <li><a href="/blog/combien-de-clips-par-jour.html">Combien de clips par jour<span>Le vrai plafond du métier</span></a></li>
+      <li><a href="/blog/monter-equipe-clippeurs.html">Monter une équipe<span>Ce qui casse à l’échelle</span></a></li>
+    </ul>
+    <h3>Gaming et streaming</h3>
+    <p class="theme-intro">La niche la plus active du clipping, et la fenêtre du 19 novembre.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/clipper-gta-6.html">Clipper GTA 6<span>La vague du 19 novembre 2026</span></a></li>
+      <li><a href="/blog/clips-stream-gaming.html">Clips depuis un stream gaming<span>Signal jeu contre signal parole</span></a></li>
+      <li><a href="/clips-twitch.html">Clips depuis Twitch<span>VOD, clips natifs, autorisation</span></a></li>
+      <li><a href="/blog/clips-depuis-kick.html">Clipper un stream Kick<span>Ce qui change face à Twitch</span></a></li>
+    </ul>
+    <h3>D’où partir : les sources</h3>
+    <p class="theme-intro">Chaque type de contenu long a ses contraintes propres. Trouve la tienne.</p>
+    <ul class="pinned-grid">
+      <li><a href="/clips-podcast.html">Un podcast filmé<span>10 shorts depuis un épisode</span></a></li>
+      <li><a href="/blog/clips-depuis-podcast-audio.html">Un podcast sans vidéo<span>La réponse honnête</span></a></li>
+      <li><a href="/blog/decouper-video-longue-format-interview.html">Une interview<span>Découper une vidéo longue</span></a></li>
+      <li><a href="/blog/clips-depuis-visioconference.html">Une visio Zoom ou Teams<span>Vue intervenant, cadence variable</span></a></li>
+      <li><a href="/blog/clips-depuis-conference.html">Une conférence<span>On clipe une affirmation</span></a></li>
+      <li><a href="/blog/webinaire-en-clips.html">Un webinaire<span>Le registre est déjà le bon</span></a></li>
+      <li><a href="/blog/cours-en-ligne-en-clips.html">Un cours en ligne<span>Pédagogie en format court</span></a></li>
+      <li><a href="/blog/clips-depuis-instagram-live.html">Un live Instagram<span>Déjà vertical, mais éphémère</span></a></li>
+      <li><a href="/blog/recycler-anciennes-videos.html">Ton archive<span>Le stock le moins cher</span></a></li>
+    </ul>
+    <h3>Quand ça ne marche pas</h3>
+    <p class="theme-intro">Les défauts qui reviennent le plus, et comment les diagnostiquer.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/video-floue-apres-export.html">La vidéo est floue<span>Les 4 causes réelles</span></a></li>
+      <li><a href="/blog/video-trop-lourde-tiktok.html">Le fichier est refusé<span>Durée, débit, codec, cadence</span></a></li>
+      <li><a href="/blog/sous-titres-decales.html">Les sous-titres sont décalés<span>Décalage constant ou dérive ?</span></a></li>
+      <li><a href="/blog/pourquoi-ton-crop-9-16-est-rate.html">Le cadrage est raté<span>On ne garde qu’un tiers</span></a></li>
+      <li><a href="/blog/erreurs-qui-tuent-tes-shorts.html">Le clip ne prend pas<span>Les erreurs qui tuent un Short</span></a></li>
+    </ul>
+    <h3>Publier et diffuser</h3>
+    <p class="theme-intro">Une fois les clips prêts : où, dans quelle langue, avec quel son.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/cross-posting-clips.html">Publier partout<span>Le cross-posting de clips</span></a></li>
+      <li><a href="/blog/sous-titres-anglais-clips.html">Publier en anglais<span>Sous-titres traduits, audio français</span></a></li>
+      <li><a href="/blog/clips-pour-linkedin.html">Sur LinkedIn<span>Le texte compte autant que la vidéo</span></a></li>
+      <li><a href="/blog/clips-pour-facebook-reels.html">Sur Facebook Reels<span>La plateforme qu’on oublie</span></a></li>
+      <li><a href="/blog/clips-pour-snapchat.html">Sur Snapchat Spotlight<span>La plus hostile au recyclage</span></a></li>
+      <li><a href="/blog/musique-clips-droits.html">La musique<span>Trois statuts très différents</span></a></li>
+      <li><a href="/blog/image-couverture-clip.html">L’image de couverture<span>Presque rien dans le fil</span></a></li>
+      <li><a href="/blog/formats-video-reseaux-sociaux.html">Les formats par réseau<span>Le tableau complet</span></a></li>
+      <li><a href="/blog/specs-video-tiktok-reels-shorts.html">Les specs techniques<span>Durée, résolution, ratio</span></a></li>
+    </ul>
+    <h3>Mesurer et durer</h3>
+    <p class="theme-intro">Ce qu’il faut regarder, et au bout de combien de temps ça veut dire quelque chose.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/analyser-performance-clips.html">Les 3 chiffres utiles<span>Les vues ne disent rien</span></a></li>
+      <li><a href="/blog/combien-de-temps-avant-resultats-clips.html">Combien de temps avant<span>3 phases, 6 semaines, 30 clips</span></a></li>
+      <li><a href="/blog/ameliorer-retention-short.html">Améliorer la rétention<span>Ce qui se joue au montage</span></a></li>
+      <li><a href="/blog/hook-3-secondes.html">Le hook de 3 secondes<span>Là où tout se décide</span></a></li>
+    </ul>
+    <h3>Pour les entreprises et les organisations</h3>
+    <p class="theme-intro">Marques, clubs, agences : produire du format court sans équipe dédiée.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/contenu-court-entreprise.html">Le contenu court en entreprise<span>Structurer la production</span></a></li>
+      <li><a href="/blog/clips-pour-publicite.html">Des créatives publicitaires<span>Qualifier plutôt que retenir</span></a></li>
+      <li><a href="/blog/lancer-campagne-clipping.html">Lancer une campagne<span>Taux, brief, garde-fous</span></a></li>
+      <li><a href="/blog/combien-coute-faire-clipper-ses-videos.html">Faire produire ses clips<span>Prestataire, forfait ou outil</span></a></li>
+      <li><a href="/blog/clips-pour-agences-clipping.html">Produire pour une agence<span>Le volume en usage pro</span></a></li>
+      <li><a href="/blog/clips-club-sportif.html">Pour un club sportif<span>Droits, terrain, régularité</span></a></li>
+      <li><a href="/blog/repurposing-coachs-infopreneurs.html">Coachs et infopreneurs<span>Recycler sa pédagogie</span></a></li>
+    </ul>
+    <h3>Les bases</h3>
+    <p class="theme-intro">Les définitions à avoir en tête avant le reste.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/qu-est-ce-qu-un-clip-viral.html">Un clip viral<span>Définition et caractéristiques</span></a></li>
+      <li><a href="/blog/repurposing-video-definition.html">Le repurposing<span>Créer une fois, publier partout</span></a></li>
+      <li><a href="/blog/hook-video-definition.html">Le hook<span>Définition et 7 formules</span></a></li>
+      <li><a href="/blog/short-reel-tiktok-differences.html">Short, Reel ou TikTok<span>Ce qui les distingue</span></a></li>
+      <li><a href="/blog/detecter-moments-viraux.html">Détecter les moments forts<span>Ce que lit une IA</span></a></li>
+      <li><a href="/blog/generer-sous-titres-automatiques.html">Les sous-titres automatiques<span>Génération et styles</span></a></li>
+    </ul>
+    <h3>Choisir son outil</h3>
+    <p class="theme-intro">Comparatifs, critères, et ce que coûte de faire produire ses clips.</p>
+    <ul class="pinned-grid">
+      <li><a href="/blog/meilleur-logiciel-clippeur.html">Le meilleur logiciel<span>Les critères en usage pro</span></a></li>
+      <li><a href="/blog/outil-clips-ia-francais.html">Un outil français<span>Transcription, euros, données</span></a></li>
+      <li><a href="/blog/clips-sans-filigrane.html">Sans filigrane<span>Ce que le logo coûte vraiment</span></a></li>
+      <li><a href="/blog/logiciel-clips-viraux-gratuit.html">Les offres gratuites<span>Ce qu’elles cachent</span></a></li>
+      <li><a href="/alternatives/">Les comparatifs<span>Face à Opus Clip, Klap, Submagic…</span></a></li>
+    </ul>
+  </section>
+  <!-- SOMMAIRE-THEMES:fin -->
+
+  <h2 style="font-size:1.15rem;font-weight:700;color:var(--paper);margin-bottom:16px">Tous les articles</h2>
+
+  <div class="articles">
+    <a href="/blog/clips-pour-publicite.html" class="article-card">
+      <h2>Transformer du contenu long en créatives publicitaires</h2>
+      <p>Un webinaire ou un podcast contient déjà les arguments qui convertissent. Comment en tirer des créatives testables sans tourner, et ce qui change face à un clip organique.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>25 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/combien-de-temps-avant-resultats-clips.html" class="article-card">
+      <h2>Combien de temps avant d’avoir des résultats avec des clips ?</h2>
+      <p>Les trois phases réelles — distribution prudente, calibrage, régime — et les délais associés. Pourquoi juger avant trente clips ne veut rien dire.</p>
+      <div class="article-meta">
+        <span class="article-tag">Stratégie</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-club-sportif.html" class="article-card">
+      <h2>Clips pour un club sportif ou une association</h2>
+      <p>Un club produit déjà de la matière chaque week-end. Ce qui se clipe légalement, ce qui marche auprès des licenciés et des parents, et les droits à l'image.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-pour-facebook-reels.html" class="article-card">
+      <h2>Clips sur Facebook Reels : la plateforme qu’on oublie</h2>
+      <p>Facebook Reels accepte le recyclage, touche une audience plus âgée et reste moins saturé que TikTok. Ce que ça change dans le choix des extraits.</p>
+      <div class="article-meta">
+        <span class="article-tag">Publication</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/video-trop-lourde-tiktok.html" class="article-card">
+      <h2>Vidéo trop lourde ou refusée à l’envoi</h2>
+      <p>Envoi qui échoue, fichier refusé, téléversement interminable : les causes sont le poids, la durée, le codec ou la cadence. Le diagnostic dans l'ordre.</p>
+      <div class="article-meta">
+        <span class="article-tag">Dépannage</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/monter-equipe-clippeurs.html" class="article-card">
+      <h2>Monter une équipe de clippeurs : ce qui casse à l’échelle</h2>
+      <p>Passer de un à cinq clippeurs ne multiplie pas la production par cinq. Les trois points de rupture — la source, la cohérence, la mesure — et comment les tenir.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>25 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-pour-snapchat.html" class="article-card">
+      <h2>Clips sur Snapchat Spotlight : ce qu’il faut savoir avant</h2>
+      <p>Caméra native exigée, vidéos d'une minute minimum, 50 000 abonnés : Spotlight est la plateforme la plus hostile au contenu recyclé. Ce que ça implique vraiment.</p>
+      <div class="article-meta">
+        <span class="article-tag">Publication</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/lancer-campagne-clipping.html" class="article-card">
+      <h2>Lancer une campagne de clipping pour sa marque ou sa chaîne</h2>
+      <p>Budget, taux au millier de vues, brief, garde-fous : comment structurer une campagne qui rémunère des clippeurs sans se faire diluer ni payer n'importe quoi.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>25 septembre 2026</span>
+        <span>8 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-depuis-podcast-audio.html" class="article-card">
+      <h2>Podcast audio sans vidéo : peut-on en faire des clips ?</h2>
+      <p>Sans image, un extrait de podcast donne un audiogramme — et les audiogrammes performent mal en format court. Les trois options réelles, classées par efficacité.</p>
+      <div class="article-meta">
+        <span class="article-tag">Sources</span>
+        <span>25 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/musique-clips-droits.html" class="article-card">
+      <h2>Musique sur un clip : ce qui est autorisé et ce qui ne l’est pas</h2>
+      <p>Le son tendance de l'application, la musique ajoutée au montage et la musique déjà présente dans la source n'ont pas du tout le même statut. La distinction qui évite les ennuis.</p>
+      <div class="article-meta">
+        <span class="article-tag">Publication</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/image-couverture-clip.html" class="article-card">
+      <h2>L’image de couverture d’un clip : à quoi elle sert vraiment</h2>
+      <p>La couverture ne fait presque rien dans le fil, et presque tout sur ton profil. Ce que ça change dans la façon de la choisir, et l'erreur de cadrage classique.</p>
+      <div class="article-meta">
+        <span class="article-tag">Publication</span>
+        <span>24 septembre 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+    <a href="/blog/analyser-performance-clips.html" class="article-card">
+      <h2>Analyser ses clips : les 3 chiffres qui servent vraiment</h2>
+      <p>Les vues ne disent rien d'exploitable. Le taux de complétion, la courbe de rétention et le rapport partages/vues disent quoi corriger, et à quel endroit du clip.</p>
+      <div class="article-meta">
+        <span class="article-tag">Publication</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-sans-montrer-son-visage.html" class="article-card">
+      <h2>Faire des clips sans jamais montrer son visage</h2>
+      <p>Le clipping est l'un des rares formats vidéo où l'on n'apparaît jamais : on met en valeur le visage de quelqu'un d'autre. Ce que ça permet, et ce que ça impose.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/combien-coute-faire-clipper-ses-videos.html" class="article-card">
+      <h2>Combien coûte de faire clipper ses vidéos ?</h2>
+      <p>Prestataire, agence ou outil en interne : les trois façons de faire produire ses clips, ce qui fait varier la facture et à partir de quel volume chacune devient rentable.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-depuis-instagram-live.html" class="article-card">
+      <h2>Transformer un live Instagram en clips</h2>
+      <p>Un live Instagram est déjà vertical, ce qui supprime l'étape la plus coûteuse. Mais il disparaît vite et sa qualité est faible : ce qu'il faut faire, et quand.</p>
+      <div class="article-meta">
+        <span class="article-tag">Sources</span>
+        <span>24 septembre 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+    <a href="/blog/sous-titres-anglais-clips.html" class="article-card">
+      <h2>Publier ses clips en anglais</h2>
+      <p>Sous-titrer ses clips en anglais ouvre un marché dix fois plus grand. Ce que ça marche vraiment, ce que ça ne remplace pas, et comment s'y prendre sans tout refaire.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-pour-linkedin.html" class="article-card">
+      <h2>Clips vidéo pour LinkedIn : ce qui marche vraiment</h2>
+      <p>LinkedIn n'est pas TikTok avec des costumes. Format, durée, ton et première seconde : ce qui change quand on recycle une vidéo longue pour un public professionnel.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/recycler-anciennes-videos.html" class="article-card">
+      <h2>Recycler ses anciennes vidéos en clips</h2>
+      <p>Une archive de vidéos longues est le stock de clips le moins cher qui existe. Comment choisir quoi ressortir, et repérer ce qui a mal vieilli avant de republier.</p>
+      <div class="article-meta">
+        <span class="article-tag">Usages</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/outil-clips-ia-francais.html" class="article-card">
+      <h2>Outil de clips IA français : ce que ça change vraiment</h2>
+      <p>Transcription qui comprend vraiment le français, facturation en euros, données hébergées en Europe, support dans ta langue : ce qui distingue un outil FR d'un outil anglophone.</p>
+      <div class="article-meta">
+        <span class="article-tag">Outils</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-depuis-visioconference.html" class="article-card">
+      <h2>Transformer une visio Zoom, Meet ou Teams en clips</h2>
+      <p>Les enregistrements de visioconférence ont trois défauts qui cassent le montage vertical : vue en grille, cadence variable, audio inégal. Comment les contourner.</p>
+      <div class="article-meta">
+        <span class="article-tag">Sources</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-depuis-conference.html" class="article-card">
+      <h2>Clips depuis une conférence ou un keynote</h2>
+      <p>Une captation de conférence est une mine de clips si on sait quoi en extraire. Ce qui marche, ce qui ne marche jamais, et les contraintes de captation à anticiper.</p>
+      <div class="article-meta">
+        <span class="article-tag">Sources</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-stream-gaming.html" class="article-card">
+      <h2>Faire des clips depuis un stream gaming</h2>
+      <p>Six heures de stream donnent rarement six heures de contenu clipable. Comment repérer, découper et verticaliser les bons moments d'un stream gaming.</p>
+      <div class="article-meta">
+        <span class="article-tag">Gaming</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-depuis-kick.html" class="article-card">
+      <h2>Clipper un stream Kick</h2>
+      <p>Kick a ses propres règles de rediffusion et de clips. Ce qui change concrètement pour un clippeur, et comment produire du vertical depuis un stream Kick.</p>
+      <div class="article-meta">
+        <span class="article-tag">Gaming</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clipper-pour-un-streamer.html" class="article-card">
+      <h2>Clipper pour un streamer : décrocher son premier client</h2>
+      <p>Comment aborder un streamer, quoi lui proposer, comment fixer un prix et sur quoi s'engager quand on veut cliper son contenu contre rémunération.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/video-floue-apres-export.html" class="article-card">
+      <h2>Ta vidéo est floue après export : les 4 causes réelles</h2>
+      <p>Un clip net à l'écran et flou une fois publié : la cause est presque toujours en amont. Source, recadrage, définition d'export, recompression plateforme.</p>
+      <div class="article-meta">
+        <span class="article-tag">Dépannage</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/sous-titres-decales.html" class="article-card">
+      <h2>Sous-titres décalés : comment identifier et corriger</h2>
+      <p>Un décalage constant et une dérive progressive n'ont ni la même cause ni le même remède. Comment les distinguer en dix secondes et corriger les deux.</p>
+      <div class="article-meta">
+        <span class="article-tag">Dépannage</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/clips-sans-filigrane.html" class="article-card">
+      <h2>Faire des clips sans filigrane</h2>
+      <p>Pourquoi les outils gratuits apposent un filigrane, ce que ça coûte réellement en portée, et comment obtenir des exports propres sans y passer un budget.</p>
+      <div class="article-meta">
+        <span class="article-tag">Dépannage</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/campagnes-clipping-remunerees.html" class="article-card">
+      <h2>Campagnes de clipping rémunérées : comment ça marche vraiment</h2>
+      <p>Le fonctionnement réel d'une campagne de clipping payée à la vue : budget fermé, vue vérifiée, CPM annoncé, délais de paiement. Sans promesse de revenu.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>8 min</span>
+      </div>
+    </a>
+    <a href="/blog/plateformes-clipping-france.html" class="article-card">
+      <h2>Plateformes de clipping rémunéré en France : le comparatif</h2>
+      <p>Whop, PostRoyalty, Clip.farm, NF Clipping, Reachcat : comment ces plateformes de clipping payé fonctionnent, ce qu'elles annoncent, et ce qu'il faut vérifier avant de s'inscrire.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>8 min</span>
+      </div>
+    </a>
+    <a href="/blog/combien-paye-1000-vues-clipping.html" class="article-card">
+      <h2>Combien paye 1 000 vues en clipping ?</h2>
+      <p>Les taux annoncés par les plateformes de clipping francophones vont de 0,40 € à 2 € pour 1 000 vues. Ce que ce chiffre recouvre, et pourquoi le revenu réel en est éloigné.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/combien-de-clips-par-jour.html" class="article-card">
+      <h2>Combien de clips par jour un clippeur peut-il produire ?</h2>
+      <p>Le vrai plafond du métier de clippeur n'est pas le talent, c'est le débit. Le calcul étape par étape, du montage manuel à la chaîne automatisée.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clipper-sans-audience.html" class="article-card">
+      <h2>Clipper sans audience : par où commencer</h2>
+      <p>Le clipping est l'un des rares métiers créatifs qui ne demande pas d'audience préalable. Ce qui compte vraiment au démarrage, et les erreurs qui bloquent les comptes neufs.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+    <a href="/blog/whop-clipping-guide.html" class="article-card">
+      <h2>Whop Content Rewards : le guide du clippeur francophone</h2>
+      <p>Comment fonctionnent les campagnes Content Rewards sur Whop, ce que change le contenu majoritairement anglophone pour un clippeur français, et ce qu'il faut vérifier avant de publier.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/clipper-gta-6.html" class="article-card">
+      <h2>Clipper GTA 6 : se préparer à la sortie du 19 novembre 2026</h2>
+      <p>La vague de contenu arrive avec le jeu. Les plateformes qui rémunèrent à la vue, les taux réellement annoncés, et le seul facteur que le clippeur contrôle vraiment : le volume.</p>
+      <div class="article-meta">
+        <span class="article-tag">Clipping</span>
+        <span>24 septembre 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+    <a href="/blog/geo-shorts-video" class="article-card">
+      <h2>Comment booster le GEO de sa marque grâce aux shorts vidéos ?</h2>
+      <p>Les Shorts ne pèsent que 5,7 % des citations vidéo dans les réponses IA. La méthode pour transformer une vidéo longue en actif citable et en clips viraux.</p>
+      <div class="article-meta">
+        <span class="article-tag">Stratégie</span>
+        <span>19 août 2026</span>
+        <span>7 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/devenir-clippeur-tiktok.html" class="article-card">
+      <h2>Devenir clippeur TikTok : le guide complet</h2>
+      <p>Ce que fait un clippeur, les compétences nécessaires, trouver ses premiers clients et les outils indispensables.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>2 août 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/combien-gagne-clippeur.html" class="article-card">
+      <h2>Combien gagne un clippeur en France en 2026 ?</h2>
+      <p>Les modèles de rémunération : au forfait, à la performance, en agence. Ce qui influence réellement les revenus.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>2 août 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/meilleur-logiciel-clippeur.html" class="article-card">
+      <h2>Meilleur logiciel pour clippeur professionnel en 2026</h2>
+      <p>Détection IA, recadrage automatique, sous-titres : les critères pour cliper en volume, en pro.</p>
+      <div class="article-meta">
+        <span class="article-tag">Outil</span>
+        <span>2 août 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/formats-video-reseaux-sociaux.html" class="article-card">
+      <h2>Formats vidéo pour les réseaux sociaux</h2>
+      <p>Le guide complet 2026 : TikTok, Instagram, YouTube, LinkedIn, Facebook, X.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>27 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/recadrer-video-9-16-outil.html" class="article-card">
+      <h2>Outil pour recadrer une vidéo en 9:16</h2>
+      <p>Recadre tes vidéos automatiquement avec l'IA : suivi du visage, zéro montage manuel.</p>
+      <div class="article-meta">
+        <span class="article-tag">Outil</span>
+        <span>27 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/monetiser-youtube-shorts.html" class="article-card">
+      <h2>Comment monétiser ses YouTube Shorts</h2>
+      <p>Le programme partenaire YouTube et comment le repurposing accélère la monétisation.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>25 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/monetiser-tiktok.html" class="article-card">
+      <h2>Comment monétiser sur TikTok</h2>
+      <p>Programme de récompense, TikTok Shop, cadeaux live : les différentes façons de monétiser.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>25 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/algorithme-page-pour-toi-tiktok.html" class="article-card">
+      <h2>Comment fonctionne la page Pour Toi de TikTok</h2>
+      <p>Le mécanisme de test progressif derrière l'algorithme, et les signaux qui comptent le plus.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>23 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/cross-posting-clips.html" class="article-card">
+      <h2>Cross-posting de clips : publier partout sans se répéter</h2>
+      <p>Comment publier le même clip sur TikTok, Reels et Shorts efficacement, sans pénalité.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>23 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/meilleur-moment-poster-tiktok.html" class="article-card">
+      <h2>Meilleur moment pour poster sur TikTok</h2>
+      <p>Ce que dit vraiment l'algorithme sur le timing, et pourquoi il compte moins qu'on le pense.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>22 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/meilleur-moment-poster-instagram.html" class="article-card">
+      <h2>Meilleur moment pour poster sur Instagram Reels</h2>
+      <p>Ce que l'algorithme Instagram regarde vraiment, au-delà de l'heure de publication.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>22 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/contenu-court-entreprise.html" class="article-card">
+      <h2>Contenu court pour entreprises</h2>
+      <p>Pourquoi et comment recycler conférences et interviews internes en clips pour les réseaux sociaux.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide B2B</span>
+        <span>20 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/clips-pour-agences-clipping.html" class="article-card">
+      <h2>Clips pour agences de clipping</h2>
+      <p>Comment produire en volume avec l'IA pour plusieurs clients simultanément.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>20 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/cours-en-ligne-en-clips.html" class="article-card">
+      <h2>Transformer un cours en ligne en clips promotionnels</h2>
+      <p>Comment extraire des extraits de tes formations pour attirer de nouveaux élèves.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>19 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/repurposing-coachs-infopreneurs.html" class="article-card">
+      <h2>Repurposing vidéo pour coachs et infopreneurs</h2>
+      <p>Stratégie complète pour transformer ton contenu en clips qui génèrent des leads.</p>
+      <div class="article-meta">
+        <span class="article-tag">Stratégie</span>
+        <span>19 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/webinaire-en-clips.html" class="article-card">
+      <h2>Transformer un webinaire en clips courts</h2>
+      <p>La méthode pour extraire les meilleurs moments d'un webinaire, pour formateurs et coachs.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>17 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/live-en-shorts.html" class="article-card">
+      <h2>Transformer un live en Shorts</h2>
+      <p>La méthode complète pour découper les meilleurs moments d'un live en Shorts viraux.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>17 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/monter-video-verticale-en-ligne.html" class="article-card">
+      <h2>Monter une vidéo verticale en ligne</h2>
+      <p>Le guide complet : méthode manuelle vs IA, sans logiciel à installer.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>17 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/logiciel-clips-viraux-gratuit.html" class="article-card">
+      <h2>Meilleur logiciel de clips viraux gratuit</h2>
+      <p>Ce qu'il faut vérifier avant de choisir une offre gratuite : filigrane, limites, pièges.</p>
+      <div class="article-meta">
+        <span class="article-tag">Comparatif</span>
+        <span>17 juillet 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/generer-sous-titres-automatiques.html" class="article-card">
+      <h2>Comment générer des sous-titres automatiques</h2>
+      <p>Tutoriel complet : transcription IA, style karaoke mot par mot, personnalisation des sous-titres.</p>
+      <div class="article-meta">
+        <span class="article-tag">Tutoriel</span>
+        <span>16 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/detecter-moments-viraux.html" class="article-card">
+      <h2>Comment l'IA détecte les moments viraux</h2>
+      <p>Transcription, analyse par LLM, score de viralité : le mécanisme derrière la détection automatique.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>16 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/specs-video-tiktok-reels-shorts.html" class="article-card">
+      <h2>Durée, résolution, ratio : specs TikTok, Reels, Shorts</h2>
+      <p>Comparatif technique complet par plateforme : durée idéale, résolution, zones de sécurité.</p>
+      <div class="article-meta">
+        <span class="article-tag">Comparatif</span>
+        <span>15 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/ameliorer-retention-short.html" class="article-card">
+      <h2>Comment améliorer la rétention sur tes Shorts</h2>
+      <p>4 techniques concrètes pour garder l'attention jusqu'à la fin : coupes, pattern interrupt, relance, boucle.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>15 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/hook-video-definition.html" class="article-card">
+      <h2>Qu'est-ce qu'un hook vidéo ?</h2>
+      <p>Définition et 7 formules qui marchent pour accrocher dès les premières secondes, sans trahir la promesse.</p>
+      <div class="article-meta">
+        <span class="article-tag">Définition</span>
+        <span>14 juillet 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/hook-3-secondes.html" class="article-card">
+      <h2>Pourquoi les 3 premières secondes décident de tout</h2>
+      <p>Ce qui se joue vraiment dans ce court instant, les erreurs à éviter et comment le structurer.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>14 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/decouper-video-longue-format-interview.html" class="article-card">
+      <h2>Découper une vidéo de 1h+ en clips</h2>
+      <p>Podcasts, interviews, conférences, streams : comment découper une vidéo longue en clips viraux sans y passer ta journée.</p>
+      <div class="article-meta">
+        <span class="article-tag">Tutoriel</span>
+        <span>9 juillet 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/pourquoi-ton-crop-9-16-est-rate.html" class="article-card">
+      <h2>Pourquoi ton crop 9:16 est raté</h2>
+      <p>Tête coupée, cadrage statique, sujet hors champ : pourquoi ton recadrage 9:16 ne fonctionne pas et comment le corriger avec l'IA.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>9 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/repurposing-video-definition.html" class="article-card">
+      <h2>Qu'est-ce que le repurposing vidéo ?</h2>
+      <p>Définition et méthode : recycler un contenu long en plusieurs clips courts pour TikTok, Reels et Shorts, sans production supplémentaire.</p>
+      <div class="article-meta">
+        <span class="article-tag">Définition</span>
+        <span>12 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/short-reel-tiktok-differences.html" class="article-card">
+      <h2>Short, Reel, TikTok : quelles différences ?</h2>
+      <p>Même format vertical, mais algorithme, durée idéale et audience diffèrent. Comparatif complet des trois plateformes.</p>
+      <div class="article-meta">
+        <span class="article-tag">Comparatif</span>
+        <span>12 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/erreurs-qui-tuent-tes-shorts.html" class="article-card">
+      <h2>7 erreurs qui tuent tes Shorts en 2026</h2>
+      <p>Hook raté, mauvais crop, sous-titres absents... Les 7 erreurs les plus fréquentes qui empêchent tes Shorts de percer, et comment les corriger.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>9 juillet 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/qu-est-ce-qu-un-clip-viral.html" class="article-card">
+      <h2>Qu'est-ce qu'un clip viral ?</h2>
+      <p>Définition complète : caractéristiques, origine (repurposing), différence avec une vidéo courte classique, et comment ils sont fabriqués aujourd'hui.</p>
+      <div class="article-meta">
+        <span class="article-tag">Définition</span>
+        <span>10 juillet 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/combien-shorts-extraire-video-youtube.html" class="article-card">
+      <h2>Combien de Shorts extraire d'une vidéo YouTube ?</h2>
+      <p>Méthode de calcul du ratio de recyclage : combien de Shorts tirer d'une vidéo selon sa durée et son format.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>9 juillet 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/clips-tiktok-ia.html" class="article-card">
+      <h2>Comment faire des clips TikTok avec l'IA en 2026</h2>
+      <p>Méthode complète pour créer des clips TikTok viraux avec l'IA. Sous-titres, recadrage, hooks — tout automatisé en 5 minutes.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>1 juillet 2026</span>
+      </div>
+    </a>
+    <a href="/blog/format-shorts-youtube-2026.html" class="article-card">
+      <h2>Meilleur format pour les Shorts YouTube en 2026</h2>
+      <p>Durée idéale, ratio 9:16, résolution, sous-titres, miniatures : tout ce qu'il faut savoir pour que tes Shorts performent.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>4 juillet 2026</span>
+      </div>
+    </a>
+    <a href="/blog/decouper-video-shorts-automatiquement.html" class="article-card">
+      <h2>Comment découper une vidéo en Shorts automatiquement en 2026</h2>
+      <p>Découpe tes vidéos longues en Shorts viraux automatiquement grâce à l'IA. Guide complet : outils, méthodes et tutoriel pas à pas.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>27 juin 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/meilleur-outil-clips-viraux-ia.html" class="article-card">
+      <h2>Les 5 meilleurs outils de clips viraux IA en 2026 (comparatif)</h2>
+      <p>Comparatif détaillé des outils IA pour créer des clips viraux : Créatis, Opus Clip, Vidyo AI, Klap, CapCut. Lequel choisir ?</p>
+      <div class="article-meta">
+        <span class="article-tag">Comparatif</span>
+        <span>27 juin 2026</span>
+        <span>6 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/transformer-video-youtube-tiktok.html" class="article-card">
+      <h2>Comment transformer une vidéo YouTube en TikTok en 2026</h2>
+      <p>Guide pas à pas pour convertir tes vidéos YouTube 16:9 en TikToks verticaux 9:16 avec l'IA. Format, hooks, sous-titres.</p>
+      <div class="article-meta">
+        <span class="article-tag">Tutoriel</span>
+        <span>27 juin 2026</span>
+        <span>5 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/sous-titres-automatiques-shorts.html" class="article-card">
+      <h2>Sous-titres automatiques pour Shorts : guide complet 2026</h2>
+      <p>Pourquoi les sous-titres sont essentiels pour la viralité, les différents styles (karaoke, bold, minimal) et comment les ajouter automatiquement.</p>
+      <div class="article-meta">
+        <span class="article-tag">Guide</span>
+        <span>27 juin 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+
+    <a href="/blog/creer-reels-video-longue.html" class="article-card">
+      <h2>Créer des Reels Instagram depuis une vidéo longue (méthode IA)</h2>
+      <p>L'algorithme Instagram Reels, la durée optimale, et comment recycler tes vidéos longues en Reels viraux avec l'IA.</p>
+      <div class="article-meta">
+        <span class="article-tag">Tutoriel</span>
+        <span>27 juin 2026</span>
+        <span>4 min</span>
+      </div>
+    </a>
+  </div>
+</div>
+
+<footer class="blog-footer">
+  <p>© 2026 Créatis · <a href="/">Accueil</a> · <a href="/cgu.html">CGU</a> · <a href="/confidentialite.html">Confidentialité</a> · <a href="mailto:contact@creatis.app">Contact</a> · <a href="/llms.txt">llms.txt</a> · <a href="/pricing.md">pricing.md</a></p>
+</footer>
+</body>
+</html>

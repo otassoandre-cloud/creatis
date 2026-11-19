@@ -1,0 +1,75 @@
+{
+  "jour": "2026-10-04",
+  "videos": [
+    {
+      "id": "lnWFkCCBuco",
+      "titre": "Je teste si mon IA peut trouver le moment le plus viral de n",
+      "vues": null,
+      "duree": "0:19",
+      "dureeVue": "0:11",
+      "partRegardee": 58,
+      "ontContinue": "30,4",
+      "mesurable": true
+    },
+    {
+      "id": "aCRHT1ffEcU",
+      "titre": "Je teste une commande vocale sur la dernière vidéo de Michou",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": null,
+      "partRegardee": null,
+      "ontContinue": null,
+      "mesurable": false
+    },
+    {
+      "id": "rKW3ixDbfF4",
+      "titre": "Je teste une commande vocale sur la dernière vidéo d'Inoxtag",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": "0:11",
+      "partRegardee": 79,
+      "ontContinue": "9,9",
+      "mesurable": true
+    },
+    {
+      "id": "1zouLqE_WQE",
+      "titre": "Je teste une commande vocale sur la dernière vidéo de McFly ",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": null,
+      "partRegardee": null,
+      "ontContinue": null,
+      "mesurable": false
+    },
+    {
+      "id": "Bp2K8XDOnTM",
+      "titre": "J'ai dit une phrase, elle a sorti 10 clips",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": null,
+      "partRegardee": null,
+      "ontContinue": null,
+      "mesurable": false
+    },
+    {
+      "id": "kHYROVYEKhY",
+      "titre": "Je teste une commande vocale sur la dernière vidéo de Squeez",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": null,
+      "partRegardee": null,
+      "ontContinue": null,
+      "mesurable": false
+    },
+    {
+      "id": "t-UPX0BlCk4",
+      "titre": "Une phrase, huit clips notés — la grille de notation",
+      "vues": null,
+      "duree": "0:14",
+      "dureeVue": null,
+      "partRegardee": null,
+      "ontContinue": null,
+      "mesurable": false
+    }
+  ]
+}

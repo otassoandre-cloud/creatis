@@ -1,0 +1,13 @@
+Les sous-titres sont déjà écrits et calés sur la voix. Ce qui reste, c'est de décider à quoi ils ressemblent, et surtout où ils se posent.
+
+Je change de style. Il y en a onze. Je les fais défiler pour que tu voies la différence : le mot courant surligné, le karaoké mot par mot, le gras plein, la version sobre. Prends celui qui correspond à la source : un extrait calme n'a pas besoin d'un karaoké agressif, et inversement.
+
+Je règle la taille. Ni trop gros, auquel cas deux mots remplissent l'écran, ni trop petit, auquel cas personne ne lit sur un téléphone.
+
+Et maintenant le geste qui compte le plus. J'attrape les sous-titres, et je les déplace.
+
+Regarde où je les mets : pas en bas. Sur un téléphone, le bas de l'écran est mangé par l'interface de la plateforme — le pseudo, la légende, la ligne de musique, les boutons. Des sous-titres posés là sont recouverts, et le spectateur ne le sait même pas. Il voit juste un clip qu'il ne comprend pas.
+
+Je les remonte à peu près au tiers de la hauteur. À hauteur des yeux sur un plan serré, au-dessus de tout ce que la plateforme va dessiner par-dessus.
+
+Et ce que tu vois dans l'aperçu est exactement ce qui sortira du fichier. Pas une approximation.

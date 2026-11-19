@@ -66,7 +66,7 @@ async function verifyTokenStrict(token) {
 async function checkQuota(userId) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return { ok: true }; // fail open si Supabase down
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_used,generations_reset_at`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=plan,generations_used,generations_reset_at,abonnements(status,past_due_depuis)`, {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
@@ -76,6 +76,23 @@ async function checkQuota(userId) {
     const rows = await res.json();
     const user = rows?.[0];
     if (!user) return { ok: true };
+
+    /* Un abonnement impayé depuis plus de 72 h ne donne plus le quota payant.
+       Même règle et mêmes garde-fous que `planEffectif` dans api/repurpose.js —
+       le raisonnement complet y est documenté ; ici on n'en garde que la
+       décision, ce fichier étant sur le chemin des agents et non du produit
+       vendu. On ne restreint que s'il existe une ligne explicitement en défaut,
+       datée, et aucune ligne active à côté. */
+    const abos = Array.isArray(user.abonnements) ? user.abonnements : [];
+    const actif = abos.some((a) => a.status === 'active' || a.status === 'trialing');
+    const impayeDepuis = abos
+      .filter((a) => a.status === 'past_due' || a.status === 'unpaid')
+      .map((a) => new Date(a.past_due_depuis).getTime())
+      .filter((t) => Number.isFinite(t));
+    if (!actif && impayeDepuis.length && Date.now() - Math.min(...impayeDepuis) > 72 * 3600e3) {
+      user.plan = 'gratuit';
+    }
+
     if (user.plan === 'studio') return { ok: true }; // Studio = illimité
 
     const now = new Date();
@@ -90,7 +107,7 @@ async function checkQuota(userId) {
       }
     } else if (user.plan === 'pro') {
       if (used >= PRO_GENERATION_LIMIT) {
-        return { ok: false, error: `Tu as atteint les ${PRO_GENERATION_LIMIT} générations Pro ce mois-ci. Passe au plan Studio pour des générations illimitées.` };
+        return { ok: false, error: `Tu as atteint les ${PRO_GENERATION_LIMIT} générations Pro ce mois-ci — ça se réinitialise le mois prochain. Besoin de plus ? Écris-nous à contact@creatis.app.` };
       }
     }
     return { ok: true };
@@ -137,6 +154,7 @@ module.exports = async (req, res) => {
 
   const groqKey     = process.env.GROQ_API_KEY;
   const togetherKey = process.env.TOGETHER_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   if (!groqKey) return res.status(500).json({ error: 'Groq API non configurée' });
 
   const { model, messages, temperature, max_tokens } = req.body || {};
@@ -157,7 +175,7 @@ module.exports = async (req, res) => {
       : 'https://api.together.xyz/v1/chat/completions';
     const key    = isGroq ? groqKey : togetherKey;
     const mdl    = isGroq
-      ? (model || 'llama-3.3-70b-versatile')
+      ? (model || 'openai/gpt-oss-120b')
       : 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
 
     const res = await fetch(url, {
@@ -171,6 +189,7 @@ module.exports = async (req, res) => {
   const MAX_RETRIES = 3;
   let lastErr = null;
   let groqRateLimited = false;
+  let groqIndisponible = false;   // modèle retiré, clé refusée, panne côté Groq…
 
   /* ── Tentatives Groq ── */
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -189,7 +208,13 @@ module.exports = async (req, res) => {
       if (!groqRes.ok) {
         const errData = await groqRes.json().catch(() => ({}));
         console.error('[Groq] Erreur API:', groqRes.status, errData);
-        return res.status(groqRes.status).json({ error: errData.error?.message || 'Erreur Groq API' });
+        /* Le filet Together ne se déclenchait QUE sur un 429 ou une coupure réseau. Toute autre
+           erreur repartait telle quelle vers le navigateur. Quand Groq a retiré
+           `llama-3.3-70b-versatile` de son catalogue, chaque appel a répondu 404 et les huit
+           agents ont cessé de fonctionner d'un coup — alors que Together, lui, répondait.
+           Un modèle retiré est exactement le cas où un filet doit servir. */
+        groqIndisponible = true;
+        break;
       }
 
       return res.status(200).json(await groqRes.json());
@@ -201,8 +226,8 @@ module.exports = async (req, res) => {
   }
 
   /* ── Fallback Together AI ── */
-  if (groqRateLimited && togetherKey) {
-    console.warn('[Together] Fallback activé (Groq rate-limité)');
+  if ((groqRateLimited || groqIndisponible) && togetherKey) {
+    console.warn(`[Together] Fallback activé (${groqRateLimited ? 'Groq rate-limité' : 'Groq indisponible'})`);
     try {
       const togetherRes = await callLLM('together');
       if (togetherRes.ok) return res.status(200).json(await togetherRes.json());
@@ -210,6 +235,81 @@ module.exports = async (req, res) => {
       console.error('[Together] Erreur:', togetherRes.status, errData);
     } catch (err) {
       console.error('[Together] Erreur réseau:', err.message);
+    }
+  }
+
+  /* ── Dernier filet : Gemini ──────────────────────────────────────────────
+     Together est a 402 depuis le 15/09 (compte a sec), donc le filet precedent
+     ne rattrapait plus rien : quand le budget Groq du jour etait consomme —
+     200 000 tokens pour TOUTE l'organisation, soit quelques heures de trafic —
+     l'assistant renvoyait « Impossible de joindre Groq » a tout le monde. Un
+     abonne l'a signale le 26/09 : « je ne peux meme pas joindre Creatis IA ».
+
+     Gemini a son propre quota, independant de Groq. Son API ne parle pas le
+     dialecte OpenAI : on traduit a l'aller (roles -> `contents`, le message
+     systeme devenant `system_instruction`) et au retour (texte -> `choices`),
+     pour que le client ne voie aucune difference. */
+  if (geminiKey) {
+    try {
+      const systeme = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+      const contents = messages
+        .filter((m) => m.role !== 'system')
+        .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+      const corps = {
+        contents: contents.length ? contents : [{ role: 'user', parts: [{ text: systeme || 'Bonjour' }] }],
+        /* Les modeles Gemini 3 raisonnent AVANT de repondre et paient ce
+           raisonnement sur le meme budget de sortie. Recopier `max_tokens` tel
+           quel rendait des reponses coupees au premier mot : un essai a 120
+           jetons a renvoye « Bonjour » et rien d'autre. On ajoute donc une
+           reserve pour la reflexion, et un plancher pour les petites demandes. */
+        generationConfig: {
+          temperature: params.temperature,
+          maxOutputTokens: Math.max(params.max_tokens, 1024) + 2048,
+        },
+      };
+      if (systeme && contents.length) corps.system_instruction = { parts: [{ text: systeme }] };
+
+      /* Les quotas gratuits de Google se comptent PAR MODELE : le 26/09/2026,
+         gemini-3.6-flash renvoyait 429 pendant que gemini-3.5-flash repondait
+         avec la MEME cle. Un seul modele code en dur, c'est un filet qui cede
+         au moment ou il doit servir. Du plus capable au plus econome, le
+         premier qui repond gagne ; 429 et 404 passent au suivant. */
+      const MODELES = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
+      for (const modele of MODELES) {
+        const gRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modele}:generateContent?key=${geminiKey}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) },
+        );
+        /* 429 quota epuise, 404 modele retire, 5xx surcharge passagere : trois
+           raisons d'essayer le suivant. Un 503 faisait auparavant abandonner
+           toute la chaine alors que les modeles d'apres etaient disponibles.
+           On ne s'arrete que sur une 4xx de contenu — un prompt refuse le sera
+           par tous les modeles, changer de cheval n'y changerait rien. */
+        if (gRes.status === 429 || gRes.status === 404 || gRes.status >= 500) {
+          console.warn(`[Gemini] ${modele} indisponible (${gRes.status}), modele suivant`);
+          continue;
+        }
+        if (!gRes.ok) {
+          console.error('[Gemini] Erreur:', gRes.status, (await gRes.text().catch(() => '')).slice(0, 200));
+          break;
+        }
+        const data = await gRes.json();
+        const texte = (data?.candidates?.[0]?.content?.parts || [])
+          .map((part) => part.text || '')
+          .join('')
+          .trim();
+        if (!texte) { console.error('[Gemini] Reponse vide de', modele); continue; }
+        console.warn(`[Gemini] Filet active via ${modele} — Groq et Together indisponibles`);
+        return res.status(200).json({
+          id: 'gemini-' + Date.now(),
+          object: 'chat.completion',
+          model: modele,
+          choices: [{ index: 0, message: { role: 'assistant', content: texte }, finish_reason: 'stop' }],
+          usage: data?.usageMetadata || {},
+        });
+      }
+    } catch (err) {
+      console.error('[Gemini] Erreur reseau:', err.message);
     }
   }
 

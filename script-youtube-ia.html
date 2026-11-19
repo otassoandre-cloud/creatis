@@ -14,7 +14,8 @@
   <meta property="og:url" content="https://creatis.app/script-youtube-ia.html">
   <meta property="og:locale" content="fr_FR">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css">
   <script type="application/ld+json">
   {
@@ -26,6 +27,34 @@
     "applicationCategory": "UtilitiesApplication",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
     "inLanguage": "fr"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Faut-il lire son script YouTube mot à mot ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Non — c'est même déconseillé. Un script lu mot à mot sonne faux et robotique. Utilise ton script comme un plan détaillé : connais bien chaque section, puis parle naturellement en improvisant les transitions." }
+      },
+      {
+        "@type": "Question",
+        "name": "Quelle longueur pour un script YouTube de 10 minutes ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "On parle en moyenne 130 à 150 mots par minute à l'oral. Un script de 10 minutes correspond à environ 1000-1200 mots de contenu parlé, en incluant les pauses et les B-rolls." }
+      },
+      {
+        "@type": "Question",
+        "name": "Créatis est-il vraiment gratuit ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui — Créatis offre 1 génération gratuite pour découvrir, sans carte bancaire. Chaque génération inclut : titres, script complet, description SEO, tags et miniature IA." }
+      },
+      {
+        "@type": "Question",
+        "name": "Combien de temps faut-il pour écrire un script YouTube ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Écrire un script de 10 minutes prend en moyenne 2 à 4 heures pour un créateur. Avec Créatis, le même script est généré en 30 secondes, ce qui représente un gain de temps considérable." }
+      }
+    ]
   }
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
@@ -78,6 +107,12 @@
         t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "wqzt6m475j");
+  </script>
+  <script src="/js/ref-capture.js"></script>
+  <!-- PostHog -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys onFeatureFlags onSessionId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_vdxr7qhoBWZKASMMnJcefKcUKYbMti34FDd933nur6pJ',{api_host:'https://eu.i.posthog.com', person_profiles:'identified_only'});
   </script>
 </head>
 <body>
@@ -209,6 +244,29 @@
 
 <div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--vert);color:#000;padding:10px 20px;border-radius:100px;font-weight:700;font-size:14px;display:none;z-index:999;">Script copié !</div>
 
+<!-- Liens internes — autres outils Créatis -->
+<section style="background:var(--bg-card);border-top:1px solid var(--bordure);padding:48px 24px;text-align:center;">
+  <h2 style="font-size:20px;font-weight:700;color:var(--texte);margin:0 0 8px;">Nos autres outils YouTube gratuits</h2>
+  <p style="color:var(--texte-muted);font-size:14px;margin:0 0 28px;">Tout ce dont tu as besoin pour créer du contenu YouTube qui performe</p>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;max-width:800px;margin:0 auto;">
+    <a href="/generateur-titres-youtube.html" style="display:block;background:var(--bg);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px;text-decoration:none;width:220px;" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+      <div style="font-size:28px;margin-bottom:8px">🎯</div>
+      <div style="font-weight:700;color:var(--texte);margin-bottom:4px">Générateur de titres</div>
+      <div style="font-size:13px;color:var(--texte-muted)">5 titres optimisés CTR en 10 secondes</div>
+    </a>
+    <a href="/description-seo-youtube.html" style="display:block;background:var(--bg);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px;text-decoration:none;width:220px;" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+      <div style="font-size:28px;margin-bottom:8px">📝</div>
+      <div style="font-weight:700;color:var(--texte);margin-bottom:4px">Description SEO + Tags</div>
+      <div style="font-size:13px;color:var(--texte-muted)">Description + 30 tags en 10 secondes</div>
+    </a>
+    <a href="/lp" style="display:block;background:var(--bg);border:1px solid var(--bordure);border-radius:12px;padding:20px 24px;text-decoration:none;width:220px;" onmouseover="this.style.borderColor='var(--vert)'" onmouseout="this.style.borderColor='var(--bordure)'">
+      <div style="font-size:28px;margin-bottom:8px">✂️</div>
+      <div style="font-weight:700;color:var(--texte);margin-bottom:4px">Clips Viraux IA</div>
+      <div style="font-size:13px;color:var(--texte-muted)">1 vidéo → 10 Shorts 9:16 auto</div>
+    </a>
+  </div>
+</section>
+
 <script src="js/config.js"></script>
 <script>
 let scriptComplet = '';
@@ -247,7 +305,7 @@ Inclus des [PAUSE] ou [B-ROLL: description] là où c'est pertinent.`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         temperature: 0.8,
         max_tokens: 2048
       })

@@ -4,6 +4,8 @@
 # Binary files
 *.png binary
 *.jpg binary
+*.webp binary
+*.mp4 binary
 *.gif binary
 *.ico binary
 *.svg text

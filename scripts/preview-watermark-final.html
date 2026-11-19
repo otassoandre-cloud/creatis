@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#111; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:system-ui,sans-serif; gap:40px; flex-wrap:wrap; padding:30px; }
+
+  .label { color:#666; font-size:12px; text-align:center; margin-bottom:8px; }
+
+  /* Clip 9:16 simulé — 720x1280 réduit à 270x480 (scale 0.375) */
+  .clip {
+    width: 270px;
+    height: 480px;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+  }
+
+  /* Simuler du contenu vidéo */
+  .clip-content {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.06);
+    font-size: 60px;
+  }
+
+  /* Sous-titres simulés */
+  .fake-sub {
+    position: absolute;
+    bottom: 80px; left: 0; right: 0;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: .02em;
+  }
+  .fake-sub span { color: #facc15; }
+
+  /* ═══ WATERMARK exact FFmpeg (scale 0.375 de 720x1280) ═══
+     FFmpeg coords: x=10,y=68,w=152,h=44  → ×0.375 = x=3.75,y=25.5,w=57,h=16.5
+     Mais on garde les proportions visuelles lisibles → scale 0.5 pour la preview
+
+     Scale utilisé: 270/720 = 0.375
+     pill:   x=10×0.375=3.75  y=68×0.375=25.5  w=152×0.375=57  h=44×0.375=16.5
+     green:  x=17×0.375=6.4   y=74×0.375=27.75 w=32×0.375=12   h=32×0.375=12
+     C:      x=22×0.375=8.25  y=75×0.375=28.1  fontsize=18×0.375=6.75
+     text:   x=57×0.375=21.4  y=78×0.375=29.25 fontsize=16×0.375=6
+  */
+
+  .wm-pill {
+    position: absolute;
+    left: 3.75px; top: 25.5px;
+    width: 57px; height: 16.5px;
+    background: rgba(0,0,0,0.72);
+  }
+  .wm-green {
+    position: absolute;
+    left: 6.4px; top: 27.75px;
+    width: 12px; height: 12px;
+    background: #10b981;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wm-c {
+    font-size: 6.75px; font-weight: 900; color: #fff; line-height: 1;
+  }
+  .wm-text {
+    position: absolute;
+    left: 21.4px; top: 28.25px;
+    font-size: 6px; font-weight: 700; color: #fff;
+    white-space: nowrap; line-height: 1;
+  }
+
+  /* Version agrandie ×3 pour voir le détail */
+  .clip-zoom {
+    width: 270px;
+    height: 100px;
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2d4a3e 0%, #1a3a2a 50%, #0f2a1a 100%);
+  }
+  /* Scale ×3 : 270/720×3 = 1.125 */
+  .wm-pill-z  { position:absolute; left:11.25px; top:22px; width:171px; height:49.5px; background:rgba(0,0,0,0.72); }
+  .wm-green-z { position:absolute; left:19px; top:30px; width:36px; height:36px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .wm-c-z     { font-size:20px; font-weight:900; color:#fff; line-height:1; }
+  .wm-text-z  { position:absolute; left:64px; top:34px; font-size:18px; font-weight:700; color:#fff; white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div>
+  <div class="label">Vue complète (proportions réelles)</div>
+  <div class="clip">
+    <div class="clip-content">🎬</div>
+    <div class="fake-sub">TU POUVAIS PAS <span>RATER ÇA.</span></div>
+    <!-- Watermark exact FFmpeg scale 0.375 -->
+    <div class="wm-green"><span class="wm-c">C</span></div>
+    <div class="wm-text">Creatis</div>
+  </div>
+</div>
+
+<div>
+  <div class="label">Zoom ×3 sur le watermark</div>
+  <div class="clip-zoom">
+    <div class="wm-green-z"><span class="wm-c-z">C</span></div>
+    <div class="wm-text-z">Creatis</div>
+  </div>
+</div>
+
+</body>
+</html>

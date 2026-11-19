@@ -1,0 +1,61 @@
+TITRE
+Transformer une vidéo YouTube en Short avec l'IA (tuto complet)
+
+POURQUOI CE TITRE
+« transformer une video youtube en short » est la PREMIÈRE suggestion de
+l'autocomplétion YouTube sur cette racine, mesurée le 28/09. Le titre ouvre donc
+sur la requête exacte, avant tout habillage. YouTube est un moteur de recherche
+et non un fil : c'est la requête qui décide, pas l'accroche.
+
+DESCRIPTION
+L'outil de la démonstration : https://creatis.app/y/2809tuto
+
+Tu as une vidéo longue — un podcast, un live, une interview — et tu veux en tirer
+des formats courts pour TikTok, Instagram Reels et YouTube Shorts. Voici le
+parcours entier, sans coupure et sans étape masquée.
+
+1. Tu colles le lien de la vidéo YouTube. Rien à télécharger, aucun logiciel.
+2. L'IA transcrit, puis cherche les passages qui se comprennent seuls — pas les
+   plus bruyants, les plus autonomes.
+3. Elle rend ses meilleures propositions, notées, déjà recadrées en vertical et
+   sous-titrées. Sur cette vidéo : cinq clips, notés 92, 90, 88, 86 et 85.
+4. Tu tries. C'est la seule étape qui ne s'automatise pas, et c'est celle qui
+   fait la différence entre un clip qui tourne et un clip qui passe inaperçu.
+5. Tu ajustes les sous-titres si tu veux, tu exportes, tu publies.
+
+COMBIEN DE TEMPS, VRAIMENT
+Les phases d'analyse et d'export sont accélérées à l'écran, et le bandeau le dit
+au moment où ça se produit. En temps réel, sur cette vidéo : environ 70 secondes
+d'analyse, puis 40 secondes de rendu à l'export. Le reste, c'est toi qui choisis.
+
+LA SOURCE UTILISÉE
+« 24H sur le train le plus dangereux du monde — Dakar-Paris ». Une vidéo qui
+n'est pas la mienne et que je n'ai pas eu à retoucher : c'est le principe.
+
+CHAPITRES
+0:00 Coller le lien
+0:08 Ce que l'IA cherche
+0:15 Les cinq clips, notés
+0:21 Trier
+0:25 Ajuster et exporter
+
+---
+NOTES INTERNES (ne pas coller dans YouTube)
+
+· Lien tracé : creatis.app/y/2809tuto
+  → /?utm_source=youtube&utm_medium=post&utm_campaign=2809tuto
+  Vérifié en production le 28/09 (308). Distinct de /yt, qui sert la bio :
+  sans ça on ne saurait pas si un clic vient de la description ou du profil.
+
+· Pas de #shorts. La vidéo est en 16:9 et YouTube classe au ratio : le mot-clé
+  ne changerait rien au classement et brouillerait le sujet.
+
+· Pourquoi YouTube aujourd'hui et pas TikTok : le brief du 27/09 donne 0 visite
+  sociale tracée sur 7 jours, contre 44 % des inscrits venus de la recherche.
+  YouTube est la seule plateforme sociale où le lien est cliquable dès zéro
+  abonné — donc la seule où la mesure sera propre — et c'est un moteur de
+  recherche, ce qui rejoint le canal qui marche déjà.
+
+· À VÉRIFIER AVANT D'ENVOYER :
+  node scripts/youtube-deja-publie.js --titre "Transformer une vidéo YouTube en Short"
+  Code 3 = déjà publié, ne pas republier.

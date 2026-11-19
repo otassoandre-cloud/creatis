@@ -1,0 +1,25 @@
+La grille de notation d'un clip, en entier. Vous pouvez l'appliquer à la main.
+
+Un passage se note sur 100, en cinq critères de 20 :
+
+ACCROCHE /20 — les 2 premières secondes. Question, chiffre, paradoxe. Jamais une intro.
+AUTONOMIE /20 — le passage se comprend sans avoir vu la vidéo. C'est celui que tout le monde rate : on coupe un moment drôle qui ne veut rien dire tout seul.
+RÉTENTION /20 — aucun silence, aucune digression. Un « euh » de 2 secondes vous coûte une part du public.
+VALEUR /20 — un conseil, une révélation, une émotion. Si on n'apprend rien, on scrolle.
+VIRALITÉ /20 — ça provoque une réaction : surprise, désaccord, envie d'envoyer à quelqu'un.
+
+Et deux règles qui comptent autant que la note :
+— entre 30 et 90 secondes
+— le clip finit sur une idée terminée. Coupé au milieu d'une phrase, il perd tout, même noté 90.
+
+La démonstration en seconde partie : une phrase dite au micro — « prends la dernière vidéo de Squeezie » — et la grille est appliquée à toute la vidéo. 6 min 29 d'analyse, huit passages notés, le premier clip recadré et sous-titré à la fin.
+
+👉 creatis.app
+
+00:00 Deux façons de découper une vidéo
+00:14 La commande vocale
+00:34 Les cinq critères
+00:51 Les deux règles
+01:08 La démonstration
+
+#clipping #montagevideo #shorts #ia #creatis
